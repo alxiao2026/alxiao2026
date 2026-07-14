@@ -18,6 +18,17 @@ interface Prize {
   is_active: boolean;
 }
 
+interface Package {
+  id: string;
+  name: string;
+  description: string | null;
+  price: string;
+  original_price: string | null;
+  badge: string | null;
+  features: string | null;
+  is_active: boolean;
+}
+
 interface Order {
   id: string;
   user_id: string;
@@ -43,6 +54,7 @@ const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281
 
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [userId, setUserId] = useState<string>(`user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [nickName, setNickName] = useState<string>('游客');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -63,9 +75,10 @@ const IndexPage = () => {
     }
   }, []);
 
-  // 获取奖品列表
+  // 获取数据
   useEffect(() => {
     fetchPrizes();
+    fetchPackages();
     fetchOrders();
   }, [userId]);
 
@@ -77,6 +90,17 @@ const IndexPage = () => {
       setPrizes(data);
     } catch (err) {
       console.error('获取奖品失败:', err);
+    }
+  };
+
+  const fetchPackages = async () => {
+    try {
+      const res = await Network.request({ url: '/api/packages/active' });
+      console.log('active packages:', res.data);
+      const data = (res.data as any)?.data || (res.data as Package[]) || [];
+      setPackages(data);
+    } catch (err) {
+      console.error('获取套餐失败:', err);
     }
   };
 
@@ -92,7 +116,7 @@ const IndexPage = () => {
   };
 
   // 下单
-  const handlePurchase = async () => {
+  const handlePurchase = async (pkg: Package) => {
     setLoading(true);
     try {
       const res = await Network.request({
@@ -101,8 +125,8 @@ const IndexPage = () => {
         data: {
           user_id: userId,
           nick_name: nickName,
-          package_name: '基础套餐',
-          price: '9.90',
+          package_name: pkg.name,
+          price: pkg.price,
         },
       });
       console.log('order created:', res.data);
@@ -125,7 +149,6 @@ const IndexPage = () => {
         method: 'POST',
       });
       console.log('order shared:', orderId);
-      // 触发分享
       Taro.showShareMenu({
         withShareTicket: true,
         success: () => {
@@ -141,7 +164,7 @@ const IndexPage = () => {
   // 设置分享
   useShareAppMessage(() => {
     return {
-      title: '膨胀团！下单基础套餐，分享好友抽大奖！',
+      title: '膨胀团！下单套餐，分享好友抽大奖！',
       path: '/pages/index/index',
     };
   });
@@ -166,6 +189,15 @@ const IndexPage = () => {
       Taro.showToast({ title: msg, icon: 'none' });
     } finally {
       setDrawing(false);
+    }
+  };
+
+  const parseFeatures = (features: string | null): string[] => {
+    if (!features) return [];
+    try {
+      return JSON.parse(features);
+    } catch {
+      return features.split('\n').filter(Boolean);
     }
   };
 
@@ -248,48 +280,75 @@ const IndexPage = () => {
           </Card>
         </View>
 
-        {/* 基础套餐 */}
+        {/* 套餐列表 */}
         <View className="px-4 mt-4">
-          <Card className="rounded-2xl border-2 border-red-300 shadow-lg">
-            <CardContent className="p-6">
-              <View className="flex flex-row items-center justify-between mb-3">
-                <View className="flex flex-row items-center gap-2">
-                  <ShoppingBag size={22} color="#FF4757" />
-                  <Text className="block text-lg font-bold text-gray-800">基础套餐</Text>
-                </View>
-                <Badge className="bg-red-500 text-white">限时特惠</Badge>
-              </View>
+          <View className="flex flex-row items-center gap-2 mb-3">
+            <ShoppingBag size={20} color="#FF4757" />
+            <Text className="block text-base font-bold text-gray-800">选购套餐</Text>
+          </View>
 
-              <View className="flex flex-row items-baseline gap-1 mb-4">
-                <Text className="block text-3xl font-bold text-red-500">¥9.90</Text>
-                <Text className="block text-sm text-gray-400 line-through">¥29.90</Text>
-              </View>
+          {packages.length === 0 ? (
+            <Card className="rounded-2xl shadow-lg">
+              <CardContent className="p-6">
+                <View className="flex items-center justify-center py-4">
+                  <Text className="block text-sm text-gray-400">暂无活动套餐</Text>
+                </View>
+              </CardContent>
+            </Card>
+          ) : (
+            packages.map((pkg) => {
+              const features = parseFeatures(pkg.features);
+              return (
+                <Card
+                  key={pkg.id}
+                  className="rounded-2xl border-2 border-red-300 shadow-lg mb-3"
+                >
+                  <CardContent className="p-6">
+                    <View className="flex flex-row items-center justify-between mb-3">
+                      <View className="flex flex-row items-center gap-2">
+                        <ShoppingBag size={22} color="#FF4757" />
+                        <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
+                      </View>
+                      {pkg.badge && (
+                        <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
+                      )}
+                    </View>
 
-              <View className="flex flex-col gap-2 mb-4">
-                <View className="flex flex-row items-center gap-2">
-                  <Zap size={14} color="#FFA502" />
-                  <Text className="block text-xs text-gray-600">下单即获抽奖资格</Text>
-                </View>
-                <View className="flex flex-row items-center gap-2">
-                  <Zap size={14} color="#FFA502" />
-                  <Text className="block text-xs text-gray-600">分享给好友即可开奖</Text>
-                </View>
-                <View className="flex flex-row items-center gap-2">
-                  <Zap size={14} color="#FFA502" />
-                  <Text className="block text-xs text-gray-600">100%中奖机会（奖品概率可配置，总量有限）</Text>
-                </View>
-              </View>
+                    {pkg.description && (
+                      <Text className="block text-sm text-gray-500 mb-3">{pkg.description}</Text>
+                    )}
 
-              <Button
-                className="w-full bg-red-500 hover:bg-red-600"
-                size="lg"
-                onClick={handlePurchase}
-                disabled={loading}
-              >
-                <Text className="block text-white font-semibold">{loading ? '购买中...' : '立即购买'}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+                    <View className="flex flex-row items-baseline gap-1 mb-4">
+                      <Text className="block text-3xl font-bold text-red-500">¥{pkg.price}</Text>
+                      {pkg.original_price && (
+                        <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
+                      )}
+                    </View>
+
+                    {features.length > 0 && (
+                      <View className="flex flex-col gap-2 mb-4">
+                        {features.map((feature, i) => (
+                          <View key={i} className="flex flex-row items-center gap-2">
+                            <Zap size={14} color="#FFA502" />
+                            <Text className="block text-xs text-gray-600">{feature}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    <Button
+                      className="w-full bg-red-500 hover:bg-red-600"
+                      size="lg"
+                      onClick={() => handlePurchase(pkg)}
+                      disabled={loading}
+                    >
+                      <Text className="block text-white font-semibold">{loading ? '购买中...' : '立即购买'}</Text>
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </View>
 
         {/* 我的订单 */}

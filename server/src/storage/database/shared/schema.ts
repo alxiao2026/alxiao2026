@@ -39,6 +39,22 @@ export const orders = pgTable("orders", {
 	index("orders_created_at_idx").on(table.created_at),
 ]);
 
+// 基础套餐表
+export const packages = pgTable("packages", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	name: varchar("name", { length: 128 }).notNull(),
+	description: text("description"),
+	price: numeric("price", { precision: 10, scale: 2 }).notNull().default("9.90"),
+	original_price: numeric("original_price", { precision: 10, scale: 2 }),
+	badge: varchar("badge", { length: 64 }),
+	features: text("features"), // JSON array of feature strings
+	is_active: boolean("is_active").notNull().default(true),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updated_at: timestamp("updated_at", { withTimezone: true }),
+}, (table) => [
+	index("packages_is_active_idx").on(table.is_active),
+]);
+
 // 抽奖记录表
 export const lotteryRecords = pgTable("lottery_records", {
 	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),

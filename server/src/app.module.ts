@@ -4,9 +4,10 @@ import { AppService } from '@/app.service';
 import { PrizeModule } from './modules/prize/prize.module';
 import { OrderModule } from './modules/order/order.module';
 import { LotteryModule } from './modules/lottery/lottery.module';
+import { PackageModule } from './modules/package/package.module';
 
 @Module({
-  imports: [PrizeModule, OrderModule, LotteryModule],
+  imports: [PrizeModule, OrderModule, LotteryModule, PackageModule],
   controllers: [AppController],
   providers: [AppService],
 })
