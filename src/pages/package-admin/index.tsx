@@ -445,7 +445,8 @@ export default function PackageAdmin() {
                   </View>
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <Input
-                      className="w-full bg-transparent"
+                      className="w-full"
+                      style={{ backgroundColor: 'transparent' }}
                       placeholder="请输入商品名称"
                       value={formData.name}
                       onInput={(e) => updateFormData('name', e.detail.value)}
@@ -463,13 +464,16 @@ export default function PackageAdmin() {
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <View className="flex items-center">
                       <Text className="block text-sm text-gray-800 mr-2">售价</Text>
-                      <Input
-                        className="flex-1 bg-transparent text-right"
-                        type="digit"
-                        placeholder="0"
-                        value={formData.price}
-                        onInput={(e) => updateFormData('price', e.detail.value)}
-                      />
+                      <View className="flex-1">
+                        <Input
+                          className="w-full"
+                          style={{ backgroundColor: 'transparent', textAlign: 'right' }}
+                          type="digit"
+                          placeholder="0"
+                          value={formData.price}
+                          onInput={(e) => updateFormData('price', e.detail.value)}
+                        />
+                      </View>
                       <Text className="block text-sm text-gray-800 ml-2">元</Text>
                     </View>
                   </View>
@@ -605,13 +609,16 @@ export default function PackageAdmin() {
                     <Text className="block text-red-500">*</Text>
                   </View>
                   <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <Input
-                      className="flex-1 bg-transparent text-right"
-                      type="number"
-                      placeholder="0"
-                      value={formData.stock.toString()}
-                      onInput={(e) => updateFormData('stock', parseInt(e.detail.value) || 0)}
-                    />
+                    <View className="flex-1">
+                      <Input
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent', textAlign: 'right' }}
+                        type="number"
+                        placeholder="0"
+                        value={formData.stock.toString()}
+                        onInput={(e) => updateFormData('stock', parseInt(e.detail.value) || 0)}
+                      />
+                    </View>
                     <Text className="block text-sm text-gray-400 ml-2">›</Text>
                   </View>
                 </View>

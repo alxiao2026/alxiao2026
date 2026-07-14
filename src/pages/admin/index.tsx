@@ -451,7 +451,8 @@ const AdminPage = () => {
                   <Text className="block text-sm text-gray-600 mb-1">奖品名称</Text>
                   <View className="bg-gray-50 rounded-xl px-3 py-2">
                     <Input
-                      className="w-full bg-transparent"
+                      className="w-full"
+                      style={{ backgroundColor: 'transparent' }}
                       value={prizeForm.name}
                       placeholder="请输入奖品名称"
                       onInput={(e) => setPrizeForm({ ...prizeForm, name: e.detail.value })}
@@ -476,7 +477,8 @@ const AdminPage = () => {
                     <Text className="block text-sm text-gray-600 mb-1">概率 (%)</Text>
                     <View className="bg-gray-50 rounded-xl px-3 py-2">
                       <Input
-                        className="w-full bg-transparent"
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent' }}
                         value={prizeForm.probability}
                         placeholder="0-100"
                         onInput={(e) => setPrizeForm({ ...prizeForm, probability: e.detail.value })}
@@ -487,7 +489,8 @@ const AdminPage = () => {
                     <Text className="block text-sm text-gray-600 mb-1">库存</Text>
                     <View className="bg-gray-50 rounded-xl px-3 py-2">
                       <Input
-                        className="w-full bg-transparent"
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent' }}
                         value={prizeForm.stock}
                         placeholder="0"
                         onInput={(e) => setPrizeForm({ ...prizeForm, stock: e.detail.value })}
@@ -503,7 +506,8 @@ const AdminPage = () => {
                   <Text className="block text-sm text-gray-600 mb-1">套餐名称</Text>
                   <View className="bg-gray-50 rounded-xl px-3 py-2">
                     <Input
-                      className="w-full bg-transparent"
+                      className="w-full"
+                      style={{ backgroundColor: 'transparent' }}
                       value={pkgForm.name}
                       placeholder="请输入套餐名称"
                       onInput={(e) => setPkgForm({ ...pkgForm, name: e.detail.value })}
@@ -528,7 +532,8 @@ const AdminPage = () => {
                     <Text className="block text-sm text-gray-600 mb-1">价格 (¥)</Text>
                     <View className="bg-gray-50 rounded-xl px-3 py-2">
                       <Input
-                        className="w-full bg-transparent"
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent' }}
                         value={pkgForm.price}
                         placeholder="9.90"
                         onInput={(e) => setPkgForm({ ...pkgForm, price: e.detail.value })}
@@ -539,7 +544,8 @@ const AdminPage = () => {
                     <Text className="block text-sm text-gray-600 mb-1">原价 (¥)</Text>
                     <View className="bg-gray-50 rounded-xl px-3 py-2">
                       <Input
-                        className="w-full bg-transparent"
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent' }}
                         value={pkgForm.original_price}
                         placeholder="可选"
                         onInput={(e) => setPkgForm({ ...pkgForm, original_price: e.detail.value })}
