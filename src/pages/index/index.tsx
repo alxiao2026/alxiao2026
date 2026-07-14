@@ -207,16 +207,6 @@ const IndexPage = () => {
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
         <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-8 pb-12">
-          {/* 管理入口 */}
-          <View className="flex flex-row justify-end mb-2">
-            <View
-              className="bg-white rounded-full px-3 py-1"
-              onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
-            >
-              <Text className="block text-xs font-semibold text-red-500">⚙️ 奖品管理</Text>
-            </View>
-          </View>
-
           {/* Logo 主体区域 - 居中突出展示 */}
           <View className="flex flex-col items-center mb-4">
             <View className="relative">
@@ -234,11 +224,9 @@ const IndexPage = () => {
           </View>
 
           {/* 用户信息 */}
-          <View className="flex flex-row items-center justify-center gap-2">
-            <View className="w-8 h-8 rounded-full bg-white flex items-center justify-center opacity-30">
-              <Trophy size={16} color="#fff" />
-            </View>
-            <Text className="block text-sm text-white">{nickName}</Text>
+          <View className="flex flex-row items-center justify-center gap-1">
+            <Trophy size={14} color="rgba(255,255,255,0.7)" />
+            <Text className="block text-sm text-white opacity-80">{nickName}</Text>
           </View>
         </View>
 
