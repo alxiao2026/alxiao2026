@@ -285,7 +285,7 @@ const AdminPage = () => {
           <View className="flex-1 flex flex-row items-center gap-2">
             <Image
               src="https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_char_pengtuan_9a8924ea.png?sign=1786617136-6aa5d3235a-0-a89ab13ab99f10616b14345e60b1bf2348195d145745dff825c83122d1e862d3"
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8"
               mode="aspectFill"
             />
             <Text className="block text-base font-bold text-white">膨胀团 · 管理后台</Text>

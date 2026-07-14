@@ -251,14 +251,11 @@ const IndexPage = () => {
             </View>
 
             {/* 中间：Logo */}
-            <View className="relative">
-              <View className="absolute -top-1 -left-1 w-18 h-18 rounded-full bg-white opacity-10" />
-              <Image
-                src={LOGO_URL}
-                className="w-24 h-24 rounded-full"
-                mode="aspectFill"
-              />
-            </View>
+            <Image
+              src={LOGO_URL}
+              className="w-24 h-24"
+              mode="aspectFit"
+            />
           </View>
         </View>
 
