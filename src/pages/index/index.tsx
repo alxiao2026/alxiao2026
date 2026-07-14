@@ -255,7 +255,7 @@ const IndexPage = () => {
               <View className="absolute -top-1 -left-1 w-18 h-18 rounded-full bg-white opacity-10" />
               <Image
                 src={LOGO_URL}
-                className="w-16 h-16 rounded-full"
+                className="w-24 h-24 rounded-full"
                 mode="aspectFill"
               />
             </View>
