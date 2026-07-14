@@ -188,7 +188,7 @@ const IndexPage = () => {
               className="bg-white rounded-full px-3 py-1"
               onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
             >
-              <Text className="block text-xs font-semibold text-red-500">⚙️ 管理奖品</Text>
+              <Text className="block text-xs font-semibold text-red-500">⚙️ 奖品管理</Text>
             </View>
           </View>
 
