@@ -279,9 +279,9 @@ const AdminPage = () => {
         <View className="flex flex-row items-center gap-3 mb-2">
           <View
             className="flex flex-row items-center gap-1"
-            onClick={() => Taro.navigateBack()}
+            onClick={() => Taro.switchTab({ url: '/pages/index/index' })}
           >
-            <Text className="block text-sm text-white opacity-80">‹ 返回</Text>
+            <Text className="block text-sm text-white opacity-80">‹ 首页</Text>
           </View>
           <View className="flex-1 flex flex-row items-center gap-2">
             <Image
