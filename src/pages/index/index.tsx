@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect, useCallback } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Network } from '@/network';
@@ -38,6 +38,8 @@ interface LotteryResult {
     is_winner: boolean;
   };
 }
+
+const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
 
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
@@ -139,7 +141,7 @@ const IndexPage = () => {
   // 设置分享
   useShareAppMessage(() => {
     return {
-      title: '快来参加有奖销售！下单基础套餐，抽大奖！',
+      title: '膨胀团！下单基础套餐，分享好友抽大奖！',
       path: '/pages/index/index',
     };
   });
@@ -172,10 +174,15 @@ const IndexPage = () => {
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
         <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10">
-          <View className="flex flex-row items-center justify-between mb-4">
-            <View>
-              <Text className="block text-2xl font-bold text-white">有奖销售</Text>
-              <Text className="block text-sm text-white mt-1 opacity-80">下单基础套餐，分享好友开大奖</Text>
+          <View className="flex flex-row items-center gap-3 mb-2">
+            <Image
+              src={LOGO_URL}
+              className="w-12 h-12 rounded-full"
+              mode="aspectFill"
+            />
+            <View className="flex-1">
+              <Text className="block text-2xl font-bold text-white">膨胀团</Text>
+              <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
             </View>
             <View
               className="bg-white rounded-full px-3 py-1 opacity-20"
@@ -269,7 +276,7 @@ const IndexPage = () => {
                 </View>
                 <View className="flex flex-row items-center gap-2">
                   <Zap size={14} color="#FFA502" />
-                  <Text className="block text-xs text-gray-600">100%中奖机会（奖品概率可配置）</Text>
+                  <Text className="block text-xs text-gray-600">100%中奖机会（奖品概率可配置，总量有限）</Text>
                 </View>
               </View>
 

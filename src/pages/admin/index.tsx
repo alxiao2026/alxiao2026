@@ -140,7 +140,7 @@ const AdminPage = () => {
       {/* 顶部操作栏 */}
       <View className="sticky top-0 bg-white z-10 px-4 py-3 border-b border-gray-100">
         <View className="flex flex-row items-center justify-between">
-          <Text className="block text-lg font-bold text-gray-800">奖品配置</Text>
+          <Text className="block text-lg font-bold text-gray-800">膨胀团 · 奖品配置</Text>
           <Button size="sm" onClick={openCreate}>
             <Plus size={16} color="#fff" className="mr-1" />
             <Text className="block text-white text-sm">添加奖品</Text>

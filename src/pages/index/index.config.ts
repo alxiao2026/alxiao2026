@@ -1,3 +1,3 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ navigationBarTitleText: '有奖销售' })
-  : { navigationBarTitleText: '有奖销售' }
+  ? definePageConfig({ navigationBarTitleText: '膨胀团' })
+  : { navigationBarTitleText: '膨胀团' }
