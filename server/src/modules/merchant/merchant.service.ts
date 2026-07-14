@@ -9,6 +9,8 @@ export interface CreateMerchantDto {
   business_hours?: string;
   category?: string;
   description?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 export interface UpdateMerchantDto {
@@ -19,6 +21,8 @@ export interface UpdateMerchantDto {
   business_hours?: string;
   category?: string;
   description?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 export interface Merchant {
@@ -30,6 +34,8 @@ export interface Merchant {
   business_hours?: string;
   category?: string;
   description?: string;
+  latitude?: string;
+  longitude?: string;
   created_at?: string;
   updated_at?: string;
 }

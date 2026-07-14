@@ -18,6 +18,8 @@ interface Merchant {
   business_hours?: string;
   category?: string;
   description?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 export default function MerchantAdmin() {
@@ -41,6 +43,8 @@ export default function MerchantAdmin() {
     business_hours: '',
     category: '',
     description: '',
+    latitude: '',
+    longitude: '',
   });
 
   useEffect(() => {
@@ -72,6 +76,8 @@ export default function MerchantAdmin() {
       business_hours: '',
       category: '',
       description: '',
+      latitude: '',
+      longitude: '',
     });
     setShowForm(true);
   };
@@ -86,6 +92,8 @@ export default function MerchantAdmin() {
       business_hours: merchant.business_hours || '',
       category: merchant.category || '',
       description: merchant.description || '',
+      latitude: merchant.latitude || '',
+      longitude: merchant.longitude || '',
     });
     // 解析营业时间
     if (merchant.business_hours) {
@@ -102,6 +110,23 @@ export default function MerchantAdmin() {
     // 只允许数字，最多11位
     const cleaned = value.replace(/\D/g, '').slice(0, 11);
     setFormData({ ...formData, phone: cleaned });
+  };
+
+  const handleChooseLocation = async () => {
+    try {
+      const res = await Taro.chooseLocation({});
+      if (res.name || res.address) {
+        const address = res.name ? `${res.name} - ${res.address}` : res.address;
+        setFormData({
+          ...formData,
+          address: address,
+          latitude: res.latitude?.toString() || '',
+          longitude: res.longitude?.toString() || '',
+        });
+      }
+    } catch (error) {
+      console.log('选择位置取消或失败', error);
+    }
   };
 
   const openTimePicker = (type: 'open' | 'close') => {
@@ -329,6 +354,20 @@ export default function MerchantAdmin() {
                   value={formData.address}
                   onInput={(e) => setFormData({ ...formData, address: e.detail.value })}
                 />
+              </View>
+
+              {/* 商家定位 */}
+              <View className="mb-4">
+                <Text className="block text-sm font-medium text-gray-800 mb-2">商家定位</Text>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-auto py-3 px-4"
+                  onClick={handleChooseLocation}
+                >
+                  <Text className="block text-sm text-gray-500">
+                    {formData.address ? formData.address : '点击选择商家位置'}
+                  </Text>
+                </Button>
               </View>
 
               {/* 联系电话 */}
