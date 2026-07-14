@@ -722,6 +722,14 @@ export default function PackageAdmin() {
                         </View>
                       ))}
 
+                      {/* 几选几显示 */}
+                      <View className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2 flex items-center justify-between">
+                        <Text className="block text-sm text-gray-700">
+                          共 {combo.items.length} 个菜品：{combo.items.length}选{combo.items.length}
+                        </Text>
+                        <ChevronRight size={16} color="#999" />
+                      </View>
+
                       {/* 添加商品项 */}
                       <Button
                         className="w-full mt-2"
