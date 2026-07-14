@@ -1,5 +1,5 @@
 import { View, Text, Image } from '@tarojs/components';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Gift, Trophy, Sparkles } from 'lucide-react-taro';
 import { Button } from '@/components/ui/button';
 import './lottery-animation.css';
@@ -21,7 +21,6 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
       setPhase('idle');
       return;
     }
-    // 开始动画序列
     setPhase('shaking');
     const t1 = setTimeout(() => setPhase('revealing'), 1600);
     const t2 = setTimeout(() => setPhase('result'), 2200);
@@ -31,25 +30,46 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
     };
   }, [visible]);
 
+  // 星星背景 - 用 useMemo 固定位置
+  const stars = useMemo(() =>
+    Array.from({ length: 20 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      width: `${2 + Math.random() * 3}px`,
+      height: `${2 + Math.random() * 3}px`,
+      animationDelay: `${Math.random() * 3}s`,
+    })), []
+  );
+
   if (!visible) return null;
 
   return (
     <View className="lottery-overlay">
       <View className="lottery-overlay-bg" />
 
+      {/* 星星背景 */}
+      {stars.map((s, i) => (
+        <View key={i} className="lottery-bg-star" style={s} />
+      ))}
+
+      {/* 光晕装饰 */}
+      <View className="lottery-glow lottery-glow-1" />
+      <View className="lottery-glow lottery-glow-2" />
+      <View className="lottery-glow lottery-glow-3" />
+
       {/* 彩纸粒子 - 中奖时 */}
       {isWinner && phase === 'result' && (
         <View className="confetti-container">
-          {Array.from({ length: 30 }).map((_, i) => (
+          {Array.from({ length: 40 }).map((_, i) => (
             <View
               key={i}
               className="confetti-particle"
               style={{
                 left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.8}s`,
+                animationDelay: `${Math.random() * 1.2}s`,
                 backgroundColor: ['#FF4757', '#FFA502', '#2ED573', '#1890FF', '#FF6B81', '#A29BFE', '#FDCB6E'][i % 7],
-                width: `${6 + Math.random() * 8}px`,
-                height: `${6 + Math.random() * 8}px`,
+                width: `${6 + Math.random() * 10}px`,
+                height: `${6 + Math.random() * 10}px`,
                 borderRadius: Math.random() > 0.5 ? '50%' : '2px',
               }}
             />
@@ -57,25 +77,24 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
         </View>
       )}
 
-      <View className="lottery-modal">
+      <View className="lottery-content">
         {/* 阶段1: 摇晃卡片 */}
         {phase === 'shaking' && (
           <View className="flex flex-col items-center">
             <View className="lottery-card-shake">
-              <View className="w-24 h-24 rounded-2xl bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center shadow-lg">
-                <Image src={LOGO_URL} className="w-14 h-14 rounded-full" mode="aspectFill" />
+              <View className="lottery-card-image">
+                <Image src={LOGO_URL} className="logo" mode="aspectFill" />
               </View>
             </View>
-            <Text className="block text-lg font-bold text-gray-800 mt-6">开奖中...</Text>
-            <View className="flex flex-row gap-1.5 mt-3">
+            <Text className="block text-3xl font-bold lottery-text-white mt-8">开奖中...</Text>
+            <View className="flex flex-row gap-3 mt-4">
               {[0, 1, 2].map((i) => (
-                <View
-                  key={i}
-                  className="lottery-dot"
-                  style={{ animationDelay: `${i * 0.2}s` }}
-                />
+                <View key={i} className="lottery-dot" style={{ animationDelay: `${i * 0.2}s` }} />
               ))}
             </View>
+            <Text className="block text-base lottery-text-white mt-8 opacity-60">
+              正在抽取你的幸运奖品...
+            </Text>
           </View>
         )}
 
@@ -83,11 +102,14 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
         {phase === 'revealing' && (
           <View className="flex flex-col items-center">
             <View className="lottery-card-reveal">
-              <View className="w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-300 to-orange-400 flex items-center justify-center shadow-lg">
-                <Sparkles size={40} color="#fff" />
+              <View className="lottery-card-reveal-inner">
+                <Sparkles size={56} color="#fff" />
               </View>
             </View>
-            <Text className="block text-lg font-bold text-gray-800 mt-6">揭晓结果...</Text>
+            <Text className="block text-3xl font-bold lottery-text-white mt-8">揭晓结果...</Text>
+            <Text className="block text-base lottery-text-white mt-4 opacity-60">
+              命运即将揭晓...
+            </Text>
           </View>
         )}
 
@@ -99,37 +121,39 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
               className={`lottery-result-icon ${isWinner ? 'lottery-result-winner' : 'lottery-result-loser'}`}
             >
               {isWinner ? (
-                <Trophy size={44} color="#fff" />
+                <Trophy size={56} color="#fff" />
               ) : (
-                <Gift size={44} color="#fff" />
+                <Gift size={56} color="#fff" />
               )}
             </View>
 
             {/* 结果标题 */}
-            <Text className={`block text-2xl font-bold mt-5 ${isWinner ? 'text-red-500' : 'text-gray-500'}`}>
+            <Text className="block text-3xl font-bold mt-6 lottery-text-white">
               {isWinner ? '🎉 恭喜中奖！' : '😅 再接再厉'}
             </Text>
 
             {/* 中奖奖品名 */}
             {isWinner && prizeName && (
-              <View className="lottery-prize-name">
-                <Text className="block text-lg font-bold text-red-500">{prizeName}</Text>
+              <View className="lottery-prize-container">
+                <Text className="block text-xl font-bold text-white text-center">{prizeName}</Text>
               </View>
             )}
 
             {/* 未中奖鼓励语 */}
             {!isWinner && (
-              <Text className="block text-sm text-gray-400 text-center mt-2">
+              <Text className="block text-base lottery-text-white text-center mt-4 opacity-70">
                 下次一定中！再下一单试试手气吧
               </Text>
             )}
 
-            <Button
-              className="w-full bg-red-500 mt-6"
-              onClick={onClose}
-            >
-              <Text className="block text-white font-semibold">我知道了</Text>
-            </Button>
+            {/* 我知道了 */}
+            <View className="mt-10">
+              <Button
+                onClick={onClose}
+              >
+                <Text className="block text-white font-semibold">我知道了</Text>
+              </Button>
+            </View>
           </View>
         )}
       </View>
