@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Gift, Share2, Trophy, Star, Zap, ShoppingBag } from 'lucide-react-taro';
+import LotteryAnimation from './components/lottery-animation';
 import './index.css';
 
 interface Prize {
@@ -414,54 +415,16 @@ const IndexPage = () => {
         <View className="h-8" />
       </ScrollView>
 
-      {/* 抽奖结果弹窗 */}
-      {showLottery && lotteryResult && (
-        <View className="fixed inset-0 bg-black opacity-60 z-50 flex items-center justify-center px-6">
-          <View className="bg-white rounded-3xl w-full max-w-xs p-8 items-center">
-            {/* 中奖/未中奖图标 */}
-            <View
-              className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${
-                lotteryResult.is_winner ? 'bg-green-100' : 'bg-gray-100'
-              }`}
-            >
-              {lotteryResult.is_winner ? (
-                <Trophy size={40} color="#2ED573" />
-              ) : (
-                <Gift size={40} color="#747D8C" />
-              )}
-            </View>
-
-            {/* 结果标题 */}
-            <Text className="block text-xl font-bold text-gray-800 mb-2">
-              {lotteryResult.is_winner ? '恭喜中奖！' : '再接再厉'}
-            </Text>
-
-            {lotteryResult.is_winner && lotteryResult.record.prize_name && (
-              <View className="bg-red-50 rounded-xl px-4 py-3 mb-4 w-full">
-                <Text className="block text-lg font-bold text-red-500 text-center">
-                  {lotteryResult.record.prize_name}
-                </Text>
-              </View>
-            )}
-
-            {!lotteryResult.is_winner && (
-              <Text className="block text-sm text-gray-500 text-center mb-4">
-                下次一定中！再下一单试试手气吧
-              </Text>
-            )}
-
-            <Button
-              className="w-full bg-red-500"
-              onClick={() => {
-                setShowLottery(false);
-                setLotteryResult(null);
-              }}
-            >
-              <Text className="block text-white font-semibold">我知道了</Text>
-            </Button>
-          </View>
-        </View>
-      )}
+      {/* 抽奖动画 */}
+      <LotteryAnimation
+        visible={showLottery}
+        isWinner={lotteryResult?.is_winner ?? false}
+        prizeName={lotteryResult?.record?.prize_name ?? null}
+        onClose={() => {
+          setShowLottery(false);
+          setLotteryResult(null);
+        }}
+      />
     </View>
   );
 };
