@@ -377,7 +377,7 @@ const IndexPage = () => {
                         }}
                         disabled={loading}
                       >
-                        <Text className="block text-white font-semibold">{loading ? '购买中...' : '立即购买'}</Text>
+                        <Text className="block text-white font-semibold">{loading ? '购买中...' : '点击查看套餐详情'}</Text>
                       </Button>
                     </CardContent>
                   </Card>
