@@ -74,3 +74,17 @@ export const lotteryRecords = pgTable("lottery_records", {
 	index("lottery_records_user_id_idx").on(table.user_id),
 	index("lottery_records_prize_id_idx").on(table.prize_id),
 ]);
+
+// 商家表
+export const merchants = pgTable("merchants", {
+	id: serial().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	logo: varchar("logo", { length: 512 }),
+	address: varchar("address", { length: 512 }),
+	phone: varchar("phone", { length: 50 }),
+	business_hours: varchar("business_hours", { length: 100 }),
+	category: varchar("category", { length: 100 }),
+	description: text("description"),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});

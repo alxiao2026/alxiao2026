@@ -1,7 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { db } from '@/storage/database';
-import { merchants } from '@/storage/database/shared/schema';
-import { eq } from 'drizzle-orm';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 export interface CreateMerchantDto {
   name: string;
@@ -23,57 +21,85 @@ export interface UpdateMerchantDto {
   description?: string;
 }
 
+export interface Merchant {
+  id: number;
+  name: string;
+  logo?: string;
+  address?: string;
+  phone?: string;
+  business_hours?: string;
+  category?: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 @Injectable()
 export class MerchantService {
-  async findAll() {
-    const result = await db.select().from(merchants).orderBy(merchants.id);
-    return result;
+  private client = getSupabaseClient();
+
+  async findAll(): Promise<Merchant[]> {
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) throw new Error(`查询商家列表失败：${error.message}`);
+    return (data as Merchant[]) || [];
   }
 
-  async findById(id: number) {
-    const result = await db.select().from(merchants).where(eq(merchants.id, id));
-    return result[0] || null;
+  async findById(id: number): Promise<Merchant | null> {
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(`查询商家失败：${error.message}`);
+    return data as Merchant | null;
   }
 
-  async create(data: CreateMerchantDto) {
-    const result = await db
-      .insert(merchants)
-      .values({
-        name: data.name,
-        logo: data.logo,
-        address: data.address,
-        phone: data.phone,
-        business_hours: data.business_hours,
-        category: data.category,
-        description: data.description,
+  async create(body: CreateMerchantDto): Promise<Merchant> {
+    if (!body.name) throw new BadRequestException('商家名称不能为空');
+
+    const { data, error } = await this.client
+      .from('merchants')
+      .insert({
+        name: body.name,
+        logo: body.logo,
+        address: body.address,
+        phone: body.phone,
+        business_hours: body.business_hours,
+        category: body.category,
+        description: body.description,
       })
-      .returning();
-    return result[0];
+      .select()
+      .single();
+
+    if (error) throw new Error(`创建商家失败：${error.message}`);
+    return data as Merchant;
   }
 
-  async update(id: number, data: UpdateMerchantDto) {
-    const updateData: Record<string, any> = {
-      updated_at: new Date(),
-    };
+  async update(id: number, body: UpdateMerchantDto): Promise<Merchant> {
+    const { data, error } = await this.client
+      .from('merchants')
+      .update({
+        ...body,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.logo !== undefined) updateData.logo = data.logo;
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.business_hours !== undefined) updateData.business_hours = data.business_hours;
-    if (data.category !== undefined) updateData.category = data.category;
-    if (data.description !== undefined) updateData.description = data.description;
-
-    const result = await db
-      .update(merchants)
-      .set(updateData)
-      .where(eq(merchants.id, id))
-      .returning();
-    return result[0];
+    if (error) throw new Error(`更新商家失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+    return data as Merchant;
   }
 
-  async delete(id: number) {
-    await db.delete(merchants).where(eq(merchants.id, id));
-    return { success: true };
+  async delete(id: number): Promise<void> {
+    const { error } = await this.client
+      .from('merchants')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(`删除商家失败：${error.message}`);
   }
 }
