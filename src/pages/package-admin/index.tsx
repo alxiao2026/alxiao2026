@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, X } from 'lucide-react-taro'
+import { ArrowLeft, Plus, X, ChevronRight, Check } from 'lucide-react-taro'
+import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 
 interface Package {
   id: string
@@ -39,6 +40,11 @@ export default function PackageAdmin() {
   const [activeTab, setActiveTab] = useState('basic')
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // 品类选择
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+  const [selectedLevel1, setSelectedLevel1] = useState('')
+  const [selectedLevel2, setSelectedLevel2] = useState('')
 
   // 表单数据
   const [formData, setFormData] = useState<Package>({
@@ -377,9 +383,21 @@ export default function PackageAdmin() {
 
                 <View className="mb-4">
                   <Text className="block text-sm text-gray-600 mb-2">商品品类</Text>
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-800">休闲娱乐 · DIY 手工坊 · 拼豆</Text>
-                    <Badge className="bg-gray-200 text-gray-600 text-xs">不可编辑</Badge>
+                  <View
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+                    onClick={() => setShowCategoryPicker(true)}
+                  >
+                    <Text className="block text-sm text-gray-800">
+                      {selectedLevel1 && selectedLevel2
+                        ? getCategoryPath(selectedLevel2)
+                        : '请选择商品品类'}
+                    </Text>
+                    <View className="flex items-center gap-2">
+                      {selectedLevel1 && selectedLevel2 && (
+                        <Badge className="bg-green-100 text-green-600 text-xs">已选择</Badge>
+                      )}
+                      <ChevronRight size={16} color="#999" />
+                    </View>
                   </View>
                 </View>
 
@@ -674,6 +692,79 @@ export default function PackageAdmin() {
           </View>
         )}
       </View>
+
+      {/* 品类选择弹窗 */}
+      {showCategoryPicker && (
+        <View
+          className="fixed inset-0 bg-black"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+          onClick={() => setShowCategoryPicker(false)}
+        >
+          <View
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl"
+            style={{ maxHeight: '80vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗头部 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-base font-semibold text-gray-800">选择商品品类</Text>
+              <View onClick={() => setShowCategoryPicker(false)}>
+                <X size={20} color="#666" />
+              </View>
+            </View>
+
+            {/* 品类列表 */}
+            <View className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+              {DOUYIN_CATEGORIES.map((level1) => (
+                <View key={level1.id}>
+                  {/* 一级分类 */}
+                  <View
+                    className={`px-4 py-3 border-b border-gray-100 ${
+                      selectedLevel1 === level1.id ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedLevel1(level1.id);
+                      setSelectedLevel2('');
+                    }}
+                  >
+                    <View className="flex items-center justify-between">
+                      <Text className="block text-sm font-medium text-gray-800">{level1.name}</Text>
+                      {selectedLevel1 === level1.id && !selectedLevel2 && (
+                        <Check size={16} color="#3b82f6" />
+                      )}
+                    </View>
+                  </View>
+
+                  {/* 二级分类 */}
+                  {selectedLevel1 === level1.id && level1.children && (
+                    <View className="bg-gray-50">
+                      {level1.children.map((level2) => (
+                        <View
+                          key={level2.id}
+                          className={`px-8 py-3 border-b border-gray-100 ${
+                            selectedLevel2 === level2.id ? 'bg-blue-50' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedLevel2(level2.id);
+                            setShowCategoryPicker(false);
+                          }}
+                        >
+                          <View className="flex items-center justify-between">
+                            <Text className="block text-sm text-gray-600">{level2.name}</Text>
+                            {selectedLevel2 === level2.id && (
+                              <Check size={16} color="#3b82f6" />
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 底部操作栏 */}
       <View
