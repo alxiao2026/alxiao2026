@@ -27,6 +27,10 @@ export default function MerchantAdmin() {
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePickerType, setTimePickerType] = useState<'open' | 'close'>('open');
+  const [tempOpenTime, setTempOpenTime] = useState('09:00');
+  const [tempCloseTime, setTempCloseTime] = useState('22:00');
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -83,7 +87,42 @@ export default function MerchantAdmin() {
       category: merchant.category || '',
       description: merchant.description || '',
     });
+    // 解析营业时间
+    if (merchant.business_hours) {
+      const match = merchant.business_hours.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+      if (match) {
+        setTempOpenTime(match[1]);
+        setTempCloseTime(match[2]);
+      }
+    }
     setShowForm(true);
+  };
+
+  const handlePhoneInput = (value: string) => {
+    // 只允许数字，最多11位
+    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    setFormData({ ...formData, phone: cleaned });
+  };
+
+  const openTimePicker = (type: 'open' | 'close') => {
+    setTimePickerType(type);
+    setShowTimePicker(true);
+  };
+
+  const generateTimeOptions = () => {
+    const options: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        options.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      }
+    }
+    return options;
+  };
+
+  const handleTimeConfirm = () => {
+    const businessHours = `${tempOpenTime} - ${tempCloseTime}`;
+    setFormData({ ...formData, business_hours: businessHours });
+    setShowTimePicker(false);
   };
 
   const handleDelete = async (id: number) => {
@@ -111,6 +150,12 @@ export default function MerchantAdmin() {
   const handleSubmit = async () => {
     if (!formData.name) {
       Taro.showToast({ title: '请输入商家名称', icon: 'none' });
+      return;
+    }
+
+    // 验证手机号
+    if (formData.phone && !/^1\d{10}$/.test(formData.phone)) {
+      Taro.showToast({ title: '请输入正确的11位手机号', icon: 'none' });
       return;
     }
 
@@ -291,21 +336,45 @@ export default function MerchantAdmin() {
                 <Text className="block text-sm font-medium text-gray-800 mb-2">联系电话</Text>
                 <Input
                   className="w-full"
-                  placeholder="请输入联系电话"
+                  placeholder="请输入11位手机号"
                   value={formData.phone}
-                  onInput={(e) => setFormData({ ...formData, phone: e.detail.value })}
+                  onInput={(e) => handlePhoneInput(e.detail.value)}
+                  maxlength={11}
+                  type="number"
                 />
+                {formData.phone && formData.phone.length === 11 && (
+                  <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
+                )}
+                {formData.phone && formData.phone.length > 0 && formData.phone.length < 11 && (
+                  <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
+                )}
               </View>
 
               {/* 营业时间 */}
               <View className="mb-4">
                 <Text className="block text-sm font-medium text-gray-800 mb-2">营业时间</Text>
-                <Input
-                  className="w-full"
-                  placeholder="如：09:00-22:00"
-                  value={formData.business_hours}
-                  onInput={(e) => setFormData({ ...formData, business_hours: e.detail.value })}
-                />
+                <View className="flex gap-4">
+                  <Button
+                    className="flex-1 bg-gray-50 rounded-lg px-4 py-3 text-left"
+                    onClick={() => openTimePicker('open')}
+                  >
+                    <Text className="block text-sm text-gray-600">开业时间</Text>
+                    <Text className="block text-base text-gray-900 mt-1">{tempOpenTime}</Text>
+                  </Button>
+                  <Text className="block text-gray-400 self-center">至</Text>
+                  <Button
+                    className="flex-1 bg-gray-50 rounded-lg px-4 py-3 text-left"
+                    onClick={() => openTimePicker('close')}
+                  >
+                    <Text className="block text-sm text-gray-600">关门时间</Text>
+                    <Text className="block text-base text-gray-900 mt-1">{tempCloseTime}</Text>
+                  </Button>
+                </View>
+                {formData.business_hours && (
+                  <Text className="block text-xs text-gray-500 mt-2">
+                    营业时间：{formData.business_hours}
+                  </Text>
+                )}
               </View>
 
               {/* 商家简介 */}
@@ -416,6 +485,68 @@ export default function MerchantAdmin() {
                   )}
                 </View>
               )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 时间选择器弹窗 */}
+      {showTimePicker && (
+        <View
+          className="fixed inset-0 flex items-end justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 120 }}
+        >
+          <View className="w-full bg-white rounded-t-3xl max-h-[60vh] flex flex-col">
+            {/* 弹窗头部 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-semibold text-gray-900">
+                选择{timePickerType === 'open' ? '开业' : '关门'}时间
+              </Text>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowTimePicker(false)}
+              >
+                <X size={20} color="#666" />
+              </Button>
+            </View>
+
+            {/* 时间滚轮 */}
+            <View className="flex-1 overflow-y-auto py-4">
+              {generateTimeOptions().map((time) => (
+                <View
+                  key={time}
+                  className={`py-4 px-4 flex items-center justify-center ${
+                    (timePickerType === 'open' ? tempOpenTime : tempCloseTime) === time
+                      ? 'bg-orange-50'
+                      : ''
+                  }`}
+                  onClick={() => {
+                    if (timePickerType === 'open') {
+                      setTempOpenTime(time);
+                    } else {
+                      setTempCloseTime(time);
+                    }
+                  }}
+                >
+                  <Text
+                    className={`block text-lg ${
+                      (timePickerType === 'open' ? tempOpenTime : tempCloseTime) === time
+                        ? 'text-orange-600 font-semibold'
+                        : 'text-gray-900'
+                    }`}
+                  >
+                    {time}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* 底部按钮 */}
+            <View className="p-4 border-t border-gray-200">
+              <Button className="w-full bg-orange-500 text-white" onClick={handleTimeConfirm}>
+                确认
+              </Button>
             </View>
           </View>
         </View>
