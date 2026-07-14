@@ -183,7 +183,10 @@ export default function MerchantAdmin() {
                         {merchant.name}
                       </Text>
                       {merchant.category && (
-                        <Text className="block text-xs text-gray-500 mt-1">
+                        <Text
+                          className="block text-xs text-orange-500 mt-1"
+                          onClick={() => handleEdit(merchant)}
+                        >
                           {merchant.category}
                         </Text>
                       )}
