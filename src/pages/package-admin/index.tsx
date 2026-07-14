@@ -182,6 +182,12 @@ export default function PackageAdmin() {
     ))
   }
 
+  const updateSelectCount = (combinationId: string, count: number) => {
+    setCombinations(combinations.map(c =>
+      c.id === combinationId ? { ...c, select_count: count } : c
+    ))
+  }
+
   // 步骤验证
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -722,12 +728,27 @@ export default function PackageAdmin() {
                         </View>
                       ))}
 
-                      {/* 几选几显示 */}
-                      <View className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2 flex items-center justify-between">
-                        <Text className="block text-sm text-gray-700">
-                          共 {combo.items.length} 个菜品：{combo.items.length}选{combo.items.length}
-                        </Text>
-                        <ChevronRight size={16} color="#999" />
+                      {/* 几选几选择 */}
+                      <View className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2">
+                        <View className="flex items-center justify-between">
+                          <Text className="block text-sm text-gray-700">
+                            共 {combo.items.length} 个菜品：{combo.select_count}选{combo.items.length}
+                          </Text>
+                          <ChevronRight size={16} color="#999" />
+                        </View>
+                        {/* 选择数量 */}
+                        <View className="flex gap-2 mt-2 flex-wrap">
+                          {Array.from({ length: combo.items.length }, (_, i) => i + 1).map(num => (
+                            <Button
+                              key={num}
+                              className={num === combo.select_count ? 'bg-primary text-white' : 'bg-white text-gray-700'}
+                              variant={num === combo.select_count ? 'default' : 'outline'}
+                              onClick={() => updateSelectCount(combo.id, num)}
+                            >
+                              <Text className="block">{combo.items.length}选{num}</Text>
+                            </Button>
+                          ))}
+                        </View>
                       </View>
 
                       {/* 添加商品项 */}
