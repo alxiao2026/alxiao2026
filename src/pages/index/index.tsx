@@ -173,31 +173,8 @@ const IndexPage = () => {
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
-        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10 overflow-hidden relative">
-          {/* Logo 背景装饰 */}
-          <View className="absolute -right-8 -top-8 w-36 h-36 opacity-15">
-            <Image
-              src={LOGO_URL}
-              className="w-full h-full"
-              mode="aspectFit"
-            />
-          </View>
-          <View className="absolute -left-4 bottom-0 w-24 h-24 opacity-10">
-            <Image
-              src={LOGO_URL}
-              className="w-full h-full"
-              mode="aspectFit"
-            />
-          </View>
-          <View className="absolute right-12 top-12 w-16 h-16 opacity-8">
-            <Image
-              src={LOGO_URL}
-              className="w-full h-full"
-              mode="aspectFit"
-            />
-          </View>
-
-          <View className="flex flex-row items-center gap-3 mb-2 relative z-10">
+        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10">
+          <View className="flex flex-row items-center gap-3 mb-2">
             <Image
               src={LOGO_URL}
               className="w-12 h-12 rounded-full"
@@ -208,15 +185,15 @@ const IndexPage = () => {
               <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
             </View>
             <View
-              className="bg-white rounded-full px-3 py-1"
+              className="bg-white rounded-full px-3 py-1 opacity-20"
               onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
             >
-              <Text className="block text-xs text-orange-500">管理奖品</Text>
+              <Text className="block text-xs text-white">管理奖品</Text>
             </View>
           </View>
 
           {/* 用户信息 */}
-          <View className="flex flex-row items-center gap-2 relative z-10">
+          <View className="flex flex-row items-center gap-2">
             <View className="w-8 h-8 rounded-full bg-white flex items-center justify-center opacity-30">
               <Trophy size={16} color="#fff" />
             </View>
