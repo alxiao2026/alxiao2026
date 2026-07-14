@@ -224,9 +224,17 @@ const IndexPage = () => {
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
         <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-8 pb-12">
-          {/* 顶部行：左侧用户信息 + 中间Logo */}
-          <View className="flex flex-row items-center justify-between">
-            {/* 左侧：用户信息 */}
+          {/* Logo 居中 */}
+          <View className="flex items-center justify-center mb-4">
+            <Image
+              src={LOGO_URL}
+              className="w-32 h-32"
+              mode="aspectFit"
+            />
+          </View>
+
+          {/* 用户信息居中 */}
+          <View className="flex items-center justify-center">
             <View
               className="flex flex-row items-center gap-2"
               onClick={() => { if (!avatarUrl) handleLogin(); }}
@@ -249,13 +257,6 @@ const IndexPage = () => {
                 )}
               </View>
             </View>
-
-            {/* 中间：Logo */}
-            <Image
-              src={LOGO_URL}
-              className="w-24 h-24"
-              mode="aspectFit"
-            />
           </View>
         </View>
 
