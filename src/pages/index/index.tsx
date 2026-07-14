@@ -233,8 +233,8 @@ const IndexPage = () => {
             />
           </View>
 
-          {/* 用户信息居中 */}
-          <View className="flex items-center justify-center">
+          {/* 用户信息左对齐 */}
+          <View className="flex items-center justify-start">
             <View
               className="flex flex-row items-center gap-2"
               onClick={() => { if (!avatarUrl) handleLogin(); }}
