@@ -269,6 +269,9 @@ const IndexPage = () => {
                         {prize.description && (
                           <Text className="block text-xs text-gray-500 mt-1">{prize.description}</Text>
                         )}
+                        <Text className="block text-xs text-gray-400 mt-1">
+                          剩余 <Text className="text-red-500 font-semibold">{prize.stock}</Text> 份
+                        </Text>
                       </View>
                       <Badge variant="secondary" className="text-xs">
                         {prize.probability}%

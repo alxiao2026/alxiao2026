@@ -311,47 +311,56 @@ const AdminPage = () => {
                 <Text className="block text-gray-400 mt-3">暂无奖品，点击上方按钮添加</Text>
               </View>
             ) : (
-              prizes.map((prize) => (
-                <Card key={prize.id} className="mb-3">
-                  <CardContent className="p-4">
-                    <View className="flex flex-row items-start justify-between">
-                      <View className="flex-1">
+              <View>
+                {/* 总概率提示 */}
+                <View className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-3">
+                  <Text className="block text-xs text-orange-600">
+                    总概率: <Text className="font-bold">{prizes.filter(p => p.is_active).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
+                    （建议总概率保持 100%，确保100%中奖）
+                  </Text>
+                </View>
+                {prizes.map((prize) => (
+                  <Card key={prize.id} className="mb-3">
+                    <CardContent className="p-4">
+                      <View className="flex flex-row items-start justify-between">
+                        <View className="flex-1">
+                          <View className="flex flex-row items-center gap-2">
+                            <Text className="block text-base font-semibold text-gray-800">{prize.name}</Text>
+                            <Badge variant={prize.is_active ? 'default' : 'secondary'}>
+                              {prize.is_active ? '启用' : '停用'}
+                            </Badge>
+                          </View>
+                          {prize.description && (
+                            <Text className="block text-sm text-gray-500 mt-1">{prize.description}</Text>
+                          )}
+                          <View className="flex flex-row items-center gap-4 mt-2">
+                            <Text className="block text-xs text-gray-400">
+                              概率: <Text className="text-red-500 font-semibold">{prize.probability}%</Text>
+                            </Text>
+                            <Text className="block text-xs text-gray-400">
+                              库存: <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
+                            </Text>
+                          </View>
+                        </View>
                         <View className="flex flex-row items-center gap-2">
-                          <Text className="block text-base font-semibold text-gray-800">{prize.name}</Text>
-                          <Badge variant={prize.is_active ? 'default' : 'secondary'}>
-                            {prize.is_active ? '启用' : '停用'}
-                          </Badge>
-                        </View>
-                        {prize.description && (
-                          <Text className="block text-sm text-gray-500 mt-1">{prize.description}</Text>
-                        )}
-                        <View className="flex flex-row items-center gap-4 mt-2">
-                          <Text className="block text-xs text-gray-400">
-                            概率: <Text className="block text-red-500 font-semibold">{prize.probability}%</Text>
-                          </Text>
-                          <Text className="block text-xs text-gray-400">
-                            库存: <Text className="block text-gray-600 font-semibold">{prize.stock}</Text>
-                          </Text>
+                          <Button variant="ghost" size="sm" onClick={() => openEditPrize(prize)}>
+                            <Pencil size={16} color="#6b7280" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleTogglePrize(prize)}>
+                            <Badge variant={prize.is_active ? 'secondary' : 'default'}>
+                              {prize.is_active ? '停用' : '启用'}
+                            </Badge>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeletePrize(prize.id)}>
+                            <Trash2 size={16} color="#ef4444" />
+                          </Button>
                         </View>
                       </View>
-                      <View className="flex flex-row items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditPrize(prize)}>
-                          <Pencil size={16} color="#6b7280" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleTogglePrize(prize)}>
-                          <Badge variant={prize.is_active ? 'secondary' : 'default'}>
-                            {prize.is_active ? '停用' : '启用'}
-                          </Badge>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeletePrize(prize.id)}>
-                          <Trash2 size={16} color="#ef4444" />
-                        </Button>
-                      </View>
-                    </View>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                    </CardContent>
+                  </Card>
+                ))}
+                </View>
+              )}
           </TabsContent>
 
           <TabsContent value="packages" className="mt-3">

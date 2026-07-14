@@ -100,14 +100,19 @@ export class LotteryService {
       .single();
     if (recordError) throw new Error(`保存抽奖记录失败: ${recordError.message}`);
 
-    // 7. 如果中奖，减少库存
+    // 7. 如果中奖，减少库存并返回最新库存
     if (result.is_winner && result.prize) {
+      const newStock = result.prize.stock - 1;
       const { error: stockError } = await this.client
         .from('prizes')
-        .update({ stock: result.prize.stock - 1, updated_at: new Date().toISOString() })
+        .update({ stock: newStock, updated_at: new Date().toISOString() })
         .eq('id', result.prize.id)
         .gt('stock', 0);
-      if (stockError) console.error('更新库存失败:', stockError.message);
+      if (stockError) {
+        console.error('更新库存失败:', stockError.message);
+      } else {
+        result.prize.stock = newStock;
+      }
     }
 
     return {
@@ -118,10 +123,11 @@ export class LotteryService {
   }
 
   /**
-   * 概率计算
-   * 奖品概率百分比累加，随机数落在哪个区间就中哪个奖
-   * 例如: 奖品A概率10%, 奖品B概率5%, 奖品C概率3%
-   * 随机数 0-100, 0-10 中A, 10-15 中B, 15-18 中C, 18-100 不中
+   * 100%中奖概率计算
+   * 所有活动奖品按概率比例分配，必定中奖
+   * 商品库存不足时自动跳过
+   * 例如: 奖品A概率10%, 奖品B概率20%, 奖品C概率70%
+   * 随机数 [0, 100), 0-10 中A, 10-30 中B, 30-100 中C
    */
   private calculateLottery(prizes: Prize[]): { is_winner: boolean; prize: Prize | null } {
     if (prizes.length === 0) {
@@ -134,14 +140,14 @@ export class LotteryService {
       return { is_winner: false, prize: null };
     }
 
-    // 解析概率
+    // 计算总概率
     const totalProbability = availablePrizes.reduce((sum, p) => sum + parseFloat(p.probability || '0'), 0);
 
     if (totalProbability <= 0) {
       return { is_winner: false, prize: null };
     }
 
-    // 生成随机数 [0, totalProbability)
+    // 生成随机数 [0, totalProbability)，必定落在某个奖品区间内
     const random = Math.random() * totalProbability;
 
     // 概率累加匹配
@@ -153,7 +159,8 @@ export class LotteryService {
       }
     }
 
-    return { is_winner: false, prize: null };
+    // 由于浮点数精度，最后一点概率落在最后一个奖品上
+    return { is_winner: true, prize: availablePrizes[availablePrizes.length - 1] };
   }
 
   async getRecordByOrderId(orderId: string): Promise<LotteryRecord | null> {
