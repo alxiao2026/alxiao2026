@@ -728,25 +728,26 @@ export default function PackageAdmin() {
                         </View>
                       ))}
 
-                      {/* 几选几选择 */}
-                      <View className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2">
-                        <View className="flex items-center justify-between">
-                          <Text className="block text-sm text-gray-700">
+                      {/* 几选几选择器 */}
+                      <View className="bg-gray-50 rounded-lg p-4 mb-2">
+                        <View className="flex items-center justify-between mb-3">
+                          <Text className="block text-base font-medium text-gray-900">
                             共 {combo.items.length} 个菜品：{combo.select_count}选{combo.items.length}
                           </Text>
-                          <ChevronRight size={16} color="#999" />
+                          <ChevronRight size={20} color="#666" />
                         </View>
-                        {/* 选择数量 */}
-                        <View className="flex gap-2 mt-2 flex-wrap">
+                        {/* 选择数量按钮 */}
+                        <View className="flex gap-2 flex-wrap">
                           {Array.from({ length: combo.items.length }, (_, i) => i + 1).map(num => (
-                            <Button
+                            <View
                               key={num}
-                              className={num === combo.select_count ? 'bg-primary text-white' : 'bg-white text-gray-700'}
-                              variant={num === combo.select_count ? 'default' : 'outline'}
+                              className={`px-4 py-2 rounded-lg border ${num === combo.select_count ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
                               onClick={() => updateSelectCount(combo.id, num)}
                             >
-                              <Text className="block">{combo.items.length}选{num}</Text>
-                            </Button>
+                              <Text className={`block text-sm ${num === combo.select_count ? 'text-white' : 'text-gray-700'}`}>
+                                {combo.items.length}选{num}
+                              </Text>
+                            </View>
                           ))}
                         </View>
                       </View>
