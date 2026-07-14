@@ -166,12 +166,6 @@ const AdminPage = () => {
   };
 
   // ========== 套餐管理 ==========
-  const openCreatePackage = () => {
-    setEditingPackage(null);
-    setPkgForm({ name: '', description: '', price: '9.90', original_price: '', badge: '', features: '' });
-    setShowDialog(true);
-  };
-
   const openEditPackage = (pkg: Package) => {
     setEditingPackage(pkg);
     setPkgForm({
@@ -290,7 +284,7 @@ const AdminPage = () => {
             />
             <Text className="block text-base font-bold text-white">膨胀团 · 管理后台</Text>
           </View>
-          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : openCreatePackage}>
+          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : () => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
             <Plus size={16} color="#FF4757" className="mr-1" />
             <Text className="block text-red-500 text-sm">
               {activeTab === 'prizes' ? '添加奖品' : '添加套餐'}
@@ -416,6 +410,9 @@ const AdminPage = () => {
                         </View>
                       </View>
                       <View className="flex flex-row items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => Taro.navigateTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
+                          <Text className="block text-xs text-blue-500">详情</Text>
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEditPackage(pkg)}>
                           <Pencil size={16} color="#6b7280" />
                         </Button>

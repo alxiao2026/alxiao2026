@@ -48,6 +48,11 @@ export const packages = pgTable("packages", {
 	original_price: numeric("original_price", { precision: 10, scale: 2 }),
 	badge: varchar("badge", { length: 64 }),
 	features: text("features"), // JSON array of feature strings
+	cover_image: varchar("cover_image", { length: 512 }), // 商品头图 URL
+	environment_images: text("environment_images"), // JSON array of environment image URLs
+	stock: integer("stock").notNull().default(0), // 库存数量
+	sale_start_date: varchar("sale_start_date", { length: 20 }), // 售卖开始日期
+	sale_end_date: varchar("sale_end_date", { length: 20 }), // 售卖结束日期
 	is_active: boolean("is_active").notNull().default(true),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),

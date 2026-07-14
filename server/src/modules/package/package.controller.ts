@@ -21,14 +21,39 @@ export class PackageController {
   }
 
   @Post()
-  create(@Body() body: { name: string; description?: string; price?: string; original_price?: string; badge?: string; features?: string }) {
+  create(@Body() body: {
+    name: string;
+    description?: string;
+    price?: string;
+    original_price?: string;
+    badge?: string;
+    features?: string;
+    cover_image?: string;
+    environment_images?: string;
+    stock?: number;
+    sale_start_date?: string;
+    sale_end_date?: string;
+  }) {
     return this.packageService.create(body);
   }
 
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() body: Partial<{ name: string; description: string; price: string; original_price: string; badge: string; features: string; is_active: boolean }>
+    @Body() body: Partial<{
+      name: string;
+      description: string;
+      price: string;
+      original_price: string;
+      badge: string;
+      features: string;
+      cover_image: string;
+      environment_images: string;
+      stock: number;
+      sale_start_date: string;
+      sale_end_date: string;
+      is_active: boolean;
+    }>
   ) {
     return this.packageService.update(id, body);
   }
