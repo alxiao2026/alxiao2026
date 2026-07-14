@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -274,12 +274,25 @@ const AdminPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 顶部操作栏 */}
-      <View className="sticky top-0 bg-white z-10 px-4 py-3 border-b border-gray-100">
-        <View className="flex flex-row items-center justify-between">
-          <Text className="block text-lg font-bold text-gray-800">膨胀团 · 管理后台</Text>
-          <Button size="sm" onClick={activeTab === 'prizes' ? openCreatePrize : openCreatePackage}>
-            <Plus size={16} color="#fff" className="mr-1" />
-            <Text className="block text-white text-sm">
+      <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-4 pb-4">
+        <View className="flex flex-row items-center gap-3 mb-2">
+          <View
+            className="flex flex-row items-center gap-1"
+            onClick={() => Taro.navigateBack()}
+          >
+            <Text className="block text-sm text-white opacity-80">‹ 返回</Text>
+          </View>
+          <View className="flex-1 flex flex-row items-center gap-2">
+            <Image
+              src="https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9"
+              className="w-8 h-8 rounded-full"
+              mode="aspectFill"
+            />
+            <Text className="block text-base font-bold text-white">膨胀团 · 管理后台</Text>
+          </View>
+          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : openCreatePackage}>
+            <Plus size={16} color="#FF4757" className="mr-1" />
+            <Text className="block text-red-500 text-sm">
               {activeTab === 'prizes' ? '添加奖品' : '添加套餐'}
             </Text>
           </Button>

@@ -51,7 +51,7 @@ interface LotteryResult {
   };
 }
 
-const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
+const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
@@ -206,17 +206,9 @@ const IndexPage = () => {
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
-        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10">
-          <View className="flex flex-row items-center gap-3 mb-2">
-            <Image
-              src={LOGO_URL}
-              className="w-12 h-12 rounded-full"
-              mode="aspectFill"
-            />
-            <View className="flex-1">
-              <Text className="block text-2xl font-bold text-white">膨胀团</Text>
-              <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
-            </View>
+        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-8 pb-12">
+          {/* 管理入口 */}
+          <View className="flex flex-row justify-end mb-2">
             <View
               className="bg-white rounded-full px-3 py-1"
               onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
@@ -225,8 +217,24 @@ const IndexPage = () => {
             </View>
           </View>
 
+          {/* Logo 主体区域 - 居中突出展示 */}
+          <View className="flex flex-col items-center mb-4">
+            <View className="relative">
+              {/* 装饰光晕 */}
+              <View className="absolute -top-2 -left-2 w-28 h-28 rounded-full bg-white opacity-10" />
+              <View className="absolute top-2 -right-1 w-20 h-20 rounded-full bg-white opacity-5" />
+              <Image
+                src={LOGO_URL}
+                className="w-24 h-24 rounded-full"
+                mode="aspectFill"
+              />
+            </View>
+            <Text className="block text-3xl font-bold text-white mt-3">膨胀团</Text>
+            <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
+          </View>
+
           {/* 用户信息 */}
-          <View className="flex flex-row items-center gap-2">
+          <View className="flex flex-row items-center justify-center gap-2">
             <View className="w-8 h-8 rounded-full bg-white flex items-center justify-center opacity-30">
               <Trophy size={16} color="#fff" />
             </View>
