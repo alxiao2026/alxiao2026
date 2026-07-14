@@ -410,7 +410,7 @@ const AdminPage = () => {
                         </View>
                       </View>
                       <View className="flex flex-row items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => Taro.navigateTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
+                        <Button variant="ghost" size="sm" onClick={() => Taro.redirectTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
                           <Text className="block text-xs text-blue-500">详情</Text>
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEditPackage(pkg)}>
