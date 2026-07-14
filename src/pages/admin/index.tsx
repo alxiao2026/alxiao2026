@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -34,6 +34,8 @@ interface Package {
   created_at: string;
   updated_at: string | null;
 }
+
+const LOGO_CHAR_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_char_0f454fa7.png?sign=1786610806-168fac6414-0-c946bf6bbffd5b1b63feb8939f97e081969a6ce798d722f4cdb002bf2bf01529';
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState('prizes');
@@ -274,12 +276,22 @@ const AdminPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 顶部操作栏 */}
-      <View className="sticky top-0 bg-white z-10 px-4 py-3 border-b border-gray-100">
-        <View className="flex flex-row items-center justify-between">
-          <Text className="block text-lg font-bold text-gray-800">膨胀团 · 管理后台</Text>
-          <Button size="sm" onClick={activeTab === 'prizes' ? openCreatePrize : openCreatePackage}>
-            <Plus size={16} color="#fff" className="mr-1" />
-            <Text className="block text-white text-sm">
+      <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 py-4 relative overflow-hidden">
+        <Image
+          src={LOGO_CHAR_URL}
+          className="absolute right-0 top-0 w-32 h-32 opacity-10"
+          mode="aspectFit"
+        />
+        <Image
+          src={LOGO_CHAR_URL}
+          className="absolute -left-6 -bottom-6 w-24 h-24 opacity-5"
+          mode="aspectFit"
+        />
+        <View className="flex flex-row items-center justify-between relative z-10">
+          <Text className="block text-lg font-bold text-white">膨胀团 · 管理后台</Text>
+          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : openCreatePackage}>
+            <Plus size={16} color="#FF4757" className="mr-1" />
+            <Text className="block text-red-500 text-sm font-semibold">
               {activeTab === 'prizes' ? '添加奖品' : '添加套餐'}
             </Text>
           </Button>
