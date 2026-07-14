@@ -665,6 +665,96 @@ export default function PackageAdmin() {
                   <Text className="block text-xs text-gray-400 mt-1">商品名称需与商品内容保持一致，不得含有错别字及特殊符号</Text>
                 </View>
 
+                {/* 商品搭配 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-3">
+                    <Text className="block text-sm font-medium text-gray-700">商品搭配</Text>
+                    <Text className="block text-xs text-gray-400">搭配更热卖 填写更便捷</Text>
+                  </View>
+
+                  {combinations.map((combo) => (
+                    <View key={combo.id} className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
+                      {/* 菜品组名称 */}
+                      <View className="mb-3">
+                        <Input
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                          placeholder="填写菜品组名称"
+                          value={combo.name}
+                          onInput={(e) => updateCombinationName(combo.id, e.detail.value)}
+                        />
+                      </View>
+
+                      {/* 商品项列表 */}
+                      {combo.items.map((item) => (
+                        <View key={item.id} className="flex items-center gap-2 mb-2">
+                          <View className="flex-1">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                              placeholder="请选择点单标品"
+                              value={item.name}
+                              onInput={(e) => updateItem(combo.id, item.id, 'name', e.detail.value)}
+                            />
+                          </View>
+                          <View className="w-16">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-center"
+                              placeholder="份数"
+                              type="number"
+                              value={String(item.quantity)}
+                              onInput={(e) => updateItem(combo.id, item.id, 'quantity', parseInt(e.detail.value) || 1)}
+                            />
+                          </View>
+                          <View className="w-20">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-2 py-2"
+                              placeholder="单价"
+                              type="digit"
+                              value={item.price}
+                              onInput={(e) => updateItem(combo.id, item.id, 'price', e.detail.value)}
+                            />
+                          </View>
+                          <Button
+                            variant="ghost"
+                            onClick={() => removeItemFromCombination(combo.id, item.id)}
+                          >
+                            <Trash2 size={16} color="#ef4444" />
+                          </Button>
+                        </View>
+                      ))}
+
+                      {/* 添加商品项 */}
+                      <Button
+                        className="w-full mt-2"
+                        variant="outline"
+                        onClick={() => addItemToCombination(combo.id)}
+                      >
+                        <Plus size={16} color="#666" />
+                        <Text className="block ml-1">添加</Text>
+                      </Button>
+
+                      {/* 删除菜品组 */}
+                      <Button
+                        className="w-full mt-2 text-red-500"
+                        variant="ghost"
+                        onClick={() => removeCombination(combo.id)}
+                      >
+                        <Trash2 size={16} color="#ef4444" />
+                        <Text className="block ml-1">删除菜品组</Text>
+                      </Button>
+                    </View>
+                  ))}
+
+                  {/* 添加菜品组 */}
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={addCombination}
+                  >
+                    <Plus size={16} color="#666" />
+                    <Text className="block ml-1">添加菜品组</Text>
+                  </Button>
+                </View>
+
                 {/* 售价 */}
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
@@ -779,96 +869,6 @@ export default function PackageAdmin() {
                     />
                   </View>
                   <Text className="block text-xs text-gray-400 mt-1 text-right">{formData.description.length}/200</Text>
-                </View>
-
-                {/* 商品搭配 */}
-                <View className="mb-4">
-                  <View className="flex items-center justify-between mb-3">
-                    <Text className="block text-sm font-medium text-gray-700">商品搭配</Text>
-                    <Text className="block text-xs text-gray-400">搭配更热卖 填写更便捷</Text>
-                  </View>
-
-                  {combinations.map((combo) => (
-                    <View key={combo.id} className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
-                      {/* 菜品组名称 */}
-                      <View className="mb-3">
-                        <Input
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                          placeholder="填写菜品组名称"
-                          value={combo.name}
-                          onInput={(e) => updateCombinationName(combo.id, e.detail.value)}
-                        />
-                      </View>
-
-                      {/* 商品项列表 */}
-                      {combo.items.map((item) => (
-                        <View key={item.id} className="flex items-center gap-2 mb-2">
-                          <View className="flex-1">
-                            <Input
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                              placeholder="请选择点单标品"
-                              value={item.name}
-                              onInput={(e) => updateItem(combo.id, item.id, 'name', e.detail.value)}
-                            />
-                          </View>
-                          <View className="w-16">
-                            <Input
-                              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-center"
-                              placeholder="份数"
-                              type="number"
-                              value={String(item.quantity)}
-                              onInput={(e) => updateItem(combo.id, item.id, 'quantity', parseInt(e.detail.value) || 1)}
-                            />
-                          </View>
-                          <View className="w-20">
-                            <Input
-                              className="w-full border border-gray-200 rounded-lg px-2 py-2"
-                              placeholder="单价"
-                              type="digit"
-                              value={item.price}
-                              onInput={(e) => updateItem(combo.id, item.id, 'price', e.detail.value)}
-                            />
-                          </View>
-                          <Button
-                            variant="ghost"
-                            onClick={() => removeItemFromCombination(combo.id, item.id)}
-                          >
-                            <Trash2 size={16} color="#ef4444" />
-                          </Button>
-                        </View>
-                      ))}
-
-                      {/* 添加商品项 */}
-                      <Button
-                        className="w-full mt-2"
-                        variant="outline"
-                        onClick={() => addItemToCombination(combo.id)}
-                      >
-                        <Plus size={16} color="#666" />
-                        <Text className="block ml-1">添加</Text>
-                      </Button>
-
-                      {/* 删除菜品组 */}
-                      <Button
-                        className="w-full mt-2 text-red-500"
-                        variant="ghost"
-                        onClick={() => removeCombination(combo.id)}
-                      >
-                        <Trash2 size={16} color="#ef4444" />
-                        <Text className="block ml-1">删除菜品组</Text>
-                      </Button>
-                    </View>
-                  ))}
-
-                  {/* 添加菜品组 */}
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={addCombination}
-                  >
-                    <Plus size={16} color="#666" />
-                    <Text className="block ml-1">添加菜品组</Text>
-                  </Button>
                 </View>
 
                 {/* 商品资质 */}
