@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 
 interface Merchant {
@@ -26,6 +26,7 @@ export default function MerchantAdmin() {
   const [showForm, setShowForm] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -350,33 +351,71 @@ export default function MerchantAdmin() {
           <View className="w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             {/* 弹窗头部 */}
             <View className="flex items-center justify-between p-4 border-b border-gray-200">
-              <Text className="block text-lg font-semibold text-gray-900">选择商家分类</Text>
+              <View className="flex items-center gap-2">
+                {selectedCategory && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    <ChevronLeft size={20} color="#666" />
+                  </Button>
+                )}
+                <Text className="block text-lg font-semibold text-gray-900">
+                  {selectedCategory ? selectedCategory : '选择商家分类'}
+                </Text>
+              </View>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowCategoryPicker(false)}
+                onClick={() => {
+                  setShowCategoryPicker(false);
+                  setSelectedCategory(null);
+                }}
               >
                 <X size={20} color="#666" />
               </Button>
             </View>
 
             {/* 分类列表 */}
-            <View className="flex-1 overflow-y-auto p-4">
-              {DOUYIN_CATEGORIES.map((cat) => (
-                <View
-                  key={cat.name}
-                  className="py-3 px-4 border-b border-gray-100 flex items-center justify-between"
-                  onClick={() => {
-                    setFormData({ ...formData, category: cat.name });
-                    setShowCategoryPicker(false);
-                  }}
-                >
-                  <Text className="block text-base text-gray-900">{cat.name}</Text>
-                  {formData.category === cat.name && (
-                    <Text className="block text-sm text-orange-500">已选择</Text>
+            <View className="flex-1 overflow-y-auto">
+              {!selectedCategory ? (
+                // 一级分类列表
+                <View>
+                  {DOUYIN_CATEGORIES.map((cat) => (
+                    <View
+                      key={cat.name}
+                      className="py-4 px-4 border-b border-gray-100 flex items-center justify-between"
+                      onClick={() => setSelectedCategory(cat.name)}
+                    >
+                      <Text className="block text-base text-gray-900">{cat.name}</Text>
+                      <ChevronRight size={18} color="#999" />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                // 二级分类列表
+                <View>
+                  {DOUYIN_CATEGORIES.find((c) => c.name === selectedCategory)?.children?.map(
+                    (sub) => (
+                      <View
+                        key={sub.name}
+                        className="py-4 px-4 border-b border-gray-100 flex items-center justify-between"
+                        onClick={() => {
+                          setFormData({ ...formData, category: `${selectedCategory} · ${sub.name}` });
+                          setShowCategoryPicker(false);
+                          setSelectedCategory(null);
+                        }}
+                      >
+                        <Text className="block text-base text-gray-900">{sub.name}</Text>
+                        {formData.category === `${selectedCategory} · ${sub.name}` && (
+                          <Text className="block text-sm text-orange-500">已选择</Text>
+                        )}
+                      </View>
+                    )
                   )}
                 </View>
-              ))}
+              )}
             </View>
           </View>
         </View>
