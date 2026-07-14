@@ -185,10 +185,10 @@ const IndexPage = () => {
               <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
             </View>
             <View
-              className="bg-white rounded-full px-3 py-1 opacity-20"
+              className="bg-white rounded-full px-3 py-1"
               onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
             >
-              <Text className="block text-xs text-white">管理奖品</Text>
+              <Text className="block text-xs font-semibold text-red-500">⚙️ 管理奖品</Text>
             </View>
           </View>
 
@@ -338,6 +338,18 @@ const IndexPage = () => {
             </View>
           </View>
         )}
+
+        {/* 管理入口 */}
+        <View className="px-4 mt-4 mb-8">
+          <View className="flex items-center justify-center">
+            <View
+              className="flex flex-row items-center gap-2 bg-gray-100 rounded-full px-5 py-2"
+              onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
+            >
+              <Text className="block text-xs text-gray-500">🎯 膨胀团 · 奖品配置</Text>
+            </View>
+          </View>
+        </View>
 
         {/* 底部占位 */}
         <View className="h-8" />
