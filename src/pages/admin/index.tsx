@@ -291,10 +291,10 @@ const AdminPage = () => {
             />
             <Text className="block text-base font-bold text-white">膨胀团 · 管理后台</Text>
           </View>
-          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : () => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
+          <Button size="sm" className="bg-white text-red-500" onClick={activeTab === 'prizes' ? openCreatePrize : activeTab === 'packages' ? () => Taro.navigateTo({ url: '/pages/package-admin/index' }) : () => Taro.navigateTo({ url: '/pages/merchant-admin/index' })}>
             <Plus size={16} color="#FF4757" className="mr-1" />
             <Text className="block text-red-500 text-sm">
-              {activeTab === 'prizes' ? '添加奖品' : '添加套餐'}
+              {activeTab === 'prizes' ? '添加奖品' : activeTab === 'packages' ? '添加套餐' : '添加商家'}
             </Text>
           </Button>
         </View>
