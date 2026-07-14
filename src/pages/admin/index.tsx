@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash2, Gift } from 'lucide-react-taro';
+
+const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
 
 interface Prize {
   id: string;
@@ -138,12 +140,23 @@ const AdminPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 顶部操作栏 */}
-      <View className="sticky top-0 bg-white z-10 px-4 py-3 border-b border-gray-100">
-        <View className="flex flex-row items-center justify-between">
-          <Text className="block text-lg font-bold text-gray-800">膨胀团 · 奖品配置</Text>
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={16} color="#fff" className="mr-1" />
-            <Text className="block text-white text-sm">添加奖品</Text>
+      <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 py-4 overflow-hidden relative">
+        {/* Logo 背景装饰 */}
+        <View className="absolute -right-6 -top-6 w-28 h-28 opacity-15">
+          <Image src={LOGO_URL} className="w-full h-full" mode="aspectFit" />
+        </View>
+        <View className="absolute -left-2 bottom-0 w-16 h-16 opacity-10">
+          <Image src={LOGO_URL} className="w-full h-full" mode="aspectFit" />
+        </View>
+
+        <View className="flex flex-row items-center justify-between relative z-10">
+          <View className="flex flex-row items-center gap-2">
+            <Image src={LOGO_URL} className="w-8 h-8 rounded-full" mode="aspectFill" />
+            <Text className="block text-lg font-bold text-white">膨胀团 · 奖品配置</Text>
+          </View>
+          <Button size="sm" className="bg-white text-orange-500" onClick={openCreate}>
+            <Plus size={16} color="#FF4757" className="mr-1" />
+            <Text className="block text-orange-500 text-sm">添加奖品</Text>
           </Button>
         </View>
       </View>
