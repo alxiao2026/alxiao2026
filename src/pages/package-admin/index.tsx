@@ -18,6 +18,7 @@ interface Package {
   original_price: string
   badge: string
   features: string
+  category: string
   cover_image: string
   environment_images: string[]
   stock: number
@@ -38,8 +39,17 @@ export default function PackageAdmin() {
   const { id } = router.params
 
   const [activeTab, setActiveTab] = useState('basic')
+  const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // 步骤定义
+  const steps = [
+    { key: 'basic', label: '基础信息' },
+    { key: 'merchant', label: '商家信息' },
+    { key: 'product', label: '商品信息' },
+    { key: 'sale', label: '售卖信息' }
+  ]
 
   // 品类选择
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
@@ -64,6 +74,7 @@ export default function PackageAdmin() {
     original_price: '0',
     badge: '',
     features: '',
+    category: '',
     cover_image: '',
     environment_images: [],
     stock: 0,
@@ -94,6 +105,70 @@ export default function PackageAdmin() {
       }
     } catch (error) {
       console.error('加载商家失败:', error)
+    }
+  }
+
+  // 步骤验证
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 0: // 基础信息
+        if (!formData.category) {
+          Taro.showToast({ title: '请选择商品品类', icon: 'none' })
+          return false
+        }
+        if (!packageType) {
+          Taro.showToast({ title: '请选择商品类型', icon: 'none' })
+          return false
+        }
+        return true
+      case 1: // 商家信息
+        if (!selectedMerchant) {
+          Taro.showToast({ title: '请选择商家', icon: 'none' })
+          return false
+        }
+        return true
+      case 2: // 商品信息
+        if (!formData.name) {
+          Taro.showToast({ title: '请输入商品名称', icon: 'none' })
+          return false
+        }
+        if (!formData.price || parseFloat(formData.price) <= 0) {
+          Taro.showToast({ title: '请输入有效售价', icon: 'none' })
+          return false
+        }
+        if (!formData.cover_image) {
+          Taro.showToast({ title: '请上传商品头图', icon: 'none' })
+          return false
+        }
+        return true
+      case 3: // 售卖信息
+        if (formData.stock < 0) {
+          Taro.showToast({ title: '请输入有效库存', icon: 'none' })
+          return false
+        }
+        return true
+      default:
+        return true
+    }
+  }
+
+  // 下一步
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      const nextStep = currentStep + 1
+      if (nextStep < steps.length) {
+        setCurrentStep(nextStep)
+        setActiveTab(steps[nextStep].key)
+      }
+    }
+  }
+
+  // 上一步
+  const handlePrevStep = () => {
+    const prevStep = currentStep - 1
+    if (prevStep >= 0) {
+      setCurrentStep(prevStep)
+      setActiveTab(steps[prevStep].key)
     }
   }
 
@@ -341,16 +416,6 @@ export default function PackageAdmin() {
     }
   }
 
-  const handlePreview = () => {
-    if (formData.id) {
-      Taro.navigateTo({
-        url: `/pages/package-detail/index?id=${formData.id}`
-      })
-    } else {
-      Taro.showToast({ title: '请先保存套餐', icon: 'none' })
-    }
-  }
-
   if (loading) {
     return (
       <View className="flex items-center justify-center h-screen bg-gray-50">
@@ -371,24 +436,35 @@ export default function PackageAdmin() {
           <View className="w-8" />
         </View>
 
-        {/* Tab 导航 */}
-        <View className="flex border-b border-gray-200">
-          {[
-            { key: 'basic', label: '基础信息' },
-            { key: 'merchant', label: '商家信息' },
-            { key: 'product', label: '商品信息' },
-            { key: 'sale', label: '售卖信息' }
-          ].map(tab => (
-            <View
-              key={tab.key}
-              className={`flex-1 py-3 text-center text-sm ${
-                activeTab === tab.key
-                  ? 'text-red-500 border-b-2 border-red-500 font-medium'
-                  : 'text-gray-600'
-              }`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              <Text className="block">{tab.label}</Text>
+        {/* 步骤指示器 */}
+        <View className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          {steps.map((step, index) => (
+            <View key={step.key} className="flex items-center flex-1">
+              <View
+                className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  index < currentStep
+                    ? 'bg-green-500'
+                    : index === currentStep
+                    ? 'bg-red-500'
+                    : 'bg-gray-300'
+                }`}
+              >
+                {index < currentStep ? (
+                  <Check size={16} color="#fff" />
+                ) : (
+                  <Text className="block text-white text-sm font-medium">{index + 1}</Text>
+                )}
+              </View>
+              <Text
+                className={`block ml-2 text-sm ${
+                  index === currentStep ? 'text-red-500 font-medium' : 'text-gray-600'
+                }`}
+              >
+                {step.label}
+              </Text>
+              {index < steps.length - 1 && (
+                <View className="flex-1 h-1 bg-gray-300 mx-2" />
+              )}
             </View>
           ))}
         </View>
@@ -956,21 +1032,32 @@ export default function PackageAdmin() {
         style={{ zIndex: 100 }}
       >
         <View className="flex gap-3">
-          <Button
-            className="flex-1 bg-white border-2 border-gray-300 text-gray-700"
-            onClick={handlePreview}
-          >
-            <Text className="block font-medium">预览</Text>
-          </Button>
-          <Button
-            className="flex-1 bg-blue-500"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            <Text className="block text-white font-medium">
-              {submitting ? '提交中...' : '提交审核'}
-            </Text>
-          </Button>
+          {currentStep > 0 && (
+            <Button
+              className="flex-1 bg-white border-2 border-gray-300 text-gray-700"
+              onClick={handlePrevStep}
+            >
+              <Text className="block font-medium">上一步</Text>
+            </Button>
+          )}
+          {currentStep < steps.length - 1 ? (
+            <Button
+              className="flex-1 bg-blue-500"
+              onClick={handleNextStep}
+            >
+              <Text className="block text-white font-medium">下一步</Text>
+            </Button>
+          ) : (
+            <Button
+              className="flex-1 bg-blue-500"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              <Text className="block text-white font-medium">
+                {submitting ? '提交中...' : '提交审核'}
+              </Text>
+            </Button>
+          )}
         </View>
       </View>
     </View>
