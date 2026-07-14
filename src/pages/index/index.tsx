@@ -233,8 +233,8 @@ const IndexPage = () => {
             />
           </View>
 
-          {/* 用户信息左对齐 */}
-          <View className="flex items-center justify-start">
+          {/* 用户信息和管理入口 */}
+          <View className="flex items-center justify-between">
             <View
               className="flex flex-row items-center gap-2"
               onClick={() => { if (!avatarUrl) handleLogin(); }}
@@ -256,6 +256,14 @@ const IndexPage = () => {
                   <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>点击授权登录</Text>
                 )}
               </View>
+            </View>
+
+            {/* 管理入口 */}
+            <View
+              className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
+              onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
+            >
+              <Text className="block text-xs text-white">⚙️ 管理</Text>
             </View>
           </View>
         </View>
@@ -433,18 +441,6 @@ const IndexPage = () => {
             </View>
           </View>
         )}
-
-        {/* 管理入口 */}
-        <View className="px-4 mt-4 mb-8">
-          <View className="flex items-center justify-center">
-            <View
-              className="flex flex-row items-center gap-2 bg-gray-100 rounded-full px-5 py-2"
-              onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
-            >
-              <Text className="block text-xs text-gray-500">🎯 膨胀团 · 奖品配置</Text>
-            </View>
-          </View>
-        </View>
 
         {/* 底部占位 */}
         <View className="h-8" />
