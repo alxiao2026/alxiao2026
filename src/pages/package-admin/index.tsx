@@ -46,6 +46,10 @@ export default function PackageAdmin() {
   const [selectedLevel1, setSelectedLevel1] = useState('')
   const [selectedLevel2, setSelectedLevel2] = useState('')
 
+  // 类型选择
+  const [showTypePicker, setShowTypePicker] = useState(false)
+  const [packageType, setPackageType] = useState<'combo' | 'voucher'>('combo')
+
   // 表单数据
   const [formData, setFormData] = useState<Package>({
     id: '',
@@ -403,9 +407,19 @@ export default function PackageAdmin() {
 
                 <View>
                   <Text className="block text-sm text-gray-600 mb-2">商品类型</Text>
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-800">团购套餐</Text>
-                    <Badge className="bg-gray-200 text-gray-600 text-xs">不可编辑</Badge>
+                  <View
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+                    onClick={() => setShowTypePicker(true)}
+                  >
+                    <Text className="block text-sm text-gray-800">
+                      {packageType === 'combo' ? '团购套餐' : '代金券'}
+                    </Text>
+                    <View className="flex items-center gap-2">
+                      <Badge className="bg-blue-100 text-blue-600 text-xs">
+                        {packageType === 'combo' ? '套餐' : '代金券'}
+                      </Badge>
+                      <ChevronRight size={16} color="#999" />
+                    </View>
                   </View>
                 </View>
               </CardContent>
@@ -761,6 +775,72 @@ export default function PackageAdmin() {
                   )}
                 </View>
               ))}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 类型选择弹窗 */}
+      {showTypePicker && (
+        <View
+          className="fixed inset-0 bg-black"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+          onClick={() => setShowTypePicker(false)}
+        >
+          <View
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl"
+            style={{ maxHeight: '60vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗头部 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-base font-semibold text-gray-800">选择商品类型</Text>
+              <View onClick={() => setShowTypePicker(false)}>
+                <X size={20} color="#666" />
+              </View>
+            </View>
+
+            {/* 类型列表 */}
+            <View>
+              <View
+                className={`px-4 py-4 border-b border-gray-100 ${
+                  packageType === 'combo' ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => {
+                  setPackageType('combo');
+                  setShowTypePicker(false);
+                }}
+              >
+                <View className="flex items-center justify-between">
+                  <View>
+                    <Text className="block text-sm font-medium text-gray-800">团购套餐</Text>
+                    <Text className="block text-xs text-gray-500 mt-1">
+                      包含多项商品或服务的组合套餐
+                    </Text>
+                  </View>
+                  {packageType === 'combo' && <Check size={20} color="#3b82f6" />}
+                </View>
+              </View>
+
+              <View
+                className={`px-4 py-4 ${
+                  packageType === 'voucher' ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => {
+                  setPackageType('voucher');
+                  setShowTypePicker(false);
+                }}
+              >
+                <View className="flex items-center justify-between">
+                  <View>
+                    <Text className="block text-sm font-medium text-gray-800">代金券</Text>
+                    <Text className="block text-xs text-gray-500 mt-1">
+                      可抵扣现金的优惠券，满额可用
+                    </Text>
+                  </View>
+                  {packageType === 'voucher' && <Check size={20} color="#3b82f6" />}
+                </View>
+              </View>
             </View>
           </View>
         </View>
