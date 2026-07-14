@@ -134,13 +134,17 @@ const AdminPage = () => {
   };
 
   const handleDeletePrize = async (id: string) => {
+    console.log('删除奖品，ID:', id);
     Taro.showModal({
       title: '确认删除',
       content: '确定要删除该奖品吗？',
       success: async (res) => {
+        console.log('showModal 结果:', res);
         if (res.confirm) {
           try {
-            await Network.request({ url: `/api/prizes/${id}`, method: 'DELETE' });
+            console.log('发送删除请求:', `/api/prizes/${id}`);
+            const deleteRes = await Network.request({ url: `/api/prizes/${id}`, method: 'DELETE' });
+            console.log('删除响应:', deleteRes.data);
             Taro.showToast({ title: '删除成功', icon: 'success' });
             fetchPrizes();
           } catch (err) {
@@ -148,6 +152,9 @@ const AdminPage = () => {
             Taro.showToast({ title: '删除失败', icon: 'none' });
           }
         }
+      },
+      fail: (err) => {
+        console.error('showModal 失败:', err);
       },
     });
   };
@@ -436,7 +443,7 @@ const AdminPage = () => {
 
       {/* 编辑弹窗 */}
       {showDialog && (
-        <View className="fixed inset-0 bg-black opacity-50 z-50 flex items-center justify-center px-4">
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <View className="bg-white rounded-2xl w-full max-w-sm p-6">
             <Text className="block text-lg font-bold text-black mb-4">
               {activeTab === 'prizes'
