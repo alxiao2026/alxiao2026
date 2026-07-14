@@ -113,6 +113,14 @@ export default function MerchantAdmin() {
   };
 
   const handleChooseLocation = async () => {
+    const env = Taro.getEnv();
+    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+    
+    if (!isMiniApp) {
+      Taro.showToast({ title: '定位功能仅在小程序中可用', icon: 'none' });
+      return;
+    }
+
     try {
       const res = await Taro.chooseLocation({});
       if (res.name || res.address) {
