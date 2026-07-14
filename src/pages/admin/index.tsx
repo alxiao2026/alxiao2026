@@ -438,7 +438,7 @@ const AdminPage = () => {
       {showDialog && (
         <View className="fixed inset-0 bg-black opacity-50 z-50 flex items-center justify-center px-4">
           <View className="bg-white rounded-2xl w-full max-w-sm p-6">
-            <Text className="block text-lg font-bold text-gray-800 mb-4">
+            <Text className="block text-lg font-bold text-black mb-4">
               {activeTab === 'prizes'
                 ? (editingPrize ? '编辑奖品' : '添加奖品')
                 : (editingPackage ? '编辑套餐' : '添加套餐')}
@@ -448,8 +448,8 @@ const AdminPage = () => {
               /* 奖品表单 */
               <View className="space-y-4">
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">奖品名称</Text>
-                  <View className="bg-gray-50 rounded-xl px-3 py-2">
+                  <Text className="block text-sm text-black mb-1">奖品名称</Text>
+                  <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                     <Input
                       className="w-full"
                       style={{ backgroundColor: 'transparent' }}
@@ -461,8 +461,8 @@ const AdminPage = () => {
                 </View>
 
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">奖品描述</Text>
-                  <View className="bg-gray-50 rounded-2xl p-3">
+                  <Text className="block text-sm text-black mb-1">奖品描述</Text>
+                  <View className="bg-white rounded-2xl p-3 border border-gray-200">
                     <Textarea
                       style={{ width: '100%', minHeight: '60px', backgroundColor: 'transparent' }}
                       value={prizeForm.description}
@@ -474,8 +474,8 @@ const AdminPage = () => {
 
                 <View className="flex flex-row gap-3">
                   <View className="flex-1">
-                    <Text className="block text-sm text-gray-600 mb-1">概率 (%)</Text>
-                    <View className="bg-gray-50 rounded-xl px-3 py-2">
+                    <Text className="block text-sm text-black mb-1">概率 (%)</Text>
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                       <Input
                         className="w-full"
                         style={{ backgroundColor: 'transparent' }}
@@ -486,8 +486,8 @@ const AdminPage = () => {
                     </View>
                   </View>
                   <View className="flex-1">
-                    <Text className="block text-sm text-gray-600 mb-1">库存</Text>
-                    <View className="bg-gray-50 rounded-xl px-3 py-2">
+                    <Text className="block text-sm text-black mb-1">库存</Text>
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                       <Input
                         className="w-full"
                         style={{ backgroundColor: 'transparent' }}
@@ -503,8 +503,8 @@ const AdminPage = () => {
               /* 套餐表单 */
               <View className="space-y-4">
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">套餐名称</Text>
-                  <View className="bg-gray-50 rounded-xl px-3 py-2">
+                  <Text className="block text-sm text-black mb-1">套餐名称</Text>
+                  <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                     <Input
                       className="w-full"
                       style={{ backgroundColor: 'transparent' }}
@@ -516,8 +516,8 @@ const AdminPage = () => {
                 </View>
 
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">套餐描述</Text>
-                  <View className="bg-gray-50 rounded-2xl p-3">
+                  <Text className="block text-sm text-black mb-1">套餐描述</Text>
+                  <View className="bg-white rounded-2xl p-3 border border-gray-200">
                     <Textarea
                       style={{ width: '100%', minHeight: '60px', backgroundColor: 'transparent' }}
                       value={pkgForm.description}
@@ -529,8 +529,8 @@ const AdminPage = () => {
 
                 <View className="flex flex-row gap-3">
                   <View className="flex-1">
-                    <Text className="block text-sm text-gray-600 mb-1">价格 (¥)</Text>
-                    <View className="bg-gray-50 rounded-xl px-3 py-2">
+                    <Text className="block text-sm text-black mb-1">价格 (¥)</Text>
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                       <Input
                         className="w-full"
                         style={{ backgroundColor: 'transparent' }}
@@ -541,8 +541,8 @@ const AdminPage = () => {
                     </View>
                   </View>
                   <View className="flex-1">
-                    <Text className="block text-sm text-gray-600 mb-1">原价 (¥)</Text>
-                    <View className="bg-gray-50 rounded-xl px-3 py-2">
+                    <Text className="block text-sm text-black mb-1">原价 (¥)</Text>
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                       <Input
                         className="w-full"
                         style={{ backgroundColor: 'transparent' }}
@@ -555,10 +555,11 @@ const AdminPage = () => {
                 </View>
 
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">角标（如「限时特惠」）</Text>
-                  <View className="bg-gray-50 rounded-xl px-3 py-2">
+                  <Text className="block text-sm text-black mb-1">角标（如「限时特惠」）</Text>
+                  <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                     <Input
-                      className="w-full bg-transparent"
+                      className="w-full"
+                      style={{ backgroundColor: 'transparent' }}
                       value={pkgForm.badge}
                       placeholder="可选"
                       onInput={(e) => setPkgForm({ ...pkgForm, badge: e.detail.value })}
@@ -567,8 +568,8 @@ const AdminPage = () => {
                 </View>
 
                 <View>
-                  <Text className="block text-sm text-gray-600 mb-1">功能特点（每行一条）</Text>
-                  <View className="bg-gray-50 rounded-2xl p-3">
+                  <Text className="block text-sm text-black mb-1">功能特点（每行一条）</Text>
+                  <View className="bg-white rounded-2xl p-3 border border-gray-200">
                     <Textarea
                       style={{ width: '100%', minHeight: '80px', backgroundColor: 'transparent' }}
                       value={pkgForm.features}
