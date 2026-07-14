@@ -284,7 +284,7 @@ const AdminPage = () => {
           </View>
           <View className="flex-1 flex flex-row items-center gap-2">
             <Image
-              src="https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_char_pengtuan_9a8924ea.png?sign=1786617136-6aa5d3235a-0-a89ab13ab99f10616b14345e60b1bf2348195d145745dff825c83122d1e862d3"
+              src="https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_v3_final_acc3f7f8.png"
               className="w-8 h-8"
               mode="aspectFill"
             />
