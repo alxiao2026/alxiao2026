@@ -332,7 +332,7 @@ export default function PackageAdmin() {
   }
 
   return (
-    <View className="min-h-screen bg-gray-50 pb-20" style={{ backgroundColor: '#f9fafb' }}>
+    <View className="min-h-screen bg-white pb-20">
       {/* 顶部导航 */}
       <View className="bg-white sticky top-0 z-10 border-b border-gray-200">
         <View className="flex items-center justify-between px-4 py-3">
