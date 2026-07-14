@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Gift, Share2, Trophy, Star, Zap, ShoppingBag } from 'lucide-react-taro';
+import { Gift, Share2, Star, Zap, ShoppingBag, LogIn } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
 
@@ -58,6 +58,7 @@ const IndexPage = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [userId, setUserId] = useState<string>(`user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [nickName, setNickName] = useState<string>('游客');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
   const [showLottery, setShowLottery] = useState(false);
@@ -68,9 +69,11 @@ const IndexPage = () => {
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
+    const savedAvatar = Taro.getStorageSync('avatar_url');
     if (savedUserId) {
       setUserId(savedUserId);
       if (savedNickName) setNickName(savedNickName);
+      if (savedAvatar) setAvatarUrl(savedAvatar);
     } else {
       Taro.setStorageSync('user_id', userId);
     }
@@ -162,6 +165,20 @@ const IndexPage = () => {
     }
   }, []);
 
+  // 微信登录获取用户信息
+  const handleLogin = async () => {
+    try {
+      const res = await Taro.getUserProfile({ desc: '用于展示用户信息', lang: 'zh_CN' });
+      const { nickName: name, avatarUrl: avatar } = res.userInfo;
+      setNickName(name);
+      setAvatarUrl(avatar);
+      Taro.setStorageSync('nick_name', name);
+      Taro.setStorageSync('avatar_url', avatar);
+    } catch (err) {
+      console.log('用户取消授权或getUserProfile不可用:', err);
+    }
+  };
+
   // 设置分享
   useShareAppMessage(() => {
     return {
@@ -207,24 +224,41 @@ const IndexPage = () => {
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
         <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-8 pb-12">
-          {/* Logo 主体区域 - 居中突出展示 */}
-          <View className="flex flex-col items-center mb-4">
+          {/* 顶部行：左侧用户信息 + 中间Logo */}
+          <View className="flex flex-row items-center justify-between">
+            {/* 左侧：用户信息 */}
+            <View
+              className="flex flex-row items-center gap-2"
+              onClick={() => { if (!avatarUrl) handleLogin(); }}
+            >
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  className="w-10 h-10 rounded-full border-2 border-white"
+                  mode="aspectFill"
+                />
+              ) : (
+                <View className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center border-2 border-white border-opacity-40">
+                  <LogIn size={18} color="#fff" />
+                </View>
+              )}
+              <View>
+                <Text className="block text-sm font-medium text-white">{nickName}</Text>
+                {!avatarUrl && (
+                  <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>点击授权登录</Text>
+                )}
+              </View>
+            </View>
+
+            {/* 中间：Logo */}
             <View className="relative">
-              {/* 装饰光晕 */}
-              <View className="absolute -top-2 -left-2 w-28 h-28 rounded-full bg-white opacity-10" />
-              <View className="absolute top-2 -right-1 w-20 h-20 rounded-full bg-white opacity-5" />
+              <View className="absolute -top-1 -left-1 w-18 h-18 rounded-full bg-white opacity-10" />
               <Image
                 src={LOGO_URL}
-                className="w-24 h-24 rounded-full"
+                className="w-16 h-16 rounded-full"
                 mode="aspectFill"
               />
             </View>
-          </View>
-
-          {/* 用户信息 */}
-          <View className="flex flex-row items-center justify-center gap-1">
-            <Trophy size={14} color="rgba(255,255,255,0.7)" />
-            <Text className="block text-sm text-white opacity-80">{nickName}</Text>
           </View>
         </View>
 
