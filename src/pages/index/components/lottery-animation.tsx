@@ -30,14 +30,15 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
     };
   }, [visible]);
 
-  // 星星背景 - 用 useMemo 固定位置
-  const stars = useMemo(() =>
-    Array.from({ length: 20 }).map(() => ({
+  // 彩纸粒子位置 - 固定随机位置
+  const confettiParticles = useMemo(() =>
+    Array.from({ length: 30 }).map(() => ({
       left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      width: `${2 + Math.random() * 3}px`,
-      height: `${2 + Math.random() * 3}px`,
-      animationDelay: `${Math.random() * 3}s`,
+      animationDelay: `${Math.random() * 1.2}s`,
+      backgroundColor: ['#FF4757', '#FFA502', '#2ED573', '#1890FF', '#FF6B81', '#A29BFE', '#FDCB6E'][Math.floor(Math.random() * 7)],
+      width: `${6 + Math.random() * 8}px`,
+      height: `${6 + Math.random() * 8}px`,
+      borderRadius: Math.random() > 0.5 ? '50%' : '2px',
     })), []
   );
 
@@ -47,32 +48,11 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
     <View className="lottery-overlay">
       <View className="lottery-overlay-bg" />
 
-      {/* 星星背景 */}
-      {stars.map((s, i) => (
-        <View key={i} className="lottery-bg-star" style={s} />
-      ))}
-
-      {/* 光晕装饰 */}
-      <View className="lottery-glow lottery-glow-1" />
-      <View className="lottery-glow lottery-glow-2" />
-      <View className="lottery-glow lottery-glow-3" />
-
       {/* 彩纸粒子 - 中奖时 */}
       {isWinner && phase === 'result' && (
         <View className="confetti-container">
-          {Array.from({ length: 40 }).map((_, i) => (
-            <View
-              key={i}
-              className="confetti-particle"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 1.2}s`,
-                backgroundColor: ['#FF4757', '#FFA502', '#2ED573', '#1890FF', '#FF6B81', '#A29BFE', '#FDCB6E'][i % 7],
-                width: `${6 + Math.random() * 10}px`,
-                height: `${6 + Math.random() * 10}px`,
-                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-              }}
-            />
+          {confettiParticles.map((p, i) => (
+            <View key={i} className="confetti-particle" style={p} />
           ))}
         </View>
       )}
@@ -86,13 +66,13 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
                 <Image src={LOGO_URL} className="logo" mode="aspectFill" />
               </View>
             </View>
-            <Text className="block text-3xl font-bold lottery-text-white mt-8">开奖中...</Text>
-            <View className="flex flex-row gap-3 mt-4">
+            <Text className="block text-2xl font-bold lottery-text-white mt-6">开奖中...</Text>
+            <View className="flex flex-row gap-2 mt-3">
               {[0, 1, 2].map((i) => (
                 <View key={i} className="lottery-dot" style={{ animationDelay: `${i * 0.2}s` }} />
               ))}
             </View>
-            <Text className="block text-base lottery-text-white mt-8 opacity-60">
+            <Text className="block text-sm lottery-text-white mt-6 opacity-60">
               正在抽取你的幸运奖品...
             </Text>
           </View>
@@ -103,11 +83,11 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
           <View className="flex flex-col items-center">
             <View className="lottery-card-reveal">
               <View className="lottery-card-reveal-inner">
-                <Sparkles size={56} color="#fff" />
+                <Sparkles size={48} color="#fff" />
               </View>
             </View>
-            <Text className="block text-3xl font-bold lottery-text-white mt-8">揭晓结果...</Text>
-            <Text className="block text-base lottery-text-white mt-4 opacity-60">
+            <Text className="block text-2xl font-bold lottery-text-white mt-6">揭晓结果...</Text>
+            <Text className="block text-sm lottery-text-white mt-3 opacity-60">
               命运即将揭晓...
             </Text>
           </View>
@@ -121,37 +101,38 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
               className={`lottery-result-icon ${isWinner ? 'lottery-result-winner' : 'lottery-result-loser'}`}
             >
               {isWinner ? (
-                <Trophy size={56} color="#fff" />
+                <Trophy size={48} color="#fff" />
               ) : (
-                <Gift size={56} color="#fff" />
+                <Gift size={48} color="#fff" />
               )}
             </View>
 
             {/* 结果标题 */}
-            <Text className="block text-3xl font-bold mt-6 lottery-text-white">
+            <Text className="block text-2xl font-bold mt-5 lottery-text-white">
               {isWinner ? '🎉 恭喜中奖！' : '😅 再接再厉'}
             </Text>
 
             {/* 中奖奖品名 */}
             {isWinner && prizeName && (
               <View className="lottery-prize-container">
-                <Text className="block text-xl font-bold text-white text-center">{prizeName}</Text>
+                <Text className="block text-lg font-bold text-white text-center">{prizeName}</Text>
               </View>
             )}
 
             {/* 未中奖鼓励语 */}
             {!isWinner && (
-              <Text className="block text-base lottery-text-white text-center mt-4 opacity-70">
+              <Text className="block text-sm lottery-text-white text-center mt-3 opacity-70">
                 下次一定中！再下一单试试手气吧
               </Text>
             )}
 
-            {/* 我知道了 */}
-            <View className="mt-10">
+            {/* 我知道了按钮 */}
+            <View className="mt-8">
               <Button
                 onClick={onClose}
+                className="bg-white bg-opacity-20 border border-white border-opacity-30 backdrop-blur-sm rounded-full px-10"
               >
-                <Text className="block text-white font-semibold">我知道了</Text>
+                <Text className="block text-white font-semibold text-sm">我知道了</Text>
               </Button>
             </View>
           </View>
