@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, X, ChevronRight, Check } from 'lucide-react-taro'
+import { ArrowLeft, Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 
 interface Package {
@@ -32,6 +32,20 @@ interface Package {
 interface FeatureItem {
   id: string
   text: string
+}
+
+interface ProductItem {
+  id: string
+  name: string
+  quantity: number
+  price: string
+}
+
+interface ProductCombination {
+  id: string
+  name: string
+  items: ProductItem[]
+  select_count: number
 }
 
 export default function PackageAdmin() {
@@ -65,6 +79,9 @@ export default function PackageAdmin() {
   const [showMerchantPicker, setShowMerchantPicker] = useState(false)
   const [merchants, setMerchants] = useState<any[]>([])
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null)
+
+  // 商品搭配
+  const [combinations, setCombinations] = useState<ProductCombination[]>([])
 
   // 表单数据
   const [formData, setFormData] = useState<Package>({
@@ -107,6 +124,62 @@ export default function PackageAdmin() {
     } catch (error) {
       console.error('加载商家失败:', error)
     }
+  }
+
+  // 商品搭配处理函数
+  const addCombination = () => {
+    const newCombination: ProductCombination = {
+      id: Date.now().toString(),
+      name: '',
+      items: [],
+      select_count: 0
+    }
+    setCombinations([...combinations, newCombination])
+  }
+
+  const removeCombination = (combId: string) => {
+    setCombinations(combinations.filter(c => c.id !== combId))
+  }
+
+  const updateCombinationName = (combId: string, name: string) => {
+    setCombinations(combinations.map(c =>
+      c.id === combId ? { ...c, name } : c
+    ))
+  }
+
+  const addItemToCombination = (combinationId: string) => {
+    const newItem: ProductItem = {
+      id: Date.now().toString(),
+      name: '',
+      quantity: 1,
+      price: ''
+    }
+    setCombinations(combinations.map(c =>
+      c.id === combinationId
+        ? { ...c, items: [...c.items, newItem] }
+        : c
+    ))
+  }
+
+  const removeItemFromCombination = (combinationId: string, itemId: string) => {
+    setCombinations(combinations.map(c =>
+      c.id === combinationId
+        ? { ...c, items: c.items.filter(item => item.id !== itemId) }
+        : c
+    ))
+  }
+
+  const updateItem = (combinationId: string, itemId: string, field: keyof ProductItem, value: string | number) => {
+    setCombinations(combinations.map(c =>
+      c.id === combinationId
+        ? {
+            ...c,
+            items: c.items.map(item =>
+              item.id === itemId ? { ...item, [field]: value } : item
+            )
+          }
+        : c
+    ))
   }
 
   // 步骤验证
@@ -706,6 +779,96 @@ export default function PackageAdmin() {
                     />
                   </View>
                   <Text className="block text-xs text-gray-400 mt-1 text-right">{formData.description.length}/200</Text>
+                </View>
+
+                {/* 商品搭配 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-3">
+                    <Text className="block text-sm font-medium text-gray-700">商品搭配</Text>
+                    <Text className="block text-xs text-gray-400">搭配更热卖 填写更便捷</Text>
+                  </View>
+
+                  {combinations.map((combo) => (
+                    <View key={combo.id} className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
+                      {/* 菜品组名称 */}
+                      <View className="mb-3">
+                        <Input
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                          placeholder="填写菜品组名称"
+                          value={combo.name}
+                          onInput={(e) => updateCombinationName(combo.id, e.detail.value)}
+                        />
+                      </View>
+
+                      {/* 商品项列表 */}
+                      {combo.items.map((item) => (
+                        <View key={item.id} className="flex items-center gap-2 mb-2">
+                          <View className="flex-1">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                              placeholder="请选择点单标品"
+                              value={item.name}
+                              onInput={(e) => updateItem(combo.id, item.id, 'name', e.detail.value)}
+                            />
+                          </View>
+                          <View className="w-16">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-center"
+                              placeholder="份数"
+                              type="number"
+                              value={String(item.quantity)}
+                              onInput={(e) => updateItem(combo.id, item.id, 'quantity', parseInt(e.detail.value) || 1)}
+                            />
+                          </View>
+                          <View className="w-20">
+                            <Input
+                              className="w-full border border-gray-200 rounded-lg px-2 py-2"
+                              placeholder="单价"
+                              type="digit"
+                              value={item.price}
+                              onInput={(e) => updateItem(combo.id, item.id, 'price', e.detail.value)}
+                            />
+                          </View>
+                          <Button
+                            variant="ghost"
+                            onClick={() => removeItemFromCombination(combo.id, item.id)}
+                          >
+                            <Trash2 size={16} color="#ef4444" />
+                          </Button>
+                        </View>
+                      ))}
+
+                      {/* 添加商品项 */}
+                      <Button
+                        className="w-full mt-2"
+                        variant="outline"
+                        onClick={() => addItemToCombination(combo.id)}
+                      >
+                        <Plus size={16} color="#666" />
+                        <Text className="block ml-1">添加</Text>
+                      </Button>
+
+                      {/* 删除菜品组 */}
+                      <Button
+                        className="w-full mt-2 text-red-500"
+                        variant="ghost"
+                        onClick={() => removeCombination(combo.id)}
+                      >
+                        <Trash2 size={16} color="#ef4444" />
+                        <Text className="block ml-1">删除菜品组</Text>
+                      </Button>
+                    </View>
+                  ))}
+
+                  {/* 添加菜品组 */}
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={addCombination}
+                  >
+                    <Plus size={16} color="#666" />
+                    <Text className="block ml-1">添加菜品组</Text>
+                  </Button>
                 </View>
 
                 {/* 商品资质 */}
