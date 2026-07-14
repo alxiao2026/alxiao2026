@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Network } from '@/network';
 import { Plus, Pencil, Trash2, X, Store } from 'lucide-react-taro';
+import { DOUYIN_CATEGORIES } from '@/data/categories';
 
 interface Merchant {
   id: number;
@@ -24,6 +25,7 @@ export default function MerchantAdmin() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -258,12 +260,14 @@ export default function MerchantAdmin() {
               {/* 商家分类 */}
               <View className="mb-4">
                 <Text className="block text-sm font-medium text-gray-800 mb-2">商家分类</Text>
-                <Input
-                  className="w-full"
-                  placeholder="如：餐饮美食、美容美发"
-                  value={formData.category}
-                  onInput={(e) => setFormData({ ...formData, category: e.detail.value })}
-                />
+                <View
+                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3"
+                  onClick={() => setShowCategoryPicker(true)}
+                >
+                  <Text className="block text-sm text-gray-500">
+                    {formData.category || '请选择商家分类'}
+                  </Text>
+                </View>
               </View>
 
               {/* 商家地址 */}
@@ -328,6 +332,47 @@ export default function MerchantAdmin() {
               >
                 <Text className="text-white">保存</Text>
               </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 分类选择弹窗 */}
+      {showCategoryPicker && (
+        <View
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <View className="w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
+            {/* 弹窗头部 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-semibold text-gray-900">选择商家分类</Text>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowCategoryPicker(false)}
+              >
+                <X size={20} color="#666" />
+              </Button>
+            </View>
+
+            {/* 分类列表 */}
+            <View className="flex-1 overflow-y-auto p-4">
+              {DOUYIN_CATEGORIES.map((cat) => (
+                <View
+                  key={cat.name}
+                  className="py-3 px-4 border-b border-gray-100 flex items-center justify-between"
+                  onClick={() => {
+                    setFormData({ ...formData, category: cat.name });
+                    setShowCategoryPicker(false);
+                  }}
+                >
+                  <Text className="block text-base text-gray-900">{cat.name}</Text>
+                  {formData.category === cat.name && (
+                    <Text className="block text-sm text-orange-500">已选择</Text>
+                  )}
+                </View>
+              ))}
             </View>
           </View>
         </View>
