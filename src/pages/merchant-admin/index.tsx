@@ -344,8 +344,8 @@ export default function MerchantAdmin() {
       {/* 分类选择弹窗 */}
       {showCategoryPicker && (
         <View
-          className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          className="fixed inset-0 flex items-end justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 110 }}
         >
           <View className="w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             {/* 弹窗头部 */}
