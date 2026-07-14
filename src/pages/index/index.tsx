@@ -329,53 +329,59 @@ const IndexPage = () => {
             packages.map((pkg) => {
               const features = parseFeatures(pkg.features);
               return (
-                <Card
+                <View
                   key={pkg.id}
-                  className="rounded-2xl border-2 border-red-300 shadow-lg mb-3"
+                  className="mb-3"
+                  onClick={() => Taro.navigateTo({ url: `/pages/package-detail/index?id=${pkg.id}` })}
                 >
-                  <CardContent className="p-6">
-                    <View className="flex flex-row items-center justify-between mb-3">
-                      <View className="flex flex-row items-center gap-2">
-                        <ShoppingBag size={22} color="#FF4757" />
-                        <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
+                  <Card className="rounded-2xl border-2 border-red-300 shadow-lg">
+                    <CardContent className="p-6">
+                      <View className="flex flex-row items-center justify-between mb-3">
+                        <View className="flex flex-row items-center gap-2">
+                          <ShoppingBag size={22} color="#FF4757" />
+                          <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
+                        </View>
+                        {pkg.badge && (
+                          <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
+                        )}
                       </View>
-                      {pkg.badge && (
-                        <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
+
+                      {pkg.description && (
+                        <Text className="block text-sm text-gray-500 mb-3">{pkg.description}</Text>
                       )}
-                    </View>
 
-                    {pkg.description && (
-                      <Text className="block text-sm text-gray-500 mb-3">{pkg.description}</Text>
-                    )}
-
-                    <View className="flex flex-row items-baseline gap-1 mb-4">
-                      <Text className="block text-3xl font-bold text-red-500">¥{pkg.price}</Text>
-                      {pkg.original_price && (
-                        <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
-                      )}
-                    </View>
-
-                    {features.length > 0 && (
-                      <View className="flex flex-col gap-2 mb-4">
-                        {features.map((feature, i) => (
-                          <View key={i} className="flex flex-row items-center gap-2">
-                            <Zap size={14} color="#FFA502" />
-                            <Text className="block text-xs text-gray-600">{feature}</Text>
-                          </View>
-                        ))}
+                      <View className="flex flex-row items-baseline gap-1 mb-4">
+                        <Text className="block text-3xl font-bold text-red-500">¥{pkg.price}</Text>
+                        {pkg.original_price && (
+                          <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
+                        )}
                       </View>
-                    )}
 
-                    <Button
-                      className="w-full bg-red-500 hover:bg-red-600"
-                      size="lg"
-                      onClick={() => handlePurchase(pkg)}
-                      disabled={loading}
-                    >
-                      <Text className="block text-white font-semibold">{loading ? '购买中...' : '立即购买'}</Text>
-                    </Button>
-                  </CardContent>
-                </Card>
+                      {features.length > 0 && (
+                        <View className="flex flex-col gap-2 mb-4">
+                          {features.map((feature, i) => (
+                            <View key={i} className="flex flex-row items-center gap-2">
+                              <Zap size={14} color="#FFA502" />
+                              <Text className="block text-xs text-gray-600">{feature}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      <Button
+                        className="w-full bg-red-500 hover:bg-red-600"
+                        size="lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePurchase(pkg);
+                        }}
+                        disabled={loading}
+                      >
+                        <Text className="block text-white font-semibold">{loading ? '购买中...' : '立即购买'}</Text>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </View>
               );
             })
           )}
