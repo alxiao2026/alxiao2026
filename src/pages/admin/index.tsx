@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Gift, ShoppingBag } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, ShoppingBag, Store } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -312,6 +312,10 @@ const AdminPage = () => {
               <ShoppingBag size={14} color="#6b7280" className="mr-1" />
               <Text className="block text-sm">套餐管理</Text>
             </TabsTrigger>
+            <TabsTrigger value="merchants" className="flex-1">
+              <Store size={14} color="#6b7280" className="mr-1" />
+              <Text className="block text-sm">商家管理</Text>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="prizes" className="mt-3">
@@ -437,6 +441,18 @@ const AdminPage = () => {
                 </Card>
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="merchants" className="mt-3">
+            <View className="flex items-center justify-center py-8">
+              <Button
+                onClick={() => Taro.navigateTo({ url: '/pages/merchant-admin/index' })}
+                className="flex items-center gap-2"
+              >
+                <Store size={16} color="#fff" />
+                <Text className="text-white text-sm">进入商家管理</Text>
+              </Button>
+            </View>
           </TabsContent>
         </Tabs>
       </View>

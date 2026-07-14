@@ -3,7 +3,8 @@ export default defineAppConfig({
     'pages/index/index',
     'pages/admin/index',
     'pages/package-detail/index',
-    'pages/package-admin/index'
+    'pages/package-admin/index',
+    'pages/merchant-admin/index'
   ],
   window: {
     backgroundTextStyle: 'light',

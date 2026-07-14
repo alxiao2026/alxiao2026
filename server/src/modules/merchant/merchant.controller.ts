@@ -1,0 +1,58 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { MerchantService, CreateMerchantDto, UpdateMerchantDto } from './merchant.service';
+
+@Controller('merchants')
+export class MerchantController {
+  constructor(private readonly merchantService: MerchantService) {}
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  async findAll() {
+    const data = await this.merchantService.findAll();
+    return { code: 200, msg: 'success', data };
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async findById(@Param('id') id: string) {
+    const data = await this.merchantService.findById(Number(id));
+    if (!data) {
+      return { code: 404, msg: '商家不存在', data: null };
+    }
+    return { code: 200, msg: 'success', data };
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.OK)
+  async create(@Body() body: CreateMerchantDto) {
+    if (!body.name) {
+      return { code: 400, msg: '商家名称不能为空', data: null };
+    }
+    const data = await this.merchantService.create(body);
+    return { code: 200, msg: 'success', data };
+  }
+
+  @Put(':id')
+  @HttpCode(HttpStatus.OK)
+  async update(@Param('id') id: string, @Body() body: UpdateMerchantDto) {
+    const data = await this.merchantService.update(Number(id), body);
+    return { code: 200, msg: 'success', data };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async delete(@Param('id') id: string) {
+    await this.merchantService.delete(Number(id));
+    return { code: 200, msg: 'success', data: { success: true } };
+  }
+}

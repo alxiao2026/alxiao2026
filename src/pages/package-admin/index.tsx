@@ -50,6 +50,11 @@ export default function PackageAdmin() {
   const [showTypePicker, setShowTypePicker] = useState(false)
   const [packageType, setPackageType] = useState<'combo' | 'voucher'>('combo')
 
+  // 商家选择
+  const [showMerchantPicker, setShowMerchantPicker] = useState(false)
+  const [merchants, setMerchants] = useState<any[]>([])
+  const [selectedMerchant, setSelectedMerchant] = useState<any>(null)
+
   // 表单数据
   const [formData, setFormData] = useState<Package>({
     id: '',
@@ -77,7 +82,20 @@ export default function PackageAdmin() {
     if (id) {
       fetchPackage(id)
     }
+    loadMerchants()
   }, [id])
+
+  const loadMerchants = async () => {
+    try {
+      const res = await Network.request({ url: '/api/merchants' })
+      console.log('商家列表响应:', res.data)
+      if (res.data?.code === 200) {
+        setMerchants(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('加载商家失败:', error)
+    }
+  }
 
   const fetchPackage = async (packageId: string) => {
     try {
@@ -436,9 +454,19 @@ export default function PackageAdmin() {
 
                 <View className="mb-4">
                   <Text className="block text-sm text-gray-600 mb-2">商家名称</Text>
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-800">膨胀团 · 手作体验</Text>
-                    <Badge className="bg-gray-200 text-gray-600 text-xs">不可编辑</Badge>
+                  <View
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+                    onClick={() => setShowMerchantPicker(true)}
+                  >
+                    <Text className="block text-sm text-gray-800">
+                      {selectedMerchant ? selectedMerchant.name : '请选择商家'}
+                    </Text>
+                    <View className="flex items-center gap-2">
+                      {selectedMerchant && (
+                        <Badge className="bg-blue-100 text-blue-600 text-xs">已选择</Badge>
+                      )}
+                      <ChevronRight size={16} color="#9ca3af" />
+                    </View>
                   </View>
                 </View>
 
@@ -841,6 +869,82 @@ export default function PackageAdmin() {
                   {packageType === 'voucher' && <Check size={20} color="#3b82f6" />}
                 </View>
               </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 商家选择弹窗 */}
+      {showMerchantPicker && (
+        <View
+          className="fixed inset-0 bg-black"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+          onClick={() => setShowMerchantPicker(false)}
+        >
+          <View
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl"
+            style={{ maxHeight: '70vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗头部 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-base font-semibold text-gray-800">选择商家</Text>
+              <View onClick={() => setShowMerchantPicker(false)}>
+                <X size={20} color="#666" />
+              </View>
+            </View>
+
+            {/* 商家列表 */}
+            <View className="overflow-y-auto" style={{ maxHeight: '50vh' }}>
+              {merchants.length === 0 ? (
+                <View className="flex items-center justify-center py-12">
+                  <Text className="block text-gray-500">暂无商家，请先添加</Text>
+                </View>
+              ) : (
+                merchants.map((merchant) => (
+                  <View
+                    key={merchant.id}
+                    className={`px-4 py-4 border-b border-gray-100 ${
+                      selectedMerchant?.id === merchant.id ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedMerchant(merchant);
+                      setShowMerchantPicker(false);
+                    }}
+                  >
+                    <View className="flex items-center justify-between">
+                      <View className="flex-1">
+                        <Text className="block text-sm font-medium text-gray-800">
+                          {merchant.name}
+                        </Text>
+                        {merchant.category && (
+                          <Text className="block text-xs text-gray-500 mt-1">
+                            {merchant.category}
+                          </Text>
+                        )}
+                        {merchant.address && (
+                          <Text className="block text-xs text-gray-500 mt-1">
+                            {merchant.address}
+                          </Text>
+                        )}
+                      </View>
+                      {selectedMerchant?.id === merchant.id && (
+                        <Check size={20} color="#3b82f6" />
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* 底部按钮 */}
+            <View className="p-4 border-t border-gray-200">
+              <Button
+                className="w-full"
+                onClick={() => Taro.navigateTo({ url: '/pages/merchant-admin/index' })}
+              >
+                <Text className="block text-sm">管理商家</Text>
+              </Button>
             </View>
           </View>
         </View>
