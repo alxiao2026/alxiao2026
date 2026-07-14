@@ -52,7 +52,6 @@ interface LotteryResult {
 }
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
-const LOGO_CHAR_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_char_0f454fa7.png?sign=1786610806-168fac6414-0-c946bf6bbffd5b1b63feb8939f97e081969a6ce798d722f4cdb002bf2bf01529';
 
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
@@ -207,23 +206,7 @@ const IndexPage = () => {
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
         {/* 顶部横幅 */}
-        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10 relative overflow-hidden">
-          {/* Logo 字符背景装饰 */}
-          <Image
-            src={LOGO_CHAR_URL}
-            className="absolute right-0 top-0 w-40 h-40 opacity-10"
-            mode="aspectFit"
-          />
-          <Image
-            src={LOGO_CHAR_URL}
-            className="absolute -left-8 -bottom-8 w-32 h-32 opacity-5"
-            mode="aspectFit"
-          />
-          <Image
-            src={LOGO_CHAR_URL}
-            className="absolute right-20 -bottom-4 w-24 h-24 opacity-5"
-            mode="aspectFit"
-          />
+        <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 pt-6 pb-10">
           <View className="flex flex-row items-center gap-3 mb-2">
             <Image
               src={LOGO_URL}
