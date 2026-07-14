@@ -263,14 +263,15 @@ export default function MerchantAdmin() {
               {/* 商家分类 */}
               <View className="mb-4">
                 <Text className="block text-sm font-medium text-gray-800 mb-2">商家分类</Text>
-                <View
-                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3"
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-auto py-3 px-4"
                   onClick={() => setShowCategoryPicker(true)}
                 >
                   <Text className="block text-sm text-gray-500">
                     {formData.category || '请选择商家分类'}
                   </Text>
-                </View>
+                </Button>
               </View>
 
               {/* 商家地址 */}
