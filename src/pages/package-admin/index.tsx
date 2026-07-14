@@ -42,6 +42,7 @@ export default function PackageAdmin() {
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [merchantSearch, setMerchantSearch] = useState('')
 
   // 步骤定义
   const steps = [
@@ -968,21 +969,41 @@ export default function PackageAdmin() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* 弹窗头部 */}
-            <View className="flex items-center justify-between p-4 border-b border-gray-200">
-              <Text className="block text-base font-semibold text-gray-800">选择商家</Text>
-              <View onClick={() => setShowMerchantPicker(false)}>
-                <X size={20} color="#666" />
+            <View className="p-4 border-b border-gray-200">
+              <View className="flex items-center justify-between mb-3">
+                <Text className="block text-base font-semibold text-gray-800">选择商家</Text>
+                <View onClick={() => { setShowMerchantPicker(false); setMerchantSearch(''); }}>
+                  <X size={20} color="#666" />
+                </View>
+              </View>
+              {/* 搜索框 */}
+              <View className="bg-gray-100 rounded-xl px-4 py-3">
+                <Input
+                  className="w-full"
+                  placeholder="输入门店名称关键词搜索"
+                  value={merchantSearch}
+                  onInput={(e) => setMerchantSearch(e.detail.value)}
+                  style={{ backgroundColor: 'transparent' }}
+                />
               </View>
             </View>
 
             {/* 商家列表 */}
             <View className="overflow-y-auto" style={{ maxHeight: '50vh' }}>
-              {merchants.length === 0 ? (
-                <View className="flex items-center justify-center py-12">
-                  <Text className="block text-gray-500">暂无商家，请先添加</Text>
-                </View>
-              ) : (
-                merchants.map((merchant) => (
+              {(() => {
+                const filteredMerchants = merchants.filter((m) =>
+                  m.name.toLowerCase().includes(merchantSearch.toLowerCase())
+                );
+                if (filteredMerchants.length === 0) {
+                  return (
+                    <View className="flex items-center justify-center py-12">
+                      <Text className="block text-gray-500">
+                        {merchantSearch ? '未找到匹配的商家' : '暂无商家，请先添加'}
+                      </Text>
+                    </View>
+                  );
+                }
+                return filteredMerchants.map((merchant) => (
                   <View
                     key={merchant.id}
                     className={`px-4 py-4 border-b border-gray-100 ${
@@ -1014,8 +1035,8 @@ export default function PackageAdmin() {
                       )}
                     </View>
                   </View>
-                ))
-              )}
+                ));
+              })()}
             </View>
 
             {/* 底部按钮 */}
