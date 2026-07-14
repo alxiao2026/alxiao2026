@@ -219,8 +219,6 @@ const IndexPage = () => {
                 mode="aspectFill"
               />
             </View>
-            <Text className="block text-3xl font-bold text-white mt-3">膨胀团</Text>
-            <Text className="block text-sm text-white mt-1 opacity-80">越膨胀越惊喜！</Text>
           </View>
 
           {/* 用户信息 */}
