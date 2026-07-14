@@ -865,6 +865,11 @@ export default function PackageAdmin() {
                           onClick={() => {
                             setSelectedLevel2(level2.id);
                             setShowCategoryPicker(false);
+                            // 更新表单数据
+                            setFormData((prev) => ({
+                              ...prev,
+                              category: `${level1.name} · ${level2.name}`
+                            }));
                           }}
                         >
                           <View className="flex items-center justify-between">
