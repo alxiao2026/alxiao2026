@@ -1402,19 +1402,19 @@ export default function PackageAdmin() {
               <View className="flex items-center justify-between">
                 <Text className="block text-base font-medium text-gray-900">数量</Text>
                 <View className="flex items-center gap-3">
-                  <View
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg"
+                  <Button
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg border-none"
                     onClick={decreaseQuantity}
                   >
                     <Text className="block text-lg text-gray-600">-</Text>
-                  </View>
+                  </Button>
                   <Text className="block text-lg font-medium text-gray-900 w-8 text-center">{specQuantity}</Text>
-                  <View
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg"
+                  <Button
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg border-none"
                     onClick={increaseQuantity}
                   >
                     <Text className="block text-lg text-gray-600">+</Text>
-                  </View>
+                  </Button>
                 </View>
               </View>
             </View>
