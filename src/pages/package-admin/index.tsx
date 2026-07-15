@@ -908,9 +908,10 @@ export default function PackageAdmin() {
                       </View>
                     </View>
                   ) : (
-                    <Button
-                      className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-transparent"
+                    <View
+                      className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50"
                       onClick={handleUploadCover}
+                      style={{ cursor: 'pointer' }}
                     >
                       {uploadingCover ? (
                         <Text className="block text-xs text-gray-400">上传中...</Text>
@@ -920,7 +921,7 @@ export default function PackageAdmin() {
                           <Text className="block text-xs text-gray-400 mt-1">添加头图 0/5</Text>
                         </>
                       )}
-                    </Button>
+                    </View>
                   )}
                 </View>
 
@@ -945,9 +946,10 @@ export default function PackageAdmin() {
                       </View>
                     ))}
                     {formData.environment_images.length < 10 && (
-                      <Button
-                        className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-transparent"
+                      <View
+                        className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50"
                         onClick={handleUploadEnv}
+                        style={{ cursor: 'pointer' }}
                       >
                         {uploadingEnv ? (
                           <Text className="block text-xs text-gray-400">上传中...</Text>
@@ -957,7 +959,7 @@ export default function PackageAdmin() {
                             <Text className="block text-xs text-gray-400 mt-1">添加环境图 {formData.environment_images.length}/10</Text>
                           </>
                         )}
-                      </Button>
+                      </View>
                     )}
                   </View>
                 </View>
