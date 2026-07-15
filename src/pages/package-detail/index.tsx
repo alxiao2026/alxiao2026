@@ -168,7 +168,7 @@ export default function PackageDetail() {
         </View>
 
         {/* 套餐详情 */}
-        {pkg.combinations && pkg.combinations.length > 0 && (
+        {pkg.combinations && Array.isArray(pkg.combinations) && pkg.combinations.length > 0 && (
           <View className="bg-white mt-2 px-4 py-4">
             <View className="flex flex-row items-center gap-2 mb-3">
               <Star size={18} color="#F59E0B" />
