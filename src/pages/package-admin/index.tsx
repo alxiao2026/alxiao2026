@@ -1106,7 +1106,7 @@ export default function PackageAdmin() {
                   <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张。</Text>
 
                   <View className="flex flex-wrap gap-2">
-                    {formData.environment_images.map((url, index) => (
+                    {Array.isArray(formData.environment_images) && formData.environment_images.map((url, index) => (
                       <View key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
                         <Image src={url} className="w-full h-full" mode="aspectFill" />
                         <View
