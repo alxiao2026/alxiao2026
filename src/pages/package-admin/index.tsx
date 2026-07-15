@@ -800,17 +800,6 @@ export default function PackageAdmin() {
                         </View>
                       </View>
 
-                      {/* 合计栏 */}
-                      <View className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
-                        <Text className="block text-sm font-medium text-gray-700">合计</Text>
-                        <Text className="block text-lg font-bold text-blue-600">
-                          ¥{combo.items.reduce((sum, item) => {
-                            const price = parseFloat(item.price) || 0
-                            return sum + price * item.quantity
-                          }, 0).toFixed(2)}
-                        </Text>
-                      </View>
-
                       {/* 添加商品项 */}
                       <Button
                         className="w-full mt-2"
@@ -832,6 +821,21 @@ export default function PackageAdmin() {
                       </Button>
                     </View>
                   ))}
+
+                  {/* 总合计栏 */}
+                  {combinations.length > 0 && (
+                    <View className="bg-gray-50 rounded-lg p-4 mt-3 flex items-center justify-between">
+                      <Text className="block text-base font-medium text-gray-900">合计</Text>
+                      <Text className="block text-xl font-bold text-gray-900">
+                        ¥{combinations.reduce((total, combo) => {
+                          return total + combo.items.reduce((sum, item) => {
+                            const price = parseFloat(item.price) || 0
+                            return sum + price * item.quantity
+                          }, 0)
+                        }, 0).toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* 添加商品组 */}
                   <Button
