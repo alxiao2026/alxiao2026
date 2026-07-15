@@ -232,14 +232,23 @@ export default function PackageAdmin() {
 
   const increaseQuantity = () => {
     console.log('increaseQuantity - before:', specQuantity)
-    setSpecQuantity(specQuantity + 1)
+    setSpecQuantity(prev => {
+      const newValue = prev + 1
+      console.log('increaseQuantity - after:', newValue)
+      return newValue
+    })
   }
 
   const decreaseQuantity = () => {
     console.log('decreaseQuantity - before:', specQuantity)
-    if (specQuantity > 1) {
-      setSpecQuantity(specQuantity - 1)
-    }
+    setSpecQuantity(prev => {
+      if (prev > 1) {
+        const newValue = prev - 1
+        console.log('decreaseQuantity - after:', newValue)
+        return newValue
+      }
+      return prev
+    })
   }
 
   // 步骤验证
