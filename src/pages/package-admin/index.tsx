@@ -350,7 +350,19 @@ export default function PackageAdmin() {
       // 后端直接返回套餐对象，没有包裹在 data 字段中
       const pkg = res.data?.data || res.data
       if (pkg && pkg.id) {
-        setFormData(pkg)
+        // 确保数组和字符串字段有默认值，避免 null 错误
+        setFormData({
+          ...pkg,
+          environment_images: pkg.environment_images || [],
+          description: pkg.description || '',
+          features: pkg.features || '',
+          badge: pkg.badge || '',
+          cover_image: pkg.cover_image || '',
+          category: pkg.category || '',
+          package_type: pkg.package_type || '',
+          merchant_id: pkg.merchant_id || '',
+          combinations: pkg.combinations || [],
+        })
         // 解析 features
         if (pkg.features) {
           try {
