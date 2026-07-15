@@ -541,8 +541,18 @@ export default function PackageAdmin() {
       const featuresJson = JSON.stringify(featureItems.map(item => item.text))
 
       const submitData = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        original_price: formData.original_price,
+        badge: formData.badge,
         features: featuresJson,
+        cover_image: formData.cover_image,
+        environment_images: formData.environment_images,
+        stock: formData.stock,
+        sale_start_date: formData.sale_start_date || null,
+        sale_end_date: formData.sale_end_date || null,
+        auto_renew: formData.auto_renew || false,
         combinations: JSON.stringify(combinations)
       }
 
@@ -565,7 +575,7 @@ export default function PackageAdmin() {
 
       console.log('Submit response:', res.data)
 
-      if (res.data?.code === 200 || res.data?.data) {
+      if (res.data?.id || res.data?.data?.id) {
         Taro.showToast({ title: '提交成功', icon: 'success' })
         // 提交成功后清除草稿
         Taro.removeStorageSync('package_draft')
@@ -573,7 +583,7 @@ export default function PackageAdmin() {
           Taro.navigateBack()
         }, 1500)
       } else {
-        Taro.showToast({ title: '提交失败', icon: 'error' })
+        Taro.showToast({ title: res.data?.message || '提交失败', icon: 'error' })
       }
     } catch (error) {
       console.error('Submit failed:', error)
