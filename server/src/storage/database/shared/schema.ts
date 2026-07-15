@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, varchar, text, boolean, numeric, integer, index } from "drizzle-orm/pg-core"
+import { pgTable, serial, timestamp, varchar, text, boolean, numeric, integer, index, jsonb } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const healthCheck = pgTable("health_check", {
@@ -54,6 +54,10 @@ export const packages = pgTable("packages", {
 	sale_start_date: varchar("sale_start_date", { length: 20 }), // 售卖开始日期
 	sale_end_date: varchar("sale_end_date", { length: 20 }), // 售卖结束日期
 	auto_renew: boolean("auto_renew").notNull().default(false), // 自动延期
+	category: text("category"), // 商品品类
+	package_type: varchar("package_type", { length: 20 }), // 团购类型：combo/voucher
+	merchant_id: varchar("merchant_id", { length: 36 }), // 商家 ID
+	combinations: jsonb("combinations"), // 商品搭配 JSON
 	is_active: boolean("is_active").notNull().default(true),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),

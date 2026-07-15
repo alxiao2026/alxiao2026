@@ -67,6 +67,10 @@ export class PackageService {
     sale_start_date?: string;
     sale_end_date?: string;
     auto_renew?: boolean;
+    category?: string;
+    package_type?: string;
+    merchant_id?: string;
+    combinations?: any;
   }): Promise<Package> {
     if (!body.name) throw new BadRequestException('套餐名称不能为空');
 
@@ -85,6 +89,10 @@ export class PackageService {
         sale_start_date: body.sale_start_date || null,
         sale_end_date: body.sale_end_date || null,
         auto_renew: body.auto_renew || false,
+        category: body.category || null,
+        package_type: body.package_type || null,
+        merchant_id: body.merchant_id || null,
+        combinations: body.combinations || null,
       })
       .select()
       .single();
@@ -106,6 +114,10 @@ export class PackageService {
     sale_end_date: string;
     auto_renew: boolean;
     is_active: boolean;
+    category: string;
+    package_type: string;
+    merchant_id: string;
+    combinations: any;
   }>): Promise<Package> {
     await this.findOne(id);
 
@@ -123,6 +135,10 @@ export class PackageService {
     if (body.sale_end_date !== undefined) updateData.sale_end_date = body.sale_end_date;
     if (body.auto_renew !== undefined) updateData.auto_renew = body.auto_renew;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.package_type !== undefined) updateData.package_type = body.package_type;
+    if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
+    if (body.combinations !== undefined) updateData.combinations = body.combinations;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client

@@ -388,6 +388,10 @@ export default function PackageAdmin() {
             console.error('加载商家信息失败')
           }
         }
+        // 加载套餐类型
+        if (pkg.package_type) {
+          setPackageType(pkg.package_type)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch package:', error)
@@ -580,6 +584,9 @@ export default function PackageAdmin() {
         sale_start_date: formData.sale_start_date || null,
         sale_end_date: formData.sale_end_date || null,
         auto_renew: formData.auto_renew || false,
+        category: formData.category || null,
+        package_type: packageType,
+        merchant_id: selectedMerchant?.id || null,
         combinations: JSON.stringify(combinations)
       }
 
