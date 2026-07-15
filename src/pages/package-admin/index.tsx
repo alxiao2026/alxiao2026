@@ -603,7 +603,7 @@ export default function PackageAdmin() {
         category: formData.category || null,
         package_type: packageType,
         merchant_id: selectedMerchant?.id || null,
-        combinations: JSON.stringify(combinations)
+        combinations: combinations
       }
 
       let res
