@@ -582,6 +582,44 @@ export default function PackageAdmin() {
     }
   }
 
+  // 清除草稿
+  const clearDraft = () => {
+    Taro.showModal({
+      title: '确认清除',
+      content: '确定要清除草稿吗？清除后无法恢复。',
+      success: (res) => {
+        if (res.confirm) {
+          Taro.removeStorageSync('package_draft')
+          Taro.showToast({ title: '草稿已清除', icon: 'success' })
+          // 重置所有状态
+          setFormData({
+            id: '',
+            name: '',
+            description: '',
+            price: '0',
+            original_price: '0',
+            badge: '',
+            features: '',
+            category: '',
+            cover_image: '',
+            environment_images: [],
+            stock: 0,
+            sale_start_date: '',
+            sale_end_date: '',
+            is_active: true,
+            created_at: '',
+            updated_at: ''
+          })
+          setFeatureItems([])
+          setCombinations([])
+          setCurrentStep(0)
+          setPackageType('combo')
+          setSelectedMerchant(null)
+        }
+      }
+    })
+  }
+
   // 加载草稿
   const loadDraft = () => {
     try {
@@ -630,9 +668,14 @@ export default function PackageAdmin() {
             <ArrowLeft size={20} color="#333" />
           </View>
           <Text className="block text-base font-semibold text-gray-800">商品创建</Text>
-          <Button size="sm" variant="outline" onClick={saveDraft}>
-            <Text className="text-xs">保存草稿</Text>
-          </Button>
+          <View className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={clearDraft}>
+              <Text className="text-xs">清除草稿</Text>
+            </Button>
+            <Button size="sm" variant="outline" onClick={saveDraft}>
+              <Text className="text-xs">保存草稿</Text>
+            </Button>
+          </View>
         </View>
 
         {/* 步骤指示器 */}
