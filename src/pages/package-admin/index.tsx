@@ -731,7 +731,7 @@ export default function PackageAdmin() {
                       <View className="bg-gray-50 rounded-lg p-4 mb-2">
                         <View className="flex items-center justify-between mb-3">
                           <Text className="block text-base font-medium text-gray-900">
-                            共 {combo.items.length} 个商品：{combo.select_count}选{combo.items.length}
+                            共 {combo.items.length} 个商品：{combo.items.length}选{combo.select_count}
                           </Text>
                           <ChevronRight size={20} color="#666" />
                         </View>
