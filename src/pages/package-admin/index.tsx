@@ -361,6 +361,30 @@ export default function PackageAdmin() {
             setFeatureItems(pkg.features.split('\n').filter(Boolean).map((text: string, index: number) => ({ id: `feature-${index}`, text })))
           }
         }
+        // 加载商品搭配
+        if (pkg.combinations) {
+          try {
+            const parsed = typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : pkg.combinations
+            if (Array.isArray(parsed)) {
+              setCombinations(parsed)
+            }
+          } catch {
+            console.error('解析商品搭配失败:', pkg.combinations)
+          }
+        }
+        // 加载商家信息
+        if (pkg.merchant_id) {
+          try {
+            const merchantRes = await Network.request({
+              url: `/api/merchants/${pkg.merchant_id}`
+            })
+            if (merchantRes.data?.data) {
+              setSelectedMerchant(merchantRes.data.data)
+            }
+          } catch {
+            console.error('加载商家信息失败')
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch package:', error)
