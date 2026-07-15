@@ -24,6 +24,7 @@ interface Package {
   stock: number
   sale_start_date: string
   sale_end_date: string
+  auto_renew: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -115,6 +116,7 @@ export default function PackageAdmin() {
     stock: 0,
     sale_start_date: '',
     sale_end_date: '',
+    auto_renew: false,
     is_active: true,
     created_at: '',
     updated_at: ''
@@ -598,6 +600,7 @@ export default function PackageAdmin() {
             stock: 0,
             sale_start_date: '',
             sale_end_date: '',
+            auto_renew: false,
             is_active: true,
             created_at: '',
             updated_at: ''
@@ -1140,7 +1143,6 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">商品售卖日期</Text>
-                    <Text className="block text-red-500">*</Text>
                   </View>
                   <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
                     <Text className="block text-sm text-gray-800">
@@ -1149,6 +1151,28 @@ export default function PackageAdmin() {
                         : '不限时间'}
                     </Text>
                     <Text className="block text-sm text-gray-400">›</Text>
+                  </View>
+                </View>
+
+                {/* 自动延期 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                    <View className="flex-1">
+                      <Text className="block text-sm text-gray-800">自动延期</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">到期后每半年自动延期一次</Text>
+                    </View>
+                    <View
+                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                        formData.auto_renew ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                      onClick={() => updateFormData('auto_renew', !formData.auto_renew)}
+                    >
+                      <View
+                        className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          formData.auto_renew ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </View>
                   </View>
                 </View>
 

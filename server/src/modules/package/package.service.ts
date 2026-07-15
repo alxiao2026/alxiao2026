@@ -14,6 +14,7 @@ export interface Package {
   stock: number;
   sale_start_date: string | null;
   sale_end_date: string | null;
+  auto_renew: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
@@ -65,6 +66,7 @@ export class PackageService {
     stock?: number;
     sale_start_date?: string;
     sale_end_date?: string;
+    auto_renew?: boolean;
   }): Promise<Package> {
     if (!body.name) throw new BadRequestException('套餐名称不能为空');
 
@@ -82,6 +84,7 @@ export class PackageService {
         stock: body.stock || 0,
         sale_start_date: body.sale_start_date || null,
         sale_end_date: body.sale_end_date || null,
+        auto_renew: body.auto_renew || false,
       })
       .select()
       .single();
@@ -101,6 +104,7 @@ export class PackageService {
     stock: number;
     sale_start_date: string;
     sale_end_date: string;
+    auto_renew: boolean;
     is_active: boolean;
   }>): Promise<Package> {
     await this.findOne(id);
@@ -117,6 +121,7 @@ export class PackageService {
     if (body.stock !== undefined) updateData.stock = body.stock;
     if (body.sale_start_date !== undefined) updateData.sale_start_date = body.sale_start_date;
     if (body.sale_end_date !== undefined) updateData.sale_end_date = body.sale_end_date;
+    if (body.auto_renew !== undefined) updateData.auto_renew = body.auto_renew;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
     updateData.updated_at = new Date().toISOString();
 

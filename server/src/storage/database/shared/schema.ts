@@ -53,6 +53,7 @@ export const packages = pgTable("packages", {
 	stock: integer("stock").notNull().default(0), // 库存数量
 	sale_start_date: varchar("sale_start_date", { length: 20 }), // 售卖开始日期
 	sale_end_date: varchar("sale_end_date", { length: 20 }), // 售卖结束日期
+	auto_renew: boolean("auto_renew").notNull().default(false), // 自动延期
 	is_active: boolean("is_active").notNull().default(true),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
