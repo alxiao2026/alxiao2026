@@ -1404,20 +1404,20 @@ export default function PackageAdmin() {
             <View className="p-4 border-b border-gray-200">
               <View className="flex items-center justify-between">
                 <Text className="block text-base font-medium text-gray-900">数量</Text>
-                <View className="flex items-center gap-3">
-                  <Button
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg border-none"
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+                  <View
+                    style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', borderRadius: '8px', cursor: 'pointer' }}
                     onClick={decreaseQuantity}
                   >
                     <Text className="block text-lg text-gray-600">-</Text>
-                  </Button>
-                  <Text className="block text-lg font-medium text-gray-900 w-8 text-center">{specQuantity}</Text>
-                  <Button
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg border-none"
+                  </View>
+                  <Text className="block text-lg font-medium text-gray-900" style={{ width: '32px', textAlign: 'center' }}>{specQuantity}</Text>
+                  <View
+                    style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', borderRadius: '8px', cursor: 'pointer' }}
                     onClick={increaseQuantity}
                   >
                     <Text className="block text-lg text-gray-600">+</Text>
-                  </Button>
+                  </View>
                 </View>
               </View>
             </View>
