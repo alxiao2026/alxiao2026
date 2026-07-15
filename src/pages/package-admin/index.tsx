@@ -807,7 +807,6 @@ export default function PackageAdmin() {
                       <Text className="block text-sm text-gray-800 ml-2">元</Text>
                     </View>
                   </View>
-                  <Text className="block text-xs text-gray-400 mt-1">① 抖省省端 7% 服务费，非抖省省端 7% 服务费</Text>
                 </View>
 
                 {/* 商品头图 */}
