@@ -792,7 +792,6 @@ export default function PackageAdmin() {
                   </View>
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <View className="flex items-center">
-                      <Text className="block text-sm text-gray-800 mr-2">售价</Text>
                       <View className="flex-1">
                         <Input
                           className="w-full"
