@@ -58,6 +58,32 @@ export const packages = pgTable("packages", {
 	package_type: varchar("package_type", { length: 20 }), // 团购类型：combo/voucher
 	merchant_id: varchar("merchant_id", { length: 36 }), // 商家 ID
 	combinations: jsonb("combinations"), // 商品搭配 JSON
+	// 交易规则
+	purchase_limit: integer("purchase_limit").default(0), // 限购数量，0为不限制
+	purchase_limit_type: varchar("purchase_limit_type", { length: 20 }).default("unlimited"), // unlimited/limited
+	purchase_limit_per_day: integer("purchase_limit_per_day").default(0), // 每人每天限购
+	purchase_limit_per_month: integer("purchase_limit_per_month").default(0), // 每人每月限购
+	valid_days: integer("valid_days").default(60), // 有效天数
+	valid_from_purchase: boolean("valid_from_purchase").default(true), // 购买当天可用
+	valid_date_type: varchar("valid_date_type", { length: 20 }).default("days"), // days/date
+	valid_date_start: varchar("valid_date_start", { length: 20 }), // 指定日期开始
+	valid_date_end: varchar("valid_date_end", { length: 20 }), // 指定日期结束
+	unavailable_dates: jsonb("unavailable_dates"), // 不可用日期 JSON
+	unavailable_date_type: varchar("unavailable_date_type", { length: 20 }).default("all"), // all/partial
+	unavailable_weekdays: jsonb("unavailable_weekdays"), // 每周几不可用
+	unavailable_holidays: jsonb("unavailable_holidays"), // 节假日不可用
+	available_time_type: varchar("available_time_type", { length: 20 }).default("business_hours"), // business_hours/specified
+	available_time_start: varchar("available_time_start", { length: 10 }), // 可用时段开始
+	available_time_end: varchar("available_time_end", { length: 10 }), // 可用时段结束
+	limit_usage_count: boolean("limit_usage_count").default(false), // 限制使用张数
+	need_reservation: boolean("need_reservation").default(false), // 需要预约
+	// 消费规则
+	other_discount: text("other_discount"), // 店内其他优惠
+	private_room: text("private_room"), // 包间说明
+	dine_in_type: varchar("dine_in_type", { length: 20 }).default("all"), // 堂食外带约定
+	has_extra_fee: boolean("has_extra_fee").default(false), // 是否有额外费用
+	extra_fees: jsonb("extra_fees"), // 额外费用 JSON
+	other_notes: text("other_notes"), // 其他说明
 	is_active: boolean("is_active").notNull().default(true),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
