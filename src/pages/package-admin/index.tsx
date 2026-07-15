@@ -591,7 +591,7 @@ export default function PackageAdmin() {
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        original_price: formData.original_price,
+        original_price: formData.original_price || null,
         badge: formData.badge,
         features: featuresJson,
         cover_image: formData.cover_image,
