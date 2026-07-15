@@ -147,6 +147,7 @@ export default function PackageAdmin() {
   const [showWeekdayPicker, setShowWeekdayPicker] = useState(false)
   const [showHolidayPicker, setShowHolidayPicker] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const [timePickerMode, setTimePickerMode] = useState<'start' | 'end'>('start')
 
   // 交易规则临时状态
   const [tempPurchaseLimitType, setTempPurchaseLimitType] = useState('unlimited')
@@ -2747,65 +2748,87 @@ export default function PackageAdmin() {
               </View>
             </View>
 
-            {/* 时间显示 */}
+            {/* 时间显示和切换 */}
             <View className="p-4">
-              <View className="flex items-center justify-center gap-4 mb-6">
-                <View className="text-center">
+              <View className="flex items-center justify-center gap-4 mb-4">
+                <View
+                  className={`text-center px-4 py-2 rounded-lg ${
+                    timePickerMode === 'start' ? 'bg-blue-50 border border-blue-200' : ''
+                  }`}
+                  onClick={() => setTimePickerMode('start')}
+                >
                   <Text className="block text-sm text-blue-500 mb-1">开始</Text>
                   <Text className="block text-2xl font-medium text-blue-500">{tempAvailableTimeStart}</Text>
                 </View>
                 <Text className="block text-lg text-gray-400">至</Text>
-                <View className="text-center">
+                <View
+                  className={`text-center px-4 py-2 rounded-lg ${
+                    timePickerMode === 'end' ? 'bg-blue-50 border border-blue-200' : ''
+                  }`}
+                  onClick={() => setTimePickerMode('end')}
+                >
                   <Text className="block text-sm text-gray-500 mb-1">结束</Text>
                   <Text className="block text-2xl font-medium text-gray-800">{tempAvailableTimeEnd}</Text>
                 </View>
               </View>
 
-              {/* 小时选择 */}
-              <View className="mb-4">
-                <Text className="block text-sm text-gray-500 mb-2">选择小时</Text>
-                <View className="grid grid-cols-6 gap-2">
+              {/* 滚轮式时间选择器 */}
+              <View className="flex gap-4 h-48 border border-gray-200 rounded-lg overflow-hidden">
+                {/* 小时滚轮 */}
+                <View className="flex-1 overflow-y-auto">
                   {Array.from({ length: 24 }, (_, i) => (
                     <View
                       key={`hour-${i}`}
-                      className={`py-2 text-center rounded-lg ${
-                        parseInt(tempAvailableTimeStart.split(':')[0]) === i
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700'
+                      className={`py-3 text-center ${
+                        (timePickerMode === 'start'
+                          ? parseInt(tempAvailableTimeStart.split(':')[0])
+                          : parseInt(tempAvailableTimeEnd.split(':')[0])) === i
+                          ? 'text-blue-500 font-medium bg-blue-50'
+                          : 'text-gray-600'
                       }`}
                       onClick={() => {
-                        const parts = tempAvailableTimeStart.split(':')
+                        const current = timePickerMode === 'start' ? tempAvailableTimeStart : tempAvailableTimeEnd
+                        const parts = current.split(':')
                         const minutes = parts[1]
-                        setTempAvailableTimeStart(`${String(i).padStart(2, '0')}:${minutes}`)
+                        const newTime = `${String(i).padStart(2, '0')}:${minutes}`
+                        if (timePickerMode === 'start') {
+                          setTempAvailableTimeStart(newTime)
+                        } else {
+                          setTempAvailableTimeEnd(newTime)
+                        }
                       }}
                     >
-                      <Text className="block text-sm">{i}时</Text>
+                      <Text className="block">{i}时</Text>
                     </View>
                   ))}
                 </View>
-              </View>
-
-              {/* 分钟选择 */}
-              <View>
-                <Text className="block text-sm text-gray-500 mb-2">选择分钟</Text>
-                <View className="grid grid-cols-6 gap-2">
+                {/* 分钟滚轮 */}
+                <View className="flex-1 overflow-y-auto">
                   {Array.from({ length: 12 }, (_, i) => {
                     const minutes = i * 5
                     return (
                       <View
                         key={`minute-${i}`}
-                        className={`py-2 text-center rounded-lg ${
-                          parseInt(tempAvailableTimeStart.split(':')[1]) === minutes
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-700'
+                        className={`py-3 text-center ${
+                          (timePickerMode === 'start'
+                            ? parseInt(tempAvailableTimeStart.split(':')[1])
+                            : parseInt(tempAvailableTimeEnd.split(':')[1])) === minutes
+                            ? 'text-blue-500 font-medium bg-blue-50'
+                            : 'text-gray-600'
                         }`}
                         onClick={() => {
-                          const parts = tempAvailableTimeStart.split(':')
+                          const current = timePickerMode === 'start' ? tempAvailableTimeStart : tempAvailableTimeEnd
+                          const parts = current.split(':')
                           const hours = parts[0]
-                          setTempAvailableTimeStart(`${hours}:${String(minutes).padStart(2, '0')}`)
+                          const newTime = `${hours}:${String(minutes).padStart(2, '0')}`
+                          if (timePickerMode === 'start') {
+                            setTempAvailableTimeStart(newTime)
+                          } else {
+                            setTempAvailableTimeEnd(newTime)
+                          }
                         }}
                       >
-                        <Text className="block text-sm">{minutes}分</Text>
+                        <Text className="block">{minutes}分</Text>
                       </View>
                     )
                   })}
