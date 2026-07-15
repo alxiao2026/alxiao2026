@@ -822,21 +822,6 @@ export default function PackageAdmin() {
                     </View>
                   ))}
 
-                  {/* 总合计栏 */}
-                  {combinations.length > 0 && (
-                    <View className="bg-gray-50 rounded-lg p-4 mt-3 flex items-center justify-between">
-                      <Text className="block text-base font-medium text-gray-900">合计</Text>
-                      <Text className="block text-xl font-bold text-gray-900">
-                        ¥{combinations.reduce((total, combo) => {
-                          return total + combo.items.reduce((sum, item) => {
-                            const price = parseFloat(item.price) || 0
-                            return sum + price * item.quantity
-                          }, 0)
-                        }, 0).toFixed(2)}
-                      </Text>
-                    </View>
-                  )}
-
                   {/* 添加商品组 */}
                   <Button
                     className="w-full"
@@ -846,6 +831,21 @@ export default function PackageAdmin() {
                     <Plus size={16} color="#666" />
                     <Text className="block ml-1">添加商品组</Text>
                   </Button>
+
+                  {/* 总合计栏 */}
+                  {combinations.length > 0 && (
+                    <View className="bg-gray-50 rounded-lg p-4 mt-3 flex items-center justify-between">
+                      <Text className="block text-base text-gray-900">合计</Text>
+                      <Text className="block text-base text-gray-900">
+                        ¥{combinations.reduce((total, combo) => {
+                          return total + combo.items.reduce((sum, item) => {
+                            const price = parseFloat(item.price) || 0
+                            return sum + price * item.quantity
+                          }, 0)
+                        }, 0).toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* 售价 */}
