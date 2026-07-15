@@ -147,6 +147,38 @@ export default function PackageAdmin() {
     loadMerchants()
   }, [id])
 
+  // 自动保存草稿（监听 formData 变化）
+  useEffect(() => {
+    // 只在新建模式下自动保存
+    if (id) return
+    
+    const timer = setTimeout(() => {
+      try {
+        // 检查是否有任何数据需要保存
+        const hasData = formData.name || formData.category || formData.price || 
+                       featureItems.length > 0 || combinations.length > 0 ||
+                       selectedMerchant || formData.cover_image
+        
+        if (hasData) {
+          const draft = {
+            formData,
+            featureItems,
+            combinations,
+            currentStep,
+            packageType,
+            selectedMerchant,
+            savedAt: Date.now()
+          }
+          Taro.setStorageSync('package_draft', JSON.stringify(draft))
+        }
+      } catch (e) {
+        console.error('自动保存失败:', e)
+      }
+    }, 500) // 500ms 防抖
+
+    return () => clearTimeout(timer)
+  }, [formData, featureItems, combinations, currentStep, packageType, selectedMerchant, id])
+
   const loadMerchants = async () => {
     try {
       const res = await Network.request({ url: '/api/merchants' })
@@ -1360,9 +1392,10 @@ export default function PackageAdmin() {
                             setSelectedLevel2(level2.id);
                             setShowCategoryPicker(false);
                             // 更新表单数据
+                            const newCategory = `${level1.name} · ${level2.name}`;
                             setFormData((prev) => ({
                               ...prev,
-                              category: `${level1.name} · ${level2.name}`
+                              category: newCategory
                             }));
                           }}
                         >
