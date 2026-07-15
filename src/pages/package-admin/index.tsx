@@ -726,7 +726,7 @@ export default function PackageAdmin() {
           <View className="flex items-center gap-2" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#333" />
           </View>
-          <Text className="block text-base font-semibold text-gray-800">商品创建</Text>
+          <Text className="block text-base font-semibold text-gray-800">团购创建</Text>
           <View className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={clearDraft}>
               <Text className="text-xs">清除草稿</Text>
