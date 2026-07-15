@@ -2761,17 +2761,17 @@ export default function PackageAdmin() {
                 </View>
               </View>
 
-              {/* 时间选择器 */}
-              <View className="flex gap-4 h-48">
-                {/* 小时选择 */}
-                <View className="flex-1 overflow-y-auto">
+              {/* 小时选择 */}
+              <View className="mb-4">
+                <Text className="block text-sm text-gray-500 mb-2">选择小时</Text>
+                <View className="grid grid-cols-6 gap-2">
                   {Array.from({ length: 24 }, (_, i) => (
                     <View
                       key={`hour-${i}`}
-                      className={`py-3 text-center ${
+                      className={`py-2 text-center rounded-lg ${
                         parseInt(tempAvailableTimeStart.split(':')[0]) === i
-                          ? 'text-blue-500 font-medium'
-                          : 'text-gray-600'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700'
                       }`}
                       onClick={() => {
                         const parts = tempAvailableTimeStart.split(':')
@@ -2779,21 +2779,25 @@ export default function PackageAdmin() {
                         setTempAvailableTimeStart(`${String(i).padStart(2, '0')}:${minutes}`)
                       }}
                     >
-                      <Text className="block">{i}时</Text>
+                      <Text className="block text-sm">{i}时</Text>
                     </View>
                   ))}
                 </View>
-                {/* 分钟选择 */}
-                <View className="flex-1 overflow-y-auto">
+              </View>
+
+              {/* 分钟选择 */}
+              <View>
+                <Text className="block text-sm text-gray-500 mb-2">选择分钟</Text>
+                <View className="grid grid-cols-6 gap-2">
                   {Array.from({ length: 12 }, (_, i) => {
                     const minutes = i * 5
                     return (
                       <View
                         key={`minute-${i}`}
-                        className={`py-3 text-center ${
+                        className={`py-2 text-center rounded-lg ${
                           parseInt(tempAvailableTimeStart.split(':')[1]) === minutes
-                            ? 'text-blue-500 font-medium'
-                            : 'text-gray-600'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-700'
                         }`}
                         onClick={() => {
                           const parts = tempAvailableTimeStart.split(':')
@@ -2801,7 +2805,7 @@ export default function PackageAdmin() {
                           setTempAvailableTimeStart(`${hours}:${String(minutes).padStart(2, '0')}`)
                         }}
                       >
-                        <Text className="block">{minutes}分</Text>
+                        <Text className="block text-sm">{minutes}分</Text>
                       </View>
                     )
                   })}
