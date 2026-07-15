@@ -39,6 +39,7 @@ interface ProductItem {
   name: string
   quantity: number
   price: string
+  unit?: string
 }
 
 interface ProductCombination {
@@ -82,6 +83,22 @@ export default function PackageAdmin() {
 
   // 商品搭配
   const [combinations, setCombinations] = useState<ProductCombination[]>([])
+
+  // 规格选择
+  const [showSpecPicker, setShowSpecPicker] = useState(false)
+  const [specComboId, setSpecComboId] = useState('')
+  const [specItemId, setSpecItemId] = useState('')
+  const [specQuantity, setSpecQuantity] = useState(1)
+  const [specUnit, setSpecUnit] = useState('')
+
+  // 规格单位列表
+  const SPEC_UNITS = [
+    '半份', '半斤', '包', '杯', '串', '次', '袋', '碟',
+    '对', '份', '个', '根', '盒', '壶', '件', '斤',
+    '棵', '块', '罐', '例', '两', '笼', '盘', '盆',
+    '瓶', '升', '屉', '条', '听', '桶', '头', '碗',
+    '位', '箱', '扎', '张', '只', '支'
+  ]
 
   // 表单数据
   const [formData, setFormData] = useState<Package>({
@@ -186,6 +203,37 @@ export default function PackageAdmin() {
     setCombinations(combinations.map(c =>
       c.id === combinationId ? { ...c, select_count: count } : c
     ))
+  }
+
+  // 规格选择处理函数
+  const openSpecPicker = (comboId: string, itemId: string) => {
+    const combo = combinations.find(c => c.id === comboId)
+    const item = combo?.items.find(i => i.id === itemId)
+    setSpecComboId(comboId)
+    setSpecItemId(itemId)
+    setSpecQuantity(item?.quantity || 1)
+    setSpecUnit(item?.unit || '')
+    setShowSpecPicker(true)
+  }
+
+  const closeSpecPicker = () => {
+    setShowSpecPicker(false)
+  }
+
+  const confirmSpec = () => {
+    updateItem(specComboId, specItemId, 'quantity', specQuantity)
+    updateItem(specComboId, specItemId, 'unit', specUnit)
+    setShowSpecPicker(false)
+  }
+
+  const increaseQuantity = () => {
+    setSpecQuantity(specQuantity + 1)
+  }
+
+  const decreaseQuantity = () => {
+    if (specQuantity > 1) {
+      setSpecQuantity(specQuantity - 1)
+    }
   }
 
   // 步骤验证
@@ -700,14 +748,13 @@ export default function PackageAdmin() {
                               onInput={(e) => updateItem(combo.id, item.id, 'name', e.detail.value)}
                             />
                           </View>
-                          <View className="w-16">
-                            <Input
-                              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-center"
-                              placeholder="份数"
-                              type="number"
-                              value={String(item.quantity)}
-                              onInput={(e) => updateItem(combo.id, item.id, 'quantity', parseInt(e.detail.value) || 1)}
-                            />
+                          <View
+                            className="w-24 border border-gray-200 rounded-lg px-2 py-2 flex items-center justify-center"
+                            onClick={() => openSpecPicker(combo.id, item.id)}
+                          >
+                            <Text className="block text-sm text-gray-700">
+                              {item.quantity}{item.unit || '份'}
+                            </Text>
                           </View>
                           <View className="w-20">
                             <Input
@@ -1237,6 +1284,82 @@ export default function PackageAdmin() {
                 onClick={() => Taro.navigateTo({ url: '/pages/merchant-admin/index' })}
               >
                 <Text className="block text-sm">管理商家</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 规格选择弹窗 */}
+      {showSpecPicker && (
+        <View
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-end"
+          style={{ zIndex: 200 }}
+          onClick={closeSpecPicker}
+        >
+          <View
+            className="bg-white rounded-t-2xl w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗标题 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-medium text-gray-900">商品规格</Text>
+              <View onClick={closeSpecPicker}>
+                <X size={24} color="#666" />
+              </View>
+            </View>
+
+            {/* 数量选择 */}
+            <View className="p-4 border-b border-gray-200">
+              <View className="flex items-center justify-between">
+                <Text className="block text-base font-medium text-gray-900">数量</Text>
+                <View className="flex items-center gap-3">
+                  <View
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg"
+                    onClick={decreaseQuantity}
+                  >
+                    <Text className="block text-lg text-gray-600">-</Text>
+                  </View>
+                  <Text className="block text-lg font-medium text-gray-900 w-8 text-center">{specQuantity}</Text>
+                  <View
+                    className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg"
+                    onClick={increaseQuantity}
+                  >
+                    <Text className="block text-lg text-gray-600">+</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* 规格选择 */}
+            <View className="p-4">
+              <Text className="block text-base font-medium text-gray-900 mb-3">规格</Text>
+              <View className="grid grid-cols-4 gap-2">
+                {SPEC_UNITS.map(unit => (
+                  <View
+                    key={unit}
+                    className={`py-2 px-3 rounded-lg border text-center ${
+                      specUnit === unit
+                        ? 'bg-blue-50 border-blue-500'
+                        : 'bg-white border-gray-200'
+                    }`}
+                    onClick={() => setSpecUnit(unit)}
+                  >
+                    <Text className={`block text-sm ${specUnit === unit ? 'text-blue-500' : 'text-gray-700'}`}>
+                      {unit}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* 确认按钮 */}
+            <View className="p-4 border-t border-gray-200">
+              <Button
+                className="w-full bg-blue-500"
+                onClick={confirmSpec}
+              >
+                <Text className="block text-white font-medium text-base">确认</Text>
               </Button>
             </View>
           </View>
