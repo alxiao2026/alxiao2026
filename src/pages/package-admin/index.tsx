@@ -347,8 +347,9 @@ export default function PackageAdmin() {
         url: `/api/packages/${packageId}`
       })
       console.log('Package admin response:', res.data)
-      if (res.data?.data) {
-        const pkg = res.data.data
+      // 后端直接返回套餐对象，没有包裹在 data 字段中
+      const pkg = res.data?.data || res.data
+      if (pkg && pkg.id) {
         setFormData(pkg)
         // 解析 features
         if (pkg.features) {
@@ -378,8 +379,10 @@ export default function PackageAdmin() {
             const merchantRes = await Network.request({
               url: `/api/merchants/${pkg.merchant_id}`
             })
-            if (merchantRes.data?.data) {
-              setSelectedMerchant(merchantRes.data.data)
+            // 后端直接返回商家对象
+            const merchant = merchantRes.data?.data || merchantRes.data
+            if (merchant && merchant.id) {
+              setSelectedMerchant(merchant)
             }
           } catch {
             console.error('加载商家信息失败')
