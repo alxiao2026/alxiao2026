@@ -1,4 +1,4 @@
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Picker } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
@@ -91,6 +91,11 @@ export default function PackageAdmin() {
   const [specItemId, setSpecItemId] = useState('')
   const [specQuantity, setSpecQuantity] = useState(1)
   const [specUnit, setSpecUnit] = useState('')
+
+  // 日期选择
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [tempStartDate, setTempStartDate] = useState('')
+  const [tempEndDate, setTempEndDate] = useState('')
 
   // 规格单位列表
   const SPEC_UNITS = [
@@ -251,6 +256,28 @@ export default function PackageAdmin() {
       }
       return prev
     })
+  }
+
+  // 日期选择处理
+  const openDatePicker = () => {
+    setTempStartDate(formData.sale_start_date || '')
+    setTempEndDate(formData.sale_end_date || '')
+    setShowDatePicker(true)
+  }
+
+  const closeDatePicker = () => {
+    setShowDatePicker(false)
+  }
+
+  const confirmDate = () => {
+    updateFormData('sale_start_date', tempStartDate)
+    updateFormData('sale_end_date', tempEndDate)
+    setShowDatePicker(false)
+  }
+
+  const clearDate = () => {
+    setTempStartDate('')
+    setTempEndDate('')
   }
 
   // 步骤验证
@@ -1144,7 +1171,10 @@ export default function PackageAdmin() {
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">商品售卖日期</Text>
                   </View>
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                  <View
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+                    onClick={openDatePicker}
+                  >
                     <Text className="block text-sm text-gray-800">
                       {formData.sale_start_date && formData.sale_end_date
                         ? `${formData.sale_start_date} 至 ${formData.sale_end_date}`
@@ -1522,6 +1552,76 @@ export default function PackageAdmin() {
                 onClick={confirmSpec}
               >
                 <Text className="block text-white font-medium text-base">确认</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 日期选择弹窗 */}
+      {showDatePicker && (
+        <View
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 200 }}
+          onClick={closeDatePicker}
+        >
+          <View
+            className="bg-white rounded-2xl w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗标题 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-medium text-gray-900">选择售卖日期</Text>
+              <View onClick={closeDatePicker}>
+                <X size={24} color="#666" />
+              </View>
+            </View>
+
+            {/* 日期选择 */}
+            <View className="p-4">
+              <View className="mb-4">
+                <Text className="block text-sm text-gray-600 mb-2">开始日期</Text>
+                <Picker
+                  mode="date"
+                  value={tempStartDate}
+                  onChange={(e) => setTempStartDate(e.detail.value)}
+                >
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      {tempStartDate || '请选择开始日期'}
+                    </Text>
+                  </View>
+                </Picker>
+              </View>
+              <View className="mb-4">
+                <Text className="block text-sm text-gray-600 mb-2">结束日期</Text>
+                <Picker
+                  mode="date"
+                  value={tempEndDate}
+                  onChange={(e) => setTempEndDate(e.detail.value)}
+                >
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      {tempEndDate || '请选择结束日期'}
+                    </Text>
+                  </View>
+                </Picker>
+              </View>
+            </View>
+
+            {/* 操作按钮 */}
+            <View className="p-4 border-t border-gray-200 flex gap-3">
+              <Button
+                className="flex-1 bg-white border-2 border-gray-300 text-gray-700"
+                onClick={clearDate}
+              >
+                <Text className="block font-medium">清除</Text>
+              </Button>
+              <Button
+                className="flex-1 bg-blue-500"
+                onClick={confirmDate}
+              >
+                <Text className="block text-white font-medium">确认</Text>
               </Button>
             </View>
           </View>
