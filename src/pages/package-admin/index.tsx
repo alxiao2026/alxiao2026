@@ -908,8 +908,8 @@ export default function PackageAdmin() {
                       </View>
                     </View>
                   ) : (
-                    <View
-                      className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center"
+                    <Button
+                      className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-transparent"
                       onClick={handleUploadCover}
                     >
                       {uploadingCover ? (
@@ -920,7 +920,7 @@ export default function PackageAdmin() {
                           <Text className="block text-xs text-gray-400 mt-1">添加头图 0/5</Text>
                         </>
                       )}
-                    </View>
+                    </Button>
                   )}
                 </View>
 
@@ -945,8 +945,8 @@ export default function PackageAdmin() {
                       </View>
                     ))}
                     {formData.environment_images.length < 10 && (
-                      <View
-                        className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center"
+                      <Button
+                        className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-transparent"
                         onClick={handleUploadEnv}
                       >
                         {uploadingEnv ? (
@@ -957,7 +957,7 @@ export default function PackageAdmin() {
                             <Text className="block text-xs text-gray-400 mt-1">添加环境图 {formData.environment_images.length}/10</Text>
                           </>
                         )}
-                      </View>
+                      </Button>
                     )}
                   </View>
                 </View>
