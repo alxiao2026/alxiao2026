@@ -31,6 +31,33 @@ interface Package {
   is_active: boolean
   created_at: string
   updated_at: string
+  // 交易规则
+  purchase_limit: number // 限购数量，0表示不限制
+  // 消费规则
+  valid_days: number // 有效天数
+  valid_from_purchase: boolean // 是否从购买当天开始计算
+  unavailable_dates: string[] // 不可用日期
+  available_time_type: string // 可用时段类型：business_hours-营业时间, custom-自定义
+  available_time_start: string // 自定义开始时间
+  available_time_end: string // 自定义结束时间
+  limit_usage_count: boolean // 是否限制使用张数
+  usage_count_limit: number // 使用张数限制
+  need_reservation: boolean // 是否需要预约
+  reservation_hours: number // 预约提前小时数
+  // 消费规则详细
+  other_discount: string // 店内其他优惠
+  private_room: string // 包间说明
+  dine_in_type: string // 堂食外带约定：all-全部, dine_in-仅堂食, take_out-仅外带
+  has_extra_fee: boolean // 是否有额外费用
+  extra_fees: ExtraFee[] // 额外费用列表
+  other_notes: string // 其他说明信息
+}
+
+interface ExtraFee {
+  id: string
+  condition: string // 条件描述，如"就餐人数超3位的"
+  amount: string // 金额
+  unit: string // 单位：每位/每桌
 }
 
 interface FeatureItem {
@@ -68,7 +95,9 @@ export default function PackageAdmin() {
     { key: 'basic', label: '基础信息' },
     { key: 'merchant', label: '商家信息' },
     { key: 'product', label: '商品信息' },
-    { key: 'sale', label: '售卖信息' }
+    { key: 'sale', label: '售卖信息' },
+    { key: 'trade', label: '交易规则' },
+    { key: 'consume', label: '消费规则' }
   ]
 
   // 品类选择
@@ -130,7 +159,27 @@ export default function PackageAdmin() {
     auto_renew: false,
     is_active: true,
     created_at: '',
-    updated_at: ''
+    updated_at: '',
+    // 交易规则
+    purchase_limit: 0,
+    // 消费规则
+    valid_days: 60,
+    valid_from_purchase: true,
+    unavailable_dates: [],
+    available_time_type: 'business_hours',
+    available_time_start: '',
+    available_time_end: '',
+    limit_usage_count: false,
+    usage_count_limit: 1,
+    need_reservation: false,
+    reservation_hours: 2,
+    // 消费规则详细
+    other_discount: '不与店内优惠同享',
+    private_room: '不能在包间消费时使用',
+    dine_in_type: 'all',
+    has_extra_fee: false,
+    extra_fees: [],
+    other_notes: ''
   })
 
   const [featureItems, setFeatureItems] = useState<FeatureItem[]>([])
@@ -409,7 +458,27 @@ export default function PackageAdmin() {
           auto_renew: pkg.auto_renew || false,
           is_active: pkg.is_active !== undefined ? pkg.is_active : true,
           created_at: pkg.created_at || '',
-          updated_at: pkg.updated_at || ''
+          updated_at: pkg.updated_at || '',
+          // 交易规则
+          purchase_limit: pkg.purchase_limit || 0,
+          // 消费规则
+          valid_days: pkg.valid_days || 60,
+          valid_from_purchase: pkg.valid_from_purchase !== undefined ? pkg.valid_from_purchase : true,
+          unavailable_dates: Array.isArray(pkg.unavailable_dates) ? pkg.unavailable_dates : [],
+          available_time_type: pkg.available_time_type || 'business_hours',
+          available_time_start: pkg.available_time_start || '',
+          available_time_end: pkg.available_time_end || '',
+          limit_usage_count: pkg.limit_usage_count || false,
+          usage_count_limit: pkg.usage_count_limit || 1,
+          need_reservation: pkg.need_reservation || false,
+          reservation_hours: pkg.reservation_hours || 2,
+          // 消费规则详细
+          other_discount: pkg.other_discount || '不与店内优惠同享',
+          private_room: pkg.private_room || '不能在包间消费时使用',
+          dine_in_type: pkg.dine_in_type || 'all',
+          has_extra_fee: pkg.has_extra_fee || false,
+          extra_fees: Array.isArray(pkg.extra_fees) ? pkg.extra_fees : [],
+          other_notes: pkg.other_notes || ''
         })
         // 解析 features 为 featureItems
         const featuresData = Array.isArray(pkg.features) ? pkg.features : (typeof pkg.features === 'string' ? JSON.parse(pkg.features) : [])
@@ -725,7 +794,27 @@ export default function PackageAdmin() {
             auto_renew: false,
             is_active: true,
             created_at: '',
-            updated_at: ''
+            updated_at: '',
+            // 交易规则
+            purchase_limit: 0,
+            // 消费规则
+            valid_days: 60,
+            valid_from_purchase: true,
+            unavailable_dates: [],
+            available_time_type: 'business_hours',
+            available_time_start: '',
+            available_time_end: '',
+            limit_usage_count: false,
+            usage_count_limit: 1,
+            need_reservation: false,
+            reservation_hours: 2,
+            // 消费规则详细
+            other_discount: '不与店内优惠同享',
+            private_room: '不能在包间消费时使用',
+            dine_in_type: 'all',
+            has_extra_fee: false,
+            extra_fees: [],
+            other_notes: ''
           })
           setFeatureItems([])
           setCombinations([])
@@ -1329,6 +1418,229 @@ export default function PackageAdmin() {
                         下架
                       </Text>
                     </View>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+          </View>
+        )}
+
+        {/* 交易规则 */}
+        {activeTab === 'trade' && (
+          <View className="space-y-4">
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-4">
+                <Text className="block text-base font-semibold text-gray-800 mb-4">交易规则</Text>
+
+                {/* 限购规则 */}
+                <View className="mb-4">
+                  <View className="flex items-center gap-1 mb-2">
+                    <Text className="block text-sm text-gray-600">限购规则</Text>
+                  </View>
+                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      {formData.purchase_limit > 0 ? `每人限购${formData.purchase_limit}份` : '不限制'}
+                    </Text>
+                    <Text className="block text-sm text-gray-400">›</Text>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-4">
+                <Text className="block text-base font-semibold text-gray-800 mb-4">消费规则</Text>
+
+                {/* 可用日期 */}
+                <View className="mb-4">
+                  <View className="flex items-center gap-1 mb-2">
+                    <Text className="block text-sm text-gray-600">可用日期</Text>
+                    <Text className="block text-red-500">*</Text>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      自购买次日起{formData.valid_days}天{formData.valid_from_purchase ? '，购买当天默认可用' : ''}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 不可用日期 */}
+                <View className="mb-4">
+                  <View className="flex items-center gap-1 mb-2">
+                    <Text className="block text-sm text-gray-600">不可用日期</Text>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      {formData.unavailable_dates.length > 0 ? `已设置${formData.unavailable_dates.length}个不可用日期` : '所有日期均可用'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 每日可用时段 */}
+                <View className="mb-4">
+                  <View className="flex items-center gap-1 mb-2">
+                    <Text className="block text-sm text-gray-600">每日可用时段</Text>
+                    <Text className="block text-red-500">*</Text>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">
+                      {formData.available_time_type === 'business_hours' ? '营业时间可用' : `${formData.available_time_start} - ${formData.available_time_end}`}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 限制使用张数 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">限制使用张数</Text>
+                    <View
+                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                        formData.limit_usage_count ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                      onClick={() => updateFormData('limit_usage_count', !formData.limit_usage_count)}
+                    >
+                      <View
+                        className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          formData.limit_usage_count ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* 预约规则 */}
+                <View>
+                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-800">预约规则</Text>
+                    <View
+                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                        formData.need_reservation ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                      onClick={() => updateFormData('need_reservation', !formData.need_reservation)}
+                    >
+                      <View
+                        className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          formData.need_reservation ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+          </View>
+        )}
+
+        {/* 消费规则 */}
+        {activeTab === 'consume' && (
+          <View className="space-y-4">
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-4">
+                <Text className="block text-base font-semibold text-gray-800 mb-4">消费规则</Text>
+
+                {/* 店内其他优惠 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-2">
+                    <Text className="block text-sm font-medium text-gray-800">店内其他优惠</Text>
+                    <Text className="block text-sm text-blue-500">编辑 ›</Text>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-600">{formData.other_discount || '不与店内优惠同享'}</Text>
+                  </View>
+                </View>
+
+                {/* 包间说明 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-2">
+                    <Text className="block text-sm font-medium text-gray-800">包间说明</Text>
+                    <Text className="block text-sm text-blue-500">编辑 ›</Text>
+                  </View>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Text className="block text-sm text-gray-600">{formData.private_room || '不能在包间消费时使用'}</Text>
+                  </View>
+                </View>
+
+                {/* 堂食外带约定 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-2">
+                    <View className="flex items-center gap-1">
+                      <Text className="block text-sm font-medium text-gray-800">堂食外带约定</Text>
+                      <Text className="block text-red-500">*</Text>
+                    </View>
+                    <Text className="block text-sm text-blue-500">全部 ›</Text>
+                  </View>
+                </View>
+
+                {/* 额外费用 */}
+                <View className="mb-4">
+                  <View className="flex items-center justify-between mb-2">
+                    <View className="flex items-center gap-1">
+                      <Text className="block text-sm font-medium text-gray-800">额外费用</Text>
+                    </View>
+                    <View className="flex items-center gap-4">
+                      <View className="flex items-center gap-2">
+                        <View
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            !formData.has_extra_fee ? 'border-blue-500' : 'border-gray-300'
+                          }`}
+                          onClick={() => updateFormData('has_extra_fee', false)}
+                        >
+                          {!formData.has_extra_fee && <View className="w-3 h-3 bg-blue-500 rounded-full" />}
+                        </View>
+                        <Text className="block text-sm text-gray-700">无</Text>
+                      </View>
+                      <View className="flex items-center gap-2">
+                        <View
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            formData.has_extra_fee ? 'border-blue-500' : 'border-gray-300'
+                          }`}
+                          onClick={() => updateFormData('has_extra_fee', true)}
+                        >
+                          {formData.has_extra_fee && <View className="w-3 h-3 bg-blue-500 rounded-full" />}
+                        </View>
+                        <Text className="block text-sm text-gray-700">有</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* 额外费用列表 */}
+                  {formData.has_extra_fee && formData.extra_fees.length > 0 && (
+                    <View className="mt-3 space-y-2">
+                      {formData.extra_fees.map((fee) => (
+                        <View key={fee.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-3">
+                          <Text className="block text-sm text-gray-700 flex-1">{fee.condition}</Text>
+                          <Text className="block text-sm text-gray-700">{fee.amount}</Text>
+                          <Text className="block text-sm text-gray-500">{fee.unit}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <View className="mt-3">
+                    <Text className="block text-sm text-blue-500">+ 添加收费项 ({formData.extra_fees.length})</Text>
+                  </View>
+                </View>
+
+                {/* 其他说明信息 */}
+                <View>
+                  <View className="flex items-center justify-between mb-2">
+                    <Text className="block text-sm font-medium text-gray-800">其他说明信息</Text>
+                  </View>
+                  <Text className="block text-xs text-gray-500 mb-2">
+                    若需填写多项可直接换行，无需在内容前标注序号。不得存在&quot;美团&quot;、&quot;点评&quot;、&quot;最终解释权&quot;等字样
+                  </Text>
+                  <View className="bg-gray-50 rounded-lg px-4 py-3">
+                    <Textarea
+                      className="w-full bg-transparent"
+                      style={{ minHeight: '100px' }}
+                      placeholder="非必填，如有特殊情况请补充"
+                      maxlength={2000}
+                      value={formData.other_notes}
+                      onInput={(e) => updateFormData('other_notes', e.detail.value)}
+                    />
+                    <Text className="block text-xs text-gray-400 text-right mt-1">
+                      {formData.other_notes.length}/2000
+                    </Text>
                   </View>
                 </View>
               </CardContent>
