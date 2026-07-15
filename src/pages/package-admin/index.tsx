@@ -163,6 +163,8 @@ export default function PackageAdmin() {
   const [tempAvailableTimeType, setTempAvailableTimeType] = useState('business_hours')
   const [tempAvailableTimeStart, setTempAvailableTimeStart] = useState('00:00')
   const [tempAvailableTimeEnd, setTempAvailableTimeEnd] = useState('23:59')
+  const [showLimitUsageModal, setShowLimitUsageModal] = useState(false)
+  const [tempLimitUsageCount, setTempLimitUsageCount] = useState(1)
 
   // 规格单位列表
   const SPEC_UNITS = [
@@ -1593,19 +1595,19 @@ export default function PackageAdmin() {
 
                 {/* 限制使用张数 */}
                 <View className="mb-4">
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                  <View
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+                    onClick={() => {
+                      setTempLimitUsageCount(formData.usage_count_limit || 1)
+                      setShowLimitUsageModal(true)
+                    }}
+                  >
                     <Text className="block text-sm text-gray-800">限制使用张数</Text>
-                    <View
-                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        formData.limit_usage_count ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                      onClick={() => updateFormData('limit_usage_count', !formData.limit_usage_count)}
-                    >
-                      <View
-                        className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                          formData.limit_usage_count ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
+                    <View className="flex items-center gap-2">
+                      <Text className="block text-sm text-gray-500">
+                        {formData.limit_usage_count ? `每单限${formData.usage_count_limit || 1}张` : '不限制'}
+                      </Text>
+                      <Text className="block text-gray-400">›</Text>
                     </View>
                   </View>
                 </View>
@@ -2841,6 +2843,86 @@ export default function PackageAdmin() {
               <Button
                 className="w-full bg-blue-500"
                 onClick={() => setShowTimePicker(false)}
+              >
+                <Text className="block text-white font-medium">确定</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 限制使用张数弹窗 */}
+      {showLimitUsageModal && (
+        <View
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 200 }}
+          onClick={() => setShowLimitUsageModal(false)}
+        >
+          <View
+            className="bg-white rounded-2xl w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗标题 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-medium text-gray-900">设置限制使用张数</Text>
+              <View onClick={() => setShowLimitUsageModal(false)}>
+                <X size={24} color="#666" />
+              </View>
+            </View>
+
+            {/* 开关 */}
+            <View className="p-4">
+              <View className="flex items-center justify-between mb-4">
+                <Text className="block text-base text-gray-800">启用限制</Text>
+                <View
+                  className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                    formData.limit_usage_count ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
+                  onClick={() => updateFormData('limit_usage_count', !formData.limit_usage_count)}
+                >
+                  <View
+                    className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      formData.limit_usage_count ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </View>
+              </View>
+
+              {/* 限制数量 */}
+              {formData.limit_usage_count && (
+                <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                  <Text className="block text-sm text-gray-600">每单限制使用张数</Text>
+                  <View className="flex items-center gap-3">
+                    <View
+                      className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center"
+                      onClick={() => setTempLimitUsageCount(Math.max(1, tempLimitUsageCount - 1))}
+                    >
+                      <Text className="block text-lg text-gray-600">-</Text>
+                    </View>
+                    <Text className="block text-base text-gray-800">{tempLimitUsageCount}</Text>
+                    <View
+                      className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center"
+                      onClick={() => setTempLimitUsageCount(tempLimitUsageCount + 1)}
+                    >
+                      <Text className="block text-lg text-gray-600">+</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* 确定按钮 */}
+            <View className="p-4 border-t border-gray-200">
+              <Button
+                className="w-full bg-blue-500"
+                onClick={() => {
+                  if (formData.limit_usage_count) {
+                    updateFormData('usage_count_limit', tempLimitUsageCount)
+                  } else {
+                    updateFormData('usage_count_limit', 0)
+                  }
+                  setShowLimitUsageModal(false)
+                }}
               >
                 <Text className="block text-white font-medium">确定</Text>
               </Button>
