@@ -741,7 +741,7 @@ export default function PackageAdmin() {
                       {/* 商品项列表 */}
                       {combo.items.map((item) => (
                         <View key={item.id} className="flex items-center gap-2 mb-2">
-                          <View className="flex-1">
+                          <View className="w-48">
                             <Input
                               className="w-full border border-gray-200 rounded-lg px-3 py-2"
                               value={item.name}
@@ -756,7 +756,7 @@ export default function PackageAdmin() {
                               {item.quantity}{item.unit || '份'}
                             </Text>
                           </View>
-                          <View className="w-20">
+                          <View className="w-24">
                             <Input
                               className="w-full border border-gray-200 rounded-lg px-2 py-2"
                               placeholder="单价"
