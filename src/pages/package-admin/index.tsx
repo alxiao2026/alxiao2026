@@ -2310,6 +2310,25 @@ export default function PackageAdmin() {
                     </View>
                   </View>
                   <Text className="block text-sm text-gray-500">购买当日默认可用</Text>
+                  
+                  {/* 天数加减控件 */}
+                  <View className="flex items-center justify-center gap-6 mt-4">
+                    <View
+                      className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center"
+                      onClick={() => {
+                        if (tempValidDays > 1) setTempValidDays(tempValidDays - 1)
+                      }}
+                    >
+                      <Text className="block text-2xl text-gray-600">-</Text>
+                    </View>
+                    <Text className="block text-3xl font-medium text-gray-900">{tempValidDays}</Text>
+                    <View
+                      className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center"
+                      onClick={() => setTempValidDays(tempValidDays + 1)}
+                    >
+                      <Text className="block text-2xl text-white">+</Text>
+                    </View>
+                  </View>
                 </View>
               )}
 
