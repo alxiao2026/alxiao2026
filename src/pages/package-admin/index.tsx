@@ -741,7 +741,7 @@ export default function PackageAdmin() {
                       {/* 商品项列表 */}
                       {combo.items.map((item) => (
                         <View key={item.id} className="flex items-center gap-2 mb-2">
-                          <View className="w-48">
+                          <View className="flex-1">
                             <Input
                               className="w-full border border-gray-200 rounded-lg px-3 py-2"
                               value={item.name}
@@ -756,7 +756,7 @@ export default function PackageAdmin() {
                               {item.quantity}{item.unit || '份'}
                             </Text>
                           </View>
-                          <View className="w-16">
+                          <View className="w-20">
                             <Input
                               className="w-full border border-gray-200 rounded-lg px-2 py-2"
                               placeholder="单价"
@@ -765,12 +765,14 @@ export default function PackageAdmin() {
                               onInput={(e) => updateItem(combo.id, item.id, 'price', e.detail.value)}
                             />
                           </View>
-                          <Button
-                            variant="ghost"
-                            onClick={() => removeItemFromCombination(combo.id, item.id)}
-                          >
-                            <Trash2 size={16} color="#ef4444" />
-                          </Button>
+                          <View className="ml-2">
+                            <Button
+                              variant="ghost"
+                              onClick={() => removeItemFromCombination(combo.id, item.id)}
+                            >
+                              <Trash2 size={16} color="#ef4444" />
+                            </Button>
+                          </View>
                         </View>
                       ))}
 
