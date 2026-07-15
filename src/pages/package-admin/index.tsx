@@ -571,6 +571,7 @@ export default function PackageAdmin() {
         combinations,
         currentStep,
         packageType,
+        selectedMerchant,
         savedAt: Date.now()
       }
       Taro.setStorageSync('package_draft', JSON.stringify(draft))
@@ -601,6 +602,9 @@ export default function PackageAdmin() {
         }
         if (draft.packageType) {
           setPackageType(draft.packageType)
+        }
+        if (draft.selectedMerchant) {
+          setSelectedMerchant(draft.selectedMerchant)
         }
         Taro.showToast({ title: '已恢复草稿', icon: 'success' })
       }
