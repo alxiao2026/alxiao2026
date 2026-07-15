@@ -737,7 +737,7 @@ export default function PackageAdmin() {
                         </View>
                         {/* 选择数量按钮 */}
                         <View className="flex gap-2 flex-wrap">
-                          {Array.from({ length: combo.items.length }, (_, i) => i + 1).map(num => (
+                          {Array.from({ length: combo.items.length }, (_, i) => combo.items.length - i).map(num => (
                             <View
                               key={num}
                               className={`px-4 py-2 rounded-lg border ${num === combo.select_count ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
