@@ -19,6 +19,9 @@ interface Package {
   badge: string
   features: string
   category: string
+  package_type: string
+  merchant_id: string
+  combinations: any[]
   cover_image: string
   environment_images: string[]
   stock: number
@@ -116,6 +119,9 @@ export default function PackageAdmin() {
     badge: '',
     features: '',
     category: '',
+    package_type: 'combo',
+    merchant_id: '',
+    combinations: [],
     cover_image: '',
     environment_images: [],
     stock: 0,
@@ -352,38 +358,36 @@ export default function PackageAdmin() {
       if (pkg && pkg.id) {
         // 确保数组和字符串字段有默认值，避免 null 错误
         setFormData({
-          ...pkg,
-          environment_images: pkg.environment_images || [],
+          id: pkg.id,
+          name: pkg.name || '',
           description: pkg.description || '',
-          features: pkg.features || '',
+          price: pkg.price || '',
+          original_price: pkg.original_price || '',
           badge: pkg.badge || '',
-          cover_image: pkg.cover_image || '',
+          features: Array.isArray(pkg.features) ? pkg.features : (typeof pkg.features === 'string' ? JSON.parse(pkg.features) : []),
           category: pkg.category || '',
           package_type: pkg.package_type || '',
           merchant_id: pkg.merchant_id || '',
-          combinations: pkg.combinations || [],
+          combinations: Array.isArray(pkg.combinations) ? pkg.combinations : (typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : []),
+          cover_image: pkg.cover_image || '',
+          environment_images: Array.isArray(pkg.environment_images) ? pkg.environment_images : (typeof pkg.environment_images === 'string' ? JSON.parse(pkg.environment_images) : []),
+          stock: pkg.stock || '',
+          sale_start_date: pkg.sale_start_date || '',
+          sale_end_date: pkg.sale_end_date || '',
+          auto_renew: pkg.auto_renew || false,
+          is_active: pkg.is_active !== undefined ? pkg.is_active : true,
+          created_at: pkg.created_at || '',
+          updated_at: pkg.updated_at || ''
         })
-        // 解析 features
-        if (pkg.features) {
-          try {
-            const parsed = JSON.parse(pkg.features)
-            if (Array.isArray(parsed)) {
-              setFeatureItems(parsed.map((text: string, index: number) => ({ id: `feature-${index}`, text })))
-            }
-          } catch {
-            setFeatureItems(pkg.features.split('\n').filter(Boolean).map((text: string, index: number) => ({ id: `feature-${index}`, text })))
-          }
+        // 解析 features 为 featureItems
+        const featuresData = Array.isArray(pkg.features) ? pkg.features : (typeof pkg.features === 'string' ? JSON.parse(pkg.features) : [])
+        if (Array.isArray(featuresData)) {
+          setFeatureItems(featuresData.map((text: string, index: number) => ({ id: `feature-${index}`, text })))
         }
         // 加载商品搭配
-        if (pkg.combinations) {
-          try {
-            const parsed = typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : pkg.combinations
-            if (Array.isArray(parsed)) {
-              setCombinations(parsed)
-            }
-          } catch {
-            console.error('解析商品搭配失败:', pkg.combinations)
-          }
+        const combinationsData = Array.isArray(pkg.combinations) ? pkg.combinations : (typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : [])
+        if (Array.isArray(combinationsData)) {
+          setCombinations(combinationsData)
         }
         // 加载商家信息
         if (pkg.merchant_id) {
@@ -678,6 +682,9 @@ export default function PackageAdmin() {
             badge: '',
             features: '',
             category: '',
+            package_type: '',
+            merchant_id: '',
+            combinations: [],
             cover_image: '',
             environment_images: [],
             stock: 0,
