@@ -680,11 +680,11 @@ export default function PackageAdmin() {
 
                   {combinations.map((combo) => (
                     <View key={combo.id} className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
-                      {/* 菜品组名称 */}
+                      {/* 商品组名称 */}
                       <View className="mb-3">
                         <Input
                           className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                          placeholder="填写菜品组名称"
+                          placeholder="填写商品组名称"
                           value={combo.name}
                           onInput={(e) => updateCombinationName(combo.id, e.detail.value)}
                         />
@@ -731,7 +731,7 @@ export default function PackageAdmin() {
                       <View className="bg-gray-50 rounded-lg p-4 mb-2">
                         <View className="flex items-center justify-between mb-3">
                           <Text className="block text-base font-medium text-gray-900">
-                            共 {combo.items.length} 个菜品：{combo.select_count}选{combo.items.length}
+                            共 {combo.items.length} 个商品：{combo.select_count}选{combo.items.length}
                           </Text>
                           <ChevronRight size={20} color="#666" />
                         </View>
@@ -761,26 +761,26 @@ export default function PackageAdmin() {
                         <Text className="block ml-1">添加</Text>
                       </Button>
 
-                      {/* 删除菜品组 */}
+                      {/* 删除商品组 */}
                       <Button
                         className="w-full mt-2 text-red-500"
                         variant="ghost"
                         onClick={() => removeCombination(combo.id)}
                       >
                         <Trash2 size={16} color="#ef4444" />
-                        <Text className="block ml-1">删除菜品组</Text>
+                        <Text className="block ml-1">删除商品组</Text>
                       </Button>
                     </View>
                   ))}
 
-                  {/* 添加菜品组 */}
+                  {/* 添加商品组 */}
                   <Button
                     className="w-full"
                     variant="outline"
                     onClick={addCombination}
                   >
                     <Plus size={16} color="#666" />
-                    <Text className="block ml-1">添加菜品组</Text>
+                    <Text className="block ml-1">添加商品组</Text>
                   </Button>
                 </View>
 
