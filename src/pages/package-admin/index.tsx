@@ -279,10 +279,6 @@ export default function PackageAdmin() {
           Taro.showToast({ title: '请输入有效售价', icon: 'none' })
           return false
         }
-        if (!formData.cover_image) {
-          Taro.showToast({ title: '请上传商品头图', icon: 'none' })
-          return false
-        }
         return true
       case 3: // 售卖信息
         if (formData.stock < 0) {
@@ -507,10 +503,6 @@ export default function PackageAdmin() {
     }
     if (!formData.price || parseFloat(formData.price) <= 0) {
       Taro.showToast({ title: '请输入有效售价', icon: 'none' })
-      return
-    }
-    if (!formData.cover_image) {
-      Taro.showToast({ title: '请上传商品头图', icon: 'none' })
       return
     }
 
@@ -1005,7 +997,6 @@ export default function PackageAdmin() {
                   <View className="flex items-center justify-between mb-2">
                     <View className="flex items-center gap-1">
                       <Text className="block text-sm text-gray-600">商品头图</Text>
-                      <Text className="block text-red-500">*</Text>
                     </View>
                     <Text className="block text-xs text-blue-500">规范示例</Text>
                   </View>
