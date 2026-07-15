@@ -224,16 +224,19 @@ export default function PackageAdmin() {
   }
 
   const confirmSpec = () => {
+    console.log('confirmSpec - specQuantity:', specQuantity, 'specUnit:', specUnit)
     updateItem(specComboId, specItemId, 'quantity', specQuantity)
     updateItem(specComboId, specItemId, 'unit', specUnit)
     setShowSpecPicker(false)
   }
 
   const increaseQuantity = () => {
+    console.log('increaseQuantity - before:', specQuantity)
     setSpecQuantity(specQuantity + 1)
   }
 
   const decreaseQuantity = () => {
+    console.log('decreaseQuantity - before:', specQuantity)
     if (specQuantity > 1) {
       setSpecQuantity(specQuantity - 1)
     }
