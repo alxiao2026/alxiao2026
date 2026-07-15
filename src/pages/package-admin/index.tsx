@@ -127,6 +127,9 @@ export default function PackageAdmin() {
   useEffect(() => {
     if (id) {
       fetchPackage(id)
+    } else {
+      // 新建时检查是否有草稿
+      loadDraft()
     }
     loadMerchants()
   }, [id])
@@ -506,7 +509,8 @@ export default function PackageAdmin() {
 
       const submitData = {
         ...formData,
-        features: featuresJson
+        features: featuresJson,
+        combinations: JSON.stringify(combinations)
       }
 
       let res
@@ -530,6 +534,8 @@ export default function PackageAdmin() {
 
       if (res.data?.code === 200 || res.data?.data) {
         Taro.showToast({ title: '提交成功', icon: 'success' })
+        // 提交成功后清除草稿
+        Taro.removeStorageSync('package_draft')
         setTimeout(() => {
           Taro.navigateBack()
         }, 1500)
@@ -541,6 +547,53 @@ export default function PackageAdmin() {
       Taro.showToast({ title: '提交失败', icon: 'error' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // 保存草稿
+  const saveDraft = () => {
+    try {
+      const draft = {
+        formData,
+        featureItems,
+        combinations,
+        currentStep,
+        packageType,
+        savedAt: Date.now()
+      }
+      Taro.setStorageSync('package_draft', JSON.stringify(draft))
+      Taro.showToast({ title: '草稿已保存', icon: 'success' })
+    } catch (error) {
+      console.error('保存草稿失败:', error)
+      Taro.showToast({ title: '保存失败', icon: 'error' })
+    }
+  }
+
+  // 加载草稿
+  const loadDraft = () => {
+    try {
+      const draftStr = Taro.getStorageSync('package_draft')
+      if (draftStr) {
+        const draft = JSON.parse(draftStr)
+        if (draft.formData) {
+          setFormData(draft.formData)
+        }
+        if (draft.featureItems) {
+          setFeatureItems(draft.featureItems)
+        }
+        if (draft.combinations) {
+          setCombinations(draft.combinations)
+        }
+        if (draft.currentStep !== undefined) {
+          setCurrentStep(draft.currentStep)
+        }
+        if (draft.packageType) {
+          setPackageType(draft.packageType)
+        }
+        Taro.showToast({ title: '已恢复草稿', icon: 'success' })
+      }
+    } catch (error) {
+      console.error('加载草稿失败:', error)
     }
   }
 
@@ -561,7 +614,9 @@ export default function PackageAdmin() {
             <ArrowLeft size={20} color="#333" />
           </View>
           <Text className="block text-base font-semibold text-gray-800">商品创建</Text>
-          <View className="w-8" />
+          <Button size="sm" variant="outline" onClick={saveDraft}>
+            <Text className="text-xs">保存草稿</Text>
+          </Button>
         </View>
 
         {/* 步骤指示器 */}
