@@ -838,24 +838,10 @@ export default function PackageAdmin() {
                       <Text className="block text-base text-gray-900">合计</Text>
                       <Text className="block text-base text-gray-900">
                         ¥{combinations.reduce((total, combo) => {
-                          // 如果全选，直接累加所有商品价格
-                          if (combo.select_count === combo.items.length) {
-                            return total + combo.items.reduce((sum, item) => {
-                              const price = parseFloat(item.price) || 0
-                              return sum + price * item.quantity
-                            }, 0)
-                          }
-                          // 如果几选几，按价格从高到低排序，取前 select_count 个商品的总价
-                          const sortedItems = [...combo.items].sort((a, b) => {
-                            const priceA = parseFloat(a.price) || 0
-                            const priceB = parseFloat(b.price) || 0
-                            return priceB - priceA
-                          })
-                          const maxPrice = sortedItems.slice(0, combo.select_count).reduce((sum, item) => {
+                          return total + combo.items.reduce((sum, item) => {
                             const price = parseFloat(item.price) || 0
                             return sum + price * item.quantity
                           }, 0)
-                          return total + maxPrice
                         }, 0).toFixed(2)}
                       </Text>
                     </View>
