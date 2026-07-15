@@ -13,6 +13,7 @@ import {
   Zap,
   Gift,
   ShoppingCart,
+  Image as ImageIcon,
 } from 'lucide-react-taro'
 
 interface Package {
@@ -23,6 +24,13 @@ interface Package {
   original_price: string
   badge: string
   features: string
+  cover_image: string
+  environment_images: string
+  combinations: string
+  stock: number
+  sale_start_date: string
+  sale_end_date: string
+  auto_renew: boolean
   is_active: boolean
 }
 
@@ -70,6 +78,26 @@ export default function PackageDetail() {
     }
   }
 
+  const parseCombinations = (combinations: string): any[] => {
+    if (!combinations) return []
+    try {
+      const parsed = JSON.parse(combinations)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  const parseEnvironmentImages = (images: string): string[] => {
+    if (!images) return []
+    try {
+      const parsed = JSON.parse(images)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
   const handleShare = () => {
     Taro.showToast({ title: '分享功能开发中', icon: 'none' })
   }
@@ -82,6 +110,8 @@ export default function PackageDetail() {
   }
 
   const features = pkg ? parseFeatures(pkg.features) : []
+  const combinations = pkg ? parseCombinations(pkg.combinations) : []
+  const environmentImages = pkg ? parseEnvironmentImages(pkg.environment_images) : []
   const discount = pkg?.original_price
     ? Math.round((1 - parseFloat(pkg.price) / parseFloat(pkg.original_price)) * 100)
     : 0
@@ -133,14 +163,24 @@ export default function PackageDetail() {
 
       {/* 套餐头图 */}
       <View className="relative w-full h-64 bg-gradient-to-br from-red-500 to-orange-500">
-        <Image
-          src={LOGO_URL}
-          className="absolute inset-0 w-full h-full opacity-20"
-          mode="aspectFill"
-        />
+        {pkg.cover_image ? (
+          <Image
+            src={pkg.cover_image}
+            className="absolute inset-0 w-full h-full"
+            mode="aspectFill"
+          />
+        ) : (
+          <Image
+            src={LOGO_URL}
+            className="absolute inset-0 w-full h-full opacity-20"
+            mode="aspectFill"
+          />
+        )}
         <View className="absolute inset-0 flex items-center justify-center">
           <View className="flex flex-col items-center gap-2">
-            <Image src={LOGO_URL} className="w-24 h-24" mode="aspectFit" />
+            {!pkg.cover_image && (
+              <Image src={LOGO_URL} className="w-24 h-24" mode="aspectFit" />
+            )}
             <Text className="block text-2xl font-bold text-white">{pkg.name}</Text>
             {pkg.badge && (
               <Badge className="bg-white text-red-500">{pkg.badge}</Badge>
@@ -163,6 +203,24 @@ export default function PackageDetail() {
         {pkg.description && (
           <Text className="block text-sm text-gray-600 mt-2">{pkg.description}</Text>
         )}
+        {/* 库存和售卖信息 */}
+        <View className="flex flex-row items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+          {pkg.stock > 0 && (
+            <View className="flex flex-row items-center gap-1">
+              <Text className="block text-xs text-gray-500">库存：</Text>
+              <Text className="block text-xs font-semibold text-gray-800">{pkg.stock}份</Text>
+            </View>
+          )}
+          {pkg.sale_start_date && pkg.sale_end_date && (
+            <View className="flex flex-row items-center gap-1">
+              <Text className="block text-xs text-gray-500">售卖：</Text>
+              <Text className="block text-xs text-gray-800">{pkg.sale_start_date} 至 {pkg.sale_end_date}</Text>
+            </View>
+          )}
+          {pkg.auto_renew && (
+            <Badge className="bg-blue-100 text-blue-600 text-xs">自动延期</Badge>
+          )}
+        </View>
       </View>
 
       {/* 套餐亮点 */}
@@ -178,6 +236,60 @@ export default function PackageDetail() {
                 <Check size={16} color="#10B981" className="mt-1 flex-shrink-0" />
                 <Text className="block text-sm text-gray-700 flex-1">{feature}</Text>
               </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* 商品搭配 */}
+      {combinations.length > 0 && (
+        <View className="bg-white mt-2 px-4 py-4">
+          <View className="flex flex-row items-center gap-2 mb-3">
+            <ShoppingCart size={18} color="#1890FF" />
+            <Text className="block text-base font-bold text-gray-800">商品搭配</Text>
+          </View>
+          <View className="flex flex-col gap-4">
+            {combinations.map((combo, idx) => (
+              <View key={idx} className="bg-gray-50 rounded-lg p-3">
+                <View className="flex flex-row items-center justify-between mb-2">
+                  <Text className="block text-sm font-bold text-gray-800">{combo.name}</Text>
+                  <Text className="block text-xs text-gray-500">{combo.select_count}选{combo.items.length}</Text>
+                </View>
+                <View className="flex flex-col gap-2">
+                  {combo.items.map((item: any, itemIdx: number) => (
+                    <View key={itemIdx} className="flex flex-row items-center justify-between bg-white rounded px-3 py-2">
+                      <View className="flex flex-row items-center gap-2">
+                        <View className="w-1 h-1 rounded-full bg-gray-400" />
+                        <Text className="block text-sm text-gray-700">{item.name}</Text>
+                      </View>
+                      <View className="flex flex-row items-center gap-3">
+                        <Text className="block text-xs text-gray-500">×{item.quantity}{item.unit || '份'}</Text>
+                        <Text className="block text-sm font-semibold text-gray-800">¥{item.price}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* 环境图 */}
+      {environmentImages.length > 0 && (
+        <View className="bg-white mt-2 px-4 py-4">
+          <View className="flex flex-row items-center gap-2 mb-3">
+            <ImageIcon size={18} color="#10B981" />
+            <Text className="block text-base font-bold text-gray-800">环境展示</Text>
+          </View>
+          <View className="flex flex-col gap-2">
+            {environmentImages.map((img, i) => (
+              <Image
+                key={i}
+                src={img}
+                className="w-full h-48 rounded-lg"
+                mode="aspectFill"
+              />
             ))}
           </View>
         </View>
