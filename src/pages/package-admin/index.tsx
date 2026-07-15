@@ -696,7 +696,6 @@ export default function PackageAdmin() {
                           <View className="flex-1">
                             <Input
                               className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                              placeholder="请选择点单标品"
                               value={item.name}
                               onInput={(e) => updateItem(combo.id, item.id, 'name', e.detail.value)}
                             />
