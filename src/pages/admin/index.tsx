@@ -30,6 +30,8 @@ interface Package {
   original_price: string | null;
   badge: string | null;
   features: string | null;
+  cover_image: string | null;
+  stock: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
@@ -173,98 +175,6 @@ const AdminPage = () => {
   };
 
   // ========== 套餐管理 ==========
-  const openEditPackage = (pkg: Package) => {
-    setEditingPackage(pkg);
-    setPkgForm({
-      name: pkg.name,
-      description: pkg.description || '',
-      price: pkg.price,
-      original_price: pkg.original_price || '',
-      badge: pkg.badge || '',
-      features: pkg.features ? JSON.parse(pkg.features).join('\n') : '',
-    });
-    setShowDialog(true);
-  };
-
-  const handleSavePackage = async () => {
-    if (!pkgForm.name) {
-      Taro.showToast({ title: '请输入套餐名称', icon: 'none' });
-      return;
-    }
-
-    const featuresList = pkgForm.features
-      .split('\n')
-      .map(f => f.trim())
-      .filter(Boolean);
-
-    try {
-      if (editingPackage) {
-        await Network.request({
-          url: `/api/packages/${editingPackage.id}`,
-          method: 'PUT',
-          data: {
-            name: pkgForm.name,
-            description: pkgForm.description,
-            price: pkgForm.price,
-            original_price: pkgForm.original_price || undefined,
-            badge: pkgForm.badge || undefined,
-            features: featuresList.length > 0 ? JSON.stringify(featuresList) : undefined,
-          },
-        });
-      } else {
-        await Network.request({
-          url: '/api/packages',
-          method: 'POST',
-          data: {
-            name: pkgForm.name,
-            description: pkgForm.description,
-            price: pkgForm.price,
-            original_price: pkgForm.original_price || undefined,
-            badge: pkgForm.badge || undefined,
-            features: featuresList.length > 0 ? JSON.stringify(featuresList) : undefined,
-          },
-        });
-      }
-      setShowDialog(false);
-      Taro.showToast({ title: editingPackage ? '更新成功' : '创建成功', icon: 'success' });
-      fetchPackages();
-    } catch (err) {
-      console.error('保存失败:', err);
-      Taro.showToast({ title: '保存失败', icon: 'none' });
-    }
-  };
-
-  const handleDeletePackage = async (id: string) => {
-    Taro.showModal({
-      title: '确认删除',
-      content: '确定要删除该套餐吗？',
-      success: async (res) => {
-        if (res.confirm) {
-          try {
-            await Network.request({ url: `/api/packages/${id}`, method: 'DELETE' });
-            Taro.showToast({ title: '删除成功', icon: 'success' });
-            fetchPackages();
-          } catch (err) {
-            console.error('删除失败:', err);
-            Taro.showToast({ title: '删除失败', icon: 'none' });
-          }
-        }
-      },
-    });
-  };
-
-  const handleTogglePackage = async (pkg: Package) => {
-    try {
-      await Network.request({
-        url: `/api/packages/${pkg.id}`,
-        method: 'PUT',
-        data: { is_active: !pkg.is_active },
-      });
-      fetchPackages();
-    } catch (err) {
-      console.error('切换状态失败:', err);
-    }
-  };
 
   const closeDialog = () => {
     setShowDialog(false);
@@ -389,57 +299,73 @@ const AdminPage = () => {
             ) : packages.length === 0 ? (
               <View className="flex items-center justify-center py-20">
                 <ShoppingBag size={48} color="#d1d5db" />
-                <Text className="block text-gray-400 mt-3">暂无套餐，点击上方按钮添加</Text>
+                <Text className="block text-gray-400 mt-3">暂无团购，点击上方按钮添加</Text>
               </View>
             ) : (
-              packages.map((pkg) => (
-                <Card key={pkg.id} className="mb-3">
-                  <CardContent className="p-4">
-                    <View className="flex flex-row items-start justify-between">
-                      <View className="flex-1">
-                        <View className="flex flex-row items-center gap-2">
-                          <Text className="block text-base font-semibold text-gray-800">{pkg.name}</Text>
-                          <Badge variant={pkg.is_active ? 'default' : 'secondary'}>
-                            {pkg.is_active ? '启用' : '停用'}
-                          </Badge>
-                          {pkg.badge && (
-                            <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
+              <View>
+                {packages.map((pkg) => (
+                  <Card key={pkg.id} className="mb-3 bg-white">
+                    <CardContent className="p-4">
+                      {/* 状态行 */}
+                      <View className="flex flex-row items-center gap-2 mb-3">
+                        <View className="w-2 h-2 rounded-full bg-green-500" />
+                        <Text className="block text-sm text-green-600 font-medium">售卖中</Text>
+                        <Text className="block text-sm text-gray-400">| 不限时间</Text>
+                      </View>
+
+                      {/* 商品信息行 */}
+                      <View className="flex flex-row gap-3">
+                        {/* 商品图片 */}
+                        <View className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                          {pkg.cover_image ? (
+                            <Image src={pkg.cover_image} className="w-full h-full" mode="aspectFill" />
+                          ) : (
+                            <View className="w-full h-full flex items-center justify-center">
+                              <ShoppingBag size={24} color="#d1d5db" />
+                            </View>
                           )}
                         </View>
-                        {pkg.description && (
-                          <Text className="block text-sm text-gray-500 mt-1">{pkg.description}</Text>
-                        )}
-                        <View className="flex flex-row items-center gap-4 mt-2">
-                          <Text className="block text-xs text-gray-400">
-                            价格: <Text className="block text-red-500 font-semibold">¥{pkg.price}</Text>
+
+                        {/* 商品信息 */}
+                        <View className="flex-1">
+                          <Text className="block text-base font-bold text-gray-800 mb-1">{pkg.name}</Text>
+                          {pkg.description && (
+                            <Text className="block text-xs text-gray-500 mb-2 line-clamp-2">{pkg.description}</Text>
+                          )}
+                          <Text className="block text-xs text-gray-400 mb-2">
+                            已售/剩余库存：0/{pkg.stock || '不限库存'}
                           </Text>
-                          {pkg.original_price && (
-                            <Text className="block text-xs text-gray-400">
-                              原价: <Text className="block text-gray-400 line-through">¥{pkg.original_price}</Text>
-                            </Text>
-                          )}
+                          <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">团购</Badge>
                         </View>
                       </View>
-                      <View className="flex flex-row items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => Taro.redirectTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
-                          <Text className="block text-xs text-blue-500">详情</Text>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => openEditPackage(pkg)}>
-                          <Pencil size={16} color="#6b7280" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleTogglePackage(pkg)}>
-                          <Badge variant={pkg.is_active ? 'secondary' : 'default'}>
-                            {pkg.is_active ? '停用' : '启用'}
-                          </Badge>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeletePackage(pkg.id)}>
-                          <Trash2 size={16} color="#ef4444" />
-                        </Button>
+
+                      {/* 价格行 */}
+                      <View className="flex flex-row items-baseline gap-2 mt-3 mb-3">
+                        <Text className="block text-xl font-bold text-red-500">¥{pkg.price}</Text>
+                        {pkg.original_price && (
+                          <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
+                        )}
                       </View>
-                    </View>
-                  </CardContent>
-                </Card>
-              ))
+
+                      {/* 操作按钮行 */}
+                      <View className="flex flex-row items-center justify-between pt-3 border-t border-gray-100">
+                        <Text className="block text-sm text-gray-500">更多</Text>
+                        <View className="flex flex-row gap-2">
+                          <Button variant="outline" size="sm" className="text-xs">
+                            <Text className="block">改时间</Text>
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-xs">
+                            <Text className="block">改库存</Text>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => Taro.redirectTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
+                            <Text className="block text-blue-500 text-xs">编辑</Text>
+                          </Button>
+                        </View>
+                      </View>
+                    </CardContent>
+                  </Card>
+                ))}
+              </View>
             )}
           </TabsContent>
 
@@ -613,7 +539,7 @@ const AdminPage = () => {
               <View className="flex-1">
                 <Button
                   className="w-full bg-red-500"
-                  onClick={activeTab === 'prizes' ? handleSavePrize : handleSavePackage}
+                  onClick={handleSavePrize}
                 >
                   <Text className="block text-white text-sm">保存</Text>
                 </Button>
