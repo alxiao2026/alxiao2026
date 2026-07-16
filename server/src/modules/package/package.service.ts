@@ -18,6 +18,33 @@ export interface Package {
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
+  // 交易规则
+  purchase_limit: number | null;
+  purchase_limit_type: string | null;
+  purchase_limit_per_day: number | null;
+  purchase_limit_per_month: number | null;
+  valid_days: number | null;
+  valid_from_purchase: boolean | null;
+  valid_date_type: string | null;
+  valid_date_start: string | null;
+  valid_date_end: string | null;
+  unavailable_dates: any;
+  unavailable_date_type: string | null;
+  unavailable_weekdays: any;
+  unavailable_holidays: any;
+  available_time_type: string | null;
+  available_time_start: string | null;
+  available_time_end: string | null;
+  limit_usage_count: boolean | null;
+  usage_count_limit: number | null;
+  need_reservation: boolean | null;
+  // 消费规则
+  other_discount: string | null;
+  private_room: string | null;
+  dine_in_type: string | null;
+  has_extra_fee: boolean | null;
+  extra_fees: any;
+  other_notes: string | null;
 }
 
 @Injectable()
@@ -71,6 +98,33 @@ export class PackageService {
     package_type?: string;
     merchant_id?: string;
     combinations?: any;
+    // 交易规则
+    purchase_limit?: number;
+    purchase_limit_type?: string;
+    purchase_limit_per_day?: number;
+    purchase_limit_per_month?: number;
+    valid_days?: number;
+    valid_from_purchase?: boolean;
+    valid_date_type?: string;
+    valid_date_start?: string;
+    valid_date_end?: string;
+    unavailable_dates?: any;
+    unavailable_date_type?: string;
+    unavailable_weekdays?: any;
+    unavailable_holidays?: any;
+    available_time_type?: string;
+    available_time_start?: string;
+    available_time_end?: string;
+    limit_usage_count?: boolean;
+    usage_count_limit?: number;
+    need_reservation?: boolean;
+    // 消费规则
+    other_discount?: string;
+    private_room?: string;
+    dine_in_type?: string;
+    has_extra_fee?: boolean;
+    extra_fees?: any;
+    other_notes?: string;
   }): Promise<Package> {
     if (!body.name) throw new BadRequestException('套餐名称不能为空');
 
@@ -93,6 +147,33 @@ export class PackageService {
         package_type: body.package_type || null,
         merchant_id: body.merchant_id || null,
         combinations: body.combinations || null,
+        // 交易规则
+        purchase_limit: body.purchase_limit || null,
+        purchase_limit_type: body.purchase_limit_type || 'unlimited',
+        purchase_limit_per_day: body.purchase_limit_per_day || null,
+        purchase_limit_per_month: body.purchase_limit_per_month || null,
+        valid_days: body.valid_days || 60,
+        valid_from_purchase: body.valid_from_purchase !== undefined ? body.valid_from_purchase : true,
+        valid_date_type: body.valid_date_type || 'days',
+        valid_date_start: body.valid_date_start || null,
+        valid_date_end: body.valid_date_end || null,
+        unavailable_dates: body.unavailable_dates || null,
+        unavailable_date_type: body.unavailable_date_type || 'all',
+        unavailable_weekdays: body.unavailable_weekdays || null,
+        unavailable_holidays: body.unavailable_holidays || null,
+        available_time_type: body.available_time_type || 'business_hours',
+        available_time_start: body.available_time_start || null,
+        available_time_end: body.available_time_end || null,
+        limit_usage_count: body.limit_usage_count || false,
+        usage_count_limit: body.usage_count_limit || null,
+        need_reservation: body.need_reservation || false,
+        // 消费规则
+        other_discount: body.other_discount || null,
+        private_room: body.private_room || null,
+        dine_in_type: body.dine_in_type || 'all',
+        has_extra_fee: body.has_extra_fee || false,
+        extra_fees: body.extra_fees || null,
+        other_notes: body.other_notes || null,
       })
       .select()
       .single();
@@ -118,6 +199,33 @@ export class PackageService {
     package_type: string;
     merchant_id: string;
     combinations: any;
+    // 交易规则
+    purchase_limit: number;
+    purchase_limit_type: string;
+    purchase_limit_per_day: number;
+    purchase_limit_per_month: number;
+    valid_days: number;
+    valid_from_purchase: boolean;
+    valid_date_type: string;
+    valid_date_start: string;
+    valid_date_end: string;
+    unavailable_dates: any;
+    unavailable_date_type: string;
+    unavailable_weekdays: any;
+    unavailable_holidays: any;
+    available_time_type: string;
+    available_time_start: string;
+    available_time_end: string;
+    limit_usage_count: boolean;
+    usage_count_limit: number;
+    need_reservation: boolean;
+    // 消费规则
+    other_discount: string;
+    private_room: string;
+    dine_in_type: string;
+    has_extra_fee: boolean;
+    extra_fees: any;
+    other_notes: string;
   }>): Promise<Package> {
     await this.findOne(id);
 
@@ -139,6 +247,33 @@ export class PackageService {
     if (body.package_type !== undefined) updateData.package_type = body.package_type;
     if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
     if (body.combinations !== undefined) updateData.combinations = body.combinations;
+    // 交易规则
+    if (body.purchase_limit !== undefined) updateData.purchase_limit = body.purchase_limit;
+    if (body.purchase_limit_type !== undefined) updateData.purchase_limit_type = body.purchase_limit_type;
+    if (body.purchase_limit_per_day !== undefined) updateData.purchase_limit_per_day = body.purchase_limit_per_day;
+    if (body.purchase_limit_per_month !== undefined) updateData.purchase_limit_per_month = body.purchase_limit_per_month;
+    if (body.valid_days !== undefined) updateData.valid_days = body.valid_days;
+    if (body.valid_from_purchase !== undefined) updateData.valid_from_purchase = body.valid_from_purchase;
+    if (body.valid_date_type !== undefined) updateData.valid_date_type = body.valid_date_type;
+    if (body.valid_date_start !== undefined) updateData.valid_date_start = body.valid_date_start;
+    if (body.valid_date_end !== undefined) updateData.valid_date_end = body.valid_date_end;
+    if (body.unavailable_dates !== undefined) updateData.unavailable_dates = body.unavailable_dates;
+    if (body.unavailable_date_type !== undefined) updateData.unavailable_date_type = body.unavailable_date_type;
+    if (body.unavailable_weekdays !== undefined) updateData.unavailable_weekdays = body.unavailable_weekdays;
+    if (body.unavailable_holidays !== undefined) updateData.unavailable_holidays = body.unavailable_holidays;
+    if (body.available_time_type !== undefined) updateData.available_time_type = body.available_time_type;
+    if (body.available_time_start !== undefined) updateData.available_time_start = body.available_time_start;
+    if (body.available_time_end !== undefined) updateData.available_time_end = body.available_time_end;
+    if (body.limit_usage_count !== undefined) updateData.limit_usage_count = body.limit_usage_count;
+    if (body.usage_count_limit !== undefined) updateData.usage_count_limit = body.usage_count_limit;
+    if (body.need_reservation !== undefined) updateData.need_reservation = body.need_reservation;
+    // 消费规则
+    if (body.other_discount !== undefined) updateData.other_discount = body.other_discount;
+    if (body.private_room !== undefined) updateData.private_room = body.private_room;
+    if (body.dine_in_type !== undefined) updateData.dine_in_type = body.dine_in_type;
+    if (body.has_extra_fee !== undefined) updateData.has_extra_fee = body.has_extra_fee;
+    if (body.extra_fees !== undefined) updateData.extra_fees = body.extra_fees;
+    if (body.other_notes !== undefined) updateData.other_notes = body.other_notes;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client
