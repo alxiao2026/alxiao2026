@@ -761,7 +761,34 @@ export default function PackageAdmin() {
         category: formData.category || null,
         package_type: packageType,
         merchant_id: selectedMerchant?.id || null,
-        combinations: combinations
+        combinations: combinations,
+        // 交易规则
+        purchase_limit: formData.purchase_limit,
+        purchase_limit_type: formData.purchase_limit_type,
+        purchase_limit_per_day: formData.purchase_limit_per_day,
+        purchase_limit_per_month: formData.purchase_limit_per_month,
+        valid_days: formData.valid_days,
+        valid_from_purchase: formData.valid_from_purchase,
+        valid_date_type: formData.valid_date_type,
+        valid_start_date: formData.valid_start_date,
+        valid_end_date: formData.valid_end_date,
+        unavailable_dates: formData.unavailable_dates,
+        unavailable_date_type: formData.unavailable_date_type,
+        unavailable_weekdays: formData.unavailable_weekdays,
+        unavailable_holidays: formData.unavailable_holidays,
+        available_time_type: formData.available_time_type,
+        available_time_start: formData.available_time_start,
+        available_time_end: formData.available_time_end,
+        limit_usage_count: formData.limit_usage_count,
+        usage_count_limit: formData.usage_count_limit,
+        need_reservation: formData.need_reservation,
+        // 消费规则
+        other_discount: formData.other_discount,
+        private_room: formData.private_room,
+        dine_in_type: formData.dine_in_type,
+        has_extra_fee: formData.has_extra_fee,
+        extra_fees: formData.extra_fees,
+        other_notes: formData.other_notes
       }
 
       let res
