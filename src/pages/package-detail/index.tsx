@@ -34,6 +34,33 @@ interface Package {
   merchant_id?: string
   combinations?: any[]
   sales_count?: number
+  // 交易规则
+  purchase_limit?: number
+  purchase_limit_type?: string
+  purchase_limit_per_day?: number
+  purchase_limit_per_month?: number
+  valid_days?: number
+  valid_from_purchase?: boolean
+  valid_date_type?: string
+  valid_date_start?: string
+  valid_date_end?: string
+  unavailable_dates?: any
+  unavailable_date_type?: string
+  unavailable_weekdays?: any
+  unavailable_holidays?: any
+  available_time_type?: string
+  available_time_start?: string
+  available_time_end?: string
+  limit_usage_count?: boolean
+  usage_count_limit?: number
+  need_reservation?: boolean
+  // 消费规则
+  other_discount?: string
+  private_room?: string
+  dine_in_type?: string
+  has_extra_fee?: boolean
+  extra_fees?: any
+  other_notes?: string
 }
 
 interface Merchant {
@@ -280,12 +307,33 @@ export default function PackageDetail() {
             </View>
             <View className="ml-6">
               <Text className="block text-sm text-gray-600">
-                有效期: {pkg.sale_start_date && pkg.sale_end_date 
-                  ? `${pkg.sale_start_date} 至 ${pkg.sale_end_date}`
-                  : '购买后30天内有效'}
+                {pkg.valid_date_type === 'date_range' && pkg.valid_date_start && pkg.valid_date_end
+                  ? `${pkg.valid_date_start} 至 ${pkg.valid_date_end}`
+                  : `自购买次日起${pkg.valid_days || 60}天${pkg.valid_from_purchase ? ', 购买当天默认可用' : ''}`}
               </Text>
             </View>
           </View>
+
+          {/* 不可用日期 */}
+          {pkg.unavailable_date_type === 'partial' && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Calendar size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">不可用日期</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0 && (
+                  <Text className="block text-sm text-gray-600">· 每周{pkg.unavailable_weekdays.join('、')}不可用</Text>
+                )}
+                {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (
+                  <Text className="block text-sm text-gray-600">· 节假日{pkg.unavailable_holidays.join('、')}不可用</Text>
+                )}
+                {pkg.unavailable_dates && Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0 && (
+                  <Text className="block text-sm text-gray-600">· 指定日期{pkg.unavailable_dates.join('、')}不可用</Text>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* 可用时间 */}
           <View className="mb-4">
@@ -295,21 +343,59 @@ export default function PackageDetail() {
             </View>
             <View className="ml-6">
               <Text className="block text-sm text-gray-600">
-                {merchant?.business_hours || '商家营业时间可用'}
+                {pkg.available_time_type === 'custom' && pkg.available_time_start && pkg.available_time_end
+                  ? `每日${pkg.available_time_start}至${pkg.available_time_end}可用`
+                  : merchant?.business_hours || '商家营业时间可用'}
               </Text>
             </View>
           </View>
 
+          {/* 限购规则 */}
+          {pkg.purchase_limit_type === 'limited' && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">限购规则</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {pkg.purchase_limit && (
+                  <Text className="block text-sm text-gray-600">· 每人最多购买{pkg.purchase_limit}份</Text>
+                )}
+                {pkg.purchase_limit_per_day && (
+                  <Text className="block text-sm text-gray-600">· 每人每天最多购买{pkg.purchase_limit_per_day}份</Text>
+                )}
+                {pkg.purchase_limit_per_month && (
+                  <Text className="block text-sm text-gray-600">· 每人每月最多购买{pkg.purchase_limit_per_month}份</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* 限制使用张数 */}
+          {pkg.limit_usage_count && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <FileText size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">限制使用张数</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600">每单限用{pkg.usage_count_limit || 1}张券</Text>
+              </View>
+            </View>
+          )}
+
           {/* 预约规则 */}
-          <View className="mb-4">
-            <View className="flex flex-row items-center gap-2 mb-2">
-              <Info size={16} color="#666" />
-              <Text className="block text-sm font-medium text-gray-800">预约规则</Text>
+          {pkg.need_reservation && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">预约规则</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600">到店消费: 需提前预约</Text>
+              </View>
             </View>
-            <View className="ml-6">
-              <Text className="block text-sm text-gray-600">到店消费: 需提前2小时预约</Text>
-            </View>
-          </View>
+          )}
 
           {/* 使用方式 */}
           <View className="mb-4">
@@ -318,7 +404,11 @@ export default function PackageDetail() {
               <Text className="block text-sm font-medium text-gray-800">使用方式</Text>
             </View>
             <View className="ml-6">
-              <Text className="block text-sm text-gray-600">仅堂食</Text>
+              <Text className="block text-sm text-gray-600">
+                {pkg.dine_in_type === 'dine_in' ? '仅堂食' : 
+                 pkg.dine_in_type === 'takeout' ? '仅外带' : 
+                 pkg.dine_in_type === 'both' ? '堂食外带均可' : '仅堂食'}
+              </Text>
             </View>
           </View>
 
@@ -329,11 +419,34 @@ export default function PackageDetail() {
               <Text className="block text-sm font-medium text-gray-800">使用规则</Text>
             </View>
             <View className="ml-6 flex flex-col gap-1">
-              <Text className="block text-sm text-gray-600">· 不与店内优惠同享</Text>
-              <Text className="block text-sm text-gray-600">· 可在包间消费时使用</Text>
-              <Text className="block text-sm text-gray-600">· 当前商品每桌限用1张券</Text>
+              {pkg.other_discount && (
+                <Text className="block text-sm text-gray-600">· {pkg.other_discount}</Text>
+              )}
+              {pkg.private_room && (
+                <Text className="block text-sm text-gray-600">· {pkg.private_room}</Text>
+              )}
+              {pkg.limit_usage_count && (
+                <Text className="block text-sm text-gray-600">· 当前商品每桌限用{pkg.usage_count_limit || 1}张券</Text>
+              )}
             </View>
           </View>
+
+          {/* 额外费用 */}
+          {pkg.has_extra_fee && pkg.extra_fees && Array.isArray(pkg.extra_fees) && pkg.extra_fees.length > 0 && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">额外费用</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {pkg.extra_fees.map((fee: any, idx: number) => (
+                  <Text key={idx} className="block text-sm text-gray-600">
+                    · {fee.condition}: {fee.amount}元/{fee.unit}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* 可赠送好友 */}
           <View className="mb-4">
@@ -357,23 +470,18 @@ export default function PackageDetail() {
             </View>
           </View>
 
-          {/* 其他规则 */}
-          <View className="mb-4">
-            <View className="flex flex-row items-center gap-2 mb-2">
-              <FileText size={16} color="#666" />
-              <Text className="block text-sm font-medium text-gray-800">其他规则</Text>
+          {/* 其他说明 */}
+          {pkg.other_notes && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <FileText size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">其他说明</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600 whitespace-pre-wrap">{pkg.other_notes}</Text>
+              </View>
             </View>
-            <View className="ml-6 flex flex-col gap-1">
-              <Text className="block text-sm text-gray-600">· 发票问题请咨询商家</Text>
-              <Text className="block text-sm text-gray-600">· 预约须知: 为保证最佳体验, 请务必至少提前2小时致电预约, 并告知使用抖音套餐。</Text>
-              <Text className="block text-sm text-gray-600">· 使用方式: 本套餐仅限堂食, 不提供外卖服务。</Text>
-              <Text className="block text-sm text-gray-600">· 打包规则: 套餐美味建议现做现吃。如未食用完需打包, 我们将提供打包盒, 需另付包装费1元/盒。</Text>
-              <Text className="block text-sm text-gray-600">· 菜品说明: 套餐为固定搭配, 恕不提供菜品更换、退减或等价替换。</Text>
-              <Text className="block text-sm text-gray-600">· 温馨提示: 节假日期间不可用, 菜品图片仅供参考, 请以实际出品为准。</Text>
-              <Text className="block text-sm text-gray-600">· 我们期待您的光临!</Text>
-              <Text className="block text-sm text-gray-600">· 如部分菜品因时令或其他不可抗因素导致无法提供, 请联系商家协商处理, 感谢您的理解</Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* 使用方式步骤 */}
