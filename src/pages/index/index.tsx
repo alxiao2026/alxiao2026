@@ -28,6 +28,9 @@ interface Package {
   badge: string | null;
   features: string | null;
   is_active: boolean;
+  sale_start_date: string | null;
+  sale_end_date: string | null;
+  auto_renew: boolean;
 }
 
 interface Order {
@@ -336,6 +339,12 @@ const IndexPage = () => {
           ) : (
             packages.map((pkg) => {
               const features = parseFeatures(pkg.features);
+              // 判断是否为预售套餐（售卖开始日期在未来）
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const startDate = pkg.sale_start_date ? new Date(pkg.sale_start_date) : null;
+              const isPresale = startDate && startDate > today;
+
               return (
                 <View
                   key={pkg.id}
@@ -349,9 +358,14 @@ const IndexPage = () => {
                           <ShoppingBag size={22} color="#FF4757" />
                           <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
                         </View>
-                        {pkg.badge && (
-                          <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
-                        )}
+                        <View className="flex flex-row gap-2">
+                          {isPresale && (
+                            <Badge className="bg-orange-500 text-white">预售</Badge>
+                          )}
+                          {pkg.badge && (
+                            <Badge className="bg-red-500 text-white">{pkg.badge}</Badge>
+                          )}
+                        </View>
                       </View>
 
                       {pkg.description && (

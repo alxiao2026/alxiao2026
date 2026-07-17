@@ -69,7 +69,45 @@ export class PackageService {
       .eq('is_active', true)
       .order('created_at', { ascending: true });
     if (error) throw new Error(`查询活动套餐失败：${error.message}`);
-    return (data as Package[]) || [];
+
+    const packages = (data as Package[]) || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 处理自动延期和过滤已下架套餐
+    const activePackages = [];
+    for (const pkg of packages) {
+      // 如果有售卖结束日期
+      if (pkg.sale_end_date) {
+        const endDate = new Date(pkg.sale_end_date);
+        endDate.setHours(23, 59, 59, 999);
+
+        // 如果已过期
+        if (endDate < today) {
+          // 如果勾选了自动延期，自动延期半年
+          if (pkg.auto_renew) {
+            const newEndDate = new Date(endDate);
+            newEndDate.setMonth(newEndDate.getMonth() + 6);
+            await this.client
+              .from('packages')
+              .update({ sale_end_date: newEndDate.toISOString().split('T')[0] })
+              .eq('id', pkg.id);
+            pkg.sale_end_date = newEndDate.toISOString().split('T')[0];
+          } else {
+            // 未勾选自动延期，下架套餐
+            await this.client
+              .from('packages')
+              .update({ is_active: false })
+              .eq('id', pkg.id);
+            continue; // 跳过已下架的套餐
+          }
+        }
+      }
+
+      activePackages.push(pkg);
+    }
+
+    return activePackages;
   }
 
   async findOne(id: string): Promise<Package> {
