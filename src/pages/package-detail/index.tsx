@@ -581,10 +581,7 @@ export default function PackageDetail() {
             <Text className="block text-xl font-bold text-red-500">¥{currentPrice.toFixed(0)}</Text>
           </View>
           {originalPrice > currentPrice && (
-            <View className="flex flex-col pb-1">
-              <Text className="block text-xs text-gray-400">原价</Text>
-              <Text className="block text-xs text-gray-400 line-through">¥{originalPrice.toFixed(0)}</Text>
-            </View>
+            <Text className="block text-xs text-gray-400 line-through pb-1">¥{originalPrice.toFixed(0)}</Text>
           )}
         </View>
         <View
