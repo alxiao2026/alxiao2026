@@ -581,7 +581,7 @@ export default function PackageDetail() {
             <Text className="block text-xl font-bold text-red-500">¥{currentPrice.toFixed(0)}</Text>
           </View>
           {originalPrice > currentPrice && (
-            <Text className="block text-xs text-gray-400 line-through pb-1">¥{originalPrice.toFixed(0)}</Text>
+            <Text className="block text-sm text-gray-400 line-through pb-1">¥{originalPrice.toFixed(0)}</Text>
           )}
         </View>
         <View
