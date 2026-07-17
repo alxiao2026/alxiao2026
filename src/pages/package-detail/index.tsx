@@ -194,88 +194,80 @@ export default function PackageDetail() {
           <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
         </View>
 
-        {/* 服务标签 */}
-        <View className="bg-white px-4 py-3 border-t border-gray-100">
-          <View className="flex flex-row items-center gap-2">
-            <Text className="block text-sm text-gray-500">服务</Text>
-            <View className="flex flex-row items-center gap-3 flex-1">
-              <Text className="block text-sm text-gray-700">随时退</Text>
-              <Text className="block text-sm text-gray-700">过期自动退</Text>
-              <Text className="block text-sm text-gray-700">可赠送好友</Text>
+        {/* 服务标签 + 使用须知 + 门店信息 - 紧凑排版 */}
+        <View className="bg-white px-4 py-2">
+          {/* 服务标签 */}
+          <View className="flex flex-row items-center gap-2 py-2 border-b border-gray-100">
+            <Text className="block text-xs text-gray-400 w-10">服务</Text>
+            <View className="flex flex-row items-center gap-3 flex-1 flex-wrap">
+              <Text className="block text-xs text-gray-600">随时退</Text>
+              <Text className="block text-xs text-gray-600">过期自动退</Text>
+              <Text className="block text-xs text-gray-600">可赠送好友</Text>
             </View>
           </View>
-        </View>
 
-        {/* 使用须知 */}
-        <View className="bg-white px-4 py-3 border-t border-gray-100">
-          <View className="flex flex-row items-center gap-2">
-            <Text className="block text-sm text-gray-500">须知</Text>
-            <View className="flex flex-row items-center gap-3 flex-1 flex-wrap">
+          {/* 使用须知 */}
+          <View className="flex flex-row items-start gap-2 py-2 border-b border-gray-100">
+            <Text className="block text-xs text-gray-400 w-10 mt-1">须知</Text>
+            <View className="flex flex-row items-center gap-3 flex-1 flex-wrap flex-1">
               {/* 不可用日期 */}
               {pkg.unavailable_date_type === 'partial' && (
-                <Text className="block text-sm text-gray-700">
+                <Text className="block text-xs text-gray-600">
                   {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0
                     ? `每周${pkg.unavailable_weekdays.map((d: number) => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
                     : '部分日期不可用'}
                 </Text>
               )}
               {pkg.unavailable_date_type === 'all' && (
-                <Text className="block text-sm text-gray-700">全周可用</Text>
+                <Text className="block text-xs text-gray-600">全周可用</Text>
               )}
               {!pkg.unavailable_date_type && (
-                <Text className="block text-sm text-gray-700">全周可用</Text>
+                <Text className="block text-xs text-gray-600">全周可用</Text>
               )}
               {/* 限购规则 */}
               {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_person || 0) > 0 && (
-                <Text className="block text-sm text-gray-700">每人限购{pkg.purchase_limit_per_person}份</Text>
+                <Text className="block text-xs text-gray-600">每人限购{pkg.purchase_limit_per_person}份</Text>
               )}
               {(pkg.purchase_limit_per_day || 0) > 0 && (
-                <Text className="block text-sm text-gray-700">每人每天限购{pkg.purchase_limit_per_day}份</Text>
+                <Text className="block text-xs text-gray-600">每人每天限购{pkg.purchase_limit_per_day}份</Text>
               )}
               {(pkg.purchase_limit_per_month || 0) > 0 && (
-                <Text className="block text-sm text-gray-700">每人每月限购{pkg.purchase_limit_per_month}份</Text>
+                <Text className="block text-xs text-gray-600">每人每月限购{pkg.purchase_limit_per_month}份</Text>
               )}
               {/* 限制使用张数 */}
               {pkg.limit_usage_count && (pkg.usage_count_limit || 0) > 0 && (
-                <Text className="block text-sm text-gray-700">每桌限用{pkg.usage_count_limit}张券</Text>
+                <Text className="block text-xs text-gray-600">每桌限用{pkg.usage_count_limit}张券</Text>
               )}
               {/* 预约规则 */}
               {pkg.need_reservation && (
-                <Text className="block text-sm text-gray-700">
+                <Text className="block text-xs text-gray-600">
                   {pkg.reservation_hours ? `至少提前${pkg.reservation_hours}小时预约` : '需提前预约'}
                 </Text>
               )}
               {/* 使用方式 */}
               {pkg.dine_in_type === 'dine_in' && (
-                <Text className="block text-sm text-gray-700">仅堂食</Text>
+                <Text className="block text-xs text-gray-600">仅堂食</Text>
               )}
               {pkg.dine_in_type === 'takeout' && (
-                <Text className="block text-sm text-gray-700">仅外带</Text>
+                <Text className="block text-xs text-gray-600">仅外带</Text>
               )}
               {pkg.dine_in_type === 'both' && (
-                <Text className="block text-sm text-gray-700">堂食外带均可</Text>
+                <Text className="block text-xs text-gray-600">堂食外带均可</Text>
               )}
             </View>
           </View>
-        </View>
 
-        {/* 门店信息 */}
-        {merchant && (
-          <View className="bg-white px-4 py-3 border-t border-gray-100">
-            <View className="flex flex-row items-center gap-2">
-              <Text className="block text-sm text-gray-500">门店</Text>
+          {/* 门店信息 */}
+          {merchant && (
+            <View className="flex flex-row items-center gap-2 py-2">
+              <Text className="block text-xs text-gray-400 w-10">门店</Text>
               <View className="flex flex-row items-center gap-2 flex-1">
-                <Text className="block text-sm text-gray-700">最近9.4公里</Text>
-                <Text className="block text-sm text-gray-700 font-medium">{merchant.name}</Text>
+                <Text className="block text-xs text-gray-600">最近9.4公里</Text>
+                <Text className="block text-xs text-gray-700 font-medium">{merchant.name}</Text>
               </View>
             </View>
-            {merchant.address && (
-              <View className="mt-1 ml-12">
-                <Text className="block text-xs text-gray-500">{merchant.address}</Text>
-              </View>
-            )}
-          </View>
-        )}
+          )}
+        </View>
 
         {/* 团购详情 */}
         {pkg.combinations && Array.isArray(pkg.combinations) && pkg.combinations.length > 0 && (
