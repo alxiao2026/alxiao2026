@@ -202,13 +202,15 @@ export default function PackageDetail() {
         {/* 价格区域 - 红色背景 */}
         <View className="bg-red-500 px-4 py-4">
           <View className="flex flex-row items-baseline gap-2">
-            <Text className="block text-sm text-white">券后</Text>
-            <Text className="block text-4xl font-bold text-white">¥{currentPrice.toFixed(0)}</Text>
-            {originalPrice > currentPrice && (
-              <Text className="block text-base text-white" style={{ opacity: 0.7, textDecorationLine: 'line-through' }}>
-                ¥{originalPrice.toFixed(0)}
-              </Text>
-            )}
+            <Text className="block text-sm text-white">到手价</Text>
+            <View className="flex flex-row items-baseline">
+              <Text className="block text-3xl font-medium text-white">¥{currentPrice.toFixed(0)}</Text>
+              {originalPrice > currentPrice && (
+                <Text className="block text-xs text-white ml-2" style={{ opacity: 0.7, textDecorationLine: 'line-through' }}>
+                  ¥{originalPrice.toFixed(0)}
+                </Text>
+              )}
+            </View>
             {pkg.sales_count && (
               <Text className="block text-sm text-white ml-auto" style={{ opacity: 0.9 }}>
                 已售{pkg.sales_count}+
