@@ -301,15 +301,15 @@ export default function PackageAdmin() {
       items: [],
       select_count: 0
     }
-    setCombinations([...combinations, newCombination])
+    setCombinations(prev => [...prev, newCombination])
   }
 
   const removeCombination = (combId: string) => {
-    setCombinations(combinations.filter(c => c.id !== combId))
+    setCombinations(prev => prev.filter(c => c.id !== combId))
   }
 
   const updateCombinationName = (combId: string, name: string) => {
-    setCombinations(combinations.map(c =>
+    setCombinations(prev => prev.map(c =>
       c.id === combId ? { ...c, name } : c
     ))
   }
@@ -321,7 +321,7 @@ export default function PackageAdmin() {
       quantity: 1,
       price: ''
     }
-    setCombinations(combinations.map(c =>
+    setCombinations(prev => prev.map(c =>
       c.id === combinationId
         ? { ...c, items: [...c.items, newItem] }
         : c
@@ -329,7 +329,7 @@ export default function PackageAdmin() {
   }
 
   const removeItemFromCombination = (combinationId: string, itemId: string) => {
-    setCombinations(combinations.map(c =>
+    setCombinations(prev => prev.map(c =>
       c.id === combinationId
         ? { ...c, items: c.items.filter(item => item.id !== itemId) }
         : c
@@ -337,7 +337,7 @@ export default function PackageAdmin() {
   }
 
   const updateItem = (combinationId: string, itemId: string, field: keyof ProductItem, value: string | number) => {
-    setCombinations(combinations.map(c =>
+    setCombinations(prev => prev.map(c =>
       c.id === combinationId
         ? {
             ...c,
@@ -350,7 +350,7 @@ export default function PackageAdmin() {
   }
 
   const updateSelectCount = (combinationId: string, count: number) => {
-    setCombinations(combinations.map(c =>
+    setCombinations(prev => prev.map(c =>
       c.id === combinationId ? { ...c, select_count: count } : c
     ))
   }
