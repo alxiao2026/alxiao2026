@@ -157,6 +157,7 @@ export default function PackageAdmin() {
   const [tempPurchaseLimitPerMonth, setTempPurchaseLimitPerMonth] = useState(0)
   const [tempValidDateType, setTempValidDateType] = useState('days')
   const [tempValidDays, setTempValidDays] = useState(60)
+  const [tempValidDaysInput, setTempValidDaysInput] = useState('60')
   const [tempUnavailableDateType, setTempUnavailableDateType] = useState('all')
   const [tempUnavailableWeekdays, setTempUnavailableWeekdays] = useState<number[]>([])
   const [tempUnavailableHolidays, setTempUnavailableHolidays] = useState<string[]>([])
@@ -1591,7 +1592,12 @@ export default function PackageAdmin() {
                 {/* 可用日期 */}
                 <View
                   className="flex items-center justify-between py-3 border-b border-gray-100"
-                  onClick={() => setShowValidDateModal(true)}
+                  onClick={() => {
+                    setTempValidDateType(formData.valid_date_type || 'days')
+                    setTempValidDays(formData.valid_days || 60)
+                    setTempValidDaysInput(String(formData.valid_days || 60))
+                    setShowValidDateModal(true)
+                  }}
                 >
                   <View className="flex items-center gap-1">
                     <Text className="block text-sm text-gray-800">可用日期</Text>
@@ -2377,23 +2383,25 @@ export default function PackageAdmin() {
                   </View>
                   <Text className="block text-sm text-gray-500">购买当日默认可用</Text>
                   
-                  {/* 天数加减控件 */}
-                  <View className="flex items-center justify-center gap-6 mt-4">
-                    <View
-                      className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center"
-                      onClick={() => {
-                        if (tempValidDays > 1) setTempValidDays(tempValidDays - 1)
-                      }}
-                    >
-                      <Text className="block text-2xl text-gray-600">-</Text>
+                  {/* 天数输入框 */}
+                  <View className="flex items-center justify-center gap-2 mt-4">
+                    <View className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
+                      <Input
+                        className="w-full text-center text-2xl font-medium text-gray-900"
+                        type="number"
+                        value={tempValidDaysInput}
+                        onInput={(e) => {
+                          const val = e.detail.value
+                          setTempValidDaysInput(val)
+                          const num = parseInt(val)
+                          if (!Number.isNaN(num) && num > 0) {
+                            setTempValidDays(num)
+                          }
+                        }}
+                        placeholder="请输入天数"
+                      />
                     </View>
-                    <Text className="block text-3xl font-medium text-gray-900">{tempValidDays}</Text>
-                    <View
-                      className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center"
-                      onClick={() => setTempValidDays(tempValidDays + 1)}
-                    >
-                      <Text className="block text-2xl text-white">+</Text>
-                    </View>
+                    <Text className="block text-base text-gray-600">天</Text>
                   </View>
                 </View>
               )}
