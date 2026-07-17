@@ -21,6 +21,7 @@ export interface Package {
   // 交易规则
   purchase_limit: number | null;
   purchase_limit_type: string | null;
+  purchase_limit_per_person: number | null;
   purchase_limit_per_day: number | null;
   purchase_limit_per_month: number | null;
   valid_days: number | null;
@@ -38,6 +39,7 @@ export interface Package {
   limit_usage_count: boolean | null;
   usage_count_limit: number | null;
   need_reservation: boolean | null;
+  reservation_hours: number | null;
   // 消费规则
   other_discount: string | null;
   private_room: string | null;

@@ -37,6 +37,7 @@ interface Package {
   // 交易规则
   purchase_limit?: number
   purchase_limit_type?: string
+  purchase_limit_per_person?: number
   purchase_limit_per_day?: number
   purchase_limit_per_month?: number
   valid_days?: number
@@ -54,6 +55,7 @@ interface Package {
   limit_usage_count?: boolean
   usage_count_limit?: number
   need_reservation?: boolean
+  reservation_hours?: number
   // 消费规则
   other_discount?: string
   private_room?: string
@@ -214,6 +216,12 @@ export default function PackageDetail() {
               <Text className="block text-sm text-gray-500 ml-auto">已售{pkg.sales_count}+</Text>
             )}
           </View>
+          {/* 团购合计价 */}
+          {originalPrice > currentPrice && (
+            <Text className="block text-sm text-gray-500 mt-1">
+              团购合计价 ¥{originalPrice.toFixed(0)}
+            </Text>
+          )}
           <Text className="block text-lg font-bold text-gray-800 mt-2">{pkg.name}</Text>
         </View>
 
@@ -234,10 +242,42 @@ export default function PackageDetail() {
           <View className="flex flex-row items-center gap-2">
             <Text className="block text-sm text-gray-500">须知</Text>
             <View className="flex flex-row items-center gap-3 flex-1 flex-wrap">
-              <Text className="block text-sm text-gray-700">全周可用</Text>
-              <Text className="block text-sm text-gray-700">至少提前2小时预约</Text>
-              <Text className="block text-sm text-gray-700">每桌限用1张券</Text>
-              <Text className="block text-sm text-gray-700">仅堂食</Text>
+              {/* 可用日期 */}
+              <Text className="block text-sm text-gray-700">
+                {pkg.valid_date_type === 'date_range' && pkg.valid_date_start && pkg.valid_date_end
+                  ? `${pkg.valid_date_start}至${pkg.valid_date_end}可用`
+                  : `购买后${pkg.valid_days || 60}天内可用`}
+              </Text>
+              {/* 限购规则 */}
+              {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_person || 0) > 0 && (
+                <Text className="block text-sm text-gray-700">每人限购{pkg.purchase_limit_per_person}份</Text>
+              )}
+              {(pkg.purchase_limit_per_day || 0) > 0 && (
+                <Text className="block text-sm text-gray-700">每人每天限购{pkg.purchase_limit_per_day}份</Text>
+              )}
+              {(pkg.purchase_limit_per_month || 0) > 0 && (
+                <Text className="block text-sm text-gray-700">每人每月限购{pkg.purchase_limit_per_month}份</Text>
+              )}
+              {/* 限制使用张数 */}
+              {pkg.limit_usage_count && (pkg.usage_count_limit || 0) > 0 && (
+                <Text className="block text-sm text-gray-700">每桌限用{pkg.usage_count_limit}张券</Text>
+              )}
+              {/* 预约规则 */}
+              {pkg.need_reservation && (
+                <Text className="block text-sm text-gray-700">
+                  {pkg.reservation_hours ? `至少提前${pkg.reservation_hours}小时预约` : '需提前预约'}
+                </Text>
+              )}
+              {/* 使用方式 */}
+              {pkg.dine_in_type === 'dine_in' && (
+                <Text className="block text-sm text-gray-700">仅堂食</Text>
+              )}
+              {pkg.dine_in_type === 'takeout' && (
+                <Text className="block text-sm text-gray-700">仅外带</Text>
+              )}
+              {pkg.dine_in_type === 'both' && (
+                <Text className="block text-sm text-gray-700">堂食外带均可</Text>
+              )}
             </View>
           </View>
         </View>
