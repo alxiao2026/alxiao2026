@@ -322,7 +322,18 @@ export default function PackageDetail() {
             <Text className="block text-base font-bold text-gray-800 mb-3">团购详情</Text>
             {pkg.combinations.map((combo: any, idx: number) => (
               <View key={idx} className="mb-4">
-                <Text className="block text-base font-bold text-gray-800 mb-2">{combo.name}</Text>
+                {/* 商品组标题行 */}
+                <View className="flex flex-row items-center gap-2 mb-2">
+                  <Text className="block text-base font-bold text-gray-800">{combo.name}</Text>
+                  {combo.select_count > 0 && combo.items.length > 0 && (
+                    <View className="bg-orange-50 px-2 py-1 rounded">
+                      <Text className="block text-xs text-orange-600">
+                        {combo.items.length}选{combo.select_count}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {/* 商品列表 */}
                 {combo.items.map((item: any, itemIdx: number) => (
                   <View key={itemIdx} className="flex flex-row items-center py-1">
                     <View className="w-1 h-1 rounded-full bg-gray-400 mr-2" />
