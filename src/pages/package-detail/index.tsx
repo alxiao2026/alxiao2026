@@ -151,12 +151,12 @@ export default function PackageDetail() {
     )
   }
 
-  const currentPrice = parseFloat(pkg.price)
+  const currentPrice = parseFloat(String(pkg.price || 0)) || 0
 
   // 计算套餐原价（合计价）
   const originalPrice = (pkg.combinations || []).reduce((sum, combo) => {
     return sum + (combo.items || []).reduce((itemSum, item) => {
-      return itemSum + (parseFloat(String(item.price || 0)) * (item.quantity || 1))
+      return itemSum + (parseFloat(String(item.price || 0)) * (Number(item.quantity) || 1))
     }, 0)
   }, 0)
 
@@ -169,7 +169,7 @@ export default function PackageDetail() {
   return (
     <View className="min-h-screen bg-gray-50 pb-24">
       {/* 顶部导航 */}
-      <View className="fixed top-0 left-0 right-0 z-50 bg-transparent px-4 py-3 flex flex-row items-center justify-between">
+      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
         <View onClick={handleBack} className="p-2 bg-white rounded-full" style={{ opacity: 0.8 }}>
           <ArrowLeft size={20} color="#333" />
         </View>
@@ -596,7 +596,7 @@ export default function PackageDetail() {
       </ScrollView>
 
       {/* 底部购买栏 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 flex flex-row items-center justify-between border-t border-gray-200" style={{ zIndex: 100 }}>
+      <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', zIndex: 100 }}>
         <View className="flex flex-row items-end gap-3">
           <View className="flex flex-col">
             <Text className="block text-xs text-gray-500">到手价</Text>

@@ -44,8 +44,8 @@ interface Package {
   valid_days: number // 有效天数
   valid_from_purchase: boolean // 是否从购买当天开始计算
   valid_date_type: string // days/date
-  valid_start_date: string // 指定日期开始
-  valid_end_date: string // 指定日期结束
+  valid_date_start: string // 指定日期开始
+  valid_date_end: string // 指定日期结束
   unavailable_dates: string[] // 不可用日期
   unavailable_date_type: string // all/partial
   unavailable_weekdays: number[] // 每周几不可用 (0-6, 0=周日)
@@ -213,8 +213,8 @@ export default function PackageAdmin() {
     valid_days: 60,
     valid_from_purchase: true,
     valid_date_type: 'days',
-    valid_start_date: '',
-    valid_end_date: '',
+    valid_date_start: '',
+    valid_date_end: '',
     unavailable_dates: [],
     unavailable_date_type: 'all',
     unavailable_weekdays: [],
@@ -416,8 +416,9 @@ export default function PackageAdmin() {
       updateFormData('sale_start_date', tempStartDate)
       updateFormData('sale_end_date', tempEndDate)
     } else {
-      updateFormData('valid_start_date', tempStartDate)
-      updateFormData('valid_end_date', tempEndDate)
+      updateFormData('valid_date_start', tempStartDate)
+      updateFormData('valid_date_end', tempEndDate)
+      updateFormData('valid_date_type', 'date_range')
     }
     setShowDatePicker(false)
   }
@@ -462,7 +463,7 @@ export default function PackageAdmin() {
           return false
         }
         // 验证可用日期
-        if (formData.valid_date_type === 'date' && (!formData.valid_start_date || !formData.valid_end_date)) {
+        if (formData.valid_date_type === 'date_range' && (!formData.valid_date_start || !formData.valid_date_end)) {
           Taro.showToast({ title: '请设置可用日期范围', icon: 'none' })
           return false
         }
@@ -547,8 +548,8 @@ export default function PackageAdmin() {
           valid_days: pkg.valid_days || 60,
           valid_from_purchase: pkg.valid_from_purchase !== undefined ? pkg.valid_from_purchase : true,
           valid_date_type: pkg.valid_date_type || 'days',
-          valid_start_date: pkg.valid_start_date || '',
-          valid_end_date: pkg.valid_end_date || '',
+          valid_date_start: pkg.valid_date_start || '',
+          valid_date_end: pkg.valid_date_end || '',
           unavailable_date_type: pkg.unavailable_date_type || 'all',
           unavailable_weekdays: Array.isArray(pkg.unavailable_weekdays) ? pkg.unavailable_weekdays : [],
           unavailable_holidays: Array.isArray(pkg.unavailable_holidays) ? pkg.unavailable_holidays : [],
@@ -809,8 +810,8 @@ export default function PackageAdmin() {
         valid_days: formData.valid_days,
         valid_from_purchase: formData.valid_from_purchase,
         valid_date_type: formData.valid_date_type,
-        valid_start_date: formData.valid_start_date,
-        valid_end_date: formData.valid_end_date,
+        valid_date_start: formData.valid_date_start,
+        valid_date_end: formData.valid_date_end,
         unavailable_dates: formData.unavailable_dates,
         unavailable_date_type: formData.unavailable_date_type,
         unavailable_weekdays: formData.unavailable_weekdays,
@@ -928,8 +929,8 @@ export default function PackageAdmin() {
             valid_days: 60,
             valid_from_purchase: true,
             valid_date_type: 'days',
-            valid_start_date: '',
-            valid_end_date: '',
+            valid_date_start: '',
+            valid_date_end: '',
             unavailable_date_type: 'all',
             unavailable_weekdays: [],
             unavailable_holidays: [],
@@ -1613,8 +1614,8 @@ export default function PackageAdmin() {
                   <Text className="block text-sm text-gray-600">
                     {formData.valid_date_type === 'days'
                       ? `自购买次日起${formData.valid_days}天，购买当天默认可用`
-                      : formData.valid_start_date && formData.valid_end_date
-                      ? `${formData.valid_start_date} - ${formData.valid_end_date}`
+                      : formData.valid_date_start && formData.valid_date_end
+                      ? `${formData.valid_date_start} - ${formData.valid_date_end}`
                       : '自购买次日起60天，购买当天默认可用'}
                   </Text>
                 </View>
@@ -2435,8 +2436,8 @@ export default function PackageAdmin() {
                       onClick={() => {
                         setDatePickerType('valid')
                         setShowDatePicker(true)
-                        setTempStartDate(formData.valid_start_date)
-                        setTempEndDate(formData.valid_end_date)
+                        setTempStartDate(formData.valid_date_start)
+                        setTempEndDate(formData.valid_date_end)
                       }}
                     >
                       <Text className="block text-sm text-blue-500">编辑</Text>
@@ -2445,8 +2446,8 @@ export default function PackageAdmin() {
                   </View>
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <Text className="block text-sm text-gray-800">
-                      {formData.valid_start_date && formData.valid_end_date
-                        ? `${formData.valid_start_date} ~ ${formData.valid_end_date}`
+                      {formData.valid_date_start && formData.valid_date_end
+                        ? `${formData.valid_date_start} ~ ${formData.valid_date_end}`
                         : '请选择日期范围'}
                     </Text>
                   </View>
@@ -2463,8 +2464,8 @@ export default function PackageAdmin() {
                   if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
                     // 选择了指定日期可用且有日期：保存为 date_range
                     updateFormData('valid_date_type', 'date_range')
-                    updateFormData('valid_start_date', tempStartDate)
-                    updateFormData('valid_end_date', tempEndDate)
+                    updateFormData('valid_date_start', tempStartDate)
+                    updateFormData('valid_date_end', tempEndDate)
                   } else {
                     // 选择了指定天数可用或没有设置日期：保存为 days
                     updateFormData('valid_date_type', 'days')
