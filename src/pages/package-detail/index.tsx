@@ -476,9 +476,6 @@ export default function PackageDetail() {
               {pkg.private_room && (
                 <Text className="block text-sm text-gray-600">· {pkg.private_room}</Text>
               )}
-              {pkg.limit_usage_count && (
-                <Text className="block text-sm text-gray-600">· 当前商品每桌限用{pkg.usage_count_limit || 1}张券</Text>
-              )}
             </View>
           </View>
 
