@@ -153,7 +153,6 @@ export default function PackageDetail() {
 
   const originalPrice = parseFloat(pkg.original_price || pkg.price)
   const currentPrice = parseFloat(pkg.price)
-  const discount = originalPrice > 0 ? Math.round((currentPrice / originalPrice) * 10) / 10 : 0
 
   // 合并所有图片
   const allImages = [
@@ -200,29 +199,44 @@ export default function PackageDetail() {
           </View>
         </View>
 
-        {/* 价格区域 */}
-        <View className="bg-white px-4 py-4">
+        {/* 价格区域 - 红色背景 */}
+        <View className="bg-red-500 px-4 py-4">
           <View className="flex flex-row items-baseline gap-2">
-            <Text className="block text-3xl font-bold text-red-500">¥{currentPrice.toFixed(0)}</Text>
+            <Text className="block text-sm text-white">券后</Text>
+            <Text className="block text-4xl font-bold text-white">¥{currentPrice.toFixed(0)}</Text>
             {originalPrice > currentPrice && (
-              <>
-                <Text className="block text-base text-gray-400 line-through">¥{originalPrice.toFixed(0)}</Text>
-                <View className="bg-red-50 px-2 py-1 rounded">
-                  <Text className="block text-xs text-red-500">{discount}折</Text>
-                </View>
-              </>
+              <Text className="block text-base text-white" style={{ opacity: 0.7, textDecorationLine: 'line-through' }}>
+                ¥{originalPrice.toFixed(0)}
+              </Text>
             )}
             {pkg.sales_count && (
-              <Text className="block text-sm text-gray-500 ml-auto">已售{pkg.sales_count}+</Text>
+              <Text className="block text-sm text-white ml-auto" style={{ opacity: 0.9 }}>
+                已售{pkg.sales_count}+
+              </Text>
             )}
           </View>
-          {/* 团购合计价 */}
+          
+          {/* 优惠标签行 */}
           {originalPrice > currentPrice && (
-            <Text className="block text-sm text-gray-500 mt-1">
-              团购合计价 ¥{originalPrice.toFixed(0)}
-            </Text>
+            <View className="flex flex-row items-center gap-2 mt-3 flex-wrap">
+              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
+                <Text className="block text-xs text-red-500 font-bold">超值券膨胀</Text>
+                <Text className="block text-xs text-red-500 ml-1">减{(originalPrice - currentPrice).toFixed(0)}</Text>
+              </View>
+              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
+                <Text className="block text-xs text-red-500">共省{(originalPrice - currentPrice).toFixed(0)}元</Text>
+                <Text className="block text-xs text-red-500 ml-1">›</Text>
+              </View>
+              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
+                <Text className="block text-xs text-red-500">14天最低</Text>
+              </View>
+            </View>
           )}
-          <Text className="block text-lg font-bold text-gray-800 mt-2">{pkg.name}</Text>
+        </View>
+
+        {/* 套餐名称 */}
+        <View className="bg-white px-4 py-3">
+          <Text className="block text-lg font-bold text-gray-800">{pkg.name}</Text>
         </View>
 
         {/* 服务标签 */}
