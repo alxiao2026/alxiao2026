@@ -2440,8 +2440,17 @@ export default function PackageAdmin() {
               <Button
                 className="w-full bg-blue-500"
                 onClick={() => {
-                  updateFormData('valid_date_type', tempValidDateType)
-                  updateFormData('valid_days', tempValidDays)
+                  // 优先级逻辑：指定日期可用（优先级 1）> 指定天数可用（优先级 2）
+                  if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
+                    // 优先级 1：指定日期可用
+                    updateFormData('valid_date_type', 'date_range')
+                    updateFormData('valid_start_date', tempStartDate)
+                    updateFormData('valid_end_date', tempEndDate)
+                  } else {
+                    // 优先级 2：指定天数可用
+                    updateFormData('valid_date_type', 'days')
+                    updateFormData('valid_days', tempValidDays)
+                  }
                   setShowValidDateModal(false)
                 }}
               >
