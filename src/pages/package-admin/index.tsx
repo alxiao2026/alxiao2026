@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { ArrowLeft, Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 
@@ -105,9 +106,7 @@ export default function PackageAdmin() {
     { key: 'basic', label: '基础信息' },
     { key: 'merchant', label: '商家信息' },
     { key: 'product', label: '商品信息' },
-    { key: 'sale', label: '售卖信息' },
-    { key: 'trade', label: '交易规则' },
-    { key: 'consume', label: '消费规则' }
+    { key: 'sale', label: '售卖信息' }
   ]
 
   // 品类选择
@@ -159,7 +158,7 @@ export default function PackageAdmin() {
   const [tempUnavailableDateType, setTempUnavailableDateType] = useState('all')
   const [tempUnavailableWeekdays, setTempUnavailableWeekdays] = useState<number[]>([])
   const [tempUnavailableHolidays, setTempUnavailableHolidays] = useState<string[]>([])
-  const [tempUnavailableCalendarDates, setTempUnavailableCalendarDates] = useState<string[]>([])
+  const [tempUnavailableCalendarDates] = useState<string[]>([])
   const [tempAvailableTimeType, setTempAvailableTimeType] = useState('business_hours')
   const [tempAvailableTimeStart, setTempAvailableTimeStart] = useState('00:00')
   const [tempAvailableTimeEnd, setTempAvailableTimeEnd] = useState('23:59')
@@ -443,9 +442,27 @@ export default function PackageAdmin() {
           return false
         }
         return true
-      case 3: // 售卖信息
+      case 3: // 售卖信息（包含交易规则和消费规则）
         if (formData.stock < 0) {
           Taro.showToast({ title: '请输入有效库存', icon: 'none' })
+          return false
+        }
+        // 验证可用日期
+        if (formData.valid_date_type === 'date' && (!formData.valid_start_date || !formData.valid_end_date)) {
+          Taro.showToast({ title: '请设置可用日期范围', icon: 'none' })
+          return false
+        }
+        // 验证每日可用时段
+        if (formData.available_time_type === 'custom' && (!formData.available_time_start || !formData.available_time_end)) {
+          Taro.showToast({ title: '请设置每日可用时段', icon: 'none' })
+          return false
+        }
+        // 验证不可用日期
+        if (formData.unavailable_date_type === 'partial' && 
+            (!formData.unavailable_weekdays || formData.unavailable_weekdays.length === 0) &&
+            (!formData.unavailable_holidays || formData.unavailable_holidays.length === 0) &&
+            (!formData.unavailable_dates || formData.unavailable_dates.length === 0)) {
+          Taro.showToast({ title: '请至少设定一个不可消费日期', icon: 'none' })
           return false
         }
         return true
@@ -1516,158 +1533,147 @@ export default function PackageAdmin() {
                 </View>
               </CardContent>
             </Card>
-          </View>
-        )}
 
-        {/* 交易规则 */}
-        {activeTab === 'trade' && (
-          <View className="space-y-4">
+            {/* 交易规则 */}
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-4">
                 <Text className="block text-base font-semibold text-gray-800 mb-4">交易规则</Text>
 
                 {/* 限购规则 */}
-                <View className="mb-4">
-                  <View className="flex items-center gap-1 mb-2">
-                    <Text className="block text-sm text-gray-600">限购规则</Text>
-                  </View>
-                  <View
-                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => {
-                      setTempPurchaseLimitType(formData.purchase_limit_type)
-                      setTempPurchaseLimit(formData.purchase_limit)
-                      setTempPurchaseLimitPerDay(formData.purchase_limit_per_day)
-                      setTempPurchaseLimitPerMonth(formData.purchase_limit_per_month)
-                      setShowPurchaseLimitModal(true)
-                    }}
-                  >
-                    <Text className="block text-sm text-gray-800">
-                      {formData.purchase_limit_type === 'unlimited' ? '不限制' : `每人限购${formData.purchase_limit}份`}
+                <View
+                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  onClick={() => setShowPurchaseLimitModal(true)}
+                >
+                  <Text className="block text-sm text-gray-800">限购规则</Text>
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-gray-500">
+                      {formData.purchase_limit_type === 'unlimited'
+                        ? '不限制'
+                        : formData.purchase_limit_per_person
+                        ? `每人${formData.purchase_limit_per_person}份`
+                        : '限制'}
                     </Text>
-                    <Text className="block text-sm text-gray-400">›</Text>
+                    <Text className="block text-gray-400">›</Text>
                   </View>
                 </View>
-              </CardContent>
-            </Card>
 
-            <Card className="rounded-xl shadow-sm">
-              <CardContent className="p-4">
-                <Text className="block text-base font-semibold text-gray-800 mb-4">消费规则</Text>
+                {/* 消费规则 */}
+                <Text className="block text-base font-semibold text-gray-800 mt-4 mb-4">消费规则</Text>
 
                 {/* 可用日期 */}
-                <View className="mb-4">
-                  <View className="flex items-center gap-1 mb-2">
-                    <Text className="block text-sm text-gray-600">可用日期</Text>
+                <View
+                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  onClick={() => setShowValidDateModal(true)}
+                >
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-gray-800">可用日期</Text>
                     <Text className="block text-red-500">*</Text>
                   </View>
-                  <View
-                    className="bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => {
-                      setTempValidDateType(formData.valid_date_type)
-                      setTempValidDays(formData.valid_days)
-                      setShowValidDateModal(true)
-                    }}
-                  >
-                    <Text className="block text-sm text-gray-800">
-                      {formData.valid_date_type === 'days'
-                        ? `自购买次日起${formData.valid_days}天${formData.valid_from_purchase ? '，购买当天默认可用' : ''}`
-                        : `指定日期可用：${formData.valid_start_date} ~ ${formData.valid_end_date}`}
-                    </Text>
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-gray-400">›</Text>
                   </View>
+                </View>
+                <View className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                  <Text className="block text-sm text-gray-600">
+                    {formData.valid_date_type === 'days'
+                      ? `自购买次日起${formData.valid_days}天，购买当天默认可用`
+                      : formData.valid_start_date && formData.valid_end_date
+                      ? `${formData.valid_start_date} - ${formData.valid_end_date}`
+                      : '自购买次日起60天，购买当天默认可用'}
+                  </Text>
                 </View>
 
                 {/* 不可用日期 */}
-                <View className="mb-4">
-                  <View className="flex items-center gap-1 mb-2">
-                    <Text className="block text-sm text-gray-600">不可用日期</Text>
+                <View
+                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  onClick={() => {
+                    setTempUnavailableDateType(formData.unavailable_date_type)
+                    setTempUnavailableWeekdays(formData.unavailable_weekdays || [])
+                    setTempUnavailableHolidays(formData.unavailable_holidays || [])
+                    setShowUnavailableDateModal(true)
+                  }}
+                >
+                  <Text className="block text-sm text-gray-800">不可用日期</Text>
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-gray-400">›</Text>
                   </View>
-                  <View
-                    className="bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => {
-                      setTempUnavailableDateType(formData.unavailable_date_type)
-                      setTempUnavailableWeekdays(formData.unavailable_weekdays)
-                      setTempUnavailableHolidays(formData.unavailable_holidays)
-                      setTempUnavailableCalendarDates(formData.unavailable_dates)
-                      setShowUnavailableDateModal(true)
-                    }}
-                  >
-                    <Text className="block text-sm text-gray-800">
-                      {formData.unavailable_date_type === 'all'
-                        ? '所有日期均可用'
-                        : `已设置不可用日期`}
-                    </Text>
-                  </View>
+                </View>
+                <View className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                  <Text className="block text-sm text-gray-600">
+                    {formData.unavailable_date_type === 'all'
+                      ? '所有日期均可用'
+                      : formData.unavailable_weekdays && formData.unavailable_weekdays.length > 0
+                      ? `每周${formData.unavailable_weekdays.map(d => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
+                      : '所有日期均可用'}
+                  </Text>
                 </View>
 
                 {/* 每日可用时段 */}
-                <View className="mb-4">
-                  <View className="flex items-center gap-1 mb-2">
-                    <Text className="block text-sm text-gray-600">每日可用时段</Text>
+                <View
+                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  onClick={() => {
+                    setTempAvailableTimeType(formData.available_time_type)
+                    setTempAvailableTimeStart(formData.available_time_start || '00:00')
+                    setTempAvailableTimeEnd(formData.available_time_end || '23:59')
+                    setShowAvailableTimeModal(true)
+                  }}
+                >
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-gray-800">每日可用时段</Text>
                     <Text className="block text-red-500">*</Text>
                   </View>
-                  <View
-                    className="bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => {
-                      setTempAvailableTimeType(formData.available_time_type)
-                      setTempAvailableTimeStart(formData.available_time_start)
-                      setTempAvailableTimeEnd(formData.available_time_end)
-                      setShowAvailableTimeModal(true)
-                    }}
-                  >
-                    <Text className="block text-sm text-gray-800">
-                      {formData.available_time_type === 'business_hours' ? '营业时间可用' : `${formData.available_time_start} - ${formData.available_time_end}`}
-                    </Text>
+                  <View className="flex items-center gap-1">
+                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-gray-400">›</Text>
                   </View>
+                </View>
+                <View className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                  <Text className="block text-sm text-gray-600">
+                    {formData.available_time_type === 'business_hours'
+                      ? '营业时间可用'
+                      : `${formData.available_time_start || '00:00'} - ${formData.available_time_end || '23:59'}`}
+                  </Text>
                 </View>
 
                 {/* 限制使用张数 */}
-                <View className="mb-4">
-                  <View
-                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => {
-                      setTempLimitUsageCount(formData.usage_count_limit || 1)
-                      setShowLimitUsageModal(true)
-                    }}
-                  >
-                    <Text className="block text-sm text-gray-800">限制使用张数</Text>
-                    <View className="flex items-center gap-2">
-                      <Text className="block text-sm text-gray-500">
-                        {formData.limit_usage_count ? `每单限${formData.usage_count_limit || 1}张` : '不限制'}
-                      </Text>
-                      <Text className="block text-gray-400">›</Text>
-                    </View>
-                  </View>
+                <View
+                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  onClick={() => setShowLimitUsageModal(true)}
+                >
+                  <Text className="block text-sm text-gray-800">限制使用张数</Text>
+                  <Switch
+                    checked={formData.limit_usage_count}
+                    onCheckedChange={(checked) => updateFormData('limit_usage_count', checked)}
+                  />
                 </View>
+                {formData.limit_usage_count && (
+                  <View className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                    <Text className="block text-sm text-gray-600">每单限 {formData.usage_count_limit || 1} 张</Text>
+                  </View>
+                )}
 
                 {/* 预约规则 */}
-                <View>
-                  <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-800">预约规则</Text>
-                    <View
-                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        formData.need_reservation ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                      onClick={() => updateFormData('need_reservation', !formData.need_reservation)}
-                    >
-                      <View
-                        className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                          formData.need_reservation ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </View>
-                  </View>
+                <View className="flex items-center justify-between py-3">
+                  <Text className="block text-sm text-gray-800">预约规则</Text>
+                  <Switch
+                    checked={formData.need_reservation}
+                    onCheckedChange={(checked) => updateFormData('need_reservation', checked)}
+                  />
                 </View>
+                {formData.need_reservation && (
+                  <View className="bg-gray-50 rounded-lg px-4 py-3 mt-2">
+                    <Text className="block text-sm text-gray-600">需提前 {formData.reservation_hours || 2} 小时预约</Text>
+                  </View>
+                )}
               </CardContent>
             </Card>
-          </View>
-        )}
 
-        {/* 消费规则 */}
-        {activeTab === 'consume' && (
-          <View className="space-y-4">
+            {/* 消费规则详细 */}
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-4">
-                <Text className="block text-base font-semibold text-gray-800 mb-4">消费规则</Text>
+                <Text className="block text-base font-semibold text-gray-800 mb-4">消费规则详细</Text>
 
                 {/* 店内其他优惠 */}
                 <View className="mb-4">
@@ -1778,6 +1784,8 @@ export default function PackageAdmin() {
             </Card>
           </View>
         )}
+
+        {/* 品类选择弹窗 */}
       </View>
 
       {/* 品类选择弹窗 */}
