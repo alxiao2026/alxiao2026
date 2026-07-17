@@ -151,7 +151,6 @@ export default function PackageDetail() {
     )
   }
 
-  const originalPrice = parseFloat(pkg.original_price || pkg.price)
   const currentPrice = parseFloat(pkg.price)
 
   // 合并所有图片
@@ -186,44 +185,6 @@ export default function PackageDetail() {
           ) : (
             <View className="flex items-center justify-center h-full">
               <Text className="block text-gray-400">暂无图片</Text>
-            </View>
-          )}
-        </View>
-
-        {/* 价格区域 - 红色背景 */}
-        <View className="bg-red-500 px-4 py-4">
-          <View className="flex flex-row items-baseline gap-3">
-            <Text className="block text-sm text-white">到手价</Text>
-            <Text className="block text-3xl font-medium text-white">¥{currentPrice.toFixed(0)}</Text>
-            {originalPrice > currentPrice && (
-              <View className="flex flex-col">
-                <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>套餐合计价</Text>
-                <Text className="block text-sm text-white" style={{ opacity: 0.8, textDecorationLine: 'line-through' }}>
-                  ¥{originalPrice.toFixed(0)}
-                </Text>
-              </View>
-            )}
-            {pkg.sales_count && (
-              <Text className="block text-sm text-white ml-auto" style={{ opacity: 0.9 }}>
-                已售{pkg.sales_count}+
-              </Text>
-            )}
-          </View>
-          
-          {/* 优惠标签行 */}
-          {originalPrice > currentPrice && (
-            <View className="flex flex-row items-center gap-2 mt-3 flex-wrap">
-              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
-                <Text className="block text-xs text-red-500 font-bold">超值券膨胀</Text>
-                <Text className="block text-xs text-red-500 ml-1">减{(originalPrice - currentPrice).toFixed(0)}</Text>
-              </View>
-              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
-                <Text className="block text-xs text-red-500">共省{(originalPrice - currentPrice).toFixed(0)}元</Text>
-                <Text className="block text-xs text-red-500 ml-1">›</Text>
-              </View>
-              <View className="flex flex-row items-center bg-white rounded px-2 py-1">
-                <Text className="block text-xs text-red-500">14天最低</Text>
-              </View>
             </View>
           )}
         </View>
