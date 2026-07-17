@@ -659,6 +659,23 @@ export default function PackageAdmin() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  // 图片大小限制：5MB
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+  const checkImageSize = (size: number): boolean => {
+    if (size > MAX_IMAGE_SIZE) {
+      const sizeMB = (size / 1024 / 1024).toFixed(1)
+      Taro.showModal({
+        title: '图片过大',
+        content: `当前图片 ${sizeMB}MB，超过 5MB 限制。建议选择 5MB 以内的图片，或使用图片压缩工具减小体积后重试。`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+      return false
+    }
+    return true
+  }
+
   // H5 端通过 FormData 上传文件（Taro.uploadFile 不支持 File 对象）
   const h5UploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData()
@@ -681,6 +698,7 @@ export default function PackageAdmin() {
       input.onchange = async (e: any) => {
         const file = e.target.files[0]
         if (!file) return
+        if (!checkImageSize(file.size)) return
         setUploadingCover(true)
         try {
           const url = await h5UploadFile(file)
@@ -710,6 +728,8 @@ export default function PackageAdmin() {
       })
 
       if (res.tempFilePaths.length > 0) {
+        // 校验文件大小
+        if (res.tempFiles && res.tempFiles[0] && !checkImageSize(res.tempFiles[0].size)) return
         setUploadingCover(true)
         const uploadRes = await Network.uploadFile({
           url: '/api/upload',
@@ -748,6 +768,10 @@ export default function PackageAdmin() {
       input.onchange = async (e: any) => {
         const files = Array.from(e.target.files).slice(0, remaining) as File[]
         if (files.length === 0) return
+        // 校验每个文件大小
+        for (const file of files) {
+          if (!checkImageSize(file.size)) return
+        }
         setUploadingEnv(true)
         try {
           const newUrls = [...formData.environment_images]
@@ -778,6 +802,12 @@ export default function PackageAdmin() {
       })
 
       if (res.tempFilePaths.length > 0) {
+        // 校验每个文件大小
+        if (res.tempFiles) {
+          for (const f of res.tempFiles) {
+            if (!checkImageSize(f.size)) return
+          }
+        }
         setUploadingEnv(true)
         const newUrls = [...formData.environment_images]
         for (const filePath of res.tempFilePaths) {
@@ -1397,7 +1427,7 @@ export default function PackageAdmin() {
                     </View>
                     <Text className="block text-xs text-blue-500">规范示例</Text>
                   </View>
-                  <Text className="block text-xs text-gray-400 mb-3">在商品详情页以 4:3 比例展示</Text>
+                  <Text className="block text-xs text-gray-400 mb-3">在商品详情页以 4:3 比例展示，建议 5MB 以内</Text>
 
                   {formData.cover_image ? (
                     <View className="relative w-24 h-24 rounded-lg overflow-hidden">
@@ -1433,7 +1463,7 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-600">环境图</Text>
                     <Text className="block text-xs text-blue-500">查看示例</Text>
                   </View>
-                  <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张。</Text>
+                  <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张，单张建议 5MB 以内。</Text>
 
                   <View className="flex flex-wrap gap-2">
                     {Array.isArray(formData.environment_images) && formData.environment_images.map((url, index) => (
