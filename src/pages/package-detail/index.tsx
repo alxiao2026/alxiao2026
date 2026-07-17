@@ -188,29 +188,21 @@ export default function PackageDetail() {
               <Text className="block text-gray-400">暂无图片</Text>
             </View>
           )}
-          
-          {/* 图片切换标签 */}
-          <View className="absolute bottom-4 right-4 flex flex-row items-center gap-2 rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <Text className="block text-xs text-white">菜品</Text>
-            <Text className="block text-xs text-white" style={{ opacity: 0.6 }}>|</Text>
-            <Text className="block text-xs text-white">
-              1/{allImages.length}
-            </Text>
-          </View>
         </View>
 
         {/* 价格区域 - 红色背景 */}
         <View className="bg-red-500 px-4 py-4">
-          <View className="flex flex-row items-baseline gap-2">
+          <View className="flex flex-row items-baseline gap-3">
             <Text className="block text-sm text-white">到手价</Text>
-            <View className="flex flex-row items-baseline">
-              <Text className="block text-3xl font-medium text-white">¥{currentPrice.toFixed(0)}</Text>
-              {originalPrice > currentPrice && (
-                <Text className="block text-xs text-white ml-2" style={{ opacity: 0.7, textDecorationLine: 'line-through' }}>
+            <Text className="block text-3xl font-medium text-white">¥{currentPrice.toFixed(0)}</Text>
+            {originalPrice > currentPrice && (
+              <View className="flex flex-col">
+                <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>套餐合计价</Text>
+                <Text className="block text-sm text-white" style={{ opacity: 0.8, textDecorationLine: 'line-through' }}>
                   ¥{originalPrice.toFixed(0)}
                 </Text>
-              )}
-            </View>
+              </View>
+            )}
             {pkg.sales_count && (
               <Text className="block text-sm text-white ml-auto" style={{ opacity: 0.9 }}>
                 已售{pkg.sales_count}+
