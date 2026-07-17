@@ -158,6 +158,7 @@ export default function PackageAdmin() {
   const [tempValidDateType, setTempValidDateType] = useState('days')
   const [tempValidDays, setTempValidDays] = useState(60)
   const [tempValidDaysInput, setTempValidDaysInput] = useState('60')
+  const [tempUseValidDays, setTempUseValidDays] = useState(true) // 开关：true=使用指定天数，false=使用指定日期
   const [tempUnavailableDateType, setTempUnavailableDateType] = useState('all')
   const [tempUnavailableWeekdays, setTempUnavailableWeekdays] = useState<number[]>([])
   const [tempUnavailableHolidays, setTempUnavailableHolidays] = useState<string[]>([])
@@ -2374,35 +2375,53 @@ export default function PackageAdmin() {
               {/* 指定天数 */}
               {tempValidDateType === 'days' && (
                 <View className="space-y-4">
-                  <View className="flex items-center justify-between">
-                    <Text className="block text-base font-medium text-gray-900">自购买次日起</Text>
-                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                      <Text className="block text-2xl font-medium text-gray-900">{tempValidDays}</Text>
-                      <Text className="block text-sm text-gray-600">天</Text>
+                  {/* 开关：使用指定天数 */}
+                  <View className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <View className="flex-1">
+                      <Text className="block text-base font-medium text-gray-900">使用指定天数</Text>
+                      <Text className="block text-xs text-gray-500 mt-1">关闭后将使用指定日期</Text>
                     </View>
+                    <Switch
+                      checked={tempUseValidDays}
+                      onCheckedChange={(checked) => {
+                        setTempUseValidDays(checked)
+                      }}
+                    />
                   </View>
-                  <Text className="block text-sm text-gray-500">购买当日默认可用</Text>
-                  
-                  {/* 天数输入框 */}
-                  <View className="flex items-center justify-center gap-2 mt-4">
-                    <View className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
-                      <Input
-                        className="w-full text-center text-2xl font-medium text-gray-900"
-                        type="number"
-                        value={tempValidDaysInput}
-                        onInput={(e) => {
-                          const val = e.detail.value
-                          setTempValidDaysInput(val)
-                          const num = parseInt(val)
-                          if (!Number.isNaN(num) && num > 0) {
-                            setTempValidDays(num)
-                          }
-                        }}
-                        placeholder="请输入天数"
-                      />
-                    </View>
-                    <Text className="block text-base text-gray-600">天</Text>
-                  </View>
+
+                  {tempUseValidDays && (
+                    <>
+                      <View className="flex items-center justify-between">
+                        <Text className="block text-base font-medium text-gray-900">自购买次日起</Text>
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                          <Text className="block text-2xl font-medium text-gray-900">{tempValidDays}</Text>
+                          <Text className="block text-sm text-gray-600">天</Text>
+                        </View>
+                      </View>
+                      <Text className="block text-sm text-gray-500">购买当日默认可用</Text>
+                      
+                      {/* 天数输入框 */}
+                      <View className="flex items-center justify-center gap-2 mt-4">
+                        <View className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
+                          <Input
+                            className="w-full text-center text-2xl font-medium text-gray-900"
+                            type="number"
+                            value={tempValidDaysInput}
+                            onInput={(e) => {
+                              const val = e.detail.value
+                              setTempValidDaysInput(val)
+                              const num = parseInt(val)
+                              if (!Number.isNaN(num) && num > 0) {
+                                setTempValidDays(num)
+                              }
+                            }}
+                            placeholder="请输入天数"
+                          />
+                        </View>
+                        <Text className="block text-base text-gray-600">天</Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               )}
 
@@ -2440,16 +2459,22 @@ export default function PackageAdmin() {
               <Button
                 className="w-full bg-blue-500"
                 onClick={() => {
-                  // 优先级逻辑：指定日期可用（优先级 1）> 指定天数可用（优先级 2）
-                  if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
-                    // 优先级 1：指定日期可用
-                    updateFormData('valid_date_type', 'date_range')
-                    updateFormData('valid_start_date', tempStartDate)
-                    updateFormData('valid_end_date', tempEndDate)
-                  } else {
-                    // 优先级 2：指定天数可用
+                  // 根据开关状态决定使用哪种数据
+                  if (tempUseValidDays) {
+                    // 开关打开：使用指定天数
                     updateFormData('valid_date_type', 'days')
                     updateFormData('valid_days', tempValidDays)
+                  } else {
+                    // 开关关闭：使用指定日期（如果有设置）
+                    if (tempStartDate && tempEndDate) {
+                      updateFormData('valid_date_type', 'date_range')
+                      updateFormData('valid_start_date', tempStartDate)
+                      updateFormData('valid_end_date', tempEndDate)
+                    } else {
+                      // 如果没有设置指定日期，仍然使用天数
+                      updateFormData('valid_date_type', 'days')
+                      updateFormData('valid_days', tempValidDays)
+                    }
                   }
                   setShowValidDateModal(false)
                 }}
