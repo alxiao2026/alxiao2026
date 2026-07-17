@@ -575,15 +575,15 @@ export default function PackageDetail() {
 
       {/* 底部购买栏 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 flex flex-row items-center justify-between border-t border-gray-200" style={{ zIndex: 100 }}>
-        <View className="flex flex-row items-baseline gap-2">
+        <View className="flex flex-row items-end gap-3">
           <View className="flex flex-col">
             <Text className="block text-xs text-gray-500">到手价</Text>
             <Text className="block text-xl font-bold text-red-500">¥{currentPrice.toFixed(0)}</Text>
           </View>
           {originalPrice > currentPrice && (
-            <View className="flex flex-col">
+            <View className="flex flex-col pb-1">
               <Text className="block text-xs text-gray-400">原价</Text>
-              <Text className="block text-sm text-gray-400 line-through">¥{originalPrice.toFixed(0)}</Text>
+              <Text className="block text-xs text-gray-400 line-through">¥{originalPrice.toFixed(0)}</Text>
             </View>
           )}
         </View>
