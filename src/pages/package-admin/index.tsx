@@ -354,7 +354,8 @@ export default function PackageAdmin() {
     const item = combo?.items.find(i => i.id === itemId)
     setSpecComboId(comboId)
     setSpecItemId(itemId)
-    setSpecQuantity(item?.quantity || 1)
+    // 确保 quantity 是数字类型
+    setSpecQuantity(Number(item?.quantity) || 1)
     setSpecUnit(item?.unit || '')
     setShowSpecPicker(true)
   }
