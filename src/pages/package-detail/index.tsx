@@ -221,7 +221,7 @@ export default function PackageDetail() {
               {pkg.unavailable_date_type === 'partial' && (
                 <Text className="block text-xs text-gray-600">
                   {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0
-                    ? `每周${pkg.unavailable_weekdays.map((d: number) => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
+                    ? `每周：${pkg.unavailable_weekdays.map((d: number) => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
                     : '部分日期不可用'}
                 </Text>
               )}
@@ -353,7 +353,7 @@ export default function PackageDetail() {
                 {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0 && (() => {
                   const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
                   const names = pkg.unavailable_weekdays.map((d: number) => weekdayNames[d] || `周${d}`)
-                  return <Text className="block text-sm text-gray-600">· 每周{names.join('、')}不可用</Text>
+                  return <Text className="block text-sm text-gray-600">· 每周：{names.join('、')}不可用</Text>
                 })()}
                 {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (() => {
                   const holidayMap: Record<string, { name: string; date: string }> = {
