@@ -355,12 +355,29 @@ export default function PackageDetail() {
                   const names = pkg.unavailable_weekdays.map((d: number) => weekdayNames[d] || `周${d}`)
                   return <Text className="block text-sm text-gray-600">· 每周{names.join('、')}不可用</Text>
                 })()}
-                {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (
-                  <Text className="block text-sm text-gray-600">· 节假日{pkg.unavailable_holidays.join('、')}不可用</Text>
-                )}
-                {pkg.unavailable_dates && Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0 && (
-                  <Text className="block text-sm text-gray-600">· 指定日期{pkg.unavailable_dates.join('、')}不可用</Text>
-                )}
+                {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (() => {
+                  const holidayMap: Record<string, { name: string; date: string }> = {
+                    'qixi': { name: '七夕节', date: '2026.08.19' },
+                    'zhongqiu': { name: '中秋节', date: '2026.09.25 ~ 2026.09.27' },
+                    'guoqing': { name: '国庆节', date: '2026.10.01 ~ 2026.10.07' },
+                    'shengdan': { name: '圣诞节', date: '2026.12.25' },
+                    'yuandan': { name: '元旦', date: '2027.01.01' },
+                    'chunjie': { name: '春节', date: '2027.01.28 ~ 2027.02.03' }
+                  }
+                  const names = pkg.unavailable_holidays.map((h: string) => {
+                    const holiday = holidayMap[h]
+                    return holiday ? `${holiday.name}(${holiday.date})` : h
+                  })
+                  return <Text className="block text-sm text-gray-600">· 节假日{names.join('、')}不可用</Text>
+                })()}
+                {pkg.unavailable_dates && Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0 && (() => {
+                  const formatDate = (dateStr: string) => {
+                    const date = new Date(dateStr)
+                    return `${date.getMonth() + 1}月${date.getDate()}日`
+                  }
+                  const dates = pkg.unavailable_dates.map((d: string) => formatDate(d))
+                  return <Text className="block text-sm text-gray-600">· 指定日期{dates.join('、')}不可用</Text>
+                })()}
               </View>
             </View>
           )}
