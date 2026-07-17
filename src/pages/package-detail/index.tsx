@@ -322,9 +322,11 @@ export default function PackageDetail() {
                 <Text className="block text-sm font-medium text-gray-800">不可用日期</Text>
               </View>
               <View className="ml-6 flex flex-col gap-1">
-                {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0 && (
-                  <Text className="block text-sm text-gray-600">· 每周{pkg.unavailable_weekdays.join('、')}不可用</Text>
-                )}
+                {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0 && (() => {
+                  const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+                  const names = pkg.unavailable_weekdays.map((d: number) => weekdayNames[d] || `周${d}`)
+                  return <Text className="block text-sm text-gray-600">· 每周{names.join('、')}不可用</Text>
+                })()}
                 {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (
                   <Text className="block text-sm text-gray-600">· 节假日{pkg.unavailable_holidays.join('、')}不可用</Text>
                 )}
@@ -358,13 +360,13 @@ export default function PackageDetail() {
                 <Text className="block text-sm font-medium text-gray-800">限购规则</Text>
               </View>
               <View className="ml-6 flex flex-col gap-1">
-                {pkg.purchase_limit && (
+                {(pkg.purchase_limit || 0) > 0 && (
                   <Text className="block text-sm text-gray-600">· 每人最多购买{pkg.purchase_limit}份</Text>
                 )}
-                {pkg.purchase_limit_per_day && (
+                {(pkg.purchase_limit_per_day || 0) > 0 && (
                   <Text className="block text-sm text-gray-600">· 每人每天最多购买{pkg.purchase_limit_per_day}份</Text>
                 )}
-                {pkg.purchase_limit_per_month && (
+                {(pkg.purchase_limit_per_month || 0) > 0 && (
                   <Text className="block text-sm text-gray-600">· 每人每月最多购买{pkg.purchase_limit_per_month}份</Text>
                 )}
               </View>
