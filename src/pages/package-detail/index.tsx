@@ -250,12 +250,20 @@ export default function PackageDetail() {
           <View className="flex flex-row items-center gap-2">
             <Text className="block text-sm text-gray-500">须知</Text>
             <View className="flex flex-row items-center gap-3 flex-1 flex-wrap">
-              {/* 可用日期 */}
-              <Text className="block text-sm text-gray-700">
-                {pkg.valid_date_type === 'date_range' && pkg.valid_date_start && pkg.valid_date_end
-                  ? `${pkg.valid_date_start}至${pkg.valid_date_end}可用`
-                  : `购买后${pkg.valid_days || 60}天内可用`}
-              </Text>
+              {/* 不可用日期 */}
+              {pkg.unavailable_date_type === 'partial' && (
+                <Text className="block text-sm text-gray-700">
+                  {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0
+                    ? `每周${pkg.unavailable_weekdays.map((d: number) => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
+                    : '部分日期不可用'}
+                </Text>
+              )}
+              {pkg.unavailable_date_type === 'all' && (
+                <Text className="block text-sm text-gray-700">全周可用</Text>
+              )}
+              {!pkg.unavailable_date_type && (
+                <Text className="block text-sm text-gray-700">全周可用</Text>
+              )}
               {/* 限购规则 */}
               {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_person || 0) > 0 && (
                 <Text className="block text-sm text-gray-700">每人限购{pkg.purchase_limit_per_person}份</Text>
