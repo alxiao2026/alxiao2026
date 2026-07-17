@@ -562,7 +562,15 @@ export default function PackageAdmin() {
         // 加载商品搭配
         const combinationsData = Array.isArray(pkg.combinations) ? pkg.combinations : (typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : [])
         if (Array.isArray(combinationsData)) {
-          setCombinations(combinationsData)
+          // 确保 quantity 是数字类型
+          const normalizedCombinations = combinationsData.map((combo: ProductCombination) => ({
+            ...combo,
+            items: combo.items.map((item: ProductItem) => ({
+              ...item,
+              quantity: Number(item.quantity) || 1
+            }))
+          }))
+          setCombinations(normalizedCombinations)
         }
         // 加载商家信息
         if (pkg.merchant_id) {
@@ -950,7 +958,15 @@ export default function PackageAdmin() {
           setFeatureItems(draft.featureItems)
         }
         if (draft.combinations) {
-          setCombinations(draft.combinations)
+          // 确保 quantity 是数字类型
+          const normalizedCombinations = draft.combinations.map((combo: ProductCombination) => ({
+            ...combo,
+            items: combo.items.map((item: ProductItem) => ({
+              ...item,
+              quantity: Number(item.quantity) || 1
+            }))
+          }))
+          setCombinations(normalizedCombinations)
         }
         if (draft.currentStep !== undefined) {
           setCurrentStep(draft.currentStep)
