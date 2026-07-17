@@ -416,6 +416,25 @@ export default function PackageAdmin() {
       updateFormData('sale_start_date', tempStartDate)
       updateFormData('sale_end_date', tempEndDate)
     } else {
+      // 验证可消费时间段与售卖日期的关系
+      // 计算实际售卖结束日期（考虑自动延期半年）
+      let actualSaleEndDate = formData.sale_end_date
+      if (formData.auto_renew && formData.sale_end_date) {
+        const extendedDate = new Date(formData.sale_end_date)
+        extendedDate.setMonth(extendedDate.getMonth() + 6)
+        actualSaleEndDate = extendedDate.toISOString().split('T')[0]
+      }
+      // 验证可消费开始日期需在售卖开始日期之后（含当天）
+      if (formData.sale_start_date && tempStartDate && tempStartDate < formData.sale_start_date) {
+        Taro.showToast({ title: '可消费开始日期需在售卖开始日期之后（含当天）', icon: 'none' })
+        return
+      }
+      // 验证可消费结束日期需在售卖结束日期之后
+      if (actualSaleEndDate && tempEndDate && tempEndDate <= actualSaleEndDate) {
+        const label = formData.auto_renew ? '延期后售卖结束日期' : '售卖结束日期'
+        Taro.showToast({ title: `可消费结束日期需在${label}之后`, icon: 'none' })
+        return
+      }
       updateFormData('valid_date_start', tempStartDate)
       updateFormData('valid_date_end', tempEndDate)
       updateFormData('valid_date_type', 'date_range')
@@ -466,6 +485,27 @@ export default function PackageAdmin() {
         if (formData.valid_date_type === 'date_range' && (!formData.valid_date_start || !formData.valid_date_end)) {
           Taro.showToast({ title: '请设置可用日期范围', icon: 'none' })
           return false
+        }
+        // 验证可消费时间段与售卖日期的关系
+        if (formData.valid_date_type === 'date_range' && formData.valid_date_start && formData.valid_date_end) {
+          // 计算实际售卖结束日期（考虑自动延期半年）
+          let actualSaleEndDate = formData.sale_end_date
+          if (formData.auto_renew && formData.sale_end_date) {
+            const extendedDate = new Date(formData.sale_end_date)
+            extendedDate.setMonth(extendedDate.getMonth() + 6)
+            actualSaleEndDate = extendedDate.toISOString().split('T')[0]
+          }
+          // 验证可消费开始日期需在售卖开始日期之后（含当天）
+          if (formData.sale_start_date && formData.valid_date_start < formData.sale_start_date) {
+            Taro.showToast({ title: '可消费开始日期需在售卖开始日期之后（含当天）', icon: 'none' })
+            return false
+          }
+          // 验证可消费结束日期需在售卖结束日期之后
+          if (actualSaleEndDate && formData.valid_date_end <= actualSaleEndDate) {
+            const label = formData.auto_renew ? '延期后售卖结束日期' : '售卖结束日期'
+            Taro.showToast({ title: `可消费结束日期需在${label}之后`, icon: 'none' })
+            return false
+          }
         }
         // 验证每日可用时段
         if (formData.available_time_type === 'custom' && (!formData.available_time_start || !formData.available_time_end)) {
@@ -2462,6 +2502,25 @@ export default function PackageAdmin() {
                 onClick={() => {
                   // 根据选择的类型决定保存哪种数据
                   if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
+                    // 验证可消费时间段与售卖日期的关系
+                    // 计算实际售卖结束日期（考虑自动延期半年）
+                    let actualSaleEndDate = formData.sale_end_date
+                    if (formData.auto_renew && formData.sale_end_date) {
+                      const extendedDate = new Date(formData.sale_end_date)
+                      extendedDate.setMonth(extendedDate.getMonth() + 6)
+                      actualSaleEndDate = extendedDate.toISOString().split('T')[0]
+                    }
+                    // 验证可消费开始日期需在售卖开始日期之后（含当天）
+                    if (formData.sale_start_date && tempStartDate < formData.sale_start_date) {
+                      Taro.showToast({ title: '可消费开始日期需在售卖开始日期之后（含当天）', icon: 'none' })
+                      return
+                    }
+                    // 验证可消费结束日期需在售卖结束日期之后
+                    if (actualSaleEndDate && tempEndDate <= actualSaleEndDate) {
+                      const label = formData.auto_renew ? '延期后售卖结束日期' : '售卖结束日期'
+                      Taro.showToast({ title: `可消费结束日期需在${label}之后`, icon: 'none' })
+                      return
+                    }
                     // 选择了指定日期可用且有日期：保存为 date_range
                     updateFormData('valid_date_type', 'date_range')
                     updateFormData('valid_date_start', tempStartDate)
