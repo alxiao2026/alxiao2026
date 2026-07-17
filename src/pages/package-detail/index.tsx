@@ -368,7 +368,12 @@ export default function PackageDetail() {
                     const holiday = holidayMap[h]
                     return holiday ? `${holiday.name}(${holiday.date})` : h
                   })
-                  return <Text className="block text-sm text-gray-600">· 节假日{names.join('、')}不可用</Text>
+                  return (
+                    <View className="flex gap-1">
+                      <Text className="block text-sm text-gray-600">· 节假日：</Text>
+                      <Text className="block text-sm text-gray-600 flex-1">{names.join('、')}不可用</Text>
+                    </View>
+                  )
                 })()}
                 {pkg.unavailable_dates && Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0 && (() => {
                   const formatDate = (dateStr: string) => {
