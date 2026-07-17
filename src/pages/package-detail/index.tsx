@@ -263,18 +263,19 @@ export default function PackageDetail() {
         {/* 团购详情 */}
         {pkg.combinations && Array.isArray(pkg.combinations) && pkg.combinations.length > 0 && (
           <View className="bg-white mt-2 px-4 py-4">
-            <Text className="block text-base font-bold text-gray-800 mb-4">团购详情</Text>
+            <Text className="block text-base font-bold text-gray-800 mb-3">团购详情</Text>
             {pkg.combinations.map((combo: any, idx: number) => (
-              <View key={idx} className="mb-6">
-                <Text className="block text-base font-semibold text-gray-800 mb-3">{combo.name}</Text>
+              <View key={idx} className="mb-4">
+                <Text className="block text-base font-bold text-gray-800 mb-2">{combo.name}</Text>
                 {combo.items.map((item: any, itemIdx: number) => (
-                  <View key={itemIdx} className="flex flex-row justify-between py-2 border-b border-gray-50">
-                    <View className="flex flex-row items-center gap-2 flex-1">
-                      <View className="w-2 h-2 rounded-full bg-gray-400" />
-                      <Text className="block text-sm text-gray-700 flex-1">{item.name}</Text>
-                    </View>
-                    <Text className="block text-sm text-gray-500">
+                  <View key={itemIdx} className="flex flex-row items-center py-1">
+                    <View className="w-1 h-1 rounded-full bg-gray-400 mr-2" />
+                    <Text className="block text-sm text-gray-800 flex-1">{item.name}</Text>
+                    <Text className="block text-sm text-gray-400 mr-4">
                       {item.quantity}{item.unit || '份'}
+                    </Text>
+                    <Text className="block text-sm text-gray-700">
+                      ¥{item.price || 0}
                     </Text>
                   </View>
                 ))}
