@@ -381,7 +381,7 @@ export default function PackageDetail() {
                     return `${date.getMonth() + 1}月${date.getDate()}日`
                   }
                   const dates = pkg.unavailable_dates.map((d: string) => formatDate(d))
-                  return <Text className="block text-sm text-gray-600">· 指定日期{dates.join('、')}不可用</Text>
+                  return <Text className="block text-sm text-gray-600">· 指定日期：{dates.join('、')}不可用</Text>
                 })()}
               </View>
             </View>
