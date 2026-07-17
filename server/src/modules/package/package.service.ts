@@ -75,7 +75,7 @@ export class PackageService {
     today.setHours(0, 0, 0, 0);
 
     // 处理自动延期和过滤已下架套餐
-    const activePackages = [];
+    const activePackages: Package[] = [];
     for (const pkg of packages) {
       // 如果有售卖结束日期
       if (pkg.sale_end_date) {

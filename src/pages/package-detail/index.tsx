@@ -171,10 +171,17 @@ export default function PackageDetail() {
     }, 0)
   }, 0)
 
-  // 合并所有图片
+  // 合并所有图片（兼容 environment_images 为 JSON 字符串的情况）
+  const envImages: string[] = (() => {
+    if (Array.isArray(pkg.environment_images)) return pkg.environment_images
+    if (typeof pkg.environment_images === 'string') {
+      try { return JSON.parse(pkg.environment_images) } catch { return [] }
+    }
+    return []
+  })()
   const allImages = [
     ...(pkg.cover_image ? [pkg.cover_image] : []),
-    ...(Array.isArray(pkg.environment_images) ? pkg.environment_images : [])
+    ...envImages
   ]
 
   return (

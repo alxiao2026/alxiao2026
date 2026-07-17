@@ -659,11 +659,22 @@ export default function PackageAdmin() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  // H5 端通过 FormData 上传文件（Taro.uploadFile 不支持 File 对象）
+  const h5UploadFile = async (file: File): Promise<string | null> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    console.log('[Upload] POST /api/upload, file:', file.name, file.type, file.size)
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    const json = await res.json()
+    console.log('[Upload] Response:', json)
+    return json?.data?.url || null
+  }
+
   const handleUploadCover = async () => {
     const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
 
     if (!isMiniApp) {
-      // H5 端使用文件选择
+      // H5 端使用文件选择 + FormData 上传
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = 'image/*'
@@ -672,16 +683,12 @@ export default function PackageAdmin() {
         if (!file) return
         setUploadingCover(true)
         try {
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
-            filePath: file as any,
-            name: 'file'
-          })
-          console.log('Upload cover response:', uploadRes.data)
-          const resData = uploadRes.data as any
-          if (resData?.data?.url) {
-            updateFormData('cover_image', resData.data.url)
+          const url = await h5UploadFile(file)
+          if (url) {
+            updateFormData('cover_image', url)
             Taro.showToast({ title: '上传成功', icon: 'success' })
+          } else {
+            Taro.showToast({ title: '上传失败', icon: 'error' })
           }
         } catch (error) {
           console.error('Upload failed:', error)
@@ -739,21 +746,15 @@ export default function PackageAdmin() {
       input.accept = 'image/*'
       input.multiple = true
       input.onchange = async (e: any) => {
-        const files = Array.from(e.target.files).slice(0, remaining)
+        const files = Array.from(e.target.files).slice(0, remaining) as File[]
         if (files.length === 0) return
         setUploadingEnv(true)
         try {
           const newUrls = [...formData.environment_images]
           for (const file of files) {
-            const uploadRes = await Network.uploadFile({
-              url: '/api/upload',
-              filePath: file as any,
-              name: 'file'
-            })
-            console.log('Upload env response:', uploadRes.data)
-            const resData = uploadRes.data as any
-            if (resData?.data?.url) {
-              newUrls.push(resData.data.url)
+            const url = await h5UploadFile(file)
+            if (url) {
+              newUrls.push(url)
             }
           }
           updateFormData('environment_images', newUrls)
