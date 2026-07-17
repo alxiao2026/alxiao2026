@@ -2459,22 +2459,16 @@ export default function PackageAdmin() {
               <Button
                 className="w-full bg-blue-500"
                 onClick={() => {
-                  // 根据开关状态决定使用哪种数据
-                  if (tempUseValidDays) {
-                    // 开关打开：使用指定天数
+                  // 根据选择的类型决定保存哪种数据
+                  if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
+                    // 选择了指定日期可用且有日期：保存为 date_range
+                    updateFormData('valid_date_type', 'date_range')
+                    updateFormData('valid_start_date', tempStartDate)
+                    updateFormData('valid_end_date', tempEndDate)
+                  } else {
+                    // 选择了指定天数可用或没有设置日期：保存为 days
                     updateFormData('valid_date_type', 'days')
                     updateFormData('valid_days', tempValidDays)
-                  } else {
-                    // 开关关闭：使用指定日期（如果有设置）
-                    if (tempStartDate && tempEndDate) {
-                      updateFormData('valid_date_type', 'date_range')
-                      updateFormData('valid_start_date', tempStartDate)
-                      updateFormData('valid_end_date', tempEndDate)
-                    } else {
-                      // 如果没有设置指定日期，仍然使用天数
-                      updateFormData('valid_date_type', 'days')
-                      updateFormData('valid_days', tempValidDays)
-                    }
                   }
                   setShowValidDateModal(false)
                 }}
