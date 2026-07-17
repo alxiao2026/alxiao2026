@@ -168,6 +168,7 @@ export default function PackageAdmin() {
   const [tempAvailableTimeEnd, setTempAvailableTimeEnd] = useState('23:59')
   const [showLimitUsageModal, setShowLimitUsageModal] = useState(false)
   const [tempLimitUsageCount, setTempLimitUsageCount] = useState(1)
+  const [datePickerType, setDatePickerType] = useState<'sale' | 'valid'>('sale') // 区分售卖日期和可用日期
 
   // 规格单位列表
   const SPEC_UNITS = [
@@ -398,6 +399,7 @@ export default function PackageAdmin() {
 
   // 日期选择处理
   const openDatePicker = () => {
+    setDatePickerType('sale')
     setTempStartDate(formData.sale_start_date || '')
     setTempEndDate(formData.sale_end_date || '')
     setShowDatePicker(true)
@@ -408,8 +410,13 @@ export default function PackageAdmin() {
   }
 
   const confirmDate = () => {
-    updateFormData('sale_start_date', tempStartDate)
-    updateFormData('sale_end_date', tempEndDate)
+    if (datePickerType === 'sale') {
+      updateFormData('sale_start_date', tempStartDate)
+      updateFormData('sale_end_date', tempEndDate)
+    } else {
+      updateFormData('valid_start_date', tempStartDate)
+      updateFormData('valid_end_date', tempEndDate)
+    }
     setShowDatePicker(false)
   }
 
@@ -2399,6 +2406,7 @@ export default function PackageAdmin() {
                     <View
                       className="flex items-center gap-1"
                       onClick={() => {
+                        setDatePickerType('valid')
                         setShowDatePicker(true)
                         setTempStartDate(formData.valid_start_date)
                         setTempEndDate(formData.valid_end_date)
