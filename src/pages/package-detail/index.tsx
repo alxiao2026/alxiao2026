@@ -153,9 +153,20 @@ export default function PackageDetail() {
 
   const currentPrice = parseFloat(String(pkg.price || 0)) || 0
 
-  // 计算套餐原价（合计价）
+  // 计算套餐原价（合计价）- 与管理页逻辑一致：几选几取前N个最高价商品
   const originalPrice = (pkg.combinations || []).reduce((sum, combo) => {
-    return sum + (combo.items || []).reduce((itemSum, item) => {
+    const items = combo.items || []
+    // 全选：直接累加所有商品
+    if (combo.select_count === items.length) {
+      return sum + items.reduce((itemSum, item) => {
+        return itemSum + (parseFloat(String(item.price || 0)) * (Number(item.quantity) || 1))
+      }, 0)
+    }
+    // 几选几：按价格从高到低排序，取前 select_count 个商品
+    const sortedItems = [...items].sort((a, b) => {
+      return (parseFloat(String(b.price || 0))) - (parseFloat(String(a.price || 0)))
+    })
+    return sum + sortedItems.slice(0, combo.select_count).reduce((itemSum, item) => {
       return itemSum + (parseFloat(String(item.price || 0)) * (Number(item.quantity) || 1))
     }, 0)
   }, 0)
