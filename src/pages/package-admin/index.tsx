@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Calendar } from '@/components/ui/calendar'
 import { ArrowLeft, Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
+import { format } from 'date-fns'
 
 interface Package {
   id: string
@@ -158,7 +160,9 @@ export default function PackageAdmin() {
   const [tempUnavailableDateType, setTempUnavailableDateType] = useState('all')
   const [tempUnavailableWeekdays, setTempUnavailableWeekdays] = useState<number[]>([])
   const [tempUnavailableHolidays, setTempUnavailableHolidays] = useState<string[]>([])
-  const [tempUnavailableCalendarDates] = useState<string[]>([])
+  const [tempUnavailableCalendarDates, setTempUnavailableCalendarDates] = useState<string[]>([])
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false)
+  const [calendarSelectedDates, setCalendarSelectedDates] = useState<Date[]>([])
   const [tempAvailableTimeType, setTempAvailableTimeType] = useState('business_hours')
   const [tempAvailableTimeStart, setTempAvailableTimeStart] = useState('00:00')
   const [tempAvailableTimeEnd, setTempAvailableTimeEnd] = useState('23:59')
@@ -2517,7 +2521,12 @@ export default function PackageAdmin() {
                   {/* 指定日期不可用 */}
                   <View
                     className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => setShowDatePicker(true)}
+                    onClick={() => {
+                      // 将已选日期转换为 Date 对象
+                      const dates = tempUnavailableCalendarDates.map(d => new Date(d))
+                      setCalendarSelectedDates(dates)
+                      setShowCalendarPicker(true)
+                    }}
                   >
                     <Text className="block text-sm text-gray-800">指定日期不可用</Text>
                     <View className="flex items-center gap-1">
@@ -3045,6 +3054,97 @@ export default function PackageAdmin() {
               <Button
                 className="flex-1 bg-blue-500"
                 onClick={confirmDate}
+              >
+                <Text className="block text-white font-medium">确认</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 日历选择弹窗 - 指定不可用日期 */}
+      {showCalendarPicker && (
+        <View
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 200 }}
+          onClick={() => setShowCalendarPicker(false)}
+        >
+          <View
+            className="bg-white rounded-2xl w-full max-w-sm max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 弹窗标题 */}
+            <View className="flex items-center justify-between p-4 border-b border-gray-200">
+              <Text className="block text-lg font-medium text-gray-900">选择不可用日期</Text>
+              <View onClick={() => setShowCalendarPicker(false)}>
+                <X size={24} color="#666" />
+              </View>
+            </View>
+
+            {/* 日历组件 */}
+            <View className="p-4">
+              <Calendar
+                mode="single"
+                selected={undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    // 检查是否已选中
+                    const dateStr = format(date, 'yyyy-MM-dd')
+                    const existingIndex = calendarSelectedDates.findIndex(
+                      d => format(d, 'yyyy-MM-dd') === dateStr
+                    )
+                    if (existingIndex >= 0) {
+                      // 取消选中
+                      setCalendarSelectedDates(prev => prev.filter((_, i) => i !== existingIndex))
+                    } else {
+                      // 添加选中
+                      setCalendarSelectedDates(prev => [...prev, date])
+                    }
+                  }
+                }}
+                className="rounded-md border"
+              />
+            </View>
+
+            {/* 已选日期显示 */}
+            {calendarSelectedDates.length > 0 && (
+              <View className="px-4 pb-4">
+                <Text className="block text-sm text-gray-600 mb-2">
+                  已选 {calendarSelectedDates.length} 天：
+                </Text>
+                <View className="flex flex-wrap gap-2">
+                  {calendarSelectedDates
+                    .sort((a, b) => a.getTime() - b.getTime())
+                    .map((date, index) => (
+                      <View
+                        key={index}
+                        className="bg-red-50 text-red-600 px-2 py-1 rounded text-xs"
+                      >
+                        <Text className="block">
+                          {format(date, 'yyyy-MM-dd')}
+                        </Text>
+                      </View>
+                    ))}
+                </View>
+              </View>
+            )}
+
+            {/* 操作按钮 */}
+            <View className="p-4 border-t border-gray-200 flex gap-3">
+              <Button
+                className="flex-1 bg-white border-2 border-gray-300 text-gray-700"
+                onClick={() => setCalendarSelectedDates([])}
+              >
+                <Text className="block font-medium">清除</Text>
+              </Button>
+              <Button
+                className="flex-1 bg-blue-500"
+                onClick={() => {
+                  // 将选中的日期转换为字符串格式
+                  const dateStrings = calendarSelectedDates.map(d => format(d, 'yyyy-MM-dd'))
+                  setTempUnavailableCalendarDates(dateStrings)
+                  setShowCalendarPicker(false)
+                }}
               >
                 <Text className="block text-white font-medium">确认</Text>
               </Button>
