@@ -156,13 +156,20 @@ const IndexPage = () => {
         method: 'POST',
       });
       console.log('order shared:', orderId);
-      Taro.showShareMenu({
-        withShareTicket: true,
-        success: () => {
-          Taro.showToast({ title: '分享成功！现在可以开奖了', icon: 'success' });
-          fetchOrders();
-        },
-      });
+      const env = Taro.getEnv();
+      const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+      if (isMiniApp) {
+        Taro.showShareMenu({
+          withShareTicket: true,
+          success: () => {
+            Taro.showToast({ title: '分享成功！现在可以开奖了', icon: 'success' });
+            fetchOrders();
+          },
+        });
+      } else {
+        Taro.showToast({ title: '分享成功！现在可以开奖了', icon: 'success' });
+        fetchOrders();
+      }
     } catch (err) {
       console.error('分享失败:', err);
     }
