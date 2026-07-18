@@ -1802,12 +1802,22 @@ export default function PackageAdmin() {
 
                 {/* 店内其他优惠 */}
                 <View className="mb-4">
-                  <View className="flex items-center justify-between mb-2">
-                    <Text className="block text-sm font-medium text-gray-800">店内其他优惠</Text>
-                    <Text className="block text-sm text-blue-500">编辑 ›</Text>
-                  </View>
-                  <View className="bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-600">{formData.other_discount || '不与店内优惠同享'}</Text>
+                  <Text className="block text-sm font-medium text-gray-800 mb-3">店内其他优惠</Text>
+                  <View className="flex gap-3">
+                    <Button
+                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount === '可以与店内其他优惠同享' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      variant="ghost"
+                      onClick={() => setFormData({ ...formData, other_discount: '可以与店内其他优惠同享' })}
+                    >
+                      可以与优惠同享
+                    </Button>
+                    <Button
+                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount !== '可以与店内其他优惠同享' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      variant="ghost"
+                      onClick={() => setFormData({ ...formData, other_discount: '不与店内优惠同享' })}
+                    >
+                      不与优惠同享
+                    </Button>
                   </View>
                 </View>
 
