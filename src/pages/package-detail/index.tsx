@@ -481,11 +481,6 @@ export default function PackageDetail() {
                  pkg.dine_in_type === 'take_out' ? '仅限外带' : 
                  pkg.dine_in_type === 'all' ? '堂食外带都可以' : '堂食外带都可以'}
               </Text>
-              {pkg.private_room && (
-                <Text className="block text-sm text-gray-600">
-                  包厢：{pkg.private_room}
-                </Text>
-              )}
             </View>
           </View>
 
