@@ -462,7 +462,9 @@ export default function PackageDetail() {
                 <Text className="block text-sm font-medium text-gray-800">预约规则</Text>
               </View>
               <View className="ml-6">
-                <Text className="block text-sm text-gray-600">到店消费: 需提前预约</Text>
+                <Text className="block text-sm text-gray-600">
+                  到店消费: {pkg.reservation_hours ? `需至少提前${pkg.reservation_hours}小时预约` : '需提前预约'}
+                </Text>
               </View>
             </View>
           )}

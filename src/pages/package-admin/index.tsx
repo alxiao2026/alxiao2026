@@ -1771,7 +1771,24 @@ export default function PackageAdmin() {
                 </View>
                 {formData.need_reservation && (
                   <View className="bg-gray-50 rounded-lg px-4 py-3 mt-2">
-                    <Text className="block text-sm text-gray-600">需提前 {formData.reservation_hours || 2} 小时预约</Text>
+                    <View className="flex items-center gap-2">
+                      <Text className="block text-sm text-gray-600">需提前</Text>
+                      <View className="w-20">
+                        <Input
+                          className="bg-white border border-gray-200 rounded-md px-2 py-1 text-center text-sm"
+                          type="number"
+                          value={String(formData.reservation_hours || '')}
+                          placeholder="2"
+                          onInput={(e) => {
+                            const val = parseInt(e.detail.value) || 0
+                            if (val >= 0) {
+                              updateFormData('reservation_hours', val)
+                            }
+                          }}
+                        />
+                      </View>
+                      <Text className="block text-sm text-gray-600">小时预约</Text>
+                    </View>
                   </View>
                 )}
               </CardContent>
