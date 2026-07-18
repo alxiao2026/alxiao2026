@@ -893,6 +893,7 @@ export default function PackageAdmin() {
         limit_usage_count: formData.limit_usage_count,
         usage_count_limit: formData.usage_count_limit,
         need_reservation: formData.need_reservation,
+        reservation_hours: formData.reservation_hours,
         // 消费规则
         other_discount: formData.other_discount,
         private_room: formData.private_room,

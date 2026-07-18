@@ -158,6 +158,7 @@ export class PackageService {
     limit_usage_count?: boolean;
     usage_count_limit?: number;
     need_reservation?: boolean;
+    reservation_hours?: number;
     // 消费规则
     other_discount?: string;
     private_room?: string;
@@ -207,6 +208,7 @@ export class PackageService {
         limit_usage_count: body.limit_usage_count || false,
         usage_count_limit: body.usage_count_limit || null,
         need_reservation: body.need_reservation || false,
+        reservation_hours: body.reservation_hours || null,
         // 消费规则
         other_discount: body.other_discount || null,
         private_room: body.private_room || null,
@@ -259,6 +261,7 @@ export class PackageService {
     limit_usage_count: boolean;
     usage_count_limit: number;
     need_reservation: boolean;
+    reservation_hours: number;
     // 消费规则
     other_discount: string;
     private_room: string;
@@ -307,6 +310,7 @@ export class PackageService {
     if (body.limit_usage_count !== undefined) updateData.limit_usage_count = body.limit_usage_count;
     if (body.usage_count_limit !== undefined) updateData.usage_count_limit = body.usage_count_limit;
     if (body.need_reservation !== undefined) updateData.need_reservation = body.need_reservation;
+    if (body.reservation_hours !== undefined) updateData.reservation_hours = body.reservation_hours;
     // 消费规则
     if (body.other_discount !== undefined) updateData.other_discount = body.other_discount;
     if (body.private_room !== undefined) updateData.private_room = body.private_room;
