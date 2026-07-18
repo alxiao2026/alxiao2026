@@ -131,8 +131,46 @@ export default function PackageDetail() {
     Taro.showToast({ title: '分享功能开发中', icon: 'none' })
   }
 
-  const handleBuy = () => {
-    Taro.showToast({ title: '购买功能开发中', icon: 'none' })
+  const [buying, setBuying] = useState(false)
+
+  const handleBuy = async () => {
+    if (!pkg || buying) return
+    setBuying(true)
+    try {
+      const userId = Taro.getStorageSync('user_id') || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      Taro.setStorageSync('user_id', userId)
+      const nickName = Taro.getStorageSync('nick_name') || ''
+
+      console.log('[PackageDetail] 创建订单, package:', pkg.name, 'price:', pkg.price)
+      const res = await Network.request({
+        url: '/api/orders',
+        method: 'POST',
+        data: {
+          user_id: userId,
+          nick_name: nickName,
+          package_id: pkg.id,
+          package_name: pkg.name,
+          price: String(pkg.price),
+          original_price: pkg.original_price ? String(pkg.original_price) : undefined,
+          shop_name: merchant?.name || undefined,
+        },
+      })
+      console.log('[PackageDetail] 创建订单响应:', res.data)
+      const orderData = res.data?.data || res.data
+      if (orderData?.id) {
+        Taro.showToast({ title: '购买成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
+        }, 800)
+      } else {
+        Taro.showToast({ title: '购买失败，请重试', icon: 'none' })
+      }
+    } catch (err) {
+      console.error('[PackageDetail] 购买失败:', err)
+      Taro.showToast({ title: '购买失败，请重试', icon: 'none' })
+    } finally {
+      setBuying(false)
+    }
   }
 
   if (loading) {
@@ -630,9 +668,11 @@ export default function PackageDetail() {
         </View>
         <View
           onClick={handleBuy}
-          className="bg-red-500 px-8 py-3 rounded-full"
+          className={`px-8 py-3 rounded-full ${buying ? 'bg-red-300' : 'bg-red-500'}`}
         >
-          <Text className="block text-base font-semibold text-white">立即购买</Text>
+          <Text className="block text-base font-semibold text-white">
+            {buying ? '购买中...' : '立即购买'}
+          </Text>
         </View>
       </View>
     </View>

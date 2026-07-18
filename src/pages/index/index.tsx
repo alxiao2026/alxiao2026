@@ -419,12 +419,24 @@ const IndexPage = () => {
         {/* 我的订单 */}
         {orders.length > 0 && (
           <View className="px-4 mt-6 mb-8">
-            <Text className="block text-base font-bold text-gray-800 mb-3">我的订单</Text>
+            <View className="flex flex-row items-center justify-between mb-3">
+              <Text className="block text-base font-bold text-gray-800">我的订单</Text>
+              <View
+                className="flex flex-row items-center gap-1"
+                onClick={() => Taro.navigateTo({ url: '/pages/order-list/index' })}
+              >
+                <Text className="block text-xs text-red-500">查看全部</Text>
+                <Text className="block text-xs text-red-500">›</Text>
+              </View>
+            </View>
             <View className="flex flex-col gap-3">
-              {orders.map((order) => {
+              {orders.slice(0, 3).map((order) => {
                 return (
-                  <Card key={order.id} className="rounded-xl">
-                    <CardContent className="p-4">
+                  <Card
+                    key={order.id}
+                    className="rounded-xl"
+                    onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}
+                  >                    <CardContent className="p-4">
                       <View className="flex flex-row items-center justify-between">
                         <View>
                           <Text className="block text-sm font-semibold text-gray-800">{order.package_name}</Text>

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Gift, ShoppingBag, Store } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, ShoppingBag, Store, ScanLine, ClipboardCheck } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -49,6 +49,10 @@ const AdminPage = () => {
   const [pkgForm, setPkgForm] = useState({ name: '', description: '', price: '9.90', original_price: '', badge: '', features: '' });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Package | null>(null);
+  // 核销相关状态
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any } | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   const fetchPrizes = async () => {
     try {
@@ -190,7 +194,65 @@ const AdminPage = () => {
     }
   };
 
-  // ========== 套餐管理 ==========
+  // ========== 核销功能 ==========
+  const handleScanCode = async () => {
+    const env = Taro.getEnv();
+    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+    if (!isMiniApp) {
+      Taro.showToast({ title: '扫码功能仅在小程序中可用', icon: 'none' });
+      return;
+    }
+    try {
+      const res = await Taro.scanCode({});
+      console.log('扫码结果:', res);
+      if (res.result) {
+        // 二维码内容就是核销码
+        const code = res.result.trim();
+        setVerifyCode(code);
+        await doVerify(code);
+      }
+    } catch (err) {
+      console.error('扫码失败:', err);
+    }
+  };
+
+  const doVerify = async (code: string) => {
+    if (!code || verifying) return;
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      console.log('[核销] 请求核销, code:', code);
+      const res = await Network.request({
+        url: `/api/orders/verify/${code}`,
+        method: 'POST',
+      });
+      console.log('[核销] 响应:', res.data);
+      const data = (res.data as any)?.data || res.data;
+      setVerifyResult({
+        success: true,
+        message: '核销成功！',
+        order: data,
+      });
+    } catch (err: any) {
+      console.error('[核销] 失败:', err);
+      const msg = err?.data?.message || err?.message || '核销失败';
+      setVerifyResult({
+        success: false,
+        message: msg,
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleManualVerify = () => {
+    const code = verifyCode.trim().replace(/[-\s]/g, '');
+    if (!code) {
+      Taro.showToast({ title: '请输入核销码', icon: 'none' });
+      return;
+    }
+    doVerify(code);
+  };
 
   const closeDialog = () => {
     setShowDialog(false);
@@ -237,6 +299,10 @@ const AdminPage = () => {
             <TabsTrigger value="packages" className="flex-1">
               <ShoppingBag size={14} color="#6b7280" className="mr-1" />
               <Text className="block text-sm">套餐管理</Text>
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="flex-1">
+              <ClipboardCheck size={14} color="#6b7280" className="mr-1" />
+              <Text className="block text-sm">核销</Text>
             </TabsTrigger>
             <TabsTrigger value="merchants" className="flex-1">
               <Store size={14} color="#6b7280" className="mr-1" />
@@ -402,6 +468,95 @@ const AdminPage = () => {
                 ))}
               </View>
             )}
+          </TabsContent>
+
+          <TabsContent value="verify" className="mt-3">
+            {/* 扫码核销区域 */}
+            <Card className="mb-4">
+              <CardContent className="p-6 flex flex-col items-center">
+                <ClipboardCheck size={48} color="#FF4757" />
+                <Text className="block text-base font-bold text-gray-800 mt-3">订单核销</Text>
+                <Text className="block text-sm text-gray-500 mt-1 text-center">
+                  扫描用户出示的二维码，或手动输入核销码
+                </Text>
+
+                {/* 扫码按钮 */}
+                <Button
+                  className="w-full mt-4 bg-red-500"
+                  size="lg"
+                  onClick={handleScanCode}
+                >
+                  <ScanLine size={18} color="#fff" className="mr-2" />
+                  <Text className="block text-white font-semibold">扫码核销</Text>
+                </Button>
+
+                {/* 手动输入 */}
+                <View className="w-full mt-4">
+                  <Text className="block text-sm text-gray-600 mb-2">手动输入核销码</Text>
+                  <View className="flex flex-row gap-2">
+                    <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
+                      <Input
+                        className="w-full"
+                        style={{ backgroundColor: 'transparent' }}
+                        value={verifyCode}
+                        placeholder="请输入12位核销码"
+                        onInput={(e) => setVerifyCode(e.detail.value)}
+                      />
+                    </View>
+                    <Button
+                      className="bg-red-500"
+                      onClick={handleManualVerify}
+                      disabled={verifying}
+                    >
+                      <Text className="block text-white text-sm">{verifying ? '核销中...' : '核销'}</Text>
+                    </Button>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+
+            {/* 核销结果 */}
+            {verifyResult && (
+              <Card className={`mb-4 border-2 ${verifyResult.success ? 'border-green-300' : 'border-red-300'}`}>
+                <CardContent className="p-4">
+                  <View className="flex flex-row items-center gap-2 mb-2">
+                    <View className={`w-3 h-3 rounded-full ${verifyResult.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <Text className={`block text-sm font-bold ${verifyResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {verifyResult.message}
+                    </Text>
+                  </View>
+                  {verifyResult.order && (
+                    <View className="mt-2 bg-gray-50 rounded-lg p-3">
+                      <Text className="block text-sm text-gray-800 font-semibold">{verifyResult.order.package_name}</Text>
+                      <Text className="block text-xs text-gray-500 mt-1">
+                        用户：{verifyResult.order.nick_name || '匿名用户'}
+                      </Text>
+                      <Text className="block text-xs text-gray-500">
+                        金额：¥{verifyResult.order.price}
+                      </Text>
+                      {verifyResult.order.verified_at && (
+                        <Text className="block text-xs text-green-600 mt-1">
+                          核销时间：{new Date(verifyResult.order.verified_at).toLocaleString()}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 使用说明 */}
+            <Card>
+              <CardContent className="p-4">
+                <Text className="block text-sm font-semibold text-gray-800 mb-2">核销说明</Text>
+                <View className="flex flex-col gap-1">
+                  <Text className="block text-xs text-gray-500 leading-5">1. 用户到店后出示订单详情页中的二维码</Text>
+                  <Text className="block text-xs text-gray-500 leading-5">2. 点击「扫码核销」按钮，使用微信扫一扫扫描二维码</Text>
+                  <Text className="block text-xs text-gray-500 leading-5">3. 也可以手动输入用户提供的12位核销码</Text>
+                  <Text className="block text-xs text-gray-500 leading-5">4. 核销成功后，订单状态变更为「已使用」</Text>
+                </View>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="merchants" className="mt-3">
