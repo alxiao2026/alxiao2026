@@ -162,9 +162,11 @@ export default function PackageDetail() {
         return itemSum + (parseFloat(String(item.price || 0)) * (Number(item.quantity) || 1))
       }, 0)
     }
-    // 几选几：按价格从高到低排序，取前 select_count 个商品
+    // 几选几：按商品总价（单价×份数）从高到低排序，取前 select_count 个商品
     const sortedItems = [...items].sort((a, b) => {
-      return (parseFloat(String(b.price || 0))) - (parseFloat(String(a.price || 0)))
+      const totalA = (parseFloat(String(a.price || 0))) * (Number(a.quantity) || 1)
+      const totalB = (parseFloat(String(b.price || 0))) * (Number(b.quantity) || 1)
+      return totalB - totalA
     })
     return sum + sortedItems.slice(0, combo.select_count).reduce((itemSum, item) => {
       return itemSum + (parseFloat(String(item.price || 0)) * (Number(item.quantity) || 1))

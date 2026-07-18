@@ -1379,11 +1379,11 @@ export default function PackageAdmin() {
                               return sum + price * item.quantity
                             }, 0)
                           }
-                          // 如果几选几，按价格从高到低排序，取前 select_count 个商品的总价
+                          // 如果几选几，按商品总价（单价×份数）从高到低排序，取前 select_count 个商品的总价
                           const sortedItems = [...combo.items].sort((a, b) => {
-                            const priceA = parseFloat(a.price) || 0
-                            const priceB = parseFloat(b.price) || 0
-                            return priceB - priceA
+                            const totalA = (parseFloat(a.price) || 0) * (Number(a.quantity) || 1)
+                            const totalB = (parseFloat(b.price) || 0) * (Number(b.quantity) || 1)
+                            return totalB - totalA
                           })
                           const maxPrice = sortedItems.slice(0, combo.select_count).reduce((sum, item) => {
                             const price = parseFloat(item.price) || 0
