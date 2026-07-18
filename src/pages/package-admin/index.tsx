@@ -228,7 +228,7 @@ export default function PackageAdmin() {
     reservation_hours: 2,
     // 消费规则详细
     other_discount: '不与店内优惠同享',
-    private_room: '不能在包间消费时使用',
+    private_room: '不可以在包厢消费使用',
     dine_in_type: 'all',
     has_extra_fee: false,
     extra_fees: [],
@@ -603,7 +603,7 @@ export default function PackageAdmin() {
           reservation_hours: pkg.reservation_hours || 2,
           // 消费规则详细
           other_discount: pkg.other_discount || '不与店内优惠同享',
-          private_room: pkg.private_room || '不能在包间消费时使用',
+          private_room: pkg.private_room || '不可以在包厢消费使用',
           dine_in_type: pkg.dine_in_type || 'all',
           has_extra_fee: pkg.has_extra_fee || false,
           extra_fees: Array.isArray(pkg.extra_fees) ? pkg.extra_fees : [],
@@ -1016,7 +1016,7 @@ export default function PackageAdmin() {
             reservation_hours: 2,
             // 消费规则详细
             other_discount: '不与店内优惠同享',
-            private_room: '不能在包间消费时使用',
+            private_room: '不可以在包厢消费使用',
             dine_in_type: 'all',
             has_extra_fee: false,
             extra_fees: [],
@@ -1811,25 +1811,47 @@ export default function PackageAdmin() {
                   </View>
                 </View>
 
-                {/* 包间说明 */}
+                {/* 包厢说明 */}
                 <View className="mb-4">
-                  <View className="flex items-center justify-between mb-2">
-                    <Text className="block text-sm font-medium text-gray-800">包间说明</Text>
-                    <Text className="block text-sm text-blue-500">编辑 ›</Text>
-                  </View>
-                  <View className="bg-gray-50 rounded-lg px-4 py-3">
-                    <Text className="block text-sm text-gray-600">{formData.private_room || '不能在包间消费时使用'}</Text>
+                  <Text className="block text-sm font-medium text-gray-800 mb-2">包厢说明</Text>
+                  <View className="flex gap-2">
+                    <Button
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '可以在包厢消费使用' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, private_room: '可以在包厢消费使用' })}
+                    >
+                      可以在包厢使用
+                    </Button>
+                    <Button
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '不可以在包厢消费使用' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, private_room: '不可以在包厢消费使用' })}
+                    >
+                      不可以在包厢使用
+                    </Button>
                   </View>
                 </View>
 
                 {/* 堂食外带约定 */}
                 <View className="mb-4">
-                  <View className="flex items-center justify-between mb-2">
-                    <View className="flex items-center gap-1">
-                      <Text className="block text-sm font-medium text-gray-800">堂食外带约定</Text>
-                      <Text className="block text-red-500">*</Text>
-                    </View>
-                    <Text className="block text-sm text-blue-500">全部 ›</Text>
+                  <Text className="block text-sm font-medium text-gray-800 mb-2">堂食外带约定</Text>
+                  <View className="flex gap-2">
+                    <Button
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'dine_in' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, dine_in_type: 'dine_in' })}
+                    >
+                      仅限堂食
+                    </Button>
+                    <Button
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'take_out' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, dine_in_type: 'take_out' })}
+                    >
+                      仅限外带
+                    </Button>
+                    <Button
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, dine_in_type: 'all' })}
+                    >
+                      堂食外带都可以
+                    </Button>
                   </View>
                 </View>
 

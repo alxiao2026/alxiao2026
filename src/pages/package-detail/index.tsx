@@ -475,12 +475,17 @@ export default function PackageDetail() {
               <Check size={16} color="#666" />
               <Text className="block text-sm font-medium text-gray-800">使用方式</Text>
             </View>
-            <View className="ml-6">
+            <View className="ml-6 flex flex-col gap-1">
               <Text className="block text-sm text-gray-600">
-                {pkg.dine_in_type === 'dine_in' ? '仅堂食' : 
-                 pkg.dine_in_type === 'takeout' ? '仅外带' : 
-                 pkg.dine_in_type === 'both' ? '堂食外带均可' : '仅堂食'}
+                {pkg.dine_in_type === 'dine_in' ? '仅限堂食' : 
+                 pkg.dine_in_type === 'take_out' ? '仅限外带' : 
+                 pkg.dine_in_type === 'all' ? '堂食外带都可以' : '堂食外带都可以'}
               </Text>
+              {pkg.private_room && (
+                <Text className="block text-sm text-gray-600">
+                  包厢：{pkg.private_room}
+                </Text>
+              )}
             </View>
           </View>
 
