@@ -47,6 +47,8 @@ const AdminPage = () => {
   const [prizeForm, setPrizeForm] = useState({ name: '', description: '', probability: '0', stock: '0' });
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [pkgForm, setPkgForm] = useState({ name: '', description: '', price: '9.90', original_price: '', badge: '', features: '' });
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Package | null>(null);
 
   const fetchPrizes = async () => {
     try {
@@ -159,6 +161,20 @@ const AdminPage = () => {
         console.error('showModal 失败:', err);
       },
     });
+  };
+
+  const handleDeletePackage = async () => {
+    if (!deleteTarget) return;
+    try {
+      console.log('删除套餐，ID:', deleteTarget.id);
+      await Network.request({ url: `/api/packages/${deleteTarget.id}`, method: 'DELETE' });
+      Taro.showToast({ title: '删除成功', icon: 'success' });
+      setDeleteTarget(null);
+      fetchPackages();
+    } catch (err) {
+      console.error('删除套餐失败:', err);
+      Taro.showToast({ title: '删除失败', icon: 'none' });
+    }
   };
 
   const handleTogglePrize = async (prize: Prize) => {
@@ -349,7 +365,26 @@ const AdminPage = () => {
 
                       {/* 操作按钮行 */}
                       <View className="flex flex-row items-center justify-between pt-3 border-t border-gray-100">
-                        <Text className="block text-sm text-gray-500">更多</Text>
+                        <View className="relative">
+                          <Button variant="ghost" size="sm" onClick={() => setOpenMenuId(openMenuId === pkg.id ? null : pkg.id)}>
+                            <Text className="block text-sm text-gray-500">更多</Text>
+                          </Button>
+                          {openMenuId === pkg.id && (
+                            <View className="absolute left-0 bottom-full mb-1 bg-white rounded-lg shadow-lg border border-gray-100 z-50 min-w-24">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full justify-start"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setDeleteTarget(pkg);
+                                }}
+                              >
+                                <Text className="block text-sm text-red-500">删除团购</Text>
+                              </Button>
+                            </View>
+                          )}
+                        </View>
                         <View className="flex flex-row gap-2">
                           <Button variant="outline" size="sm" className="text-xs">
                             <Text className="block">改时间</Text>
@@ -542,6 +577,32 @@ const AdminPage = () => {
                   onClick={handleSavePrize}
                 >
                   <Text className="block text-white text-sm">保存</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 删除确认对话框 */}
+      {deleteTarget && (
+        <View className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setDeleteTarget(null)}>
+          <View className="bg-white rounded-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
+            <Text className="block text-lg font-bold text-black mb-2">确认删除</Text>
+            <Text className="block text-sm text-gray-600 mb-2">确定要删除以下团购套餐吗？</Text>
+            <Text className="block text-sm text-black font-medium mb-4">
+              {deleteTarget.name}
+            </Text>
+            <Text className="block text-xs text-red-500 mb-6">删除后将不在后台和前端页面显示，此操作不可恢复。</Text>
+            <View className="flex flex-row gap-3">
+              <View className="flex-1">
+                <Button variant="outline" className="w-full" onClick={() => setDeleteTarget(null)}>
+                  <Text className="block text-sm">取消</Text>
+                </Button>
+              </View>
+              <View className="flex-1">
+                <Button className="w-full bg-red-500" onClick={handleDeletePackage}>
+                  <Text className="block text-white text-sm">确定删除</Text>
                 </Button>
               </View>
             </View>
