@@ -40,7 +40,6 @@ interface Package {
   // 交易规则
   purchase_limit?: number
   purchase_limit_type?: string
-  purchase_limit_per_person?: number
   purchase_limit_per_day?: number
   purchase_limit_per_month?: number
   valid_days?: number
@@ -345,14 +344,14 @@ export default function PackageDetail() {
               {!pkg.unavailable_date_type && (
                 <Text className="block text-xs text-gray-600">全周可用</Text>
               )}
-              {/* 限购规则 */}
-              {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_person || 0) > 0 && (
-                <Text className="block text-xs text-gray-600">每人限购{pkg.purchase_limit_per_person}份</Text>
+              {/* 限购规则 - 仅在限制购买模式下显示 */}
+              {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit || 0) > 0 && (
+                <Text className="block text-xs text-gray-600">每人限购{pkg.purchase_limit}份</Text>
               )}
-              {(pkg.purchase_limit_per_day || 0) > 0 && (
+              {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_day || 0) > 0 && (
                 <Text className="block text-xs text-gray-600">每人每天限购{pkg.purchase_limit_per_day}份</Text>
               )}
-              {(pkg.purchase_limit_per_month || 0) > 0 && (
+              {pkg.purchase_limit_type === 'limited' && (pkg.purchase_limit_per_month || 0) > 0 && (
                 <Text className="block text-xs text-gray-600">每人每月限购{pkg.purchase_limit_per_month}份</Text>
               )}
               {/* 限制使用张数 */}
@@ -786,8 +785,8 @@ export default function PackageDetail() {
               </View>
             </View>
 
-            {/* 限购提示 */}
-            {((pkg.purchase_limit ?? 0) > 0 || (pkg.purchase_limit_per_day ?? 0) > 0 || (pkg.purchase_limit_per_month ?? 0) > 0) && (
+            {/* 限购提示 - 仅在限制购买模式下显示 */}
+            {pkg.purchase_limit_type === 'limited' && ((pkg.purchase_limit ?? 0) > 0 || (pkg.purchase_limit_per_day ?? 0) > 0 || (pkg.purchase_limit_per_month ?? 0) > 0) && (
               <View className="flex flex-row items-center gap-1 py-2 border-t border-gray-100">
                 <Info size={12} color="#9ca3af" />
                 <Text className="block text-xs text-gray-400">

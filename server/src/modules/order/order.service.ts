@@ -188,9 +188,16 @@ export class OrderService {
 
     const orders = existingOrders || [];
 
+    // 不限购时跳过所有限购校验，直接返回库存
+    if (pkg.purchase_limit_type !== 'limited') {
+      const remaining = stock > 0 ? stock : 999;
+      return { can_buy: true, remaining };
+    }
+
+    // 以下为限购模式（purchase_limit_type === 'limited'）
     // 检查总限购
     const purchaseLimit = Number(pkg.purchase_limit || 0);
-    if (pkg.purchase_limit_type === 'limited' && purchaseLimit > 0) {
+    if (purchaseLimit > 0) {
       const totalBought = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
       if (totalBought + quantity > purchaseLimit) {
         const remaining = Math.max(0, purchaseLimit - totalBought);
@@ -224,7 +231,7 @@ export class OrderService {
 
     // 计算剩余可购数量
     let remaining = stock > 0 ? stock : 999;
-    if (pkg.purchase_limit_type === 'limited' && purchaseLimit > 0) {
+    if (purchaseLimit > 0) {
       const totalBought = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
       remaining = Math.min(remaining, Math.max(0, purchaseLimit - totalBought));
     }

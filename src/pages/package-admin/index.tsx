@@ -1658,9 +1658,13 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-500">
                       {formData.purchase_limit_type === 'unlimited'
                         ? '不限制'
-                        : formData.purchase_limit_per_person
-                        ? `每人${formData.purchase_limit_per_person}份`
-                        : '限制'}
+                        : (() => {
+                            const parts: string[] = []
+                            if (formData.purchase_limit > 0) parts.push(`每人${formData.purchase_limit}份`)
+                            if (formData.purchase_limit_per_day > 0) parts.push(`每日${formData.purchase_limit_per_day}份`)
+                            if (formData.purchase_limit_per_month > 0) parts.push(`每月${formData.purchase_limit_per_month}份`)
+                            return parts.length > 0 ? parts.join('，') : '限制'
+                          })()}
                     </Text>
                     <Text className="block text-gray-400">›</Text>
                   </View>
@@ -2442,9 +2446,19 @@ export default function PackageAdmin() {
                 className="w-full bg-blue-500"
                 onClick={() => {
                   updateFormData('purchase_limit_type', tempPurchaseLimitType)
-                  updateFormData('purchase_limit', tempPurchaseLimit)
-                  updateFormData('purchase_limit_per_day', tempPurchaseLimitPerDay)
-                  updateFormData('purchase_limit_per_month', tempPurchaseLimitPerMonth)
+                  if (tempPurchaseLimitType === 'unlimited') {
+                    // 选择不限购时，重置所有限制条件
+                    updateFormData('purchase_limit', 0)
+                    updateFormData('purchase_limit_per_day', 0)
+                    updateFormData('purchase_limit_per_month', 0)
+                    setTempPurchaseLimit(0)
+                    setTempPurchaseLimitPerDay(0)
+                    setTempPurchaseLimitPerMonth(0)
+                  } else {
+                    updateFormData('purchase_limit', tempPurchaseLimit)
+                    updateFormData('purchase_limit_per_day', tempPurchaseLimitPerDay)
+                    updateFormData('purchase_limit_per_month', tempPurchaseLimitPerMonth)
+                  }
                   setShowPurchaseLimitModal(false)
                 }}
               >
