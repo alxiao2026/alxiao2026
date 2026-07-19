@@ -7,6 +7,7 @@ import { ArrowLeft, Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin
 
 interface Order {
   id: string
+  order_no: string | null
   user_id: string
   nick_name: string | null
   package_id: string | null
@@ -359,7 +360,7 @@ export default function OrderDetail() {
           <View className="px-4 py-3">
             <View className="flex flex-row justify-between items-center py-2">
               <Text className="block text-sm text-gray-400">订单编号</Text>
-              <Text className="block text-sm text-gray-800 font-mono">{order.id.slice(0, 18).toUpperCase()}</Text>
+              <Text className="block text-sm text-gray-800 font-mono">{order.order_no || order.id.slice(0, 18).toUpperCase()}</Text>
             </View>
             <Separator />
             <View className="flex flex-row justify-between items-center py-2">

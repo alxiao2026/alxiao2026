@@ -18,6 +18,7 @@ export interface Order {
   verified_at: string | null;
   expire_at: string | null;
   shop_name: string | null;
+  order_no: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -82,6 +83,16 @@ export class OrderService {
 
     const verificationCode = generateVerificationCode();
 
+    // 生成订单编号：YYYYMMDD + 4位序号
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const { count } = await this.client
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T00:00:00`)
+      .lt('created_at', `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T23:59:59`);
+    const orderNo = `${dateStr}${String((count || 0) + 1).padStart(4, '0')}`;
+
     const { data, error } = await this.client
       .from('orders')
       .insert({
@@ -95,6 +106,7 @@ export class OrderService {
         quantity,
         verification_code: verificationCode,
         shop_name: body.shop_name || null,
+        order_no: orderNo,
         status: 'pending',
       })
       .select()

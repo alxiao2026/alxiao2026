@@ -7,6 +7,7 @@ import { Package, Clock, CircleCheck, CircleX, ChevronRight } from 'lucide-react
 
 interface Order {
   id: string
+  order_no: string | null
   user_id: string
   nick_name: string | null
   package_name: string
