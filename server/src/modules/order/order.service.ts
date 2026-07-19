@@ -14,6 +14,7 @@ export interface Order {
   status: string;
   shared: boolean;
   quantity: number;
+  verified_count: number;
   verification_code: string | null;
   verified_at: string | null;
   expire_at: string | null;
@@ -268,7 +269,7 @@ export class OrderService {
     return { qrcode: qrDataUrl, verification_code: order.verification_code };
   }
 
-  async verify(code: string): Promise<Order> {
+  async verify(code: string, verifyCount = 1): Promise<Order> {
     if (!code) throw new BadRequestException('核销码不能为空');
 
     const { data: order, error: findError } = await this.client
@@ -280,13 +281,23 @@ export class OrderService {
     if (findError) throw new Error(`查询订单失败: ${findError.message}`);
     if (!order) throw new NotFoundException('核销码无效，未找到对应订单');
 
-    if (order.status === 'used') throw new BadRequestException('该订单已核销');
     if (order.status === 'refunded') throw new BadRequestException('该订单已退款');
+
+    const totalQty = order.quantity || 1;
+    const currentVerified = order.verified_count || 0;
+    const remaining = totalQty - currentVerified;
+
+    if (remaining <= 0) throw new BadRequestException('该订单已全部核销');
+    if (verifyCount > remaining) throw new BadRequestException(`剩余可核销份数为 ${remaining}，不能超过`);
+
+    const newVerifiedCount = currentVerified + verifyCount;
+    const isAllVerified = newVerifiedCount >= totalQty;
 
     const { data, error } = await this.client
       .from('orders')
       .update({
-        status: 'used',
+        verified_count: newVerifiedCount,
+        status: isAllVerified ? 'used' : 'pending',
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

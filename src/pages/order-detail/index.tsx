@@ -19,6 +19,7 @@ interface Order {
   verified_at: string | null
   shop_name: string | null
   quantity: number
+  verified_count: number
   created_at: string
 }
 
@@ -193,7 +194,9 @@ export default function OrderDetail() {
           </View>
           {isPending && (
             <Text className="block text-xs text-white opacity-80 mt-1">
-              请在有效期内到店使用
+              {order.quantity > 1
+                ? '共' + order.quantity + '份，已核销' + (order.verified_count || 0) + '份，剩余' + (order.quantity - (order.verified_count || 0)) + '份'
+                : '请在有效期内到店使用'}
             </Text>
           )}
           {order.status === 'used' && order.verified_at && (
@@ -376,6 +379,13 @@ export default function OrderDetail() {
             <View className="flex flex-row justify-between items-center py-2">
               <Text className="block text-sm text-gray-400">购买份数</Text>
               <Text className="block text-sm text-gray-800">{order.quantity || 1} 份</Text>
+            </View>
+            <Separator />
+            <View className="flex flex-row justify-between items-center py-2">
+              <Text className="block text-sm text-gray-400">核销进度</Text>
+              <Text className="block text-sm font-semibold text-orange-600">
+                {order.verified_count || 0} / {order.quantity || 1} 已核销
+              </Text>
             </View>
             {order.verification_code && (
               <>

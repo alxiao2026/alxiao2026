@@ -195,6 +195,9 @@ const AdminPage = () => {
   };
 
   // ========== 核销功能 ==========
+  const [verifyTarget, setVerifyTarget] = useState<any>(null);
+  const [verifyCount, setVerifyCount] = useState(1);
+
   const handleScanCode = async () => {
     const env = Taro.getEnv();
     const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
@@ -206,31 +209,81 @@ const AdminPage = () => {
       const res = await Taro.scanCode({});
       console.log('扫码结果:', res);
       if (res.result) {
-        // 二维码内容就是核销码
         const code = res.result.trim();
         setVerifyCode(code);
-        await doVerify(code);
+        await lookupOrder(code);
       }
     } catch (err) {
       console.error('扫码失败:', err);
     }
   };
 
-  const doVerify = async (code: string) => {
+  // 先查询订单信息，判断是否需要选择份数
+  const lookupOrder = async (code: string) => {
+    if (!code || verifying) return;
+    setVerifying(true);
+    setVerifyResult(null);
+    setVerifyTarget(null);
+    try {
+      console.log('[核销] 查询订单, code:', code);
+      // 先通过核销码查找订单（不核销）
+      const res = await Network.request({
+        url: `/api/orders/verify/${code}`,
+        method: 'GET',
+      });
+      console.log('[核销] 订单信息:', res.data);
+      const order = (res.data as any)?.data || res.data;
+      if (!order || !order.id) {
+        setVerifyResult({ success: false, message: '未找到对应订单' });
+        return;
+      }
+      if (order.status === 'used') {
+        setVerifyResult({ success: false, message: '该订单已全部核销', order });
+        return;
+      }
+      if (order.status === 'refunded') {
+        setVerifyResult({ success: false, message: '该订单已退款', order });
+        return;
+      }
+      const remaining = (order.quantity || 1) - (order.verified_count || 0);
+      if (remaining <= 0) {
+        setVerifyResult({ success: false, message: '该订单已全部核销', order });
+        return;
+      }
+      // 多份时弹出份数选择
+      if (remaining > 1) {
+        setVerifyTarget(order);
+        setVerifyCount(1);
+      } else {
+        // 单份直接核销
+        await doVerify(code, 1);
+      }
+    } catch (err: any) {
+      console.error('[核销] 查询失败:', err);
+      const msg = err?.data?.message || err?.message || '查询订单失败';
+      setVerifyResult({ success: false, message: msg });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // 执行核销
+  const doVerify = async (code: string, count: number) => {
     if (!code || verifying) return;
     setVerifying(true);
     setVerifyResult(null);
     try {
-      console.log('[核销] 请求核销, code:', code);
+      console.log('[核销] 请求核销, code:', code, 'count:', count);
       const res = await Network.request({
         url: `/api/orders/verify/${code}`,
         method: 'POST',
+        data: { verify_count: count },
       });
       console.log('[核销] 响应:', res.data);
       const data = (res.data as any)?.data || res.data;
       setVerifyResult({
         success: true,
-        message: '核销成功！',
+        message: `成功核销 ${count} 份！`,
         order: data,
       });
     } catch (err: any) {
@@ -242,7 +295,14 @@ const AdminPage = () => {
       });
     } finally {
       setVerifying(false);
+      setVerifyTarget(null);
     }
+  };
+
+  // 确认核销选中的份数
+  const handleConfirmVerify = () => {
+    if (!verifyTarget) return;
+    doVerify(verifyTarget.verification_code, verifyCount);
   };
 
   const handleManualVerify = () => {
@@ -251,7 +311,7 @@ const AdminPage = () => {
       Taro.showToast({ title: '请输入核销码', icon: 'none' });
       return;
     }
-    doVerify(code);
+    lookupOrder(code);
   };
 
   const closeDialog = () => {
@@ -532,7 +592,7 @@ const AdminPage = () => {
                         用户：{verifyResult.order.nick_name || '匿名用户'}
                       </Text>
                       <Text className="block text-xs text-gray-500">
-                        金额：¥{verifyResult.order.price}
+                        金额：¥{verifyResult.order.price} · 共{verifyResult.order.quantity || 1}份 · 已核销{verifyResult.order.verified_count || 0}份
                       </Text>
                       {verifyResult.order.verified_at && (
                         <Text className="block text-xs text-green-600 mt-1">
@@ -543,6 +603,70 @@ const AdminPage = () => {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* 多份核销选择弹窗 */}
+            {verifyTarget && (
+              <View
+                style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <View className="bg-white rounded-2xl mx-6 w-full max-w-sm overflow-hidden">
+                  <View className="p-4 border-b border-gray-100">
+                    <Text className="block text-base font-bold text-gray-800 text-center">选择核销份数</Text>
+                  </View>
+                  <View className="p-4">
+                    <Text className="block text-sm font-semibold text-gray-800">{verifyTarget.package_name}</Text>
+                    <Text className="block text-xs text-gray-500 mt-1">
+                      用户：{verifyTarget.nick_name || '匿名用户'} · 共{verifyTarget.quantity || 1}份 · 已核销{verifyTarget.verified_count || 0}份
+                    </Text>
+                    <Text className="block text-xs text-orange-600 mt-1 font-semibold">
+                      剩余 {(verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0)} 份可核销
+                    </Text>
+
+                    {/* 份数选择器 */}
+                    <View className="flex flex-row items-center justify-between mt-4 bg-gray-50 rounded-xl px-4 py-3">
+                      <Text className="block text-sm text-gray-600">本次核销份数</Text>
+                      <View className="flex flex-row items-center gap-3">
+                        <View
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount <= 1 ? 'bg-gray-200' : 'bg-red-100'}`}
+                          onClick={() => { if (verifyCount > 1) setVerifyCount(verifyCount - 1); }}
+                        >
+                          <Text className={`text-base font-bold ${verifyCount <= 1 ? 'text-gray-400' : 'text-red-500'}`}>-</Text>
+                        </View>
+                        <Text className="text-lg font-bold text-gray-800 w-8 text-center">{verifyCount}</Text>
+                        <View
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'bg-gray-200' : 'bg-red-100'}`}
+                          onClick={() => {
+                            const max = (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0);
+                            if (verifyCount < max) setVerifyCount(verifyCount + 1);
+                          }}
+                        >
+                          <Text className={`text-base font-bold ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'text-gray-400' : 'text-red-500'}`}>+</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="flex flex-row border-t border-gray-100">
+                    <View
+                      className="flex-1 py-3 flex items-center justify-center"
+                      onClick={() => setVerifyTarget(null)}
+                    >
+                      <Text className="block text-sm text-gray-500">取消</Text>
+                    </View>
+                    <View className="w-px bg-gray-100" />
+                    <View
+                      className="flex-1 py-3 flex items-center justify-center"
+                      onClick={handleConfirmVerify}
+                    >
+                      <Text className="block text-sm text-red-500 font-bold">确认核销 {verifyCount} 份</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             )}
 
             {/* 使用说明 */}
