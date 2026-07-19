@@ -10,6 +10,7 @@ import { LotteryModule } from './modules/lottery/lottery.module';
 import { PackageModule } from './modules/package/package.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MerchantModule } from './modules/merchant/merchant.module';
     PackageModule,
     UploadModule,
     MerchantModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,7 +6,9 @@ export default defineAppConfig({
     'pages/package-admin/index',
     'pages/merchant-admin/index',
     'pages/order-list/index',
-    'pages/order-detail/index'
+    'pages/order-detail/index',
+    'pages/user-center/index',
+    'pages/profile-edit/index'
   ],
   window: {
     backgroundTextStyle: 'light',

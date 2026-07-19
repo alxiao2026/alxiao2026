@@ -247,7 +247,13 @@ const IndexPage = () => {
           <View className="flex items-center justify-between">
             <View
               className="flex flex-row items-center gap-2"
-              onClick={() => { if (!avatarUrl) handleLogin(); }}
+              onClick={() => {
+                if (avatarUrl) {
+                  Taro.navigateTo({ url: '/pages/user-center/index' });
+                } else {
+                  handleLogin();
+                }
+              }}
             >
               {avatarUrl ? (
                 <Image
@@ -268,12 +274,24 @@ const IndexPage = () => {
               </View>
             </View>
 
-            {/* 管理入口 */}
-            <View
-              className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
-              onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
-            >
-              <Text className="block text-xs text-white">⚙️ 管理</Text>
+            {/* 右侧入口 */}
+            <View className="flex items-center gap-2">
+              {/* 个人中心 */}
+              {avatarUrl && (
+                <View
+                  className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
+                  onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
+                >
+                  <Text className="block text-xs text-white">我的</Text>
+                </View>
+              )}
+              {/* 管理入口 */}
+              <View
+                className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
+                onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
+              >
+                <Text className="block text-xs text-white">管理</Text>
+              </View>
             </View>
           </View>
         </View>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,9 +27,10 @@ const STATUS_MAP: Record<string, { label: string; color: string; bgColor: string
 }
 
 export default function OrderList() {
+  const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<string>(router.params?.status || 'all')
 
   const loadOrders = useCallback(async () => {
     try {
