@@ -78,6 +78,7 @@ export default function OrderList() {
     { key: 'pending', label: '待使用' },
     { key: 'used', label: '已使用' },
     { key: 'refunded', label: '已退款' },
+    { key: 'expired', label: '已过期' },
   ]
 
   return (
@@ -177,6 +178,12 @@ export default function OrderList() {
                         <>
                           <CircleX size={14} color="#999" />
                           <Text className="block text-xs text-gray-400">已退款</Text>
+                        </>
+                      )}
+                      {order.status === 'expired' && (
+                        <>
+                          <CircleX size={14} color="#999" />
+                          <Text className="block text-xs text-gray-400">已过期</Text>
                         </>
                       )}
                     </View>

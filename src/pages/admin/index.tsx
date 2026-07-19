@@ -626,6 +626,12 @@ const AdminPage = () => {
                     <Text className="block text-xs text-orange-600 mt-1 font-semibold">
                       剩余 {(verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0)} 份可核销
                     </Text>
+                    {/* 核销规则警告 */}
+                    {verifyTarget.verify_warning && (
+                      <View className="mt-2 bg-red-50 rounded-lg px-3 py-2">
+                        <Text className="block text-xs text-red-600">{verifyTarget.verify_warning}</Text>
+                      </View>
+                    )}
 
                     {/* 份数选择器 */}
                     <View className="flex flex-row items-center justify-between mt-4 bg-gray-50 rounded-xl px-4 py-3">

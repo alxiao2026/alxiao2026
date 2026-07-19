@@ -43,7 +43,9 @@ export class OrderService {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询订单列表失败: ${error.message}`);
-    return (data as Order[]) || [];
+    const orders = (data as Order[]) || [];
+    await this.refundExpiredOrders(orders);
+    return orders;
   }
 
   async findByUserId(userId: string): Promise<Order[]> {
@@ -53,7 +55,9 @@ export class OrderService {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户订单失败: ${error.message}`);
-    return (data as Order[]) || [];
+    const orders = (data as Order[]) || [];
+    await this.refundExpiredOrders(orders);
+    return orders;
   }
 
   async findOne(id: string): Promise<Order> {
@@ -289,6 +293,83 @@ export class OrderService {
     if (!order) throw new NotFoundException('核销码无效，未找到对应订单');
 
     if (order.status === 'refunded') throw new BadRequestException('该订单已退款');
+    if (order.status === 'expired') throw new BadRequestException('该订单已过期，无法核销');
+
+    // 获取套餐信息进行核销规则校验
+    if (order.package_id) {
+      const { data: pkg, error: pkgError } = await this.client
+        .from('packages')
+        .select('*')
+        .eq('id', order.package_id)
+        .maybeSingle();
+
+      if (!pkgError && pkg) {
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+        const currentWeekday = now.getDay(); // 0=Sunday, 1=Monday...
+
+        // 1. 可用日期校验
+        if (pkg.valid_date_type === 'days' && pkg.valid_days) {
+          // 自购买日起N天有效
+          const purchaseDate = new Date(order.created_at);
+          const expireDate = new Date(purchaseDate);
+          expireDate.setDate(expireDate.getDate() + pkg.valid_days);
+          const expireStr = expireDate.toISOString().slice(0, 10);
+          if (todayStr > expireStr) {
+            // 过期自动退款
+            await this.autoRefundOrder(order);
+            throw new BadRequestException(`该订单已于 ${expireStr} 过期，已自动发起退款`);
+          }
+        } else if (pkg.valid_date_type === 'range' && pkg.valid_date_start && pkg.valid_date_end) {
+          // 指定日期范围
+          if (todayStr < pkg.valid_date_start) {
+            throw new BadRequestException(`该套餐 ${pkg.valid_date_start} 才可使用，当前日期不可核销`);
+          }
+          if (todayStr > pkg.valid_date_end) {
+            // 过期自动退款
+            await this.autoRefundOrder(order);
+            throw new BadRequestException(`该套餐已于 ${pkg.valid_date_end} 过期，已自动发起退款`);
+          }
+        }
+
+        // 2. 不可用日期校验
+        if (pkg.unavailable_date_type === 'partial') {
+          // 检查星期几不可用
+          if (Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0) {
+            if (pkg.unavailable_weekdays.includes(currentWeekday)) {
+              const weekdayNames = ['日', '一', '二', '三', '四', '五', '六'];
+              throw new BadRequestException(`该套餐每周${pkg.unavailable_weekdays.map(d => weekdayNames[d]).join('、')}不可用，今天不可核销`);
+            }
+          }
+
+          // 检查节假日不可用
+          if (Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0) {
+            const holidayDates = this.getHolidayDates();
+            for (const holidayId of pkg.unavailable_holidays) {
+              const dates = holidayDates[holidayId];
+              if (dates && todayStr >= dates.start && todayStr <= dates.end) {
+                throw new BadRequestException(`该套餐在${dates.name}期间不可用，当前日期不可核销`);
+              }
+            }
+          }
+        }
+
+        // 3. 每日可用时段校验
+        if (pkg.available_time_type === 'custom' && pkg.available_time_start && pkg.available_time_end) {
+          if (currentTime < pkg.available_time_start || currentTime > pkg.available_time_end) {
+            throw new BadRequestException(`该套餐每日可用时段为 ${pkg.available_time_start} ~ ${pkg.available_time_end}，当前时间不可核销`);
+          }
+        }
+
+        // 4. 限制使用张数校验
+        if (pkg.limit_usage_count && pkg.usage_count_limit) {
+          if (verifyCount > pkg.usage_count_limit) {
+            throw new BadRequestException(`该套餐每次最多核销${pkg.usage_count_limit}份，请减少核销份数`);
+          }
+        }
+      }
+    }
 
     const totalQty = order.quantity || 1;
     const currentVerified = order.verified_count || 0;
@@ -316,7 +397,75 @@ export class OrderService {
     return data as Order;
   }
 
-  async findByVerificationCode(code: string): Promise<Order> {
+  // 节假日日期映射表
+  private getHolidayDates(): Record<string, { name: string; start: string; end: string }> {
+    return {
+      qixi: { name: '七夕节', start: '2026-08-19', end: '2026-08-19' },
+      zhongqiu: { name: '中秋节', start: '2026-09-25', end: '2026-09-27' },
+      guoqing: { name: '国庆节', start: '2026-10-01', end: '2026-10-07' },
+      shengdan: { name: '圣诞节', start: '2026-12-25', end: '2026-12-25' },
+      yuandan: { name: '元旦', start: '2027-01-01', end: '2027-01-01' },
+      chunjie: { name: '春节', start: '2027-01-28', end: '2027-02-03' },
+    };
+  }
+
+  // 过期订单自动退款
+  private async autoRefundOrder(order: Order): Promise<void> {
+    if (order.status === 'refunded' || order.status === 'expired') return;
+    await this.client
+      .from('orders')
+      .update({
+        status: 'refunded',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.id);
+  }
+
+  // 批量检测过期订单并自动退款
+  private async refundExpiredOrders(orders: Order[]): Promise<void> {
+    const pendingOrders = orders.filter(o => o.status === 'pending' && o.package_id);
+    if (pendingOrders.length === 0) return;
+
+    // 获取所有相关套餐的可用日期配置
+    const packageIds = [...new Set(pendingOrders.map(o => o.package_id!))];
+    const { data: packages } = await this.client
+      .from('packages')
+      .select('id, valid_date_type, valid_days, valid_date_start, valid_date_end')
+      .in('id', packageIds);
+
+    if (!packages) return;
+    const pkgMap = new Map(packages.map(p => [p.id, p]));
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    for (const order of pendingOrders) {
+      const pkg = pkgMap.get(order.package_id!);
+      if (!pkg) continue;
+
+      let expired = false;
+      if (pkg.valid_date_type === 'days' && pkg.valid_days) {
+        const purchaseDate = new Date(order.created_at);
+        const expireDate = new Date(purchaseDate);
+        expireDate.setDate(expireDate.getDate() + pkg.valid_days);
+        if (todayStr > expireDate.toISOString().slice(0, 10)) {
+          expired = true;
+        }
+      } else if (pkg.valid_date_type === 'range' && pkg.valid_date_end) {
+        if (todayStr > pkg.valid_date_end) {
+          expired = true;
+        }
+      }
+
+      if (expired) {
+        await this.client
+          .from('orders')
+          .update({ status: 'refunded', updated_at: new Date().toISOString() })
+          .eq('id', order.id);
+        order.status = 'refunded';
+      }
+    }
+  }
+
+  async findByVerificationCode(code: string): Promise<Order & { verify_warning?: string }> {
     const { data, error } = await this.client
       .from('orders')
       .select('*')
@@ -324,6 +473,71 @@ export class OrderService {
       .maybeSingle();
     if (error) throw new Error(`查询订单失败: ${error.message}`);
     if (!data) throw new NotFoundException('核销码无效');
-    return data as Order;
+
+    const order = data as Order & { verify_warning?: string };
+
+    // 如果订单是 pending 状态，检查核销规则并返回提示信息
+    if (order.status === 'pending' && order.package_id) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('*')
+        .eq('id', order.package_id)
+        .maybeSingle();
+
+      if (pkg) {
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+        const currentTime = now.toTimeString().slice(0, 5);
+        const currentWeekday = now.getDay();
+        const warnings: string[] = [];
+
+        // 可用日期
+        if (pkg.valid_date_type === 'days' && pkg.valid_days) {
+          const purchaseDate = new Date(order.created_at);
+          const expireDate = new Date(purchaseDate);
+          expireDate.setDate(expireDate.getDate() + pkg.valid_days);
+          const expireStr = expireDate.toISOString().slice(0, 10);
+          if (todayStr > expireStr) {
+            warnings.push(`已于${expireStr}过期`);
+          }
+        } else if (pkg.valid_date_type === 'range' && pkg.valid_date_start && pkg.valid_date_end) {
+          if (todayStr < pkg.valid_date_start) {
+            warnings.push(`${pkg.valid_date_start}起可用`);
+          } else if (todayStr > pkg.valid_date_end) {
+            warnings.push(`已于${pkg.valid_date_end}过期`);
+          }
+        }
+
+        // 不可用日期
+        if (pkg.unavailable_date_type === 'partial') {
+          if (Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.includes(currentWeekday)) {
+            const weekdayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            warnings.push(`每周${pkg.unavailable_weekdays.map((d: number) => weekdayNames[d]).join('、')}不可用`);
+          }
+          if (Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0) {
+            const holidayDates = this.getHolidayDates();
+            for (const hid of pkg.unavailable_holidays) {
+              const dates = holidayDates[hid];
+              if (dates && todayStr >= dates.start && todayStr <= dates.end) {
+                warnings.push(`${dates.name}期间不可用`);
+              }
+            }
+          }
+        }
+
+        // 可用时段
+        if (pkg.available_time_type === 'custom' && pkg.available_time_start && pkg.available_time_end) {
+          if (currentTime < pkg.available_time_start || currentTime > pkg.available_time_end) {
+            warnings.push(`可用时段${pkg.available_time_start}~${pkg.available_time_end}`);
+          }
+        }
+
+        if (warnings.length > 0) {
+          order.verify_warning = warnings.join('；');
+        }
+      }
+    }
+
+    return order;
   }
 }

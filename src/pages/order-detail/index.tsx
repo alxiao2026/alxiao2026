@@ -53,6 +53,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgGradient: 
     bgGradient: 'linear-gradient(135deg, #999999 0%, #666666 100%)',
     icon: 'info',
   },
+  expired: {
+    label: '已过期',
+    color: '#FFFFFF',
+    bgGradient: 'linear-gradient(135deg, #999999 0%, #666666 100%)',
+    icon: 'info',
+  },
 }
 
 export default function OrderDetail() {
