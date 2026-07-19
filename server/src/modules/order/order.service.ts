@@ -100,6 +100,28 @@ export class OrderService {
       .select()
       .single();
     if (error) throw new Error(`创建订单失败: ${error.message}`);
+
+    // 扣减库存
+    if (body.package_id) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('stock')
+        .eq('id', body.package_id)
+        .maybeSingle();
+      if (pkg) {
+        const currentStock = Number(pkg.stock || 0);
+        if (currentStock > 0) {
+          const newStock = Math.max(0, currentStock - quantity);
+          const { error: stockError } = await this.client
+            .from('packages')
+            .update({ stock: newStock, updated_at: new Date().toISOString() })
+            .eq('id', body.package_id);
+          if (stockError) console.error(`[订单] 扣减库存失败: ${stockError.message}`);
+          else console.log(`[订单] 套餐 ${body.package_id} 库存 ${currentStock} -> ${newStock}（购买${quantity}份）`);
+        }
+      }
+    }
+
     return data as Order;
   }
 
