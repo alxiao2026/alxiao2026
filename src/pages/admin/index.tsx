@@ -197,6 +197,7 @@ const AdminPage = () => {
   // ========== 核销功能 ==========
   const [verifyTarget, setVerifyTarget] = useState<any>(null);
   const [verifyCount, setVerifyCount] = useState(1);
+  const [verifyFailReason, setVerifyFailReason] = useState<string | null>(null);
 
   const handleScanCode = async () => {
     const env = Taro.getEnv();
@@ -224,6 +225,7 @@ const AdminPage = () => {
     setVerifying(true);
     setVerifyResult(null);
     setVerifyTarget(null);
+    setVerifyFailReason(null);
     try {
       console.log('[核销] 查询订单, code:', code);
       // 先通过核销码查找订单（不核销）
@@ -234,20 +236,29 @@ const AdminPage = () => {
       console.log('[核销] 订单信息:', res.data);
       const order = (res.data as any)?.data || res.data;
       if (!order || !order.id) {
-        setVerifyResult({ success: false, message: '未找到对应订单' });
+        setVerifyFailReason('未找到对应订单，请检查核销码是否正确');
         return;
       }
       if (order.status === 'used') {
-        setVerifyResult({ success: false, message: '该订单已全部核销', order });
+        setVerifyFailReason('该订单已全部核销，无法重复核销');
         return;
       }
       if (order.status === 'refunded') {
-        setVerifyResult({ success: false, message: '该订单已退款', order });
+        setVerifyFailReason('该订单已退款，无法核销');
+        return;
+      }
+      if (order.status === 'expired') {
+        setVerifyFailReason('该订单已过期，无法核销');
         return;
       }
       const remaining = (order.quantity || 1) - (order.verified_count || 0);
       if (remaining <= 0) {
-        setVerifyResult({ success: false, message: '该订单已全部核销', order });
+        setVerifyFailReason('该订单已全部核销，无法重复核销');
+        return;
+      }
+      // 有核销规则警告时，弹窗提示不可核销原因
+      if (order.verify_warning) {
+        setVerifyFailReason(`不可核销：${order.verify_warning}`);
         return;
       }
       // 多份时弹出份数选择
@@ -261,7 +272,7 @@ const AdminPage = () => {
     } catch (err: any) {
       console.error('[核销] 查询失败:', err);
       const msg = err?.data?.message || err?.message || '查询订单失败';
-      setVerifyResult({ success: false, message: msg });
+      setVerifyFailReason(msg);
     } finally {
       setVerifying(false);
     }
@@ -289,10 +300,7 @@ const AdminPage = () => {
     } catch (err: any) {
       console.error('[核销] 失败:', err);
       const msg = err?.data?.message || err?.message || '核销失败';
-      setVerifyResult({
-        success: false,
-        message: msg,
-      });
+      setVerifyFailReason(msg);
     } finally {
       setVerifying(false);
       setVerifyTarget(null);
@@ -669,6 +677,39 @@ const AdminPage = () => {
                       onClick={handleConfirmVerify}
                     >
                       <Text className="block text-sm text-red-500 font-bold">确认核销 {verifyCount} 份</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 核销失败原因弹窗 */}
+            {verifyFailReason && (
+              <View
+                style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+                onClick={() => setVerifyFailReason(null)}
+              >
+                <View
+                  className="bg-white rounded-2xl mx-6 w-full max-w-sm overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <View className="p-6 pb-4 flex flex-col items-center">
+                    <View className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                      <Text className="text-2xl">✕</Text>
+                    </View>
+                    <Text className="block text-base font-bold text-gray-800 text-center mb-2">无法核销</Text>
+                    <Text className="block text-sm text-gray-600 text-center leading-6">{verifyFailReason}</Text>
+                  </View>
+                  <View className="border-t border-gray-100">
+                    <View
+                      className="py-3 flex items-center justify-center"
+                      onClick={() => setVerifyFailReason(null)}
+                    >
+                      <Text className="block text-sm text-gray-800 font-semibold">知道了</Text>
                     </View>
                   </View>
                 </View>
