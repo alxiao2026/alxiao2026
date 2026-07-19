@@ -58,6 +58,23 @@ const ProfileEditPage = () => {
     fetchProfile();
   }, []);
 
+  // 图片大小限制：5MB
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+  const checkImageSize = (size: number): boolean => {
+    if (size > MAX_IMAGE_SIZE) {
+      const sizeMB = (size / 1024 / 1024).toFixed(1)
+      Taro.showModal({
+        title: '图片过大',
+        content: `当前图片 ${sizeMB}MB，超过 5MB 限制。建议选择 5MB 以内的图片，或使用图片压缩工具减小体积后重试。`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
+      return false
+    }
+    return true
+  }
+
   const handleChooseAvatar = async () => {
     console.log('[ProfileEdit] 点击更换头像, env:', Taro.getEnv());
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB;
@@ -70,10 +87,7 @@ const ProfileEditPage = () => {
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-          Taro.showToast({ title: '图片不能超过5MB', icon: 'none' });
-          return;
-        }
+        if (!checkImageSize(file.size)) return;
         await uploadAvatarH5(file);
       };
       input.click();
@@ -91,10 +105,7 @@ const ProfileEditPage = () => {
 
       const fileInfo = await Taro.getFileInfo({ filePath: tempFilePath });
       const fileSize = (fileInfo as { size?: number }).size || 0;
-      if (fileSize > 5 * 1024 * 1024) {
-        Taro.showToast({ title: '图片不能超过5MB', icon: 'none' });
-        return;
-      }
+      if (!checkImageSize(fileSize)) return;
 
       await uploadAvatarMini(tempFilePath);
     } catch (err) {
@@ -216,6 +227,7 @@ const ProfileEditPage = () => {
           </View>
         </View>
         <Text className="text-sm text-gray-400 mt-3">点击更换头像</Text>
+        <Text className="text-xs text-gray-300 mt-1">支持 JPG/PNG，不超过 5MB</Text>
       </View>
 
       {/* 表单区域 */}
