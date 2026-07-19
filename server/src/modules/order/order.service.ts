@@ -83,15 +83,15 @@ export class OrderService {
 
     const verificationCode = generateVerificationCode();
 
-    // 生成订单编号：YYYYMMDD + 4位序号
+    // 生成订单编号：6位随机数 + YYYYMMDD + 5位随机数，共19位
+    const randDigits = (len: number): string => {
+      let s = String(Math.floor(1 + Math.random() * 9));
+      for (let i = 1; i < len; i++) s += String(Math.floor(Math.random() * 10));
+      return s;
+    };
     const today = new Date();
     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-    const { count } = await this.client
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T00:00:00`)
-      .lt('created_at', `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T23:59:59`);
-    const orderNo = `${dateStr}${String((count || 0) + 1).padStart(4, '0')}`;
+    const orderNo = `${randDigits(6)}${dateStr}${randDigits(5)}`;
 
     const { data, error } = await this.client
       .from('orders')
