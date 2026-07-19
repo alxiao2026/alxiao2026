@@ -59,6 +59,28 @@ const ProfileEditPage = () => {
   }, []);
 
   const handleChooseAvatar = async () => {
+    console.log('[ProfileEdit] 点击更换头像, env:', Taro.getEnv());
+    const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB;
+
+    if (isH5) {
+      // H5 端：手动创建 file input
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          Taro.showToast({ title: '图片不能超过5MB', icon: 'none' });
+          return;
+        }
+        await uploadAvatarH5(file);
+      };
+      input.click();
+      return;
+    }
+
+    // 小程序端
     try {
       const res = await Taro.chooseImage({
         count: 1,
@@ -67,7 +89,6 @@ const ProfileEditPage = () => {
       });
       const tempFilePath = res.tempFilePaths[0];
 
-      // 检查文件大小
       const fileInfo = await Taro.getFileInfo({ filePath: tempFilePath });
       const fileSize = (fileInfo as { size?: number }).size || 0;
       if (fileSize > 5 * 1024 * 1024) {
@@ -75,29 +96,55 @@ const ProfileEditPage = () => {
         return;
       }
 
-      Taro.showLoading({ title: '上传中...' });
-      try {
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload/image',
-          filePath: tempFilePath,
-          name: 'file'
-        });
-        const data = JSON.parse(uploadRes.data);
-        console.log('[ProfileEdit] upload:', data);
-        if (data.code === 200 && data.data?.url) {
-          setAvatarUrl(data.data.url);
-          Taro.showToast({ title: '头像已更新', icon: 'success' });
-        } else {
-          Taro.showToast({ title: '上传失败', icon: 'none' });
-        }
-      } catch (e) {
-        console.error('上传头像失败:', e);
+      await uploadAvatarMini(tempFilePath);
+    } catch (err) {
+      console.log('[ProfileEdit] chooseImage error:', err);
+    }
+  };
+
+  const uploadAvatarMini = async (tempFilePath: string) => {
+    Taro.showLoading({ title: '上传中...' });
+    try {
+      const uploadRes = await Network.uploadFile({
+        url: '/api/upload/image',
+        filePath: tempFilePath,
+        name: 'file'
+      });
+      const data = JSON.parse(uploadRes.data);
+      console.log('[ProfileEdit] upload:', data);
+      if (data.code === 200 && data.data?.url) {
+        setAvatarUrl(data.data.url);
+        Taro.showToast({ title: '头像已更新', icon: 'success' });
+      } else {
         Taro.showToast({ title: '上传失败', icon: 'none' });
-      } finally {
-        Taro.hideLoading();
       }
-    } catch {
-      // 用户取消选择
+    } catch (e) {
+      console.error('上传头像失败:', e);
+      Taro.showToast({ title: '上传失败', icon: 'none' });
+    } finally {
+      Taro.hideLoading();
+    }
+  };
+
+  const uploadAvatarH5 = async (file: File) => {
+    Taro.showLoading({ title: '上传中...' });
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const data = await res.json();
+      console.log('[ProfileEdit] H5 upload:', data);
+      if (data.code === 200 && data.data?.url) {
+        setAvatarUrl(data.data.url);
+        Taro.showToast({ title: '头像已更新', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '上传失败', icon: 'none' });
+      }
+    } catch (e) {
+      console.error('H5上传头像失败:', e);
+      Taro.showToast({ title: '上传失败', icon: 'none' });
+    } finally {
+      Taro.hideLoading();
     }
   };
 
