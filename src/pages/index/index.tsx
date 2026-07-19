@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Gift, Share2, Star, Zap, ShoppingBag, LogIn } from 'lucide-react-taro';
+import { Gift, Share2, Star, Zap, ShoppingBag, LogIn, LayoutDashboard, User } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
 
@@ -282,15 +282,17 @@ const IndexPage = () => {
                   className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
                   onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
                 >
+                  <User size={14} color="#fff" />
                   <Text className="block text-xs text-white">我的</Text>
                 </View>
               )}
-              {/* 管理入口 */}
+              {/* 管理后台入口 */}
               <View
-                className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
+                className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
                 onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
               >
-                <Text className="block text-xs text-white">管理</Text>
+                <LayoutDashboard size={14} color="#ff6a00" />
+                <Text className="block text-xs font-medium" style={{ color: '#ff6a00' }}>管理后台</Text>
               </View>
             </View>
           </View>
