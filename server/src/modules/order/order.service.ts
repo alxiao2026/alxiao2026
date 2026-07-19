@@ -33,6 +33,21 @@ function generateVerificationCode(): string {
   return segments.join('');
 }
 
+// 使用本地时区生成 YYYY-MM-DD 日期字符串
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// 使用本地时区生成 HH:MM 时间字符串
+function localTimeStr(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 @Injectable()
 export class OrderService {
   private client = getSupabaseClient();
@@ -305,8 +320,8 @@ export class OrderService {
 
       if (!pkgError && pkg) {
         const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+        const todayStr = localDateStr(now); // YYYY-MM-DD 本地时区
+        const currentTime = localTimeStr(now); // HH:MM 本地时区
         const currentWeekday = now.getDay(); // 0=Sunday, 1=Monday...
 
         // 1. 可用日期校验
@@ -315,7 +330,7 @@ export class OrderService {
           const purchaseDate = new Date(order.created_at);
           const expireDate = new Date(purchaseDate);
           expireDate.setDate(expireDate.getDate() + pkg.valid_days);
-          const expireStr = expireDate.toISOString().slice(0, 10);
+          const expireStr = localDateStr(expireDate);
           if (todayStr > expireStr) {
             // 过期自动退款
             await this.autoRefundOrder(order);
@@ -335,6 +350,13 @@ export class OrderService {
 
         // 2. 不可用日期校验
         if (pkg.unavailable_date_type === 'partial') {
+          // 检查指定日期不可用
+          if (Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0) {
+            if (pkg.unavailable_dates.includes(todayStr)) {
+              throw new BadRequestException(`该套餐在 ${todayStr} 不可用，当前日期不可核销`);
+            }
+          }
+
           // 检查星期几不可用
           if (Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0) {
             if (pkg.unavailable_weekdays.includes(currentWeekday)) {
@@ -435,7 +457,7 @@ export class OrderService {
 
     if (!packages) return;
     const pkgMap = new Map(packages.map(p => [p.id, p]));
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localDateStr(new Date());
 
     for (const order of pendingOrders) {
       const pkg = pkgMap.get(order.package_id!);
@@ -446,7 +468,7 @@ export class OrderService {
         const purchaseDate = new Date(order.created_at);
         const expireDate = new Date(purchaseDate);
         expireDate.setDate(expireDate.getDate() + pkg.valid_days);
-        if (todayStr > expireDate.toISOString().slice(0, 10)) {
+        if (todayStr > localDateStr(expireDate)) {
           expired = true;
         }
       } else if (pkg.valid_date_type === 'range' && pkg.valid_date_end) {
@@ -486,8 +508,8 @@ export class OrderService {
 
       if (pkg) {
         const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
-        const currentTime = now.toTimeString().slice(0, 5);
+        const todayStr = localDateStr(now);
+        const currentTime = localTimeStr(now);
         const currentWeekday = now.getDay();
         const warnings: string[] = [];
 
@@ -496,7 +518,7 @@ export class OrderService {
           const purchaseDate = new Date(order.created_at);
           const expireDate = new Date(purchaseDate);
           expireDate.setDate(expireDate.getDate() + pkg.valid_days);
-          const expireStr = expireDate.toISOString().slice(0, 10);
+          const expireStr = localDateStr(expireDate);
           if (todayStr > expireStr) {
             warnings.push(`已于${expireStr}过期`);
           }
@@ -510,6 +532,9 @@ export class OrderService {
 
         // 不可用日期
         if (pkg.unavailable_date_type === 'partial') {
+          if (Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.includes(todayStr)) {
+            warnings.push(`${todayStr}不可用`);
+          }
           if (Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.includes(currentWeekday)) {
             const weekdayNames = ['日', '一', '二', '三', '四', '五', '六'];
             warnings.push(`每周${pkg.unavailable_weekdays.map((d: number) => weekdayNames[d]).join('、')}不可用`);
