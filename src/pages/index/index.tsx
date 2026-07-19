@@ -276,23 +276,21 @@ const IndexPage = () => {
 
             {/* 右侧入口 */}
             <View className="flex items-center gap-2">
-              {/* 个人中心 */}
-              {avatarUrl && (
-                <View
-                  className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
-                  onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
-                >
-                  <User size={14} color="#fff" />
-                  <Text className="block text-xs text-white">我的</Text>
-                </View>
-              )}
               {/* 管理后台入口 */}
               <View
-                className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
+                className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-2"
                 onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
               >
-                <LayoutDashboard size={14} color="#ff6a00" />
-                <Text className="block text-xs font-medium" style={{ color: '#ff6a00' }}>管理后台</Text>
+                <LayoutDashboard size={14} color="#fff" />
+                <Text className="block text-xs text-white">管理</Text>
+              </View>
+              {/* 个人中心入口 */}
+              <View
+                className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
+                onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
+              >
+                <User size={14} color="#ff6a00" />
+                <Text className="block text-xs font-medium" style={{ color: '#ff6a00' }}>个人中心</Text>
               </View>
             </View>
           </View>

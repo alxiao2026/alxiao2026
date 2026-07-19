@@ -89,36 +89,7 @@ const UserCenterPage = () => {
   }, [fetchProfile, fetchStats]);
 
   const handleLogin = () => {
-    const env = Taro.getEnv();
-    if (env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT) {
-      Taro.getUserProfile({
-        desc: '用于完善用户资料',
-        success: (res) => {
-          const { nickName: name, avatarUrl: avatar } = res.userInfo;
-          setNickName(name);
-          setAvatarUrl(avatar);
-          Taro.setStorageSync('nick_name', name);
-          Taro.setStorageSync('avatar_url', avatar);
-          const uid = Taro.getStorageSync('user_id');
-          if (uid) {
-            Network.request({
-              url: '/api/users/login',
-              method: 'POST',
-              data: { user_id: uid, nick_name: name, avatar_url: avatar }
-            }).then((r) => {
-              if (r.data?.code === 200 && r.data?.data) setProfile(r.data.data);
-            }).catch((e) => console.error('用户登录失败:', e));
-            fetchProfile(uid);
-            fetchStats(uid);
-          }
-        },
-        fail: () => {
-          Taro.showToast({ title: '登录已取消', icon: 'none' });
-        }
-      });
-    } else {
-      Taro.showToast({ title: '请在小程序中登录', icon: 'none' });
-    }
+    Taro.navigateTo({ url: '/pages/login/index' });
   };
 
   const goToOrderList = (status?: string) => {
