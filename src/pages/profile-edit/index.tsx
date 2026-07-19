@@ -106,7 +106,7 @@ const ProfileEditPage = () => {
     Taro.showLoading({ title: '上传中...' });
     try {
       const uploadRes = await Network.uploadFile({
-        url: '/api/upload/image',
+        url: '/api/upload',
         filePath: tempFilePath,
         name: 'file'
       });
@@ -131,7 +131,7 @@ const ProfileEditPage = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       console.log('[ProfileEdit] H5 upload:', data);
       if (data.code === 200 && data.data?.url) {
