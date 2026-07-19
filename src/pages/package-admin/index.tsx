@@ -1645,7 +1645,13 @@ export default function PackageAdmin() {
                 {/* 限购规则 */}
                 <View
                   className="flex items-center justify-between py-3 border-b border-gray-100"
-                  onClick={() => setShowPurchaseLimitModal(true)}
+                  onClick={() => {
+                    setTempPurchaseLimitType(formData.purchase_limit_type);
+                    setTempPurchaseLimit(formData.purchase_limit);
+                    setTempPurchaseLimitPerDay(formData.purchase_limit_per_day);
+                    setTempPurchaseLimitPerMonth(formData.purchase_limit_per_month);
+                    setShowPurchaseLimitModal(true);
+                  }}
                 >
                   <Text className="block text-sm text-gray-800">限购规则</Text>
                   <View className="flex items-center gap-1">
@@ -1748,7 +1754,10 @@ export default function PackageAdmin() {
                 {/* 限制使用张数 */}
                 <View
                   className="flex items-center justify-between py-3 border-b border-gray-100"
-                  onClick={() => setShowLimitUsageModal(true)}
+                  onClick={() => {
+                    setTempLimitUsageCount(formData.usage_count_limit || 1);
+                    setShowLimitUsageModal(true);
+                  }}
                 >
                   <Text className="block text-sm text-gray-800">限制使用张数</Text>
                   <Switch
