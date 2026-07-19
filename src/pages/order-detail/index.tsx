@@ -211,43 +211,47 @@ export default function OrderDetail() {
         {/* 二维码卡片 */}
         {isPending && (
           <View className="mx-4 rounded-2xl bg-white overflow-hidden">
-            <View className="flex flex-col items-center px-6 pt-6 pb-5">
+            <View className="flex flex-col items-center px-6 pt-6 pb-2">
               {qrcode ? (
-                <View className="bg-white p-3 rounded-xl border border-gray-100">
+                <View className="p-4 rounded-2xl" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
                   <Image
                     src={qrcode}
-                    style={{ width: '180px', height: '180px' }}
+                    style={{ width: '170px', height: '170px' }}
                     mode="aspectFit"
                   />
                 </View>
               ) : (
-                <View className="w-44 h-44 bg-gray-50 rounded-xl flex items-center justify-center">
+                <View className="w-44 h-44 bg-gray-50 rounded-2xl flex items-center justify-center">
                   <Text className="block text-gray-300 text-sm">加载中...</Text>
                 </View>
               )}
 
-              {order.verification_code && (
-                <View className="mt-4 flex flex-col items-center">
-                  <Text className="block text-xs text-gray-400 mb-1">核销码</Text>
-                  <Text className="block text-xl font-bold text-gray-900 tracking-widest font-mono">
-                    {formatCode(order.verification_code)}
-                  </Text>
-                </View>
-              )}
-
-              <View className="flex flex-row items-center gap-1 mt-3" onClick={handleRefreshQR}>
-                <RefreshCw size={14} color="#999" />
+              <View className="flex flex-row items-center gap-1 mt-4" onClick={handleRefreshQR}>
+                <RefreshCw size={13} color="#BBB" />
                 <Text className="block text-xs text-gray-400">
                   {refreshingQR ? '刷新中...' : '刷新二维码'}
                 </Text>
               </View>
             </View>
 
-            <View className="bg-orange-50 px-4 py-3">
-              <Text className="block text-xs text-orange-600 text-center">
-                到店出示二维码或核销码，由商家扫码完成核销
-              </Text>
+            {/* 票券撕裂线 */}
+            <View className="flex flex-row items-center px-4 my-3">
+              <View className="w-3 h-3 rounded-full bg-gray-100 -ml-7 flex-shrink-0" />
+              <View className="flex-1 border-t border-dashed border-gray-200 mx-1" />
+              <View className="w-3 h-3 rounded-full bg-gray-100 -mr-7 flex-shrink-0" />
             </View>
+
+            {order.verification_code && (
+              <View className="flex flex-col items-center pb-5 px-6">
+                <Text className="block text-xs text-gray-400 mb-1">核销码</Text>
+                <Text className="block text-xl font-bold text-gray-900 tracking-widest font-mono">
+                  {formatCode(order.verification_code)}
+                </Text>
+                <Text className="block text-xs text-gray-400 mt-3">
+                  到店出示二维码或核销码，由商家扫码完成核销
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
