@@ -46,8 +46,20 @@ export class OrderController {
     price?: string;
     original_price?: string;
     shop_name?: string;
+    quantity?: number;
   }): Promise<{ code: number; data: Order }> {
     const data = await this.orderService.create(body);
+    return { code: 200, data };
+  }
+
+  @Post('check-purchase')
+  @HttpCode(200)
+  async checkPurchase(@Body() body: {
+    user_id: string;
+    package_id: string;
+    quantity: number;
+  }): Promise<{ code: number; data: { can_buy: boolean; reason?: string; remaining?: number } }> {
+    const data = await this.orderService.checkPurchase(body);
     return { code: 200, data };
   }
 

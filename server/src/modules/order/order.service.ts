@@ -13,6 +13,7 @@ export interface Order {
   original_price: string | null;
   status: string;
   shared: boolean;
+  quantity: number;
   verification_code: string | null;
   verified_at: string | null;
   expire_at: string | null;
@@ -73,8 +74,11 @@ export class OrderService {
     price?: string;
     original_price?: string;
     shop_name?: string;
+    quantity?: number;
   }): Promise<Order> {
     if (!body.user_id) throw new BadRequestException('用户ID不能为空');
+
+    const quantity = Math.max(1, Math.floor(body.quantity || 1));
 
     const verificationCode = generateVerificationCode();
 
@@ -88,6 +92,7 @@ export class OrderService {
         package_name: body.package_name || '基础套餐',
         price: body.price || '9.90',
         original_price: body.original_price || null,
+        quantity,
         verification_code: verificationCode,
         shop_name: body.shop_name || null,
         status: 'pending',
@@ -96,6 +101,110 @@ export class OrderService {
       .single();
     if (error) throw new Error(`创建订单失败: ${error.message}`);
     return data as Order;
+  }
+
+  async checkPurchase(body: {
+    user_id: string;
+    package_id: string;
+    quantity: number;
+  }): Promise<{ can_buy: boolean; reason?: string; remaining?: number }> {
+    if (!body.user_id) throw new BadRequestException('用户ID不能为空');
+    if (!body.package_id) throw new BadRequestException('套餐ID不能为空');
+    const quantity = Math.max(1, Math.floor(body.quantity || 1));
+
+    // 查询套餐信息
+    const { data: pkg, error: pkgError } = await this.client
+      .from('packages')
+      .select('*')
+      .eq('id', body.package_id)
+      .maybeSingle();
+    if (pkgError) throw new Error(`查询套餐失败: ${pkgError.message}`);
+    if (!pkg) throw new NotFoundException('套餐不存在');
+
+    // 检查套餐状态
+    if (pkg.is_active === false) {
+      return { can_buy: false, reason: '该套餐已下架' };
+    }
+
+    // 检查库存
+    const stock = Number(pkg.stock || 0);
+    if (stock > 0 && quantity > stock) {
+      return { can_buy: false, reason: `库存不足，仅剩${stock}份`, remaining: stock };
+    }
+
+    // 检查售卖日期
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    if (pkg.sale_start_date && today < pkg.sale_start_date) {
+      return { can_buy: false, reason: `该套餐${pkg.sale_start_date}开始售卖` };
+    }
+    if (pkg.sale_end_date && !pkg.auto_renew && today > pkg.sale_end_date) {
+      return { can_buy: false, reason: '该套餐已停止售卖' };
+    }
+
+    // 查询用户已购买该套餐的订单
+    const { data: existingOrders, error: orderError } = await this.client
+      .from('orders')
+      .select('quantity, created_at')
+      .eq('user_id', body.user_id)
+      .eq('package_id', body.package_id)
+      .in('status', ['pending', 'used']);
+    if (orderError) throw new Error(`查询购买记录失败: ${orderError.message}`);
+
+    const orders = existingOrders || [];
+
+    // 检查总限购
+    const purchaseLimit = Number(pkg.purchase_limit || 0);
+    if (pkg.purchase_limit_type === 'limited' && purchaseLimit > 0) {
+      const totalBought = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      if (totalBought + quantity > purchaseLimit) {
+        const remaining = Math.max(0, purchaseLimit - totalBought);
+        return { can_buy: false, reason: `每人限购${purchaseLimit}份，您已购买${totalBought}份`, remaining };
+      }
+    }
+
+    // 检查每日限购
+    const perDayLimit = Number(pkg.purchase_limit_per_day || 0);
+    if (perDayLimit > 0) {
+      const todayStart = `${today}T00:00:00`;
+      const todayOrders = orders.filter(o => o.created_at >= todayStart);
+      const todayBought = todayOrders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      if (todayBought + quantity > perDayLimit) {
+        const remaining = Math.max(0, perDayLimit - todayBought);
+        return { can_buy: false, reason: `每人每天限购${perDayLimit}份，今天已购买${todayBought}份`, remaining };
+      }
+    }
+
+    // 检查每月限购
+    const perMonthLimit = Number(pkg.purchase_limit_per_month || 0);
+    if (perMonthLimit > 0) {
+      const monthStart = today.slice(0, 7) + '-01T00:00:00';
+      const monthOrders = orders.filter(o => o.created_at >= monthStart);
+      const monthBought = monthOrders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      if (monthBought + quantity > perMonthLimit) {
+        const remaining = Math.max(0, perMonthLimit - monthBought);
+        return { can_buy: false, reason: `每人每月限购${perMonthLimit}份，本月已购买${monthBought}份`, remaining };
+      }
+    }
+
+    // 计算剩余可购数量
+    let remaining = stock > 0 ? stock : 999;
+    if (pkg.purchase_limit_type === 'limited' && purchaseLimit > 0) {
+      const totalBought = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      remaining = Math.min(remaining, Math.max(0, purchaseLimit - totalBought));
+    }
+    if (perDayLimit > 0) {
+      const todayStart = `${today}T00:00:00`;
+      const todayBought = orders.filter(o => o.created_at >= todayStart).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      remaining = Math.min(remaining, Math.max(0, perDayLimit - todayBought));
+    }
+    if (perMonthLimit > 0) {
+      const monthStart = today.slice(0, 7) + '-01T00:00:00';
+      const monthBought = orders.filter(o => o.created_at >= monthStart).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      remaining = Math.min(remaining, Math.max(0, perMonthLimit - monthBought));
+    }
+
+    return { can_buy: true, remaining };
   }
 
   async markShared(id: string): Promise<Order> {

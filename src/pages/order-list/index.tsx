@@ -16,6 +16,7 @@ interface Order {
   verification_code: string | null
   verified_at: string | null
   shop_name: string | null
+  quantity: number
   created_at: string
 }
 
@@ -138,6 +139,9 @@ export default function OrderList() {
                       <Text className="block text-xs text-gray-500">
                         下单时间：{formatDate(order.created_at)}
                       </Text>
+                      {(order.quantity || 1) > 1 && (
+                        <Text className="block text-xs text-gray-400 mt-1">x{order.quantity} 份</Text>
+                      )}
                     </View>
                     <View className="flex flex-col items-end">
                       <Text className="block text-lg font-bold text-red-500">

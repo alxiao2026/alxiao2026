@@ -17,6 +17,7 @@ interface Order {
   verification_code: string | null
   verified_at: string | null
   shop_name: string | null
+  quantity: number
   created_at: string
 }
 
@@ -369,6 +370,11 @@ export default function OrderDetail() {
             <View className="flex flex-row justify-between items-center py-2">
               <Text className="block text-sm text-gray-400">购买日期</Text>
               <Text className="block text-sm text-gray-800">{formatDateShort(order.created_at)}</Text>
+            </View>
+            <Separator />
+            <View className="flex flex-row justify-between items-center py-2">
+              <Text className="block text-sm text-gray-400">购买份数</Text>
+              <Text className="block text-sm text-gray-800">{order.quantity || 1} 份</Text>
             </View>
             {order.verification_code && (
               <>

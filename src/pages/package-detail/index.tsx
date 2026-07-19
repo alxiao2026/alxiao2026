@@ -13,6 +13,9 @@ import {
   Gift,
   RefreshCw,
   FileText,
+  Minus,
+  Plus,
+  X,
 } from 'lucide-react-taro'
 
 interface Package {
@@ -132,16 +135,67 @@ export default function PackageDetail() {
   }
 
   const [buying, setBuying] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [quantity, setQuantity] = useState(1)
+  const [checking, setChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState<{ can_buy: boolean; reason?: string; remaining?: number } | null>(null)
 
-  const handleBuy = async () => {
+  // 打开购买确认弹窗
+  const handleBuy = () => {
+    if (!pkg) return
+    setQuantity(1)
+    setCheckResult(null)
+    setShowPurchaseModal(true)
+    checkPurchase(1)
+  }
+
+  // 校验购买条件
+  const checkPurchase = async (qty: number) => {
+    if (!pkg) return
+    setChecking(true)
+    try {
+      const userId = Taro.getStorageSync('user_id') || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      Taro.setStorageSync('user_id', userId)
+      const res = await Network.request({
+        url: '/api/orders/check-purchase',
+        method: 'POST',
+        data: { user_id: userId, package_id: pkg.id, quantity: qty },
+      })
+      console.log('[PackageDetail] 购买校验响应:', res.data)
+      const data = res.data?.data || res.data
+      setCheckResult(data)
+    } catch (err) {
+      console.error('[PackageDetail] 购买校验失败:', err)
+      setCheckResult({ can_buy: true })
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  // 修改份数时重新校验
+  const handleQuantityChange = (delta: number) => {
+    const newQty = Math.max(1, quantity + delta)
+    setQuantity(newQty)
+    checkPurchase(newQty)
+  }
+
+  // 确认购买
+  const handleConfirmBuy = async () => {
     if (!pkg || buying) return
+
+    // 如果校验结果不可购买，提示原因
+    if (checkResult && !checkResult.can_buy) {
+      Taro.showModal({ title: '无法购买', content: checkResult.reason || '不满足购买条件', showCancel: false })
+      return
+    }
+
     setBuying(true)
     try {
       const userId = Taro.getStorageSync('user_id') || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       Taro.setStorageSync('user_id', userId)
       const nickName = Taro.getStorageSync('nick_name') || ''
 
-      console.log('[PackageDetail] 创建订单, package:', pkg.name, 'price:', pkg.price)
+      console.log('[PackageDetail] 创建订单, package:', pkg.name, 'price:', pkg.price, 'quantity:', quantity)
       const res = await Network.request({
         url: '/api/orders',
         method: 'POST',
@@ -153,11 +207,13 @@ export default function PackageDetail() {
           price: String(pkg.price),
           original_price: pkg.original_price ? String(pkg.original_price) : undefined,
           shop_name: merchant?.name || undefined,
+          quantity,
         },
       })
       console.log('[PackageDetail] 创建订单响应:', res.data)
       const orderData = res.data?.data || res.data
       if (orderData?.id) {
+        setShowPurchaseModal(false)
         Taro.showToast({ title: '购买成功', icon: 'success' })
         setTimeout(() => {
           Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
@@ -675,6 +731,107 @@ export default function PackageDetail() {
           </Text>
         </View>
       </View>
+
+      {/* 购买确认弹窗 */}
+      {showPurchaseModal && pkg && (
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 }}>
+          {/* 遮罩层 */}
+          <View
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setShowPurchaseModal(false)}
+          />
+          {/* 底部弹窗 */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px 16px', paddingBottom: '32px' }}>
+            {/* 关闭按钮 */}
+            <View className="flex flex-row items-center justify-between mb-4">
+              <Text className="block text-base font-bold text-gray-900">确认订单</Text>
+              <View onClick={() => setShowPurchaseModal(false)}>
+                <X size={20} color="#9ca3af" />
+              </View>
+            </View>
+
+            {/* 套餐信息 */}
+            <View className="flex flex-row gap-3 mb-5">
+              {pkg.cover_image && (
+                <Image src={pkg.cover_image} className="w-16 h-16 rounded-lg" mode="aspectFill" />
+              )}
+              <View className="flex-1">
+                <Text className="block text-sm font-semibold text-gray-900 leading-5">{pkg.name}</Text>
+                <View className="flex flex-row items-end gap-2 mt-1">
+                  <Text className="block text-lg font-bold text-red-500">¥{pkg.price}</Text>
+                  {pkg.original_price && parseFloat(String(pkg.original_price)) > parseFloat(String(pkg.price)) && (
+                    <Text className="block text-xs text-gray-400 line-through pb-1">¥{pkg.original_price}</Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* 份数选择 */}
+            <View className="flex flex-row items-center justify-between py-4 border-t border-gray-100">
+              <Text className="block text-sm text-gray-700">购买份数</Text>
+              <View className="flex flex-row items-center gap-3">
+                <View
+                  onClick={() => handleQuantityChange(-1)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${quantity <= 1 ? 'bg-gray-100' : 'bg-gray-200'}`}
+                >
+                  <Minus size={16} color={quantity <= 1 ? '#d1d5db' : '#374151'} />
+                </View>
+                <Text className="block text-base font-bold text-gray-900 w-8 text-center">{quantity}</Text>
+                <View
+                  onClick={() => handleQuantityChange(1)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${checkResult && !checkResult.can_buy && quantity >= (checkResult.remaining || 1) ? 'bg-gray-100' : 'bg-red-500'}`}
+                >
+                  <Plus size={16} color={checkResult && !checkResult.can_buy && quantity >= (checkResult.remaining || 1) ? '#d1d5db' : '#ffffff'} />
+                </View>
+              </View>
+            </View>
+
+            {/* 限购提示 */}
+            {((pkg.purchase_limit ?? 0) > 0 || (pkg.purchase_limit_per_day ?? 0) > 0 || (pkg.purchase_limit_per_month ?? 0) > 0) && (
+              <View className="flex flex-row items-center gap-1 py-2 border-t border-gray-100">
+                <Info size={12} color="#9ca3af" />
+                <Text className="block text-xs text-gray-400">
+                  {(pkg.purchase_limit ?? 0) > 0 && `每人限购${pkg.purchase_limit}份`}
+                  {(pkg.purchase_limit ?? 0) > 0 && ((pkg.purchase_limit_per_day ?? 0) > 0 || (pkg.purchase_limit_per_month ?? 0) > 0) && ' · '}
+                  {(pkg.purchase_limit_per_day ?? 0) > 0 && `每日限购${pkg.purchase_limit_per_day}份`}
+                  {(pkg.purchase_limit_per_day ?? 0) > 0 && (pkg.purchase_limit_per_month ?? 0) > 0 && ' · '}
+                  {(pkg.purchase_limit_per_month ?? 0) > 0 && `每月限购${pkg.purchase_limit_per_month}份`}
+                </Text>
+              </View>
+            )}
+
+            {/* 库存提示 */}
+            {pkg.stock > 0 && (
+              <View className="flex flex-row items-center gap-1 py-1">
+                <Text className="block text-xs text-gray-400">库存 {pkg.stock} 份</Text>
+              </View>
+            )}
+
+            {/* 校验结果提示 */}
+            {checkResult && !checkResult.can_buy && (
+              <View className="bg-red-50 rounded-lg px-3 py-2 mt-2">
+                <Text className="block text-xs text-red-500">{checkResult.reason}</Text>
+              </View>
+            )}
+
+            {/* 合计和确认按钮 */}
+            <View className="flex flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <View>
+                <Text className="block text-xs text-gray-500">合计</Text>
+                <Text className="block text-xl font-bold text-red-500">¥{(parseFloat(String(pkg.price)) * quantity).toFixed(2)}</Text>
+              </View>
+              <View
+                onClick={handleConfirmBuy}
+                className={`px-8 py-3 rounded-full ${buying || checking || (checkResult && !checkResult.can_buy) ? 'bg-gray-300' : 'bg-red-500'}`}
+              >
+                <Text className="block text-base font-semibold text-white">
+                  {buying ? '提交中...' : checking ? '校验中...' : '确认购买'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
