@@ -99,4 +99,12 @@ export class UserController {
     const merchants = await this.userService.getMerchantList();
     return { code: 200, msg: 'success', data: merchants };
   }
+
+  /** 获取商家统计数据 */
+  @Get(':userId/merchant-stats')
+  async getMerchantStats(@Param('userId') userId: string) {
+    console.log('[UserController] getMerchantStats:', userId);
+    const stats = await this.userService.getMerchantStats(userId);
+    return { code: 200, msg: 'success', data: stats };
+  }
 }

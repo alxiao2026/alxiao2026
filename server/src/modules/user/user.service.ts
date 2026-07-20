@@ -332,6 +332,105 @@ export class UserService {
     return (data || []) as MerchantInfo[];
   }
 
+  /** 获取商家统计数据 */
+  async getMerchantStats(userId: string): Promise<{
+    totalSales: number;
+    totalOrders: number;
+    totalRevenue: string;
+    verifiedAmount: string;
+    verifiedCount: number;
+    prizeCount: number;
+    todaySales: number;
+    todayOrders: number;
+    todayRevenue: string;
+    todayVerifiedAmount: string;
+    todayVerifiedCount: number;
+  }> {
+    const supabase = getSupabaseClient();
+
+    // 获取用户关联的 merchant_id
+    const { data: user } = await supabase
+      .from('users')
+      .select('merchant_id, role')
+      .eq('user_id', userId)
+      .single();
+    if (!user || user.role !== 'merchant' || !user.merchant_id) {
+      return {
+        totalSales: 0, totalOrders: 0, totalRevenue: '0.00',
+        verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
+        todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
+        todayVerifiedAmount: '0.00', todayVerifiedCount: 0
+      };
+    }
+
+    const merchantId = user.merchant_id;
+
+    // 获取该商家所有套餐
+    const { data: packages } = await supabase
+      .from('packages')
+      .select('id')
+      .eq('merchant_id', merchantId);
+    const packageIds = (packages || []).map(p => p.id);
+
+    if (packageIds.length === 0) {
+      return {
+        totalSales: 0, totalOrders: 0, totalRevenue: '0.00',
+        verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
+        todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
+        todayVerifiedAmount: '0.00', todayVerifiedCount: 0
+      };
+    }
+
+    // 获取该商家所有订单
+    const { data: allOrders } = await supabase
+      .from('orders')
+      .select('status, price, quantity, verified_count, created_at')
+      .in('package_id', packageIds);
+    const orders = allOrders || [];
+
+    // 总售卖数据
+    const totalOrders = orders.length;
+    const totalSales = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+
+    // 核销数据
+    const verifiedOrders = orders.filter(o => o.status === 'used' || o.status === 'refunded');
+    const verifiedCount = orders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
+    const verifiedAmount = verifiedOrders
+      .filter(o => o.status === 'used')
+      .reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+
+    // 奖品发放数量（从 orders 中统计 shared=true 的）
+    const prizeOrders = orders.filter(o => (o as any).shared === true);
+    const prizeCount = prizeOrders.length;
+
+    // 今日数据
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayOrdersList = orders.filter(o => o.created_at >= todayStr);
+    const todayOrders = todayOrdersList.length;
+    const todaySales = todayOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+    const todayRevenue = todayOrdersList.reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+    const todayVerified = todayOrdersList.filter(o => o.status === 'used' || o.status === 'refunded');
+    const todayVerifiedCount = todayOrdersList.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
+    const todayVerifiedAmount = todayVerified
+      .filter(o => o.status === 'used')
+      .reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+
+    return {
+      totalSales,
+      totalOrders,
+      totalRevenue,
+      verifiedAmount,
+      verifiedCount,
+      prizeCount,
+      todaySales,
+      todayOrders,
+      todayRevenue,
+      todayVerifiedAmount,
+      todayVerifiedCount
+    };
+  }
+
   /** 获取用户订单统计 */
   async getStats(userId: string): Promise<UserStats> {
     const supabase = getSupabaseClient();
