@@ -56,20 +56,20 @@ const AdminPage = () => {
   const [merchantInfo, setMerchantInfo] = useState<{ id: number; name: string } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
-  // 获取当前登录用户的商家信息
+  // 获取当前登录用户的商家信息和统计数据
   const fetchMerchantInfo = async () => {
     try {
-      const userInfo = Taro.getStorageSync('userInfo');
-      if (!userInfo?.user_id) return;
-      setCurrentUserId(userInfo.user_id);
-      const res = await Network.request({ url: `/api/users/${userInfo.user_id}/merchant` });
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+      if (!userId) return;
+      setCurrentUserId(userId);
+      const res = await Network.request({ url: `/api/users/${userId}/merchant` });
       const merchant = (res.data as any)?.data;
       if (merchant) {
         setMerchantInfo(merchant);
       }
       // 获取商家统计数据
       try {
-        const statsRes = await Network.request({ url: `/api/users/${userInfo.user_id}/merchant-stats` });
+        const statsRes = await Network.request({ url: `/api/users/${userId}/merchant-stats` });
         const statsData = (statsRes as any)?.data || statsRes;
         if (statsData) setMerchantStats(statsData);
       } catch (e) {
@@ -393,7 +393,7 @@ const AdminPage = () => {
       </View>
 
       {/* 商家数据面板 */}
-      {merchantInfo && (
+      {(
         <View className="px-4 pt-3">
           <Card className="bg-white rounded-2xl overflow-hidden shadow-sm">
             {/* 今日数据标题栏 */}
