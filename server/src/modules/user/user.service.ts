@@ -354,39 +354,32 @@ export class UserService {
       .select('merchant_id, role')
       .eq('user_id', userId)
       .single();
-    if (!user || user.role !== 'merchant' || !user.merchant_id) {
-      return {
-        totalSales: 0, totalOrders: 0, totalRevenue: '0.00',
-        verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
-        todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
-        todayVerifiedAmount: '0.00', todayVerifiedCount: 0
-      };
+
+    let orders: any[] = [];
+
+    if (user && user.role === 'merchant' && user.merchant_id) {
+      // 商家用户：只统计关联门店的数据
+      const merchantId = user.merchant_id;
+      const { data: packages } = await supabase
+        .from('packages')
+        .select('id')
+        .eq('merchant_id', merchantId);
+      const packageIds = (packages || []).map(p => p.id);
+
+      if (packageIds.length > 0) {
+        const { data: allOrders } = await supabase
+          .from('orders')
+          .select('status, price, quantity, verified_count, created_at')
+          .in('package_id', packageIds);
+        orders = allOrders || [];
+      }
+    } else {
+      // 非商家用户：返回全平台统计数据（管理后台通用视图）
+      const { data: allOrders } = await supabase
+        .from('orders')
+        .select('status, price, quantity, verified_count, created_at');
+      orders = allOrders || [];
     }
-
-    const merchantId = user.merchant_id;
-
-    // 获取该商家所有套餐
-    const { data: packages } = await supabase
-      .from('packages')
-      .select('id')
-      .eq('merchant_id', merchantId);
-    const packageIds = (packages || []).map(p => p.id);
-
-    if (packageIds.length === 0) {
-      return {
-        totalSales: 0, totalOrders: 0, totalRevenue: '0.00',
-        verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
-        todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
-        todayVerifiedAmount: '0.00', todayVerifiedCount: 0
-      };
-    }
-
-    // 获取该商家所有订单
-    const { data: allOrders } = await supabase
-      .from('orders')
-      .select('status, price, quantity, verified_count, created_at')
-      .in('package_id', packageIds);
-    const orders = allOrders || [];
 
     // 总售卖数据
     const totalOrders = orders.length;
@@ -404,9 +397,14 @@ export class UserService {
     const prizeOrders = orders.filter(o => (o as any).shared === true);
     const prizeCount = prizeOrders.length;
 
-    // 今日数据
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayOrdersList = orders.filter(o => o.created_at >= todayStr);
+    // 今日数据（使用本地时区）
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayOrdersList = orders.filter(o => {
+      const d = new Date(o.created_at);
+      const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return orderDate === todayStr;
+    });
     const todayOrders = todayOrdersList.length;
     const todaySales = todayOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
     const todayRevenue = todayOrdersList.reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);

@@ -70,8 +70,12 @@ const AdminPage = () => {
       // 获取商家统计数据
       try {
         const statsRes = await Network.request({ url: `/api/users/${userId}/merchant-stats` });
-        const statsData = (statsRes as any)?.data || statsRes;
-        if (statsData) setMerchantStats(statsData);
+        const envelope = (statsRes as any)?.data || statsRes;
+        const statsData = envelope?.data || envelope;
+        console.log('[fetchMerchantInfo] 商家统计数据:', statsData);
+        if (statsData && typeof statsData === 'object' && 'totalSales' in statsData) {
+          setMerchantStats(statsData);
+        }
       } catch (e) {
         console.error('[fetchMerchantInfo] 获取商家统计失败:', e);
       }
