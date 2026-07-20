@@ -401,73 +401,60 @@ const AdminPage = () => {
         </View>
       </View>
 
-      {/* 商家数据面板 */}
-      {(
-        <View className="px-4 pt-3">
-          <Card className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            {/* 今日数据标题栏 */}
-            <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 py-3">
-              <Text className="block text-white text-sm font-semibold">今日数据</Text>
+      {/* 商家数据面板 — 融入背景，无卡片 */}
+      <View className="px-4 pt-4 pb-2">
+        {/* 今日数据 - 四格 */}
+        <View className="flex flex-row flex-wrap">
+          <View className="w-1/2 items-center py-3">
+            <View className="flex items-center mb-1">
+              <TrendingUp size={14} color="#9ca3af" className="mr-1" />
+              <Text className="text-xs text-gray-400">今日售额</Text>
             </View>
-            <CardContent className="p-4">
-              {/* 今日数据 - 四格 */}
-              <View className="flex flex-row flex-wrap">
-                <View className="w-1/2 items-center py-2">
-                  <View className="flex items-center mb-1">
-                    <TrendingUp size={14} color="#FF4757" className="mr-1" />
-                    <Text className="text-xs text-gray-500">今日售额</Text>
-                  </View>
-                  <Text className="block text-lg font-bold text-gray-900">¥{merchantStats.todayRevenue}</Text>
-                  <Text className="block text-xs text-gray-400 mt-1">{merchantStats.todayOrders} 笔订单</Text>
-                </View>
-                <View className="w-1/2 items-center py-2">
-                  <View className="flex items-center mb-1">
-                    <ShoppingBag size={14} color="#f97316" className="mr-1" />
-                    <Text className="text-xs text-gray-500">今日销量</Text>
-                  </View>
-                  <Text className="block text-lg font-bold text-gray-900">{merchantStats.todaySales}</Text>
-                  <Text className="block text-xs text-gray-400 mt-1">份</Text>
-                </View>
-                <View className="w-1/2 items-center py-2 border-t border-gray-100">
-                  <View className="flex items-center mb-1">
-                    <CircleCheck size={14} color="#10b981" className="mr-1" />
-                    <Text className="text-xs text-gray-500">今日核销金额</Text>
-                  </View>
-                  <Text className="block text-lg font-bold text-gray-900">¥{merchantStats.todayVerifiedAmount}</Text>
-                  <Text className="block text-xs text-gray-400 mt-1">{merchantStats.todayVerifiedCount} 份</Text>
-                </View>
-                <View className="w-1/2 items-center py-2 border-t border-gray-100">
-                  <View className="flex items-center mb-1">
-                    <Package size={14} color="#8b5cf6" className="mr-1" />
-                    <Text className="text-xs text-gray-500">奖品发放</Text>
-                  </View>
-                  <Text className="block text-lg font-bold text-gray-900">{merchantStats.prizeCount}</Text>
-                  <Text className="block text-xs text-gray-400 mt-1">份</Text>
-                </View>
-              </View>
-
-              {/* 分割线 */}
-              <View className="border-t border-gray-100 my-3" />
-
-              {/* 累计数据 */}
-              <View className="flex flex-row">
-                <View className="flex-1 items-center">
-                  <Text className="block text-xs text-gray-400">累计售额</Text>
-                  <Text className="block text-base font-bold text-red-500 mt-1">¥{merchantStats.totalRevenue}</Text>
-                </View>
-                <View className="flex-1 items-center border-l border-gray-100">
-                  <Text className="block text-xs text-gray-400">累计订单</Text>
-                  <Text className="block text-base font-bold text-gray-900 mt-1">{merchantStats.totalOrders}</Text>
-                </View>
-                <View className="flex-1 items-center border-l border-gray-100">
-                  <Text className="block text-xs text-gray-400">累计核销</Text>
-                  <Text className="block text-base font-bold text-green-600 mt-1">¥{merchantStats.verifiedAmount}</Text>
-                </View>
-              </View>
-            </CardContent>
-          </Card>
+            <Text className="block text-xl font-bold text-gray-900">¥{merchantStats.todayRevenue}</Text>
+            <Text className="block text-xs text-gray-400 mt-1">{merchantStats.todayOrders} 笔订单</Text>
+          </View>
+          <View className="w-1/2 items-center py-3">
+            <View className="flex items-center mb-1">
+              <ShoppingBag size={14} color="#9ca3af" className="mr-1" />
+              <Text className="text-xs text-gray-400">今日销量</Text>
+            </View>
+            <Text className="block text-xl font-bold text-gray-900">{merchantStats.todaySales}</Text>
+            <Text className="block text-xs text-gray-400 mt-1">份</Text>
+          </View>
+          <View className="w-1/2 items-center py-3">
+            <View className="flex items-center mb-1">
+              <CircleCheck size={14} color="#9ca3af" className="mr-1" />
+              <Text className="text-xs text-gray-400">今日核销金额</Text>
+            </View>
+            <Text className="block text-xl font-bold text-gray-900">¥{merchantStats.todayVerifiedAmount}</Text>
+            <Text className="block text-xs text-gray-400 mt-1">{merchantStats.todayVerifiedCount} 份</Text>
+          </View>
+          <View className="w-1/2 items-center py-3">
+            <View className="flex items-center mb-1">
+              <Package size={14} color="#9ca3af" className="mr-1" />
+              <Text className="text-xs text-gray-400">奖品发放</Text>
+            </View>
+            <Text className="block text-xl font-bold text-gray-900">{merchantStats.prizeCount}</Text>
+            <Text className="block text-xs text-gray-400 mt-1">份</Text>
+          </View>
         </View>
-      )}
+
+        {/* 累计数据 */}
+        <View className="flex flex-row mt-1 pt-3 border-t border-gray-200">
+          <View className="flex-1 items-center">
+            <Text className="block text-xs text-gray-400">累计售额</Text>
+            <Text className="block text-base font-bold text-gray-700 mt-1">¥{merchantStats.totalRevenue}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="block text-xs text-gray-400">累计订单</Text>
+            <Text className="block text-base font-bold text-gray-700 mt-1">{merchantStats.totalOrders}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="block text-xs text-gray-400">累计核销</Text>
+            <Text className="block text-base font-bold text-gray-700 mt-1">¥{merchantStats.verifiedAmount}</Text>
+          </View>
+        </View>
+      </View>
 
       {/* Tabs */}
       <View className="px-4 pt-3">
