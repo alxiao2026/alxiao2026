@@ -1709,6 +1709,7 @@ export default function PackageAdmin() {
                     setTempUnavailableDateType(formData.unavailable_date_type)
                     setTempUnavailableWeekdays(formData.unavailable_weekdays || [])
                     setTempUnavailableHolidays(formData.unavailable_holidays || [])
+                    setTempUnavailableCalendarDates(formData.unavailable_dates || [])
                     setShowUnavailableDateModal(true)
                   }}
                 >
@@ -1722,9 +1723,17 @@ export default function PackageAdmin() {
                   <Text className="block text-sm text-gray-600">
                     {formData.unavailable_date_type === 'all'
                       ? '所有日期均可用'
-                      : formData.unavailable_weekdays && formData.unavailable_weekdays.length > 0
-                      ? `每周${formData.unavailable_weekdays.map(d => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
-                      : '所有日期均可用'}
+                      : [
+                          formData.unavailable_weekdays && formData.unavailable_weekdays.length > 0
+                            ? `每周${formData.unavailable_weekdays.map(d => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、')}不可用`
+                            : '',
+                          formData.unavailable_holidays && formData.unavailable_holidays.length > 0
+                            ? `${formData.unavailable_holidays.length}个节假日不可用`
+                            : '',
+                          formData.unavailable_dates && formData.unavailable_dates.length > 0
+                            ? `${formData.unavailable_dates.length}个指定日期不可用`
+                            : '',
+                        ].filter(Boolean).join('；') || '所有日期均可用'}
                   </Text>
                 </View>
 
