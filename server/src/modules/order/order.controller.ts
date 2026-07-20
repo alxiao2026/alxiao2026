@@ -72,9 +72,13 @@ export class OrderController {
 
   @Post('verify/:code')
   @HttpCode(200)
-  async verify(@Param('code') code: string, @Body() body?: { verify_count?: number }): Promise<{ code: number; data: Order; msg: string }> {
+  async verify(
+    @Param('code') code: string,
+    @Body() body?: { verify_count?: number; merchant_user_id?: string }
+  ): Promise<{ code: number; data: Order; msg: string }> {
     const verifyCount = body?.verify_count || 1;
-    const data = await this.orderService.verify(code, verifyCount);
+    const merchantUserId = body?.merchant_user_id;
+    const data = await this.orderService.verify(code, verifyCount, merchantUserId);
     return { code: 200, data, msg: '核销成功' };
   }
 }

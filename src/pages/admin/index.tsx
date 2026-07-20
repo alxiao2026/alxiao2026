@@ -53,6 +53,24 @@ const AdminPage = () => {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any } | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [merchantInfo, setMerchantInfo] = useState<{ id: number; name: string } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  // 获取当前登录用户的商家信息
+  const fetchMerchantInfo = async () => {
+    try {
+      const userInfo = Taro.getStorageSync('userInfo');
+      if (!userInfo?.user_id) return;
+      setCurrentUserId(userInfo.user_id);
+      const res = await Network.request({ url: `/api/users/${userInfo.user_id}/merchant` });
+      const merchant = (res.data as any)?.data;
+      if (merchant) {
+        setMerchantInfo(merchant);
+      }
+    } catch (err) {
+      console.log('当前用户非商家或未绑定门店');
+    }
+  };
 
   const fetchPrizes = async () => {
     try {
@@ -76,7 +94,7 @@ const AdminPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchPrizes(), fetchPackages()]);
+    await Promise.all([fetchPrizes(), fetchPackages(), fetchMerchantInfo()]);
     setLoading(false);
   };
 
@@ -288,7 +306,10 @@ const AdminPage = () => {
       const res = await Network.request({
         url: `/api/orders/verify/${code}`,
         method: 'POST',
-        data: { verify_count: count },
+        data: {
+          verify_count: count,
+          ...(currentUserId && { merchant_user_id: currentUserId }),
+        },
       });
       console.log('[核销] 响应:', res.data);
       const data = (res.data as any)?.data || res.data;
@@ -539,6 +560,17 @@ const AdminPage = () => {
           </TabsContent>
 
           <TabsContent value="verify" className="mt-3">
+            {/* 商家身份信息 */}
+            {merchantInfo && (
+              <View className="flex flex-row items-center bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+                <Store size={18} color="#FF4757" />
+                <View className="ml-2 flex-1">
+                  <Text className="block text-sm font-semibold text-red-700">{merchantInfo.name}</Text>
+                  <Text className="block text-xs text-red-400 mt-1">仅可核销本门店的订单</Text>
+                </View>
+              </View>
+            )}
+
             {/* 扫码核销区域 */}
             <Card className="mb-4">
               <CardContent className="p-6 flex flex-col items-center">

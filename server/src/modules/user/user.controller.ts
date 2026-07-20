@@ -38,4 +38,38 @@ export class UserController {
     const user = await this.userService.update(userId, body);
     return { code: 200, msg: 'success', data: user };
   }
+
+  /** 绑定门店（商家用户） */
+  @Post(':userId/bind-merchant')
+  @HttpCode(200)
+  async bindMerchant(@Param('userId') userId: string, @Body() body: { merchant_id: number }) {
+    console.log('[UserController] bindMerchant:', userId, body.merchant_id);
+    const user = await this.userService.bindMerchant(userId, body.merchant_id);
+    return { code: 200, msg: 'success', data: user };
+  }
+
+  /** 解绑门店（变回消费者） */
+  @Post(':userId/unbind-merchant')
+  @HttpCode(200)
+  async unbindMerchant(@Param('userId') userId: string) {
+    console.log('[UserController] unbindMerchant:', userId);
+    const user = await this.userService.unbindMerchant(userId);
+    return { code: 200, msg: 'success', data: user };
+  }
+
+  /** 获取用户关联的门店信息 */
+  @Get(':userId/merchant')
+  async getMerchantInfo(@Param('userId') userId: string) {
+    console.log('[UserController] getMerchantInfo:', userId);
+    const merchant = await this.userService.getMerchantInfo(userId);
+    return { code: 200, msg: 'success', data: merchant };
+  }
+
+  /** 获取所有门店列表 */
+  @Get('merchants/list')
+  async getMerchantList() {
+    console.log('[UserController] getMerchantList');
+    const merchants = await this.userService.getMerchantList();
+    return { code: 200, msg: 'success', data: merchants };
+  }
 }

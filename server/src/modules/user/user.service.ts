@@ -14,9 +14,19 @@ export interface User {
   total_orders: number;
   total_spent: string;
   is_active: boolean;
+  role: 'consumer' | 'merchant';
+  merchant_id: number | null;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MerchantInfo {
+  id: number;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  logo: string | null;
 }
 
 export interface UserStats {
@@ -109,6 +119,77 @@ export class UserService {
       .single();
     if (error || !data) throw new NotFoundException('用户不存在');
     return data as User;
+  }
+
+  /** 绑定门店（商家用户） */
+  async bindMerchant(userId: string, merchantId: number): Promise<User> {
+    const supabase = getSupabaseClient();
+    // 验证门店存在
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('id, name')
+      .eq('id', merchantId)
+      .single();
+    if (!merchant) throw new NotFoundException('门店不存在');
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        role: 'merchant',
+        merchant_id: merchantId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error || !data) throw new NotFoundException('用户不存在');
+    return data as User;
+  }
+
+  /** 解绑门店（变回消费者） */
+  async unbindMerchant(userId: string): Promise<User> {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        role: 'consumer',
+        merchant_id: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error || !data) throw new NotFoundException('用户不存在');
+    return data as User;
+  }
+
+  /** 获取用户关联的门店信息 */
+  async getMerchantInfo(userId: string): Promise<MerchantInfo | null> {
+    const supabase = getSupabaseClient();
+    const { data: user } = await supabase
+      .from('users')
+      .select('merchant_id, role')
+      .eq('user_id', userId)
+      .single();
+    if (!user || user.role !== 'merchant' || !user.merchant_id) return null;
+
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('id, name, address, phone, logo')
+      .eq('id', user.merchant_id)
+      .single();
+    return merchant as MerchantInfo | null;
+  }
+
+  /** 获取所有门店列表 */
+  async getMerchantList(): Promise<MerchantInfo[]> {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('merchants')
+      .select('id, name, address, phone, logo')
+      .order('id');
+    if (error) throw error;
+    return (data || []) as MerchantInfo[];
   }
 
   /** 获取用户订单统计 */
