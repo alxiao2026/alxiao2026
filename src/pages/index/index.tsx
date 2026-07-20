@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect, useCallback } from 'react';
-import Taro, { useShareAppMessage } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import {
   Gift, Share2, ShoppingBag, LogIn, LayoutDashboard, User,
@@ -97,6 +97,14 @@ const IndexPage = () => {
     fetchPackages();
     fetchOrders();
   }, [userId]);
+
+  // 页面每次显示时刷新数据（下单后返回自动更新销量）
+  useDidShow(() => {
+    if (!userId) return;
+    fetchPrizes();
+    fetchPackages();
+    fetchOrders();
+  });
 
   const fetchPrizes = async () => {
     try {

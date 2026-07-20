@@ -59,7 +59,17 @@ export class PackageService {
       .select('*')
       .order('created_at', { ascending: true });
     if (error) throw new Error(`查询套餐列表失败：${error.message}`);
-    return (data as Package[]) || [];
+    const packages = (data as Package[]) || [];
+    // 为每个套餐计算实时销量
+    for (const pkg of packages) {
+      const { data: orders } = await this.client
+        .from('orders')
+        .select('quantity')
+        .eq('package_id', pkg.id)
+        .in('status', ['pending', 'used', 'refunded']);
+      (pkg as any).sales_count = (orders || []).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+    }
+    return packages;
   }
 
   async findActive(): Promise<Package[]> {
@@ -105,6 +115,17 @@ export class PackageService {
       }
 
       activePackages.push(pkg);
+    }
+
+    // 为每个套餐计算实时销量
+    for (const pkg of activePackages) {
+      const { data: orders } = await this.client
+        .from('orders')
+        .select('quantity')
+        .eq('package_id', pkg.id)
+        .in('status', ['pending', 'used', 'refunded']);
+      const totalSales = (orders || []).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+      (pkg as any).sales_count = totalSales;
     }
 
     return activePackages;

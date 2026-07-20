@@ -1,6 +1,6 @@
 import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,6 +109,11 @@ const AdminPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // 页面每次显示时刷新商家统计数据（下单后返回自动更新）
+  useDidShow(() => {
+    fetchMerchantInfo();
+  });
 
   // ========== 奖品管理 ==========
   const openCreatePrize = () => {
