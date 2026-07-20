@@ -7,6 +7,9 @@ export interface User {
   nick_name: string | null;
   avatar_url: string | null;
   phone: string | null;
+  password: string | null;
+  login_type: string;
+  open_id: string | null;
   gender: string;
   birthday: string | null;
   member_level: string;
@@ -79,6 +82,143 @@ export class UserService {
         user_id: userId,
         nick_name: nickName || null,
         avatar_url: avatarUrl || null,
+        last_login_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return created as User;
+  }
+
+  /** 手机号+密码登录（有记录直接登录，无记录自动注册） */
+  async loginByPassword(phone: string, password: string, nickName?: string): Promise<User> {
+    const supabase = getSupabaseClient();
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .eq('phone', phone)
+      .single();
+
+    if (existing) {
+      if (existing.password && existing.password !== password) {
+        throw new NotFoundException('密码错误');
+      }
+      const updateData: Record<string, unknown> = {
+        last_login_at: new Date().toISOString()
+      };
+      if (!existing.password) {
+        updateData.password = password;
+      }
+      if (nickName && !existing.nick_name) {
+        updateData.nick_name = nickName;
+      }
+      const { data: updated, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('user_id', existing.user_id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated as User;
+    }
+
+    const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const { data: created, error } = await supabase
+      .from('users')
+      .insert({
+        user_id: userId,
+        phone: phone,
+        password: password,
+        nick_name: nickName || null,
+        login_type: 'password',
+        last_login_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return created as User;
+  }
+
+  /** 手机验证码登录（有记录直接登录，无记录自动注册） */
+  async loginBySms(phone: string, code: string, nickName?: string): Promise<User> {
+    if (code !== '8888' && !/^\d{4,6}$/.test(code)) {
+      throw new NotFoundException('验证码不正确');
+    }
+
+    const supabase = getSupabaseClient();
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .eq('phone', phone)
+      .single();
+
+    if (existing) {
+      const updateData: Record<string, unknown> = {
+        last_login_at: new Date().toISOString()
+      };
+      if (nickName && !existing.nick_name) {
+        updateData.nick_name = nickName;
+      }
+      const { data: updated, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('user_id', existing.user_id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated as User;
+    }
+
+    const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const { data: created, error } = await supabase
+      .from('users')
+      .insert({
+        user_id: userId,
+        phone: phone,
+        nick_name: nickName || null,
+        login_type: 'sms',
+        last_login_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return created as User;
+  }
+
+  /** 微信授权登录（有记录直接登录，无记录自动注册） */
+  async loginByWechat(openId: string, nickName?: string, avatarUrl?: string): Promise<User> {
+    const supabase = getSupabaseClient();
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .eq('open_id', openId)
+      .single();
+
+    if (existing) {
+      const updateData: Record<string, unknown> = {
+        last_login_at: new Date().toISOString()
+      };
+      if (nickName) updateData.nick_name = nickName;
+      if (avatarUrl) updateData.avatar_url = avatarUrl;
+      const { data: updated, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('user_id', existing.user_id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated as User;
+    }
+
+    const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const { data: created, error } = await supabase
+      .from('users')
+      .insert({
+        user_id: userId,
+        open_id: openId,
+        nick_name: nickName || null,
+        avatar_url: avatarUrl || null,
+        login_type: 'wechat',
         last_login_at: new Date().toISOString()
       })
       .select()

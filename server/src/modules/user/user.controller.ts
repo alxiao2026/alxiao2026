@@ -14,6 +14,33 @@ export class UserController {
     return { code: 200, msg: 'success', data: user };
   }
 
+  /** 手机号+密码登录 */
+  @Post('login/password')
+  @HttpCode(200)
+  async loginByPassword(@Body() body: { phone: string; password: string; nick_name?: string }) {
+    console.log('[UserController] loginByPassword:', body.phone);
+    const user = await this.userService.loginByPassword(body.phone, body.password, body.nick_name);
+    return { code: 200, msg: 'success', data: user };
+  }
+
+  /** 手机验证码登录 */
+  @Post('login/sms')
+  @HttpCode(200)
+  async loginBySms(@Body() body: { phone: string; code: string; nick_name?: string }) {
+    console.log('[UserController] loginBySms:', body.phone);
+    const user = await this.userService.loginBySms(body.phone, body.code, body.nick_name);
+    return { code: 200, msg: 'success', data: user };
+  }
+
+  /** 微信授权登录 */
+  @Post('login/wechat')
+  @HttpCode(200)
+  async loginByWechat(@Body() body: { open_id: string; nick_name?: string; avatar_url?: string }) {
+    console.log('[UserController] loginByWechat:', body.open_id);
+    const user = await this.userService.loginByWechat(body.open_id, body.nick_name, body.avatar_url);
+    return { code: 200, msg: 'success', data: user };
+  }
+
   /** 获取用户信息 */
   @Get(':userId')
   async getProfile(@Param('userId') userId: string) {
