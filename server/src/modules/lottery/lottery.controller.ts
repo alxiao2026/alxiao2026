@@ -24,4 +24,10 @@ export class LotteryController {
   getWinners() {
     return this.lotteryService.getWinners();
   }
+
+  /** 商品兑换码核销 */
+  @Post('redeem')
+  redeemProduct(@Body() body: { redemption_code: string; merchant_user_id: string }) {
+    return this.lotteryService.redeemProduct(body.redemption_code, body.merchant_user_id);
+  }
 }

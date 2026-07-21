@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+export type PrizeType = 'coupon' | 'product' | 'free_meal';
+
 export interface Prize {
   id: string;
   name: string;
@@ -9,6 +11,11 @@ export interface Prize {
   image_url: string | null;
   stock: number;
   is_active: boolean;
+  prize_type: PrizeType;
+  coupon_amount: string;
+  coupon_min_spend: string;
+  product_name: string;
+  product_value: string;
 }
 
 export interface LotteryRecord {
@@ -18,6 +25,9 @@ export interface LotteryRecord {
   prize_id: string | null;
   prize_name: string | null;
   is_winner: boolean;
+  redemption_code: string;
+  refund_amount: string;
+  refund_status: string;
   created_at: string;
 }
 
@@ -26,6 +36,8 @@ export interface Order {
   user_id: string;
   shared: boolean;
   status: string;
+  price: string;
+  quantity: number;
 }
 
 @Injectable()
@@ -84,13 +96,47 @@ export class LotteryService {
     // 5. 计算中奖结果
     const result = this.calculateLottery(activePrizes);
 
-    // 6. 记录抽奖结果
+    // 6. 处理中奖模式逻辑
+    let redemptionCode = '';
+    let refundAmount = 0;
+    let refundStatus = '';
+
+    if (result.is_winner && result.prize) {
+      const prize = result.prize;
+      const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
+
+      if (prize.prize_type === 'coupon') {
+        // 优惠券模式：校验订单金额是否满足使用条件
+        const minSpend = parseFloat(prize.coupon_min_spend || '0');
+        const couponAmt = parseFloat(prize.coupon_amount || '0');
+        if (orderTotal >= minSpend && couponAmt > 0) {
+          refundAmount = couponAmt;
+          refundStatus = 'pending';
+        } else {
+          // 不满足条件，不中奖
+          result.is_winner = false;
+          result.prize = null;
+        }
+      } else if (prize.prize_type === 'product') {
+        // 商品模式：生成专属兑换码
+        redemptionCode = `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      } else if (prize.prize_type === 'free_meal') {
+        // 霸王餐模式：全额退款
+        refundAmount = orderTotal;
+        refundStatus = 'pending';
+      }
+    }
+
+    // 7. 记录抽奖结果
     const recordData: Record<string, any> = {
       order_id: orderId,
       user_id: userId,
       is_winner: result.is_winner,
       prize_name: result.prize?.name || null,
       prize_id: result.prize?.id || null,
+      redemption_code: redemptionCode,
+      refund_amount: refundAmount,
+      refund_status: refundStatus,
     };
 
     const { data: record, error: recordError } = await this.client
@@ -100,7 +146,7 @@ export class LotteryService {
       .single();
     if (recordError) throw new Error(`保存抽奖记录失败: ${recordError.message}`);
 
-    // 7. 如果中奖，减少库存并返回最新库存
+    // 8. 如果中奖，减少库存并返回最新库存
     if (result.is_winner && result.prize) {
       const newStock = result.prize.stock - 1;
       const { error: stockError } = await this.client
@@ -120,6 +166,35 @@ export class LotteryService {
       prize: result.prize,
       record: record as LotteryRecord,
     };
+  }
+
+  /** 商品兑换码核销 */
+  async redeemProduct(redemptionCode: string, merchantUserId: string): Promise<LotteryRecord> {
+    // 查找中奖记录
+    const { data: record, error } = await this.client
+      .from('lottery_records')
+      .select('*')
+      .eq('redemption_code', redemptionCode)
+      .eq('is_winner', true)
+      .maybeSingle();
+    if (error) throw new Error(`查询兑换记录失败: ${error.message}`);
+    if (!record) throw new NotFoundException('兑换码无效');
+
+    const recordData = record as LotteryRecord;
+    if (recordData.refund_status === 'redeemed') {
+      throw new BadRequestException('该商品已兑换过');
+    }
+
+    // 更新为已兑换
+    const { data: updated, error: updateError } = await this.client
+      .from('lottery_records')
+      .update({ refund_status: 'redeemed' })
+      .eq('id', recordData.id)
+      .select()
+      .single();
+    if (updateError) throw new Error(`更新兑换状态失败: ${updateError.message}`);
+
+    return updated as LotteryRecord;
   }
 
   /**

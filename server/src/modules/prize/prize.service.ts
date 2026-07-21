@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+export type PrizeType = 'coupon' | 'product' | 'free_meal';
+
 export interface Prize {
   id: string;
   name: string;
@@ -9,6 +11,11 @@ export interface Prize {
   image_url: string | null;
   stock: number;
   is_active: boolean;
+  prize_type: PrizeType;
+  coupon_amount: string;
+  coupon_min_spend: string;
+  product_name: string;
+  product_value: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -47,7 +54,18 @@ export class PrizeService {
     return data as Prize;
   }
 
-  async create(body: { name: string; description?: string; probability?: string; image_url?: string; stock?: number }): Promise<Prize> {
+  async create(body: {
+    name: string;
+    description?: string;
+    probability?: string;
+    image_url?: string;
+    stock?: number;
+    prize_type?: PrizeType;
+    coupon_amount?: number;
+    coupon_min_spend?: number;
+    product_name?: string;
+    product_value?: number;
+  }): Promise<Prize> {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
 
     const { data, error } = await this.client
@@ -58,6 +76,11 @@ export class PrizeService {
         probability: body.probability || '0',
         image_url: body.image_url || null,
         stock: body.stock ?? 0,
+        prize_type: body.prize_type || 'coupon',
+        coupon_amount: body.coupon_amount ?? 0,
+        coupon_min_spend: body.coupon_min_spend ?? 0,
+        product_name: body.product_name || '',
+        product_value: body.product_value ?? 0,
       })
       .select()
       .single();
@@ -65,7 +88,19 @@ export class PrizeService {
     return data as Prize;
   }
 
-  async update(id: string, body: Partial<{ name: string; description: string; probability: string; image_url: string; stock: number; is_active: boolean }>): Promise<Prize> {
+  async update(id: string, body: Partial<{
+    name: string;
+    description: string;
+    probability: string;
+    image_url: string;
+    stock: number;
+    is_active: boolean;
+    prize_type: PrizeType;
+    coupon_amount: number;
+    coupon_min_spend: number;
+    product_name: string;
+    product_value: number;
+  }>): Promise<Prize> {
     const existing = await this.findOne(id);
 
     const updateData: Record<string, any> = {};
@@ -75,6 +110,11 @@ export class PrizeService {
     if (body.image_url !== undefined) updateData.image_url = body.image_url;
     if (body.stock !== undefined) updateData.stock = body.stock;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
+    if (body.prize_type !== undefined) updateData.prize_type = body.prize_type;
+    if (body.coupon_amount !== undefined) updateData.coupon_amount = body.coupon_amount;
+    if (body.coupon_min_spend !== undefined) updateData.coupon_min_spend = body.coupon_min_spend;
+    if (body.product_name !== undefined) updateData.product_name = body.product_name;
+    if (body.product_value !== undefined) updateData.product_value = body.product_value;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client

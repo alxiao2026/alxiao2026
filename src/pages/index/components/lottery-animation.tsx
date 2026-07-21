@@ -8,12 +8,19 @@ interface LotteryAnimationProps {
   visible: boolean;
   isWinner: boolean;
   prizeName: string | null;
+  prizeType?: 'coupon' | 'product' | 'free_meal';
+  couponAmount?: string;
+  couponMinSpend?: string;
+  productName?: string;
+  productValue?: string;
+  redemptionCode?: string;
+  refundAmount?: string;
   onClose: () => void;
 }
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
 
-const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnimationProps) => {
+const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, couponAmount, couponMinSpend, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
   const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealing' | 'result'>('idle');
 
   useEffect(() => {
@@ -116,6 +123,52 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, onClose }: LotteryAnim
             {isWinner && prizeName && (
               <View className="lottery-prize-container">
                 <Text className="block text-lg font-bold text-white text-center">{prizeName}</Text>
+              </View>
+            )}
+
+            {/* 优惠券模式：显示金额和条件 */}
+            {isWinner && prizeType === 'coupon' && (
+              <View className="mt-3 flex flex-col items-center">
+                <Text className="block text-sm lottery-text-white opacity-80">
+                  优惠券金额 ¥{couponAmount}
+                </Text>
+                {Number(couponMinSpend) > 0 && (
+                  <Text className="block text-xs lottery-text-white opacity-60 mt-1">
+                    满 ¥{couponMinSpend} 可用，金额将退回原支付账户
+                  </Text>
+                )}
+                {Number(couponMinSpend) <= 0 && (
+                  <Text className="block text-xs lottery-text-white opacity-60 mt-1">
+                    无门槛使用，金额将退回原支付账户
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* 商品模式：显示商品信息和兑换码 */}
+            {isWinner && prizeType === 'product' && (
+              <View className="mt-3 flex flex-col items-center">
+                {productName && (
+                  <Text className="block text-sm lottery-text-white opacity-80">
+                    {productName}（价值 ¥{productValue}）
+                  </Text>
+                )}
+                {redemptionCode && (
+                  <View className="mt-2 bg-white bg-opacity-20 rounded-lg px-4 py-2">
+                    <Text className="block text-xs lottery-text-white opacity-60">兑换码</Text>
+                    <Text className="block text-sm font-bold text-white text-center mt-1">{redemptionCode}</Text>
+                    <Text className="block text-xs lottery-text-white opacity-50 mt-1 text-center">请向商家出示此码兑换</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 霸王餐模式：显示退款信息 */}
+            {isWinner && prizeType === 'free_meal' && (
+              <View className="mt-3 flex flex-col items-center">
+                <Text className="block text-sm lottery-text-white opacity-80">
+                  支付金额 ¥{refundAmount} 将全额退回原支付账户
+                </Text>
               </View>
             )}
 

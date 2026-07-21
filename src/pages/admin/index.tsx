@@ -18,9 +18,20 @@ interface Prize {
   image_url: string | null;
   stock: number;
   is_active: boolean;
+  prize_type: 'coupon' | 'product' | 'free_meal';
+  coupon_amount: string;
+  coupon_min_spend: string;
+  product_name: string;
+  product_value: string;
   created_at: string;
   updated_at: string | null;
 }
+
+const PRIZE_TYPE_OPTIONS = [
+  { value: 'coupon', label: '优惠券模式' },
+  { value: 'product', label: '商品模式' },
+  { value: 'free_meal', label: '霸王餐模式' },
+] as const;
 
 interface Package {
   id: string;
@@ -45,7 +56,12 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPrize, setEditingPrize] = useState<Prize | null>(null);
-  const [prizeForm, setPrizeForm] = useState({ name: '', description: '', probability: '0', stock: '0' });
+  const [prizeForm, setPrizeForm] = useState({
+    name: '', description: '', probability: '0', stock: '0',
+    prize_type: 'coupon' as 'coupon' | 'product' | 'free_meal',
+    coupon_amount: '', coupon_min_spend: '',
+    product_name: '', product_value: '',
+  });
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [pkgForm, setPkgForm] = useState({ name: '', description: '', price: '9.90', original_price: '', badge: '', features: '' });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -123,7 +139,11 @@ const AdminPage = () => {
   // ========== 奖品管理 ==========
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100' });
+    setPrizeForm({
+      name: '', description: '', probability: '10', stock: '100',
+      prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '',
+      product_name: '', product_value: '',
+    });
     setShowDialog(true);
   };
 
@@ -134,6 +154,11 @@ const AdminPage = () => {
       description: prize.description || '',
       probability: prize.probability,
       stock: String(prize.stock),
+      prize_type: prize.prize_type || 'coupon',
+      coupon_amount: prize.coupon_amount || '',
+      coupon_min_spend: prize.coupon_min_spend || '',
+      product_name: prize.product_name || '',
+      product_value: prize.product_value || '',
     });
     setShowDialog(true);
   };
@@ -145,27 +170,28 @@ const AdminPage = () => {
     }
 
     try {
+      const payload: Record<string, any> = {
+        name: prizeForm.name,
+        description: prizeForm.description,
+        probability: prizeForm.probability,
+        stock: Number(prizeForm.stock),
+        prize_type: prizeForm.prize_type,
+        coupon_amount: Number(prizeForm.coupon_amount) || 0,
+        coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
+        product_name: prizeForm.product_name,
+        product_value: Number(prizeForm.product_value) || 0,
+      };
       if (editingPrize) {
         await Network.request({
           url: `/api/prizes/${editingPrize.id}`,
           method: 'PUT',
-          data: {
-            name: prizeForm.name,
-            description: prizeForm.description,
-            probability: prizeForm.probability,
-            stock: Number(prizeForm.stock),
-          },
+          data: payload,
         });
       } else {
         await Network.request({
           url: '/api/prizes',
           method: 'POST',
-          data: {
-            name: prizeForm.name,
-            description: prizeForm.description,
-            probability: prizeForm.probability,
-            stock: Number(prizeForm.stock),
-          },
+          data: payload,
         });
       }
       setShowDialog(false);
@@ -508,6 +534,9 @@ const AdminPage = () => {
                             <Badge variant={prize.is_active ? 'default' : 'secondary'}>
                               {prize.is_active ? '启用' : '停用'}
                             </Badge>
+                            <Badge variant="outline">
+                              {prize.prize_type === 'coupon' ? '优惠券' : prize.prize_type === 'product' ? '商品' : '霸王餐'}
+                            </Badge>
                           </View>
                           {prize.description && (
                             <Text className="block text-sm text-gray-500 mt-1">{prize.description}</Text>
@@ -519,6 +548,17 @@ const AdminPage = () => {
                             <Text className="block text-xs text-gray-400">
                               库存: <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
                             </Text>
+                            {prize.prize_type === 'coupon' && (
+                              <Text className="block text-xs text-gray-400">
+                                金额: <Text className="text-red-500 font-semibold">¥{prize.coupon_amount}</Text>
+                                {Number(prize.coupon_min_spend) > 0 && ` 满${prize.coupon_min_spend}可用`}
+                              </Text>
+                            )}
+                            {prize.prize_type === 'product' && (
+                              <Text className="block text-xs text-gray-400">
+                                价值: <Text className="text-blue-500 font-semibold">¥{prize.product_value}</Text>
+                              </Text>
+                            )}
                           </View>
                         </View>
                         <View className="flex flex-row items-center gap-2">
@@ -881,6 +921,101 @@ const AdminPage = () => {
                     />
                   </View>
                 </View>
+
+                {/* 模式选择 */}
+                <View>
+                  <Text className="block text-sm text-black mb-2">奖品模式</Text>
+                  <View className="flex flex-row gap-2">
+                    {PRIZE_TYPE_OPTIONS.map((opt) => (
+                      <View
+                        key={opt.value}
+                        className={`flex-1 rounded-xl px-3 py-2 border text-center ${prizeForm.prize_type === opt.value ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white'}`}
+                        onClick={() => setPrizeForm({ ...prizeForm, prize_type: opt.value })}
+                      >
+                        <Text className={`block text-sm ${prizeForm.prize_type === opt.value ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          {opt.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {/* 优惠券模式字段 */}
+                {prizeForm.prize_type === 'coupon' && (
+                  <>
+                    <View className="flex flex-row gap-3">
+                      <View className="flex-1">
+                        <Text className="block text-sm text-black mb-1">优惠券金额（元）</Text>
+                        <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                          <Input
+                            className="w-full"
+                            style={{ backgroundColor: 'transparent' }}
+                            value={prizeForm.coupon_amount}
+                            placeholder="如 5"
+                            onInput={(e) => setPrizeForm({ ...prizeForm, coupon_amount: e.detail.value })}
+                          />
+                        </View>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="block text-sm text-black mb-1">使用条件（满多少元）</Text>
+                        <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                          <Input
+                            className="w-full"
+                            style={{ backgroundColor: 'transparent' }}
+                            value={prizeForm.coupon_min_spend}
+                            placeholder="如 50"
+                            onInput={(e) => setPrizeForm({ ...prizeForm, coupon_min_spend: e.detail.value })}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                    <View className="bg-amber-50 rounded-xl p-3">
+                      <Text className="block text-xs text-amber-700">抽中后系统校验订单支付金额，满足条件则优惠券金额直接退回原支付账户</Text>
+                    </View>
+                  </>
+                )}
+
+                {/* 商品模式字段 */}
+                {prizeForm.prize_type === 'product' && (
+                  <>
+                    <View className="flex flex-row gap-3">
+                      <View className="flex-1">
+                        <Text className="block text-sm text-black mb-1">商品名称</Text>
+                        <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                          <Input
+                            className="w-full"
+                            style={{ backgroundColor: 'transparent' }}
+                            value={prizeForm.product_name}
+                            placeholder="如 精美马克杯"
+                            onInput={(e) => setPrizeForm({ ...prizeForm, product_name: e.detail.value })}
+                          />
+                        </View>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="block text-sm text-black mb-1">商品价值（元）</Text>
+                        <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                          <Input
+                            className="w-full"
+                            style={{ backgroundColor: 'transparent' }}
+                            value={prizeForm.product_value}
+                            placeholder="如 39"
+                            onInput={(e) => setPrizeForm({ ...prizeForm, product_value: e.detail.value })}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                    <View className="bg-blue-50 rounded-xl p-3">
+                      <Text className="block text-xs text-blue-700">抽中后生成专属二维码，兑换时需商家核销</Text>
+                    </View>
+                  </>
+                )}
+
+                {/* 霸王餐模式说明 */}
+                {prizeForm.prize_type === 'free_meal' && (
+                  <View className="bg-green-50 rounded-xl p-3">
+                    <Text className="block text-xs text-green-700">抽中霸王餐后，系统直接返还用户原先支付金额到原支付账户</Text>
+                  </View>
+                )}
 
                 <View>
                   <Text className="block text-sm text-black mb-1">奖品描述</Text>
