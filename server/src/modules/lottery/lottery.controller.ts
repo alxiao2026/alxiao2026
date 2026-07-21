@@ -19,4 +19,9 @@ export class LotteryController {
   getUserRecords(@Param('userId') userId: string) {
     return this.lotteryService.getUserRecords(userId);
   }
+
+  @Get('winners')
+  getWinners() {
+    return this.lotteryService.getWinners();
+  }
 }

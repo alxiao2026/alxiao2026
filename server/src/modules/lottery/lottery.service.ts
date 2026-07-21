@@ -182,4 +182,41 @@ export class LotteryService {
     if (error) throw new Error(`查询用户抽奖记录失败: ${error.message}`);
     return (data as LotteryRecord[]) || [];
   }
+
+  /** 获取往期中奖名单（中奖记录 + 用户昵称，按时间倒序，最多50条） */
+  async getWinners(): Promise<Array<{
+    id: string;
+    prize_name: string;
+    user_id: string;
+    nick_name: string;
+    created_at: string;
+  }>> {
+    const { data: records, error } = await this.client
+      .from('lottery_records')
+      .select('id, prize_name, user_id, created_at')
+      .eq('is_winner', true)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw new Error(`查询中奖记录失败: ${error.message}`);
+
+    const list = (records as LotteryRecord[]) || [];
+    if (list.length === 0) return [];
+
+    // 批量获取用户昵称
+    const userIds = [...new Set(list.map(r => r.user_id))];
+    const { data: users } = await this.client
+      .from('users')
+      .select('user_id, nick_name')
+      .in('user_id', userIds);
+    const userMap = new Map<string, string>();
+    (users || []).forEach((u: any) => userMap.set(u.user_id, u.nick_name || u.user_id));
+
+    return list.map(r => ({
+      id: r.id,
+      prize_name: r.prize_name || '未领取',
+      user_id: r.user_id,
+      nick_name: userMap.get(r.user_id) || r.user_id,
+      created_at: r.created_at,
+    }));
+  }
 }

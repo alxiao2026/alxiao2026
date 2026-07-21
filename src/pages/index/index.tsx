@@ -1,9 +1,9 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import {
-  Gift, Share2, ShoppingBag, LogIn, LayoutDashboard, User,
+  Gift, LogIn, LayoutDashboard, User,
   MapPin, ChevronRight, Clock, Flame, Award
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
@@ -35,19 +35,6 @@ interface Package {
   sales_count: number;
 }
 
-interface Order {
-  id: string;
-  user_id: string;
-  nick_name: string | null;
-  package_name: string;
-  price: string;
-  status: string;
-  shared: boolean;
-  created_at: string;
-  quantity: number;
-  order_no: string;
-}
-
 interface LotteryResult {
   is_winner: boolean;
   prize: Prize | null;
@@ -56,6 +43,14 @@ interface LotteryResult {
     prize_name: string | null;
     is_winner: boolean;
   };
+}
+
+interface WinnerRecord {
+  id: string;
+  prize_name: string;
+  user_id: string;
+  nick_name: string;
+  created_at: string;
 }
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
@@ -68,10 +63,9 @@ const IndexPage = () => {
   const [userId, setUserId] = useState<string>('');
   const [nickName, setNickName] = useState<string>('游客');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [winners, setWinners] = useState<WinnerRecord[]>([]);
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
   const [showLottery, setShowLottery] = useState(false);
-  const [drawing, setDrawing] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'hot' | 'new'>('all');
 
   // 读取缓存用户ID
@@ -95,7 +89,7 @@ const IndexPage = () => {
     if (!userId) return;
     fetchPrizes();
     fetchPackages();
-    fetchOrders();
+    fetchWinners();
   }, [userId]);
 
   // 页面每次显示时刷新数据（下单后返回自动更新销量）
@@ -103,7 +97,7 @@ const IndexPage = () => {
     if (!userId) return;
     fetchPrizes();
     fetchPackages();
-    fetchOrders();
+    fetchWinners();
   });
 
   const fetchPrizes = async () => {
@@ -126,41 +120,15 @@ const IndexPage = () => {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchWinners = async () => {
     try {
-      const res = await Network.request({ url: `/api/orders/user/${userId}` });
-      const data = (res.data as any)?.data || (res.data as Order[]) || [];
-      setOrders(data);
+      const res = await Network.request({ url: '/api/lottery/winners' });
+      const data = (res.data as any)?.data || (res.data as WinnerRecord[]) || [];
+      setWinners(data);
     } catch (err) {
-      console.error('获取订单失败:', err);
+      console.error('获取中奖名单失败:', err);
     }
   };
-
-  // 分享
-  const handleShare = useCallback(async (orderId: string) => {
-    try {
-      await Network.request({
-        url: `/api/orders/${orderId}/share`,
-        method: 'POST',
-      });
-      const env = Taro.getEnv();
-      const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
-      if (isMiniApp) {
-        Taro.showShareMenu({
-          withShareTicket: true,
-          success: () => {
-            Taro.showToast({ title: '分享成功！现在可以开奖了', icon: 'success' });
-            fetchOrders();
-          },
-        });
-      } else {
-        Taro.showToast({ title: '分享成功！现在可以开奖了', icon: 'success' });
-        fetchOrders();
-      }
-    } catch (err) {
-      console.error('分享失败:', err);
-    }
-  }, []);
 
   // 微信登录获取用户信息
   const handleLogin = async () => {
@@ -183,28 +151,6 @@ const IndexPage = () => {
       path: '/pages/index/index',
     };
   });
-
-  // 抽奖
-  const handleDraw = async (orderId: string) => {
-    if (drawing) return;
-    setDrawing(true);
-    try {
-      const res = await Network.request({
-        url: '/api/lottery/draw',
-        method: 'POST',
-        data: { order_id: orderId, user_id: userId },
-      });
-      const result = (res.data as any)?.data || res.data;
-      setLotteryResult(result as LotteryResult);
-      setShowLottery(true);
-      fetchOrders();
-    } catch (err: any) {
-      const msg = (err as any)?.message || '抽奖失败';
-      Taro.showToast({ title: msg, icon: 'none' });
-    } finally {
-      setDrawing(false);
-    }
-  };
 
   const parseFeatures = (features: string | null): string[] => {
     if (!features) return [];
@@ -460,65 +406,34 @@ const IndexPage = () => {
           )}
         </View>
 
-        {/* ===== 我的订单 ===== */}
-        {orders.length > 0 && (
+        {/* ===== 往期中奖名单 ===== */}
+        {winners.length > 0 && (
           <View className="px-4 mt-5 mb-6">
             <View className="flex flex-row items-center justify-between mb-3">
               <View className="flex flex-row items-center gap-2">
-                <ShoppingBag size={18} color="#FF4757" />
-                <Text className="block text-base font-bold text-gray-800">我的订单</Text>
-              </View>
-              <View
-                className="flex flex-row items-center gap-1"
-                onClick={() => Taro.navigateTo({ url: '/pages/order-list/index' })}
-              >
-                <Text className="block text-xs text-red-500">查看全部</Text>
-                <ChevronRight size={14} color="#FF4757" />
+                <Award size={18} color="#FF4757" />
+                <Text className="block text-base font-bold text-gray-800">往期中奖名单</Text>
               </View>
             </View>
-            <View className="flex flex-col gap-2">
-              {orders.slice(0, 3).map((order) => (
-                <View
-                  key={order.id}
-                  className="bg-white rounded-xl px-3 py-3 flex flex-row items-center justify-between"
-                  onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}
-                >
-                  <View className="flex-1">
-                    <Text className="block text-sm font-semibold text-gray-800" numberOfLines={1}>{order.package_name}</Text>
-                    <View className="flex flex-row items-center gap-2 mt-1">
-                      <Text className="block text-xs text-gray-400">
-                        ¥{order.price} · x{order.quantity || 1} · {new Date(order.created_at).toLocaleDateString()}
-                      </Text>
+            <View className="bg-white rounded-2xl overflow-hidden">
+              <ScrollView
+                scrollY
+                className="h-48"
+                enhanced
+                showScrollbar={false}
+              >
+                {winners.map((w) => (
+                  <View key={w.id} className="flex flex-row items-center px-4 py-3 border-b border-gray-50">
+                    <View className="flex-1">
+                      <Text className="block text-sm font-semibold text-gray-800" numberOfLines={1}>{w.prize_name}</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">{w.nick_name} · {new Date(w.created_at).toLocaleDateString()}</Text>
+                    </View>
+                    <View className="bg-orange-50 rounded-full px-3 py-1 ml-2">
+                      <Text className="block text-xs text-orange-600">已中奖</Text>
                     </View>
                   </View>
-                  <View className="flex flex-row items-center gap-2 ml-2">
-                    {!order.shared ? (
-                      <View
-                        className="bg-orange-50 rounded-full px-3 py-1 flex flex-row items-center gap-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShare(order.id);
-                        }}
-                      >
-                        <Share2 size={12} color="#FF6B35" />
-                        <Text className="block text-xs text-orange-600">分享开奖</Text>
-                      </View>
-                    ) : (
-                      <View
-                        className="bg-red-500 rounded-full px-3 py-1 flex flex-row items-center gap-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDraw(order.id);
-                        }}
-                      >
-                        <Gift size={12} color="#fff" />
-                        <Text className="block text-xs text-white">{drawing ? '开奖中' : '开奖'}</Text>
-                      </View>
-                    )}
-                    <ChevronRight size={14} color="#ccc" />
-                  </View>
-                </View>
-              ))}
+                ))}
+              </ScrollView>
             </View>
           </View>
         )}
