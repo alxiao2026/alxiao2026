@@ -60,7 +60,6 @@ interface LotteryResult {
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
-const DEFAULT_COVER = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
@@ -384,35 +383,24 @@ const IndexPage = () => {
                   className="bg-white rounded-2xl mb-3 overflow-hidden shadow-sm"
                   onClick={() => Taro.navigateTo({ url: `/pages/package-detail/index?id=${pkg.id}` })}
                 >
-                  {/* 上半部分：封面图 + 信息 */}
-                  <View className="flex flex-row">
-                    {/* 封面图 */}
-                    <View className="w-28 h-28 flex-shrink-0 relative">
-                      <Image
-                        src={pkg.cover_image || DEFAULT_COVER}
-                        className="w-full h-full"
-                        mode="aspectFill"
-                      />
-                      {isPresale && (
-                        <View className="absolute top-0 left-0 bg-orange-500 rounded-br-lg px-2 py-1">
-                          <Text className="block text-xs text-white font-medium">预售</Text>
-                        </View>
-                      )}
-                      {pkg.badge && (
-                        <View className="absolute top-0 left-0 bg-red-500 rounded-br-lg px-2 py-1">
-                          <Text className="block text-xs text-white font-medium">{pkg.badge}</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* 右侧信息 */}
-                    <View className="flex-1 px-3 py-2 flex flex-col justify-between">
-                      <View>
-                        <Text className="block text-sm font-bold text-gray-800" numberOfLines={2}>{pkg.name}</Text>
-                        {pkg.description && (
-                          <Text className="block text-xs text-gray-400 mt-1" numberOfLines={1}>{pkg.description}</Text>
+                  {/* 套餐信息 */}
+                  <View className="px-3 pt-3 pb-2">
+                      <View className="flex flex-row items-center gap-2">
+                        {isPresale && (
+                          <View className="bg-orange-500 rounded px-2 py-1">
+                            <Text className="block text-xs text-white font-medium">预售</Text>
+                          </View>
+                        )}
+                        {pkg.badge && (
+                          <View className="bg-red-500 rounded px-2 py-1">
+                            <Text className="block text-xs text-white font-medium">{pkg.badge}</Text>
+                          </View>
                         )}
                       </View>
+                      <Text className="block text-sm font-bold text-gray-800 mt-1" numberOfLines={2}>{pkg.name}</Text>
+                      {pkg.description && (
+                        <Text className="block text-xs text-gray-400 mt-1" numberOfLines={1}>{pkg.description}</Text>
+                      )}
 
                       {/* 特性标签 */}
                       {features.length > 0 && (
@@ -439,7 +427,6 @@ const IndexPage = () => {
                           <Text className="block text-xs text-gray-400">已售{pkg.sales_count || 0}</Text>
                         </View>
                       </View>
-                    </View>
                   </View>
 
                   {/* 底部购买栏 */}
