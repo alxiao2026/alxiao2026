@@ -32,6 +32,7 @@ interface Package {
   features: string | null;
   cover_image: string | null;
   stock: number | null;
+  sales_count: number;
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
@@ -583,7 +584,7 @@ const AdminPage = () => {
                             <Text className="block text-xs text-gray-500 mb-2 line-clamp-2">{pkg.description}</Text>
                           )}
                           <Text className="block text-xs text-gray-400 mb-2">
-                            已售/剩余库存：0/{pkg.stock || '不限库存'}
+                            已售/剩余库存：{pkg.sales_count || 0}/{pkg.stock || '不限库存'}
                           </Text>
                           <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">团购</Badge>
                         </View>
