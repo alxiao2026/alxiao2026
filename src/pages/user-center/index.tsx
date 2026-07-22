@@ -179,7 +179,7 @@ const UserCenterPage = () => {
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50">
       {/* 顶部用户区域 */}
-      <View className="bg-red-500 px-5 pt-14 pb-8">
+      <View className="bg-red-500 px-5 pt-6 pb-8">
         <View className="flex items-center">
           {/* 头像 */}
           <View className="mr-4" onClick={avatarUrl ? goToProfileEdit : handleLogin}>
