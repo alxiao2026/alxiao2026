@@ -236,21 +236,35 @@ export default function MerchantAdmin() {
     }
 
     try {
+      let res;
       if (editingMerchant) {
-        await Network.request({
+        res = await Network.request({
           url: `/api/merchants/${editingMerchant.id}`,
           method: 'PUT',
           data: formData,
         });
-        Taro.showToast({ title: '更新成功', icon: 'success' });
       } else {
-        await Network.request({
+        res = await Network.request({
           url: '/api/merchants',
           method: 'POST',
           data: formData,
         });
-        Taro.showToast({ title: '添加成功', icon: 'success' });
       }
+
+      console.log('保存商家响应:', res.statusCode, res.data);
+
+      // Taro.request 在 HTTP 400/500 时不会抛异常，必须检查状态码
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        const errMsg = (res.data as any)?.message || '保存失败，请重试';
+        Taro.showModal({
+          title: '保存失败',
+          content: Array.isArray(errMsg) ? errMsg.join('；') : String(errMsg),
+          showCancel: false,
+        });
+        return;
+      }
+
+      Taro.showToast({ title: editingMerchant ? '更新成功' : '添加成功', icon: 'success' });
       setShowForm(false);
       loadMerchants();
     } catch (error) {
