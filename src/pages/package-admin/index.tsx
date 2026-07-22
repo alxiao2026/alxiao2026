@@ -705,6 +705,8 @@ export default function PackageAdmin() {
   }
 
   const handleUploadCover = async () => {
+    // 上传周期内禁止重复触发
+    if (uploadingCover) return
     const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
 
     if (!isMiniApp) {
@@ -736,39 +738,53 @@ export default function PackageAdmin() {
       return
     }
 
-    // 小程序端
+    // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
     try {
-      const res = await Taro.chooseImage({
+      const res = await Taro.chooseMedia({
         count: 1,
+        mediaType: ['image'],
         sizeType: ['compressed'],
         sourceType: ['album', 'camera']
       })
 
-      if (res.tempFilePaths.length > 0) {
-        // 校验文件大小
-        if (res.tempFiles && res.tempFiles[0] && !checkImageSize(res.tempFiles[0].size)) return
-        setUploadingCover(true)
+      const tempFile = res.tempFiles[0]
+      if (!tempFile) return
+      if (!checkImageSize(tempFile.size)) return
+
+      setUploadingCover(true)
+      Taro.showLoading({ title: '上传中...', mask: true })
+      try {
         const uploadRes = await Network.uploadFile({
           url: '/api/upload',
-          filePath: res.tempFilePaths[0],
+          filePath: tempFile.tempFilePath,
           name: 'file'
         })
-        console.log('Upload cover response:', uploadRes.data)
-        const resData = uploadRes.data as any
-        if (resData?.data?.url) {
+        // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
+        const resData = JSON.parse(uploadRes.data)
+        console.log('[PackageAdmin] upload cover response:', resData)
+        if (resData?.code === 200 && resData?.data?.url) {
           updateFormData('cover_image', resData.data.url)
           Taro.showToast({ title: '上传成功', icon: 'success' })
+        } else {
+          Taro.showToast({ title: resData?.msg || '上传失败，请重试', icon: 'none' })
         }
+      } finally {
+        Taro.hideLoading()
       }
     } catch (error) {
-      console.error('Upload failed:', error)
-      Taro.showToast({ title: '上传失败', icon: 'error' })
+      const errMsg = (error as { errMsg?: string })?.errMsg || ''
+      // 用户取消选择不提示
+      if (errMsg.includes('cancel')) return
+      console.error('[PackageAdmin] upload cover failed:', error)
+      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
     } finally {
       setUploadingCover(false)
     }
   }
 
   const handleUploadEnv = async () => {
+    // 上传周期内禁止重复触发
+    if (uploadingEnv) return
     const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
     const remaining = 10 - formData.environment_images.length
 
@@ -811,40 +827,63 @@ export default function PackageAdmin() {
       return
     }
 
+    // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
     try {
-      const res = await Taro.chooseImage({
+      const res = await Taro.chooseMedia({
         count: remaining,
+        mediaType: ['image'],
         sizeType: ['compressed'],
         sourceType: ['album', 'camera']
       })
 
-      if (res.tempFilePaths.length > 0) {
-        // 校验每个文件大小
-        if (res.tempFiles) {
-          for (const f of res.tempFiles) {
-            if (!checkImageSize(f.size)) return
-          }
-        }
-        setUploadingEnv(true)
+      if (!res.tempFiles || res.tempFiles.length === 0) return
+      // 校验每个文件大小
+      for (const f of res.tempFiles) {
+        if (!checkImageSize(f.size)) return
+      }
+
+      setUploadingEnv(true)
+      Taro.showLoading({ title: '上传中...', mask: true })
+      try {
         const newUrls = [...formData.environment_images]
-        for (const filePath of res.tempFilePaths) {
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
-            filePath: filePath,
-            name: 'file'
-          })
-          console.log('Upload env response:', uploadRes.data)
-          const resData = uploadRes.data as any
-          if (resData?.data?.url) {
-            newUrls.push(resData.data.url)
+        let failCount = 0
+        for (const f of res.tempFiles) {
+          try {
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload',
+              filePath: f.tempFilePath,
+              name: 'file'
+            })
+            // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
+            const resData = JSON.parse(uploadRes.data)
+            console.log('[PackageAdmin] upload env response:', resData)
+            if (resData?.code === 200 && resData?.data?.url) {
+              newUrls.push(resData.data.url)
+            } else {
+              failCount++
+            }
+          } catch (singleErr) {
+            console.error('[PackageAdmin] single env image upload failed:', singleErr)
+            failCount++
           }
         }
-        updateFormData('environment_images', newUrls)
-        Taro.showToast({ title: '上传成功', icon: 'success' })
+        if (newUrls.length > formData.environment_images.length) {
+          updateFormData('environment_images', newUrls)
+        }
+        if (failCount > 0) {
+          Taro.showToast({ title: `${failCount}张图片上传失败，请重试`, icon: 'none' })
+        } else {
+          Taro.showToast({ title: '上传成功', icon: 'success' })
+        }
+      } finally {
+        Taro.hideLoading()
       }
     } catch (error) {
-      console.error('Upload failed:', error)
-      Taro.showToast({ title: '上传失败', icon: 'error' })
+      const errMsg = (error as { errMsg?: string })?.errMsg || ''
+      // 用户取消选择不提示
+      if (errMsg.includes('cancel')) return
+      console.error('[PackageAdmin] upload env failed:', error)
+      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
     } finally {
       setUploadingEnv(false)
     }

@@ -24,6 +24,7 @@ const ProfileEditPage = () => {
   const [birthday, setBirthday] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
@@ -77,6 +78,8 @@ const ProfileEditPage = () => {
 
   const handleChooseAvatar = async () => {
     console.log('[ProfileEdit] 点击更换头像, env:', Taro.getEnv());
+    // 上传周期内禁止重复触发
+    if (uploading) return;
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB;
 
     if (isH5) {
@@ -94,27 +97,30 @@ const ProfileEditPage = () => {
       return;
     }
 
-    // 小程序端
+    // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
     try {
-      const res = await Taro.chooseImage({
+      const res = await Taro.chooseMedia({
         count: 1,
+        mediaType: ['image'],
         sizeType: ['compressed'],
         sourceType: ['album', 'camera']
       });
-      const tempFilePath = res.tempFilePaths[0];
-
-      const fileInfo = await Taro.getFileInfo({ filePath: tempFilePath });
-      const fileSize = (fileInfo as { size?: number }).size || 0;
-      if (!checkImageSize(fileSize)) return;
-
-      await uploadAvatarMini(tempFilePath);
+      const tempFile = res.tempFiles[0];
+      if (!tempFile) return;
+      if (!checkImageSize(tempFile.size)) return;
+      await uploadAvatarMini(tempFile.tempFilePath);
     } catch (err) {
-      console.log('[ProfileEdit] chooseImage error:', err);
+      const errMsg = (err as { errMsg?: string })?.errMsg || '';
+      // 用户取消选择不提示
+      if (errMsg.includes('cancel')) return;
+      console.error('[ProfileEdit] chooseMedia error:', err);
+      Taro.showToast({ title: '选择图片失败，请重试', icon: 'none' });
     }
   };
 
   const uploadAvatarMini = async (tempFilePath: string) => {
-    Taro.showLoading({ title: '上传中...' });
+    setUploading(true);
+    Taro.showLoading({ title: '上传中...', mask: true });
     try {
       const uploadRes = await Network.uploadFile({
         url: '/api/upload',
@@ -127,18 +133,20 @@ const ProfileEditPage = () => {
         setAvatarUrl(data.data.url);
         Taro.showToast({ title: '头像已更新', icon: 'success' });
       } else {
-        Taro.showToast({ title: '上传失败', icon: 'none' });
+        Taro.showToast({ title: data.msg || '上传失败，请重试', icon: 'none' });
       }
     } catch (e) {
       console.error('上传头像失败:', e);
-      Taro.showToast({ title: '上传失败', icon: 'none' });
+      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' });
     } finally {
       Taro.hideLoading();
+      setUploading(false);
     }
   };
 
   const uploadAvatarH5 = async (file: File) => {
-    Taro.showLoading({ title: '上传中...' });
+    setUploading(true);
+    Taro.showLoading({ title: '上传中...', mask: true });
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -149,13 +157,14 @@ const ProfileEditPage = () => {
         setAvatarUrl(data.data.url);
         Taro.showToast({ title: '头像已更新', icon: 'success' });
       } else {
-        Taro.showToast({ title: '上传失败', icon: 'none' });
+        Taro.showToast({ title: data.msg || '上传失败，请重试', icon: 'none' });
       }
     } catch (e) {
       console.error('H5上传头像失败:', e);
-      Taro.showToast({ title: '上传失败', icon: 'none' });
+      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' });
     } finally {
       Taro.hideLoading();
+      setUploading(false);
     }
   };
 
