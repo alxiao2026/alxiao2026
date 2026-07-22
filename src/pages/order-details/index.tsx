@@ -150,21 +150,21 @@ export default function OrderDetailsPage() {
                   </View>
                 </Picker>
               ) : (
-                <View
-                  className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'date';
-                    input.value = startDate;
-                    input.onchange = (e) => {
-                      const val = (e.target as HTMLInputElement).value;
-                      if (val) setStartDate(val);
-                    };
-                    input.click();
-                  }}
-                >
-                  <Calendar size={14} color="#9ca3af" />
-                  <Text className="block text-sm text-gray-700">{startDate || '选择日期'}</Text>
+                <View className="bg-gray-50 rounded-lg px-3 py-2 relative">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '14px',
+                      color: '#374151',
+                      outline: 'none',
+                      padding: 0,
+                    }}
+                  />
                 </View>
               )}
             </View>
@@ -178,21 +178,21 @@ export default function OrderDetailsPage() {
                   </View>
                 </Picker>
               ) : (
-                <View
-                  className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'date';
-                    input.value = endDate;
-                    input.onchange = (e) => {
-                      const val = (e.target as HTMLInputElement).value;
-                      if (val) setEndDate(val);
-                    };
-                    input.click();
-                  }}
-                >
-                  <Calendar size={14} color="#9ca3af" />
-                  <Text className="block text-sm text-gray-700">{endDate || '选择日期'}</Text>
+                <View className="bg-gray-50 rounded-lg px-3 py-2 relative">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '14px',
+                      color: '#374151',
+                      outline: 'none',
+                      padding: 0,
+                    }}
+                  />
                 </View>
               )}
             </View>
