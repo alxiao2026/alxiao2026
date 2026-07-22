@@ -76,7 +76,11 @@ const ProfileEditPage = () => {
     return true
   }
 
-  // 小程序端：超过 5MB 的图片先自动压缩再上传（压缩失败/仍超限返回 null）
+  // 后端 Multer 限制 10MB
+  const BACKEND_MAX_SIZE = 10 * 1024 * 1024
+
+  // 小程序端：超过 5MB 的图片先自动压缩再上传
+  // 压缩失败但原图在后端 10MB 限制内时，直接用原图上传
   const prepareUploadImage = async (
     filePath: string,
     size: number
@@ -93,9 +97,14 @@ const ProfileEditPage = () => {
         console.log(`[ProfileEdit] 压缩图片 q=${quality}: ${(size / 1048576).toFixed(1)}MB -> ${(curSize / 1048576).toFixed(2)}MB`)
         if (curSize <= MAX_IMAGE_SIZE) return { path: curPath, size: curSize }
       } catch (e) {
-        console.error('[ProfileEdit] 压缩图片失败:', e)
+        console.error('[ProfileEdit] 压缩图片失败，尝试用原图上传:', e)
         break
       }
+    }
+    // 压缩失败或仍超 5MB，但原图在后端 10MB 限制内 → 直接用原图
+    if (size <= BACKEND_MAX_SIZE) {
+      console.log('[ProfileEdit] 压缩未达标但原图在后端限制内，直接上传原图')
+      return { path: filePath, size }
     }
     return null
   }
@@ -159,9 +168,22 @@ const ProfileEditPage = () => {
       const uploadRes = await Network.uploadFile({
         url: '/api/upload',
         filePath: tempFilePath,
-        name: 'file'
+        name: 'file',
+        timeout: 30000
       });
-      const data = JSON.parse(uploadRes.data);
+      console.log('[ProfileEdit] upload statusCode:', uploadRes.statusCode);
+      if (uploadRes.statusCode !== 200) {
+        Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' });
+        return;
+      }
+      let data: any;
+      try {
+        data = JSON.parse(uploadRes.data);
+      } catch {
+        console.error('[ProfileEdit] upload response parse error:', uploadRes.data);
+        Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' });
+        return;
+      }
       console.log('[ProfileEdit] upload:', data);
       if (data.code === 200 && data.data?.url) {
         setAvatarUrl(data.data.url);

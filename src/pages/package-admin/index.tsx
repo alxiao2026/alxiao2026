@@ -693,7 +693,11 @@ export default function PackageAdmin() {
     return true
   }
 
-  // 小程序端：超过 5MB 的图片先自动压缩再上传（压缩失败/仍超限返回 null）
+  // 后端 Multer 限制 10MB，前端压缩阈值 5MB
+  const BACKEND_MAX_SIZE = 10 * 1024 * 1024
+
+  // 小程序端：超过 5MB 的图片先自动压缩再上传
+  // 压缩失败但原图在后端 10MB 限制内时，直接用原图上传（不放弃）
   const prepareUploadImage = async (
     filePath: string,
     size: number
@@ -710,9 +714,14 @@ export default function PackageAdmin() {
         console.log(`[PackageAdmin] 压缩图片 q=${quality}: ${(size / 1048576).toFixed(1)}MB -> ${(curSize / 1048576).toFixed(2)}MB`)
         if (curSize <= MAX_IMAGE_SIZE) return { path: curPath, size: curSize }
       } catch (e) {
-        console.error('[PackageAdmin] 压缩图片失败:', e)
+        console.error('[PackageAdmin] 压缩图片失败，尝试用原图上传:', e)
         break
       }
+    }
+    // 压缩失败或仍超 5MB，但原图在后端 10MB 限制内 → 直接用原图
+    if (size <= BACKEND_MAX_SIZE) {
+      console.log('[PackageAdmin] 压缩未达标但原图在后端限制内，直接上传原图')
+      return { path: filePath, size }
     }
     return null
   }
@@ -791,10 +800,23 @@ export default function PackageAdmin() {
         const uploadRes = await Network.uploadFile({
           url: '/api/upload',
           filePath: prepared.path,
-          name: 'file'
+          name: 'file',
+          timeout: 30000
         })
-        // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
-        const resData = JSON.parse(uploadRes.data)
+        console.log('[PackageAdmin] upload cover statusCode:', uploadRes.statusCode)
+        // 后端返回非 200 或非 JSON 时防御性处理
+        if (uploadRes.statusCode !== 200) {
+          Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' })
+          return
+        }
+        let resData: any
+        try {
+          resData = JSON.parse(uploadRes.data)
+        } catch {
+          console.error('[PackageAdmin] upload cover response parse error:', uploadRes.data)
+          Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' })
+          return
+        }
         console.log('[PackageAdmin] upload cover response:', resData)
         if (resData?.code === 200 && resData?.data?.url) {
           updateFormData('cover_image', resData.data.url)
@@ -902,10 +924,22 @@ export default function PackageAdmin() {
             const uploadRes = await Network.uploadFile({
               url: '/api/upload',
               filePath: f.path,
-              name: 'file'
+              name: 'file',
+              timeout: 30000
             })
-            // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
-            const resData = JSON.parse(uploadRes.data)
+            if (uploadRes.statusCode !== 200) {
+              console.error('[PackageAdmin] env upload bad status:', uploadRes.statusCode)
+              failCount++
+              continue
+            }
+            let resData: any
+            try {
+              resData = JSON.parse(uploadRes.data)
+            } catch {
+              console.error('[PackageAdmin] env upload parse error:', uploadRes.data)
+              failCount++
+              continue
+            }
             console.log('[PackageAdmin] upload env response:', resData)
             if (resData?.code === 200 && resData?.data?.url) {
               newUrls.push(resData.data.url)
