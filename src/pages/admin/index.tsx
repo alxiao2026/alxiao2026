@@ -13,6 +13,7 @@ const AdminPage = () => {
   });
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
+  const [roleCode, setRoleCode] = useState<number>(0);
 
   const checkPermission = async () => {
     try {
@@ -27,6 +28,7 @@ const AdminPage = () => {
         setHasAccess(false);
         return;
       }
+      setRoleCode(perms.role_code ?? 0);
       setHasAccess(true);
       // 获取门店名称
       try {
@@ -138,15 +140,16 @@ const AdminPage = () => {
       <View className="bg-white rounded-2xl mx-4 -mt-4 p-4 shadow-sm relative z-10">
         <View className="flex flex-row flex-wrap">
           {[
-            { icon: 'scan', label: '验券及退款', color: '#3b82f6', bg: '#eff6ff', page: '/pages/verification/index' },
-            { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index' },
-            { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index' },
-            { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index' },
-            { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index' },
-          ].map((item) => (
+            { icon: 'scan', label: '验券及退款', color: '#3b82f6', bg: '#eff6ff', page: '/pages/verification/index', adminOnly: false },
+            { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index', adminOnly: false },
+            { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index', adminOnly: false },
+            { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
+            { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
+          ].filter(item => !item.adminOnly || roleCode === 2).map((item, _, arr) => (
             <View
               key={item.label}
-              className="w-1/5 flex flex-col items-center py-2"
+              className="flex flex-col items-center py-2"
+              style={{ width: `${100 / arr.length}%` }}
               onClick={() => Taro.navigateTo({ url: item.page })}
             >
               <View className="w-12 h-12 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
