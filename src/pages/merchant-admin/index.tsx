@@ -86,7 +86,7 @@ export default function MerchantAdmin() {
     setShowForm(true);
   };
 
-  const handleEdit = (merchant: Merchant) => {
+  const handleEdit = async (merchant: Merchant) => {
     setEditingMerchant(merchant);
     setFormData({
       name: merchant.name,
@@ -101,6 +101,25 @@ export default function MerchantAdmin() {
       admin_phone: '',
       admin_password: '',
     });
+
+    // 加载该商家的管理员账号并回显
+    try {
+      const res = await Network.request({
+        url: `/api/merchants/${merchant.id}/admin`,
+        method: 'GET',
+      });
+      console.log('管理员账号响应:', JSON.stringify(res));
+      const adminData = res?.data?.data || res?.data;
+      if (adminData?.phone) {
+        setFormData((prev) => ({
+          ...prev,
+          admin_phone: adminData.phone || '',
+          admin_password: adminData.password || '',
+        }));
+      }
+    } catch (error) {
+      console.log('获取管理员账号失败:', error);
+    }
     // 解析营业时间
     if (merchant.business_hours) {
       const match = merchant.business_hours.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
@@ -198,24 +217,22 @@ export default function MerchantAdmin() {
       return;
     }
 
-    // 新增商家时验证管理员账号
-    if (!editingMerchant) {
-      if (!formData.admin_phone) {
-        Taro.showToast({ title: '请输入管理员手机号', icon: 'none' });
-        return;
-      }
-      if (!/^1\d{10}$/.test(formData.admin_phone)) {
-        Taro.showToast({ title: '请输入正确的11位管理员手机号', icon: 'none' });
-        return;
-      }
-      if (!formData.admin_password) {
-        Taro.showToast({ title: '请输入管理员登录密码', icon: 'none' });
-        return;
-      }
-      if (formData.admin_password.length < 6) {
-        Taro.showToast({ title: '密码长度至少6位', icon: 'none' });
-        return;
-      }
+    // 验证管理员账号（新增必填；编辑时回显后同样校验）
+    if (!formData.admin_phone) {
+      Taro.showToast({ title: '请输入管理员手机号', icon: 'none' });
+      return;
+    }
+    if (!/^1\d{10}$/.test(formData.admin_phone)) {
+      Taro.showToast({ title: '请输入正确的11位管理员手机号', icon: 'none' });
+      return;
+    }
+    if (!formData.admin_password) {
+      Taro.showToast({ title: '请输入管理员登录密码', icon: 'none' });
+      return;
+    }
+    if (formData.admin_password.length < 6) {
+      Taro.showToast({ title: '密码长度至少6位', icon: 'none' });
+      return;
     }
 
     try {

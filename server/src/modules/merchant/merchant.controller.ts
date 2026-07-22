@@ -49,6 +49,13 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  @Get(':id/admin')
+  @HttpCode(HttpStatus.OK)
+  async getAdmin(@Param('id') id: string) {
+    const data = await this.merchantService.getAdmin(Number(id));
+    return { code: 200, msg: 'success', data };
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async delete(@Param('id') id: string) {

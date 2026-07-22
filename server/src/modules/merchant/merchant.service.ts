@@ -25,6 +25,8 @@ export interface UpdateMerchantDto {
   description?: string;
   latitude?: string;
   longitude?: string;
+  admin_phone?: string;
+  admin_password?: string;
 }
 
 export interface Merchant {
@@ -127,10 +129,12 @@ export class MerchantService {
   }
 
   async update(id: number, body: UpdateMerchantDto): Promise<Merchant> {
+    const { admin_phone, admin_password, ...merchantFields } = body;
+
     const { data, error } = await this.client
       .from('merchants')
       .update({
-        ...body,
+        ...merchantFields,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -139,7 +143,90 @@ export class MerchantService {
 
     if (error) throw new Error(`更新商家失败：${error.message}`);
     if (!data) throw new NotFoundException('商家不存在');
+
+    // 同步更新商家管理员账号
+    if (admin_phone || admin_password) {
+      try {
+        // 查找该商家现有管理员账号
+        const { data: adminUser } = await this.client
+          .from('users')
+          .select('*')
+          .eq('merchant_id', id)
+          .eq('role', 'merchant')
+          .maybeSingle();
+
+        if (adminUser) {
+          // 更新现有管理员账号
+          const updates: Record<string, string> = {};
+          if (admin_password) updates.password = admin_password;
+          if (admin_phone && admin_phone !== adminUser.phone) {
+            // 手机号变更：检查新手机号是否已被占用
+            const { data: existing } = await this.client
+              .from('users')
+              .select('user_id')
+              .eq('phone', admin_phone)
+              .neq('user_id', adminUser.user_id)
+              .maybeSingle();
+            if (existing) {
+              throw new BadRequestException('该管理员手机号已被其他账号使用');
+            }
+            updates.phone = admin_phone;
+          }
+          if (Object.keys(updates).length > 0) {
+            await this.client
+              .from('users')
+              .update(updates)
+              .eq('user_id', adminUser.user_id);
+            console.log(`[Merchant] 商家管理员账号已更新: merchant_id=${id}`);
+          }
+        } else if (admin_phone && admin_password) {
+          // 商家暂无管理员账号，创建新账号
+          const { data: existing } = await this.client
+            .from('users')
+            .select('user_id')
+            .eq('phone', admin_phone)
+            .maybeSingle();
+
+          if (existing) {
+            await this.client
+              .from('users')
+              .update({ password: admin_password, role: 'merchant', merchant_id: id })
+              .eq('phone', admin_phone);
+          } else {
+            await this.client.from('users').insert({
+              user_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              phone: admin_phone,
+              password: admin_password,
+              role: 'merchant',
+              merchant_id: id,
+              login_type: 'password',
+              last_login_at: new Date().toISOString(),
+            });
+          }
+          console.log(`[Merchant] 商家管理员账号已创建: ${admin_phone} -> merchant_id=${id}`);
+        }
+      } catch (e: any) {
+        if (e instanceof BadRequestException) throw e;
+        console.error('[Merchant] 更新管理员账号异常:', e.message);
+      }
+    }
+
     return data as Merchant;
+  }
+
+  async getAdmin(id: number): Promise<{ phone: string; password: string } | null> {
+    const { data, error } = await this.client
+      .from('users')
+      .select('phone, password')
+      .eq('merchant_id', id)
+      .eq('role', 'merchant')
+      .order('last_login_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(`查询商家管理员失败：${error.message}`);
+    if (!data) return null;
+    return { phone: data.phone, password: data.password };
   }
 
   async delete(id: number): Promise<void> {
