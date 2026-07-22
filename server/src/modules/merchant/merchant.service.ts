@@ -147,13 +147,16 @@ export class MerchantService {
     // 同步更新商家管理员账号
     if (admin_phone || admin_password) {
       try {
-        // 查找该商家现有管理员账号
-        const { data: adminUser } = await this.client
+        // 查找该商家现有管理员账号（可能存在历史多账号，取最近登录的一个）
+        const { data: adminUsers } = await this.client
           .from('users')
           .select('*')
           .eq('merchant_id', id)
           .eq('role', 'merchant')
-          .maybeSingle();
+          .order('last_login_at', { ascending: false })
+          .limit(1);
+
+        const adminUser = adminUsers?.[0];
 
         if (adminUser) {
           // 更新现有管理员账号
