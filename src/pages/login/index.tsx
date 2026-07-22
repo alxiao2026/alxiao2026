@@ -30,12 +30,12 @@ const LoginPage = () => {
 
   const saveAndGoBack = (uid: string, name: string, avatar: string, role?: string, merchantId?: number, roleCode?: number) => {
     Taro.setStorageSync('user_id', uid);
-    Taro.setStorageSync('is_logged_in', '1');
+    Taro.setStorageSync('is_logged_in', true);
     Taro.setStorageSync('nick_name', name);
     Taro.setStorageSync('avatar_url', avatar);
     if (role) Taro.setStorageSync('user_role', role);
-    if (roleCode !== undefined) Taro.setStorageSync('role_code', String(roleCode));
-    if (merchantId) Taro.setStorageSync('merchant_id', String(merchantId));
+    if (roleCode !== undefined) Taro.setStorageSync('role_code', roleCode);
+    if (merchantId) Taro.setStorageSync('merchant_id', merchantId);
     Taro.showToast({ title: '登录成功', icon: 'success' });
     setTimeout(() => {
       if (roleCode === 1 || roleCode === 2) {

@@ -64,6 +64,14 @@ const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281
 
 const DEFAULT_COVER = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
+// 登录态读取（兼容历史存储的字符串 '1' / 'true'）
+const readLoggedIn = (): boolean => {
+  const v = Taro.getStorageSync('is_logged_in');
+  return v === true || v === '1' || v === 'true';
+};
+
+const readRoleCode = (): number => Number(Taro.getStorageSync('role_code') || 0);
+
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -77,18 +85,41 @@ const IndexPage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
 
+  // 从后端拉取最新用户信息，保证昵称/头像/登录态实时同步
+  const refreshUserInfo = async (uid: string) => {
+    try {
+      const res = await Network.request({ url: `/api/users/${uid}` });
+      console.log('[Index] refreshUserInfo response:', JSON.stringify(res.data));
+      const user = (res.data as { code?: number; data?: { nick_name?: string; avatar_url?: string } })?.data;
+      if (user) {
+        if (user.nick_name) {
+          setNickName(user.nick_name);
+          Taro.setStorageSync('nick_name', user.nick_name);
+        }
+        if (user.avatar_url) {
+          setAvatarUrl(user.avatar_url);
+          Taro.setStorageSync('avatar_url', user.avatar_url);
+        }
+      }
+    } catch (err) {
+      console.error('[Index] 刷新用户信息失败:', err);
+    }
+  };
+
   // 读取缓存用户ID
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
-    setIsLoggedIn(Taro.getStorageSync('is_logged_in') === true);
-    const roleCode = Taro.getStorageSync('role_code');
+    const loggedIn = readLoggedIn();
+    setIsLoggedIn(loggedIn);
+    const roleCode = readRoleCode();
     setCanAccessAdmin(roleCode === 1 || roleCode === 2);
     if (savedUserId) {
       setUserId(savedUserId);
       if (savedNickName) setNickName(savedNickName);
       if (savedAvatar) setAvatarUrl(savedAvatar);
+      if (loggedIn) refreshUserInfo(savedUserId);
     } else {
       const newId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       Taro.setStorageSync('user_id', newId);
@@ -107,12 +138,17 @@ const IndexPage = () => {
   // 页面每次显示时刷新数据（下单后返回自动更新销量）
   useDidShow(() => {
     // 同步最新登录状态（登录页返回后更新头部显示）
-    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
+    const loggedIn = readLoggedIn();
     setIsLoggedIn(loggedIn);
+    const roleCode = readRoleCode();
+    setCanAccessAdmin(roleCode === 1 || roleCode === 2);
+    const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
     if (savedNickName) setNickName(savedNickName);
     if (savedAvatar) setAvatarUrl(savedAvatar);
+    // 已登录时主动从后端刷新头像/昵称，避免状态缓存不一致
+    if (loggedIn && savedUserId) refreshUserInfo(savedUserId);
     if (!userId) return;
     fetchPrizes();
     fetchPackages();
