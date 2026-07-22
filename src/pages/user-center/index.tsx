@@ -191,7 +191,7 @@ const UserCenterPage = () => {
   if (!userId) {
     return (
       <View className="min-h-screen bg-gray-50">
-        <View className="bg-gradient-to-br from-red-500 to-orange-500 px-6 pt-16 pb-12 flex flex-col items-center">
+        <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pt-16 pb-12 flex flex-col items-center">
           <View className="w-20 h-20 rounded-full bg-white bg-opacity-20 flex items-center justify-center mb-4">
             <User size={40} color="#FFFFFF" />
           </View>
@@ -201,7 +201,7 @@ const UserCenterPage = () => {
             className="mt-6 bg-white rounded-full px-8 py-3"
             onClick={handleLogin}
           >
-            <Text className="text-red-500 font-semibold">立即登录</Text>
+            <Text className="text-[#FF4757] font-semibold">立即登录</Text>
           </View>
         </View>
       </View>
@@ -211,7 +211,7 @@ const UserCenterPage = () => {
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50">
       {/* 自定义导航栏 */}
-      <View className="bg-red-500 flex items-center px-4 py-3">
+      <View className="bg-[#FF4757] flex items-center px-4 py-3">
         <View onClick={() => Taro.navigateBack()} className="mr-3">
           <ChevronLeft size={22} color="#ffffff" />
         </View>
@@ -219,7 +219,7 @@ const UserCenterPage = () => {
       </View>
 
       {/* 顶部用户区域 */}
-      <View className="bg-red-500 px-5 pt-6 pb-8">
+      <View className="bg-[#FF4757] px-5 pt-6 pb-8">
         <View className="flex items-center">
           {/* 头像 */}
           <View className="mr-4" onClick={avatarUrl ? goToProfileEdit : handleLogin}>
@@ -259,7 +259,7 @@ const UserCenterPage = () => {
       <View className="mx-4 -mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
         <View className="flex flex-row">
           <View className="flex-1 py-4 flex flex-col items-center" onClick={() => goToOrderList('pending')}>
-            <View className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mb-2">
+            <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-2">
               <Ticket size={20} color="#F97316" />
             </View>
             <Text className="text-lg font-bold text-gray-800 block">{stats?.pending_orders || 0}</Text>
@@ -280,8 +280,8 @@ const UserCenterPage = () => {
             <Text className="text-xs text-gray-500 block">已退款</Text>
           </View>
           <View className="flex-1 py-4 flex flex-col items-center" onClick={() => goToOrderList()}>
-            <View className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2">
-              <ClipboardList size={20} color="#3B82F6" />
+            <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-2">
+              <ClipboardList size={20} color="#FF4757" />
             </View>
             <Text className="text-lg font-bold text-gray-800 block">{stats?.total_orders || 0}</Text>
             <Text className="text-xs text-gray-500 block">全部订单</Text>
@@ -358,7 +358,7 @@ const UserCenterPage = () => {
           }}
         >
           <LogOut size={18} color="#EF4444" />
-          <Text className="text-red-500 text-sm font-medium ml-2">退出登录</Text>
+          <Text className="text-[#FF4757] text-sm font-medium ml-2">退出登录</Text>
         </View>
       </View>
 

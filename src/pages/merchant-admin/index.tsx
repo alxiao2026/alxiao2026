@@ -275,20 +275,10 @@ export default function MerchantAdmin() {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
-      <View className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <View className="flex items-center" onClick={() => Taro.navigateBack()}>
-          <Text className="text-blue-500 text-sm">返回</Text>
-        </View>
-        <Text className="text-base font-semibold text-gray-800">商家收录</Text>
-        <View className="w-12" />
-      </View>
-
       {/* 添加按钮 */}
       <View className="p-4">
         <Button
-          className="w-full flex items-center justify-center gap-2"
-          style={{ backgroundColor: '#f97316' }}
+          className="w-full flex items-center justify-center gap-2 bg-[#FF4757]"
           onClick={handleAdd}
         >
           <Plus size={18} color="#fff" />
@@ -320,7 +310,7 @@ export default function MerchantAdmin() {
                       </Text>
                       {merchant.category && (
                         <Text
-                          className="block text-xs text-orange-500 mt-1"
+                          className="block text-xs text-[#FF4757] mt-1"
                           onClick={() => handleEdit(merchant)}
                         >
                           {merchant.category}
@@ -339,10 +329,10 @@ export default function MerchantAdmin() {
                     </View>
                     <View className="flex items-center gap-2 ml-4">
                       <View
-                        className="p-2 rounded-lg bg-blue-50"
+                        className="p-2 rounded-lg bg-red-50"
                         onClick={() => handleEdit(merchant)}
                       >
-                        <Pencil size={16} color="#3b82f6" />
+                        <Pencil size={16} color="#FF4757" />
                       </View>
                       <View
                         className="p-2 rounded-lg bg-red-50"
@@ -386,7 +376,7 @@ export default function MerchantAdmin() {
               {/* 商家名称 */}
               <View className="mb-4">
                 <Text className="block text-sm font-medium text-gray-800 mb-2">
-                  商家名称 <Text className="text-red-500">*</Text>
+                  商家名称 <Text className="text-[#FF4757]">*</Text>
                 </Text>
                 <Input
                   className="w-full"
@@ -450,7 +440,7 @@ export default function MerchantAdmin() {
                   <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
                 )}
                 {formData.phone && formData.phone.length > 0 && formData.phone.length < 11 && (
-                  <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
+                  <Text className="block text-xs text-[#FF4757] mt-1">请输入11位手机号</Text>
                 )}
               </View>
 
@@ -469,7 +459,7 @@ export default function MerchantAdmin() {
                   <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
                 )}
                 {formData.admin_phone && formData.admin_phone.length > 0 && formData.admin_phone.length < 11 && (
-                  <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
+                  <Text className="block text-xs text-[#FF4757] mt-1">请输入11位手机号</Text>
                 )}
               </View>
 
@@ -486,7 +476,7 @@ export default function MerchantAdmin() {
                   <Text className="block text-xs text-green-600 mt-1">✓ 密码格式正确</Text>
                 )}
                 {formData.admin_password && formData.admin_password.length > 0 && formData.admin_password.length < 6 && (
-                  <Text className="block text-xs text-red-500 mt-1">密码长度至少6位</Text>
+                  <Text className="block text-xs text-[#FF4757] mt-1">密码长度至少6位</Text>
                 )}
               </View>
 
@@ -540,8 +530,7 @@ export default function MerchantAdmin() {
                 取消
               </Button>
               <Button
-                className="flex-1"
-                style={{ backgroundColor: '#f97316' }}
+                className="flex-1 bg-[#FF4757]"
                 onClick={handleSubmit}
               >
                 <Text className="text-white">保存</Text>
@@ -618,7 +607,7 @@ export default function MerchantAdmin() {
                       >
                         <Text className="block text-base text-gray-900">{sub.name}</Text>
                         {formData.category === `${selectedCategory} · ${sub.name}` && (
-                          <Text className="block text-sm text-orange-500">已选择</Text>
+                          <Text className="block text-sm text-[#FF4757]">已选择</Text>
                         )}
                       </View>
                     )
@@ -658,7 +647,7 @@ export default function MerchantAdmin() {
                   key={time}
                   className={`py-4 px-4 flex items-center justify-center ${
                     (timePickerType === 'open' ? tempOpenTime : tempCloseTime) === time
-                      ? 'bg-orange-50'
+                      ? 'bg-red-50'
                       : ''
                   }`}
                   onClick={() => {
@@ -672,7 +661,7 @@ export default function MerchantAdmin() {
                   <Text
                     className={`block text-lg ${
                       (timePickerType === 'open' ? tempOpenTime : tempCloseTime) === time
-                        ? 'text-orange-600 font-semibold'
+                        ? 'text-[#FF4757] font-semibold'
                         : 'text-gray-900'
                     }`}
                   >
@@ -684,7 +673,7 @@ export default function MerchantAdmin() {
 
             {/* 底部按钮 */}
             <View className="p-4 border-t border-gray-200">
-              <Button className="w-full bg-orange-500 text-white" onClick={handleTimeConfirm}>
+              <Button className="w-full bg-[#FF4757] text-white" onClick={handleTimeConfirm}>
                 确认
               </Button>
             </View>

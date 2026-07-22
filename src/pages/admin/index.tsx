@@ -88,7 +88,7 @@ const AdminPage = () => {
         <Text className="block text-gray-800 text-lg font-semibold mb-2">无权限访问</Text>
         <Text className="block text-gray-500 text-sm text-center mb-6">该功能仅对商家用户开放{'\n'}请使用商家管理员账号登录</Text>
         <View
-          className="bg-blue-500 rounded-full px-8 py-3"
+          className="bg-[#FF4757] rounded-full px-8 py-3"
           onClick={() => Taro.reLaunch({ url: '/pages/index/index' })}
         >
           <Text className="block text-white font-medium">返回首页</Text>
@@ -99,8 +99,8 @@ const AdminPage = () => {
 
   return (
     <View className="min-h-screen bg-gray-100">
-      {/* 蓝色渐变头部 */}
-      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-8">
+      {/* 红色渐变数据头部 */}
+      <View className="bg-gradient-to-b from-[#FF4757] to-[#ff6b7a] px-4 pt-4 pb-8">
         {/* 店铺名 + 切换按钮 */}
         <View className="flex flex-row items-center justify-between mb-5">
           <View className="flex flex-row items-center gap-2">
@@ -108,7 +108,7 @@ const AdminPage = () => {
               <Store size={18} color="#ffffff" />
             </View>
             <Text className="block text-white text-base font-semibold">
-              {merchantName ? `${merchantName} · 管理后台` : '膨胀团 · 管理后台'}
+              {merchantName || '膨胀团'}
             </Text>
           </View>
           <View className="bg-white bg-opacity-20 rounded-full px-3 py-2" onClick={() => Taro.navigateTo({ url: '/pages/index/index' })}>
@@ -119,19 +119,19 @@ const AdminPage = () => {
         {/* 数据统计行 */}
         <View className="flex flex-row">
           <View className="flex-1">
-            <Text className="block text-blue-100 text-xs mb-1">核销金额</Text>
+            <Text className="block text-red-100 text-xs mb-1">核销金额</Text>
             <Text className="block text-white text-2xl font-bold">{merchantStats.todayVerifiedAmount}</Text>
-            <Text className="block text-blue-200 text-xs mt-1">累计{merchantStats.verifiedAmount}</Text>
+            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.verifiedAmount}</Text>
           </View>
           <View className="flex-1">
-            <Text className="block text-blue-100 text-xs mb-1">核销券数</Text>
+            <Text className="block text-red-100 text-xs mb-1">核销券数</Text>
             <Text className="block text-white text-2xl font-bold">{merchantStats.todayVerifiedCount}</Text>
-            <Text className="block text-blue-200 text-xs mt-1">累计{merchantStats.verifiedCount}份</Text>
+            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.verifiedCount}份</Text>
           </View>
           <View className="flex-1">
-            <Text className="block text-blue-100 text-xs mb-1">成交金额</Text>
+            <Text className="block text-red-100 text-xs mb-1">成交金额</Text>
             <Text className="block text-white text-2xl font-bold">{merchantStats.todayRevenue}</Text>
-            <Text className="block text-blue-200 text-xs mt-1">累计{merchantStats.totalRevenue}</Text>
+            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.totalRevenue}</Text>
           </View>
         </View>
       </View>
@@ -140,7 +140,7 @@ const AdminPage = () => {
       <View className="bg-white rounded-2xl mx-4 -mt-4 p-4 shadow-sm relative z-10">
         <View className="flex flex-row flex-wrap">
           {[
-            { icon: 'scan', label: '验券及退款', color: '#3b82f6', bg: '#eff6ff', page: '/pages/verification/index', adminOnly: false },
+            { icon: 'scan', label: '验券及退款', color: '#FF4757', bg: '#fef2f2', page: '/pages/verification/index', adminOnly: false },
             { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index', adminOnly: false },
             { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index', adminOnly: false },
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
@@ -172,21 +172,21 @@ const AdminPage = () => {
           <Text className="block text-xs text-gray-400">今日</Text>
         </View>
         <View className="flex flex-row gap-3">
-          <View className="flex-1 bg-orange-50 rounded-xl p-3">
+          <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <TrendingUp size={14} color="#f97316" />
-              <Text className="block text-xs text-orange-600">今日售额</Text>
+              <Text className="block text-xs text-[#FF4757]">今日售额</Text>
             </View>
-            <Text className="block text-lg font-bold text-orange-600">{merchantStats.todayRevenue}</Text>
-            <Text className="block text-xs text-orange-400 mt-1">{merchantStats.todayOrders}笔订单</Text>
+            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todayRevenue}</Text>
+            <Text className="block text-xs text-red-300 mt-1">{merchantStats.todayOrders}笔订单</Text>
           </View>
-          <View className="flex-1 bg-blue-50 rounded-xl p-3">
+          <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
-              <ShoppingBag size={14} color="#3b82f6" />
-              <Text className="block text-xs text-blue-600">今日销量</Text>
+              <ShoppingBag size={14} color="#FF4757" />
+              <Text className="block text-xs text-[#FF4757]">今日销量</Text>
             </View>
-            <Text className="block text-lg font-bold text-blue-600">{merchantStats.todaySales}</Text>
-            <Text className="block text-xs text-blue-400 mt-1">份</Text>
+            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todaySales}</Text>
+            <Text className="block text-xs text-red-300 mt-1">份</Text>
           </View>
           <View className="flex-1 bg-green-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">

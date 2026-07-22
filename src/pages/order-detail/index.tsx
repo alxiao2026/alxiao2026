@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw } from 'lucide-react-taro'
 
 interface Order {
   id: string
@@ -133,10 +133,6 @@ export default function OrderDetail() {
     setRefreshingQR(false)
   }
 
-  const handleBack = () => {
-    Taro.navigateBack()
-  }
-
   const handleGoPackage = () => {
     if (order?.package_id) {
       Taro.navigateTo({ url: `/pages/package-detail/index?id=${order.package_id}` })
@@ -183,12 +179,6 @@ export default function OrderDetail() {
     <View className="flex flex-col h-screen bg-gray-100">
       {/* 状态横幅 */}
       <View style={{ background: statusCfg.bgGradient }} className="px-5 pt-4 pb-6">
-        <View className="flex flex-row items-center mb-4">
-          <View onClick={handleBack} className="mr-3 p-1">
-            <ArrowLeft size={22} color="#FFFFFF" />
-          </View>
-          <Text className="block text-base font-medium text-white">订单详情</Text>
-        </View>
         <View className="flex flex-col items-center mt-2">
           <View className="flex flex-row items-center gap-2 mb-1">
             {order.status === 'used' ? (
@@ -314,7 +304,7 @@ export default function OrderDetail() {
                 {order.package_name}
               </Text>
               <View className="flex flex-row items-baseline gap-2 mt-1">
-                <Text className="block text-lg font-bold text-red-500">
+                <Text className="block text-lg font-bold text-[#FF4757]">
                   ¥{parseFloat(String(order.price)).toFixed(0)}
                 </Text>
                 {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
@@ -389,7 +379,7 @@ export default function OrderDetail() {
             <Separator />
             <View className="flex flex-row justify-between items-center py-2">
               <Text className="block text-sm text-gray-400">核销进度</Text>
-              <Text className="block text-sm font-semibold text-orange-600">
+              <Text className="block text-sm font-semibold text-[#FF4757]">
                 {order.verified_count || 0} / {order.quantity || 1} 已核销
               </Text>
             </View>
@@ -438,32 +428,32 @@ export default function OrderDetail() {
           <View className="px-4 py-3">
             <View className="flex flex-col gap-2">
               <View className="flex flex-row items-start gap-2">
-                <View className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Text className="block text-orange-500" style={{ fontSize: '10px', lineHeight: '16px' }}>1</Text>
+                <View className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Text className="block text-[#FF4757]" style={{ fontSize: '10px', lineHeight: '16px' }}>1</Text>
                 </View>
                 <Text className="block text-xs text-gray-500 leading-5 flex-1">
                   到店消费时请出示本页面的二维码或核销码
                 </Text>
               </View>
               <View className="flex flex-row items-start gap-2">
-                <View className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Text className="block text-orange-500" style={{ fontSize: '10px', lineHeight: '16px' }}>2</Text>
+                <View className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Text className="block text-[#FF4757]" style={{ fontSize: '10px', lineHeight: '16px' }}>2</Text>
                 </View>
                 <Text className="block text-xs text-gray-500 leading-5 flex-1">
                   商家使用微信扫一扫扫描二维码即可完成核销
                 </Text>
               </View>
               <View className="flex flex-row items-start gap-2">
-                <View className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Text className="block text-orange-500" style={{ fontSize: '10px', lineHeight: '16px' }}>3</Text>
+                <View className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Text className="block text-[#FF4757]" style={{ fontSize: '10px', lineHeight: '16px' }}>3</Text>
                 </View>
                 <Text className="block text-xs text-gray-500 leading-5 flex-1">
                   核销后订单状态变更为已使用，不可重复使用
                 </Text>
               </View>
               <View className="flex flex-row items-start gap-2">
-                <View className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Text className="block text-orange-500" style={{ fontSize: '10px', lineHeight: '16px' }}>4</Text>
+                <View className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Text className="block text-[#FF4757]" style={{ fontSize: '10px', lineHeight: '16px' }}>4</Text>
                 </View>
                 <Text className="block text-xs text-gray-500 leading-5 flex-1">
                   如有疑问请联系商家或平台客服

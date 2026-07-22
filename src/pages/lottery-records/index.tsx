@@ -96,7 +96,7 @@ export default function LotteryRecordsPage() {
 
   const getPrizeTypeColor = (type: string) => {
     const map: Record<string, string> = {
-      coupon: 'bg-blue-100 text-blue-700',
+      coupon: 'bg-red-100 text-red-700',
       product: 'bg-purple-100 text-purple-700',
       free_meal: 'bg-green-100 text-green-700',
     }
@@ -157,17 +157,6 @@ export default function LotteryRecordsPage() {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <View className="bg-red-500 px-4 pt-12 pb-6">
-        <View className="flex items-center justify-between">
-          <View onClick={() => Taro.navigateBack()} className="p-2 -ml-2">
-            <Text className="text-white text-lg">{'<'}</Text>
-          </View>
-          <Text className="text-white text-lg font-semibold">中奖记录</Text>
-          <View className="w-8" />
-        </View>
-      </View>
-
       {/* Tabs */}
       <View className="bg-white px-4 pt-4">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)}>
@@ -208,7 +197,7 @@ export default function LotteryRecordsPage() {
                               </Badge>
                             </View>
                             {record.prize_type === 'coupon' && record.coupon_amount && (
-                              <Text className="block text-sm text-red-500 font-medium">
+                              <Text className="block text-sm text-[#FF4757] font-medium">
                                 优惠金额：¥{record.coupon_amount}
                                 {record.coupon_condition ? `（满¥${record.coupon_condition}可用）` : ''}
                               </Text>
@@ -220,7 +209,7 @@ export default function LotteryRecordsPage() {
                                   <Text className="block text-sm text-gray-500">价值：¥{record.product_value}</Text>
                                 )}
                                 {record.redemption_code && (
-                                  <Text className="block text-sm text-blue-500 font-mono mt-1">兑换码：{record.redemption_code}</Text>
+                                  <Text className="block text-sm text-[#FF4757] font-mono mt-1">兑换码：{record.redemption_code}</Text>
                                 )}
                               </View>
                             )}
@@ -271,7 +260,7 @@ export default function LotteryRecordsPage() {
                           </Text>
                           <View className="flex items-center gap-2 mt-1">
                             <Text className="text-sm text-gray-500">×{order.quantity}</Text>
-                            <Text className="text-sm font-medium text-red-500">¥{order.total_amount}</Text>
+                            <Text className="text-sm font-medium text-[#FF4757]">¥{order.total_amount}</Text>
                           </View>
                           <View className="flex items-center gap-1 mt-1">
                             <Clock size={12} color="#9ca3af" />
@@ -281,7 +270,7 @@ export default function LotteryRecordsPage() {
                       </View>
                       <View className="mt-3 pt-3 border-t border-gray-100">
                         <Button
-                          className="w-full bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                          className="w-full bg-[#FF4757] hover:bg-[#e63846] text-white rounded-lg"
                           onClick={() => handleParticipate(order)}
                         >
                           <Gift size={16} color="#ffffff" />

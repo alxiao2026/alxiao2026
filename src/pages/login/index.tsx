@@ -201,7 +201,7 @@ const LoginPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 顶部品牌区 */}
-      <View className="bg-gradient-to-br from-red-500 to-orange-500 px-6 pt-20 pb-16 flex flex-col items-center">
+      <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pt-20 pb-16 flex flex-col items-center">
         <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-4" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
           <Text className="text-3xl font-bold" style={{ color: '#ff6a00' }}>膨</Text>
         </View>
@@ -249,14 +249,14 @@ const LoginPage = () => {
               style={loginTab === 'password' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : undefined}
               onClick={() => setLoginTab('password')}
             >
-              <Text className={`text-sm font-medium ${loginTab === 'password' ? 'text-red-500' : 'text-gray-500'}`}>密码登录</Text>
+              <Text className={`text-sm font-medium ${loginTab === 'password' ? 'text-[#FF4757]' : 'text-gray-500'}`}>密码登录</Text>
             </View>
             <View
               className={`flex-1 rounded-lg py-2 flex items-center justify-center ${loginTab === 'sms' ? 'bg-white' : ''}`}
               style={loginTab === 'sms' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : undefined}
               onClick={() => setLoginTab('sms')}
             >
-              <Text className={`text-sm font-medium ${loginTab === 'sms' ? 'text-red-500' : 'text-gray-500'}`}>验证码登录</Text>
+              <Text className={`text-sm font-medium ${loginTab === 'sms' ? 'text-[#FF4757]' : 'text-gray-500'}`}>验证码登录</Text>
             </View>
           </View>
 
@@ -285,7 +285,7 @@ const LoginPage = () => {
                 setPwdNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
                 onClick={handlePasswordLogin}
                 disabled={loading}
               >
@@ -323,7 +323,7 @@ const LoginPage = () => {
                   </View>
                 </View>
                 <View
-                  className={`rounded-xl px-4 flex items-center justify-center ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-red-500 to-orange-500'}`}
+                  className={`rounded-xl px-4 flex items-center justify-center ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-[#FF4757] to-[#ff6b7a]'}`}
                   style={{ height: '44px', minWidth: '100px' }}
                   onClick={countdown > 0 ? undefined : handleSendSms}
                 >
@@ -339,7 +339,7 @@ const LoginPage = () => {
                 setSmsNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
                 onClick={handleSmsLogin}
                 disabled={loading}
               >

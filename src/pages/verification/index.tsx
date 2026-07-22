@@ -188,9 +188,9 @@ export default function VerificationPage() {
   };
 
   const menuItems = [
-    { icon: ListOrdered, label: '订单明细', color: '#3b82f6', bg: '#eff6ff', action: () => Taro.navigateTo({ url: '/pages/order-details/index' }) },
-    { icon: ClipboardList, label: '预约处理', color: '#3b82f6', bg: '#eff6ff', action: () => fetchOrders('paid') },
-    { icon: FileText, label: '核销明细', color: '#3b82f6', bg: '#eff6ff', action: () => fetchOrders('used') },
+    { icon: ListOrdered, label: '订单明细', color: '#FF4757', bg: '#fef2f2', action: () => Taro.navigateTo({ url: '/pages/order-details/index' }) },
+    { icon: ClipboardList, label: '预约处理', color: '#FF4757', bg: '#fef2f2', action: () => fetchOrders('paid') },
+    { icon: FileText, label: '核销明细', color: '#FF4757', bg: '#fef2f2', action: () => fetchOrders('used') },
     { icon: RotateCcw, label: '处理售后', color: '#f59e0b', bg: '#fffbeb', action: () => fetchOrders('refunded') },
     { icon: RotateCcw, label: '发起退款', color: '#f59e0b', bg: '#fffbeb', action: () => { Taro.showToast({ title: '退款功能开发中', icon: 'none' }); } },
     { icon: MessageSquare, label: '评价管理', color: '#f59e0b', bg: '#fffbeb', action: () => { Taro.showToast({ title: '评价功能开发中', icon: 'none' }); } },
@@ -199,7 +199,7 @@ export default function VerificationPage() {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 头部 */}
-      <View className="bg-gradient-to-b from-blue-400 to-blue-300 px-4 pt-4 pb-6">
+      <View className="bg-gradient-to-b from-[#FF4757] to-[#ff6b7a] px-4 pt-4 pb-6">
         <View className="flex flex-row items-center justify-between mb-4">
           <View className="flex flex-row items-center gap-2">
             <View className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
@@ -208,9 +208,6 @@ export default function VerificationPage() {
             <Text className="block text-white text-base font-semibold">
               {merchantInfo ? merchantInfo.name : '膨胀团 · 验券中心'}
             </Text>
-          </View>
-          <View className="bg-white bg-opacity-20 rounded-full px-3 py-1" onClick={() => Taro.navigateBack()}>
-            <Text className="block text-white text-xs">返回 ›</Text>
           </View>
         </View>
 
@@ -236,7 +233,7 @@ export default function VerificationPage() {
       {/* 验券入口 */}
       <View className="px-4 -mt-2">
         <View className="flex flex-row gap-3">
-          <View className="flex-1 bg-blue-500 rounded-2xl p-6 flex flex-col items-center" onClick={handleScanCode}>
+          <View className="flex-1 bg-[#FF4757] rounded-2xl p-6 flex flex-col items-center" onClick={handleScanCode}>
             <ScanLine size={36} color="#ffffff" />
             <Text className="block text-white text-base font-bold mt-3">扫码验券</Text>
           </View>
@@ -278,7 +275,7 @@ export default function VerificationPage() {
           <Card className={`border-2 ${verifyResult.success ? 'border-green-300' : 'border-red-300'}`}>
             <CardContent className="p-4">
               <View className="flex flex-row items-center gap-2 mb-2">
-                <View className={`w-3 h-3 rounded-full ${verifyResult.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                <View className={`w-3 h-3 rounded-full ${verifyResult.success ? 'bg-green-500' : 'bg-[#FF4757]'}`} />
                 <Text className={`block text-sm font-bold ${verifyResult.success ? 'text-green-600' : 'text-red-600'}`}>
                   {verifyResult.message}
                 </Text>
@@ -326,18 +323,18 @@ export default function VerificationPage() {
               <Text className="block text-xs text-gray-500 mt-1">
                 用户：{verifyTarget.nick_name || '匿名用户'} · 共{verifyTarget.quantity || 1}份 · 已核销{verifyTarget.verified_count || 0}份
               </Text>
-              <Text className="block text-xs text-orange-600 mt-1 font-semibold">
+              <Text className="block text-xs text-[#FF4757] mt-1 font-semibold">
                 剩余 {(verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0)} 份可核销
               </Text>
               <View className="flex flex-row items-center justify-between mt-4 bg-gray-50 rounded-xl px-4 py-3">
                 <Text className="block text-sm text-gray-600">本次核销份数</Text>
                 <View className="flex flex-row items-center gap-3">
                   <View className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount <= 1 ? 'bg-gray-200' : 'bg-red-100'}`} onClick={() => { if (verifyCount > 1) setVerifyCount(verifyCount - 1); }}>
-                    <Text className={`text-base font-bold ${verifyCount <= 1 ? 'text-gray-400' : 'text-red-500'}`}>-</Text>
+                    <Text className={`text-base font-bold ${verifyCount <= 1 ? 'text-gray-400' : 'text-[#FF4757]'}`}>-</Text>
                   </View>
                   <Text className="text-lg font-bold text-gray-800 w-8 text-center">{verifyCount}</Text>
                   <View className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'bg-gray-200' : 'bg-red-100'}`} onClick={() => { const max = (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0); if (verifyCount < max) setVerifyCount(verifyCount + 1); }}>
-                    <Text className={`text-base font-bold ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'text-gray-400' : 'text-red-500'}`}>+</Text>
+                    <Text className={`text-base font-bold ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'text-gray-400' : 'text-[#FF4757]'}`}>+</Text>
                   </View>
                 </View>
               </View>
@@ -348,7 +345,7 @@ export default function VerificationPage() {
               </View>
               <View className="w-px bg-gray-100" />
               <View className="flex-1 py-3 flex items-center justify-center" onClick={handleConfirmVerify}>
-                <Text className="block text-sm text-red-500 font-bold">确认核销 {verifyCount} 份</Text>
+                <Text className="block text-sm text-[#FF4757] font-bold">确认核销 {verifyCount} 份</Text>
               </View>
             </View>
           </View>

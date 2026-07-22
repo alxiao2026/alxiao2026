@@ -1,11 +1,11 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
       navigationBarTitleText: '套餐详情',
-      navigationBarBackgroundColor: '#ffffff',
-      navigationBarTextStyle: 'black',
+      navigationBarBackgroundColor: '#FF4757',
+      navigationBarTextStyle: 'white',
     })
   : {
       navigationBarTitleText: '套餐详情',
-      navigationBarBackgroundColor: '#ffffff',
-      navigationBarTextStyle: 'black',
+      navigationBarBackgroundColor: '#FF4757',
+      navigationBarTextStyle: 'white',
     }

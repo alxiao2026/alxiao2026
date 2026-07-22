@@ -200,7 +200,7 @@ const IndexPage = () => {
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
         {/* ===== 顶部渐变头部 ===== */}
-        <View className="bg-gradient-to-b from-red-500 via-red-400 to-orange-300 px-4 pt-10 pb-16">
+        <View className="bg-gradient-to-b from-[#FF4757] via-[#ff5c6e] to-[#ff8a94] px-4 pt-10 pb-16">
           {/* 第一行：Logo + 右侧入口 */}
           <View className="flex flex-row items-center justify-between mb-5">
             <View className="flex flex-row items-center gap-2">
@@ -258,7 +258,7 @@ const IndexPage = () => {
         {prizes.length > 0 && (
           <View className="px-4 -mt-8">
             <View className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <View className="bg-gradient-to-r from-red-500 to-orange-400 px-4 py-3">
+              <View className="bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] px-4 py-3">
                 <View className="flex flex-row items-center gap-2">
                   <Gift size={18} color="#fff" />
                   <Text className="block text-sm font-bold text-white">本期奖品</Text>
@@ -266,25 +266,18 @@ const IndexPage = () => {
                 </View>
               </View>
               <View className="flex flex-row overflow-x-auto px-3 py-3 gap-3">
-                {prizes.map((prize, index) => (
+                {prizes.map((prize) => (
                   <View key={prize.id} className="flex-shrink-0 flex flex-col items-center w-20">
-                    <View
-                      className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 ${
-                        index === 0 ? 'bg-red-50' : index === 1 ? 'bg-orange-50' : 'bg-blue-50'
-                      }`}
-                    >
+                    <View className="w-12 h-12 rounded-full flex items-center justify-center mb-1 bg-red-50">
                       {prize.image_url ? (
                         <Image src={prize.image_url} className="w-10 h-10 rounded-full" mode="aspectFill" />
                       ) : (
-                        <Award
-                          size={22}
-                          color={index === 0 ? '#FF4757' : index === 1 ? '#FFA502' : '#1890ff'}
-                        />
+                        <Award size={22} color="#FF4757" />
                       )}
                     </View>
                     <Text className="block text-xs text-gray-700 text-center" numberOfLines={1}>{prize.name}</Text>
-                    <Text className="block text-xs text-orange-500 mt-1">中奖率{prize.probability}%</Text>
-                    <Text className="block text-xs text-red-500 font-semibold">剩余{prize.stock}份</Text>
+                    <Text className="block text-xs text-[#FF4757] mt-1">中奖率{prize.probability}%</Text>
+                    <Text className="block text-xs text-[#FF4757] font-semibold">剩余{prize.stock}份</Text>
                   </View>
                 ))}
               </View>
@@ -304,7 +297,7 @@ const IndexPage = () => {
                 key={tab.key}
                 className={`px-4 py-2 rounded-full ${
                   activeTab === tab.key
-                    ? 'bg-red-500'
+                    ? 'bg-[#FF4757]'
                     : 'bg-white'
                 }`}
                 onClick={() => setActiveTab(tab.key)}
@@ -351,12 +344,12 @@ const IndexPage = () => {
                         mode="aspectFill"
                       />
                       {isPresale && (
-                        <View className="absolute top-0 left-0 bg-orange-500 rounded-br-lg px-2 py-1">
+                        <View className="absolute top-0 left-0 bg-[#FF4757] rounded-br-lg px-2 py-1">
                           <Text className="block text-xs text-white font-medium">预售</Text>
                         </View>
                       )}
                       {pkg.badge && (
-                        <View className="absolute top-0 left-0 bg-red-500 rounded-br-lg px-2 py-1">
+                        <View className="absolute top-0 left-0 bg-[#FF4757] rounded-br-lg px-2 py-1">
                           <Text className="block text-xs text-white font-medium">{pkg.badge}</Text>
                         </View>
                       )}
@@ -375,8 +368,8 @@ const IndexPage = () => {
                       {features.length > 0 && (
                         <View className="flex flex-row flex-wrap gap-1 mt-1">
                           {features.slice(0, 2).map((f, i) => (
-                            <View key={i} className="bg-orange-50 rounded px-1 py-0">
-                              <Text className="block text-xs text-orange-600">{f}</Text>
+                            <View key={i} className="bg-red-50 rounded px-1 py-0">
+                              <Text className="block text-xs text-[#FF4757]">{f}</Text>
                             </View>
                           ))}
                         </View>
@@ -385,8 +378,8 @@ const IndexPage = () => {
                       {/* 价格行 */}
                       <View className="flex flex-row items-end justify-between mt-2">
                         <View className="flex flex-row items-baseline gap-1">
-                          <Text className="block text-xs text-red-500 font-bold">¥</Text>
-                          <Text className="block text-xl font-bold text-red-500">{formatPrice(pkg.price)}</Text>
+                          <Text className="block text-xs text-[#FF4757] font-bold">¥</Text>
+                          <Text className="block text-xl font-bold text-[#FF4757]">{formatPrice(pkg.price)}</Text>
                           {pkg.original_price && (
                             <Text className="block text-xs text-gray-300 line-through ml-1">¥{formatPrice(pkg.original_price)}</Text>
                           )}
@@ -407,7 +400,7 @@ const IndexPage = () => {
                         {isPresale ? `${startDate?.getMonth()! + 1}月${startDate?.getDate()}日开售` : '长期有效'}
                       </Text>
                     </View>
-                    <View className="bg-red-500 rounded-full px-4 py-1">
+                    <View className="bg-[#FF4757] rounded-full px-4 py-1">
                       <Text className="block text-xs text-white font-medium">立即抢购</Text>
                     </View>
                   </View>
@@ -439,8 +432,8 @@ const IndexPage = () => {
                       <Text className="block text-sm font-semibold text-gray-800" numberOfLines={1}>{w.prize_name}</Text>
                       <Text className="block text-xs text-gray-400 mt-1">{w.nick_name} · {new Date(w.created_at).toLocaleDateString()}</Text>
                     </View>
-                    <View className="bg-orange-50 rounded-full px-3 py-1 ml-2">
-                      <Text className="block text-xs text-orange-600">已中奖</Text>
+                    <View className="bg-red-50 rounded-full px-3 py-1 ml-2">
+                      <Text className="block text-xs text-[#FF4757]">已中奖</Text>
                     </View>
                   </View>
                 ))}

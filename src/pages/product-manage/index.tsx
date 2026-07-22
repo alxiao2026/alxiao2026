@@ -121,7 +121,7 @@ export default function ProductManagePage() {
 
         {/* 分类标签 */}
         <View className="flex flex-row items-center gap-3 mb-3">
-          <View className="bg-blue-500 rounded-full px-4 py-1">
+          <View className="bg-[#FF4757] rounded-full px-4 py-1">
             <Text className="block text-white text-sm font-medium">团购</Text>
           </View>
           <View className="bg-gray-100 rounded-full px-4 py-1">
@@ -144,10 +144,10 @@ export default function ProductManagePage() {
           ].map((tab) => (
             <View
               key={tab.key}
-              className={`rounded-lg px-3 py-1 ${activeStatus === tab.key ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}`}
+              className={`rounded-lg px-3 py-1 ${activeStatus === tab.key ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'}`}
               onClick={() => setActiveStatus(tab.key)}
             >
-              <Text className={`block text-sm ${activeStatus === tab.key ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
+              <Text className={`block text-sm ${activeStatus === tab.key ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                 {tab.label}
               </Text>
             </View>
@@ -165,7 +165,7 @@ export default function ProductManagePage() {
           </View>
           <View className="flex flex-row items-center gap-1 bg-gray-100 rounded-lg px-3 py-1">
             <ListFilter size={14} color="#6b7280" />
-            <Text className="block text-sm text-blue-600">筛选</Text>
+            <Text className="block text-sm text-[#FF4757]">筛选</Text>
           </View>
         </View>
       </View>
@@ -219,7 +219,7 @@ export default function ProductManagePage() {
 
                 {/* 价格行 */}
                 <View className="flex flex-row items-baseline gap-2 mt-3 mb-3">
-                  <Text className="block text-xl font-bold text-red-500">¥{pkg.price}</Text>
+                  <Text className="block text-xl font-bold text-[#FF4757]">¥{pkg.price}</Text>
                   {pkg.original_price && (
                     <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
                   )}
@@ -237,7 +237,7 @@ export default function ProductManagePage() {
                           <Text className="block text-sm text-gray-700">{pkg.is_active ? '下架' : '上架'}</Text>
                         </Button>
                         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setOpenMenuId(null); setDeleteTarget(pkg); }}>
-                          <Text className="block text-sm text-red-500">删除</Text>
+                          <Text className="block text-sm text-[#FF4757]">删除</Text>
                         </Button>
                       </View>
                     )}
@@ -250,7 +250,7 @@ export default function ProductManagePage() {
                       <Text className="block">改库存</Text>
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => Taro.redirectTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
-                      <Text className="block text-blue-500 text-xs">编辑</Text>
+                      <Text className="block text-[#FF4757] text-xs">编辑</Text>
                     </Button>
                   </View>
                 </View>
@@ -262,7 +262,7 @@ export default function ProductManagePage() {
 
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'row', padding: '12px', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', zIndex: 100 }}>
-        <View className="flex-1 bg-blue-500 rounded-xl py-3 flex items-center justify-center" onClick={() => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
+        <View className="flex-1 bg-[#FF4757] rounded-xl py-3 flex items-center justify-center" onClick={() => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
           <Text className="block text-white text-sm font-bold">创建商品</Text>
         </View>
       </View>
@@ -281,7 +281,7 @@ export default function ProductManagePage() {
               </View>
               <View className="w-px bg-gray-100" />
               <View className="flex-1 py-3 flex items-center justify-center" onClick={handleDelete}>
-                <Text className="block text-sm text-red-500 font-bold">确认删除</Text>
+                <Text className="block text-sm text-[#FF4757] font-bold">确认删除</Text>
               </View>
             </View>
           </View>

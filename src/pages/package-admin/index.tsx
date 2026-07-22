@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Calendar } from '@/components/ui/calendar'
-import { ArrowLeft, Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
+import { Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 import { format } from 'date-fns'
 
@@ -1099,21 +1099,15 @@ export default function PackageAdmin() {
 
   return (
     <View className="min-h-screen bg-white pb-20">
-      {/* 顶部导航 */}
+      {/* 草稿操作 + 步骤指示器 */}
       <View className="bg-white sticky top-0 z-10 border-b border-gray-200">
-        <View className="flex items-center justify-between px-4 py-3">
-          <View className="flex items-center gap-2" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={20} color="#333" />
-          </View>
-          <Text className="block text-base font-semibold text-gray-800">团购创建</Text>
-          <View className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={clearDraft}>
-              <Text className="text-xs">清除草稿</Text>
-            </Button>
-            <Button size="sm" variant="outline" onClick={saveDraft}>
-              <Text className="text-xs">保存草稿</Text>
-            </Button>
-          </View>
+        <View className="flex items-center justify-end gap-2 px-4 pt-3">
+          <Button size="sm" variant="outline" onClick={clearDraft}>
+            <Text className="text-xs">清除草稿</Text>
+          </Button>
+          <Button size="sm" variant="outline" onClick={saveDraft}>
+            <Text className="text-xs">保存草稿</Text>
+          </Button>
         </View>
 
         {/* 步骤指示器 */}
@@ -1125,7 +1119,7 @@ export default function PackageAdmin() {
                   index < currentStep
                     ? 'bg-green-500'
                     : index === currentStep
-                    ? 'bg-red-500'
+                    ? 'bg-[#FF4757]'
                     : 'bg-gray-300'
                 }`}
               >
@@ -1137,7 +1131,7 @@ export default function PackageAdmin() {
               </View>
               <Text
                 className={`block ml-2 text-sm ${
-                  index === currentStep ? 'text-red-500 font-medium' : 'text-gray-600'
+                  index === currentStep ? 'text-[#FF4757] font-medium' : 'text-gray-600'
                 }`}
               >
                 {step.label}
@@ -1189,7 +1183,7 @@ export default function PackageAdmin() {
                       {packageType === 'combo' ? '团购套餐' : '代金券'}
                     </Text>
                     <View className="flex items-center gap-2">
-                      <Badge className="bg-blue-100 text-blue-600 text-xs">
+                      <Badge className="bg-red-100 text-[#FF4757] text-xs">
                         {packageType === 'combo' ? '套餐' : '代金券'}
                       </Badge>
                       <ChevronRight size={16} color="#999" />
@@ -1227,7 +1221,7 @@ export default function PackageAdmin() {
                         <Badge className="bg-green-100 text-green-600 text-xs">本店</Badge>
                       )}
                       {selectedMerchant && merchants.length > 1 && (
-                        <Badge className="bg-blue-100 text-blue-600 text-xs">已选择</Badge>
+                        <Badge className="bg-red-100 text-[#FF4757] text-xs">已选择</Badge>
                       )}
                       {merchants.length > 1 && <ChevronRight size={16} color="#9ca3af" />}
                     </View>
@@ -1265,7 +1259,7 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">商品名称</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <Input
@@ -1372,7 +1366,7 @@ export default function PackageAdmin() {
 
                       {/* 删除商品组 */}
                       <Button
-                        className="w-full mt-2 text-red-500"
+                        className="w-full mt-2 text-[#FF4757]"
                         variant="ghost"
                         onClick={() => removeCombination(combo.id)}
                       >
@@ -1426,7 +1420,7 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">售价</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="bg-gray-50 rounded-lg px-4 py-3">
                     <View className="flex items-center">
@@ -1452,7 +1446,7 @@ export default function PackageAdmin() {
                     <View className="flex items-center gap-1">
                       <Text className="block text-sm text-gray-600">商品头图</Text>
                     </View>
-                    <Text className="block text-xs text-blue-500">规范示例</Text>
+                    <Text className="block text-xs text-[#FF4757]">规范示例</Text>
                   </View>
                   <Text className="block text-xs text-gray-400 mb-3">在商品详情页以 4:3 比例展示，建议 5MB 以内</Text>
 
@@ -1488,7 +1482,7 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center justify-between mb-2">
                     <Text className="block text-sm text-gray-600">环境图</Text>
-                    <Text className="block text-xs text-blue-500">查看示例</Text>
+                    <Text className="block text-xs text-[#FF4757]">查看示例</Text>
                   </View>
                   <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张，单张建议 5MB 以内。</Text>
 
@@ -1561,7 +1555,7 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">投放渠道</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
                     <Text className="block text-sm text-gray-800">不限制</Text>
@@ -1573,7 +1567,7 @@ export default function PackageAdmin() {
                 <View className="mb-4">
                   <View className="flex items-center gap-1 mb-2">
                     <Text className="block text-sm text-gray-600">库存数量</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
                     <View className="flex-1">
@@ -1617,7 +1611,7 @@ export default function PackageAdmin() {
                     </View>
                     <View
                       className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        formData.auto_renew ? 'bg-blue-500' : 'bg-gray-300'
+                        formData.auto_renew ? 'bg-[#FF4757]' : 'bg-gray-300'
                       }`}
                       onClick={() => updateFormData('auto_renew', !formData.auto_renew)}
                     >
@@ -1637,24 +1631,24 @@ export default function PackageAdmin() {
                     <View
                       className={`flex-1 py-3 rounded-lg border-2 text-center ${
                         formData.is_active
-                          ? 'border-red-500 bg-red-50'
+                          ? 'border-[#FF4757] bg-red-50'
                           : 'border-gray-200 bg-white'
                       }`}
                       onClick={() => updateFormData('is_active', true)}
                     >
-                      <Text className={`block text-sm ${formData.is_active ? 'text-red-500 font-medium' : 'text-gray-600'}`}>
+                      <Text className={`block text-sm ${formData.is_active ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                         上架
                       </Text>
                     </View>
                     <View
                       className={`flex-1 py-3 rounded-lg border-2 text-center ${
                         !formData.is_active
-                          ? 'border-red-500 bg-red-50'
+                          ? 'border-[#FF4757] bg-red-50'
                           : 'border-gray-200 bg-white'
                       }`}
                       onClick={() => updateFormData('is_active', false)}
                     >
-                      <Text className={`block text-sm ${!formData.is_active ? 'text-red-500 font-medium' : 'text-gray-600'}`}>
+                      <Text className={`block text-sm ${!formData.is_active ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                         下架
                       </Text>
                     </View>
@@ -1711,10 +1705,10 @@ export default function PackageAdmin() {
                 >
                   <View className="flex items-center gap-1">
                     <Text className="block text-sm text-gray-800">可用日期</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="flex items-center gap-1">
-                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-sm text-[#FF4757]">编辑</Text>
                     <Text className="block text-gray-400">›</Text>
                   </View>
                 </View>
@@ -1741,7 +1735,7 @@ export default function PackageAdmin() {
                 >
                   <Text className="block text-sm text-gray-800">不可用日期</Text>
                   <View className="flex items-center gap-1">
-                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-sm text-[#FF4757]">编辑</Text>
                     <Text className="block text-gray-400">›</Text>
                   </View>
                 </View>
@@ -1775,10 +1769,10 @@ export default function PackageAdmin() {
                 >
                   <View className="flex items-center gap-1">
                     <Text className="block text-sm text-gray-800">每日可用时段</Text>
-                    <Text className="block text-red-500">*</Text>
+                    <Text className="block text-[#FF4757]">*</Text>
                   </View>
                   <View className="flex items-center gap-1">
-                    <Text className="block text-sm text-blue-500">编辑</Text>
+                    <Text className="block text-sm text-[#FF4757]">编辑</Text>
                     <Text className="block text-gray-400">›</Text>
                   </View>
                 </View>
@@ -1853,14 +1847,14 @@ export default function PackageAdmin() {
                   <Text className="block text-sm font-medium text-gray-800 mb-3">店内其他优惠</Text>
                   <View className="flex gap-3">
                     <Button
-                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount === '可以与店内其他优惠同享' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount === '可以与店内其他优惠同享' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-700'}`}
                       variant="ghost"
                       onClick={() => setFormData({ ...formData, other_discount: '可以与店内其他优惠同享' })}
                     >
                       可以与优惠同享
                     </Button>
                     <Button
-                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount !== '可以与店内其他优惠同享' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      className={`flex-1 h-10 rounded-lg text-sm ${formData.other_discount !== '可以与店内其他优惠同享' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-700'}`}
                       variant="ghost"
                       onClick={() => setFormData({ ...formData, other_discount: '不与店内优惠同享' })}
                     >
@@ -1874,13 +1868,13 @@ export default function PackageAdmin() {
                   <Text className="block text-sm font-medium text-gray-800 mb-2">包厢说明</Text>
                   <View className="flex gap-2">
                     <Button
-                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '可以在包厢消费使用' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '可以在包厢消费使用' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-600'}`}
                       onClick={() => setFormData({ ...formData, private_room: '可以在包厢消费使用' })}
                     >
                       可以在包厢使用
                     </Button>
                     <Button
-                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '不可以在包厢消费使用' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.private_room === '不可以在包厢消费使用' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-600'}`}
                       onClick={() => setFormData({ ...formData, private_room: '不可以在包厢消费使用' })}
                     >
                       不可以在包厢使用
@@ -1893,19 +1887,19 @@ export default function PackageAdmin() {
                   <Text className="block text-sm font-medium text-gray-800 mb-2">堂食外带约定</Text>
                   <View className="flex gap-2">
                     <Button
-                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'dine_in' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'dine_in' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-600'}`}
                       onClick={() => setFormData({ ...formData, dine_in_type: 'dine_in' })}
                     >
                       仅限堂食
                     </Button>
                     <Button
-                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'take_out' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'take_out' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-600'}`}
                       onClick={() => setFormData({ ...formData, dine_in_type: 'take_out' })}
                     >
                       仅限外带
                     </Button>
                     <Button
-                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      className={`flex-1 rounded-lg py-2 text-sm ${formData.dine_in_type === 'all' ? 'bg-[#FF4757] text-white' : 'bg-gray-100 text-gray-600'}`}
                       onClick={() => setFormData({ ...formData, dine_in_type: 'all' })}
                     >
                       堂食外带都可以
@@ -1923,22 +1917,22 @@ export default function PackageAdmin() {
                       <View className="flex items-center gap-2">
                         <View
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            !formData.has_extra_fee ? 'border-blue-500' : 'border-gray-300'
+                            !formData.has_extra_fee ? 'border-[#FF4757]' : 'border-gray-300'
                           }`}
                           onClick={() => updateFormData('has_extra_fee', false)}
                         >
-                          {!formData.has_extra_fee && <View className="w-3 h-3 bg-blue-500 rounded-full" />}
+                          {!formData.has_extra_fee && <View className="w-3 h-3 bg-[#FF4757] rounded-full" />}
                         </View>
                         <Text className="block text-sm text-gray-700">无</Text>
                       </View>
                       <View className="flex items-center gap-2">
                         <View
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            formData.has_extra_fee ? 'border-blue-500' : 'border-gray-300'
+                            formData.has_extra_fee ? 'border-[#FF4757]' : 'border-gray-300'
                           }`}
                           onClick={() => updateFormData('has_extra_fee', true)}
                         >
-                          {formData.has_extra_fee && <View className="w-3 h-3 bg-blue-500 rounded-full" />}
+                          {formData.has_extra_fee && <View className="w-3 h-3 bg-[#FF4757] rounded-full" />}
                         </View>
                         <Text className="block text-sm text-gray-700">有</Text>
                       </View>
@@ -1959,7 +1953,7 @@ export default function PackageAdmin() {
                   )}
 
                   <View className="mt-3">
-                    <Text className="block text-sm text-blue-500">+ 添加收费项 ({formData.extra_fees.length})</Text>
+                    <Text className="block text-sm text-[#FF4757]">+ 添加收费项 ({formData.extra_fees.length})</Text>
                   </View>
                 </View>
 
@@ -2020,7 +2014,7 @@ export default function PackageAdmin() {
                   {/* 一级分类 */}
                   <View
                     className={`px-4 py-3 border-b border-gray-100 ${
-                      selectedLevel1 === level1.id ? 'bg-blue-50' : ''
+                      selectedLevel1 === level1.id ? 'bg-red-50' : ''
                     }`}
                     onClick={() => {
                       setSelectedLevel1(level1.id);
@@ -2030,7 +2024,7 @@ export default function PackageAdmin() {
                     <View className="flex items-center justify-between">
                       <Text className="block text-sm font-medium text-gray-800">{level1.name}</Text>
                       {selectedLevel1 === level1.id && !selectedLevel2 && (
-                        <Check size={16} color="#3b82f6" />
+                        <Check size={16} color="#FF4757" />
                       )}
                     </View>
                   </View>
@@ -2042,7 +2036,7 @@ export default function PackageAdmin() {
                         <View
                           key={level2.id}
                           className={`px-8 py-3 border-b border-gray-100 ${
-                            selectedLevel2 === level2.id ? 'bg-blue-50' : ''
+                            selectedLevel2 === level2.id ? 'bg-red-50' : ''
                           }`}
                           onClick={() => {
                             setSelectedLevel2(level2.id);
@@ -2058,7 +2052,7 @@ export default function PackageAdmin() {
                           <View className="flex items-center justify-between">
                             <Text className="block text-sm text-gray-600">{level2.name}</Text>
                             {selectedLevel2 === level2.id && (
-                              <Check size={16} color="#3b82f6" />
+                              <Check size={16} color="#FF4757" />
                             )}
                           </View>
                         </View>
@@ -2096,7 +2090,7 @@ export default function PackageAdmin() {
             <View>
               <View
                 className={`px-4 py-4 border-b border-gray-100 ${
-                  packageType === 'combo' ? 'bg-blue-50' : ''
+                  packageType === 'combo' ? 'bg-red-50' : ''
                 }`}
                 onClick={() => {
                   setPackageType('combo');
@@ -2110,13 +2104,13 @@ export default function PackageAdmin() {
                       包含多项商品或服务的组合套餐
                     </Text>
                   </View>
-                  {packageType === 'combo' && <Check size={20} color="#3b82f6" />}
+                  {packageType === 'combo' && <Check size={20} color="#FF4757" />}
                 </View>
               </View>
 
               <View
                 className={`px-4 py-4 ${
-                  packageType === 'voucher' ? 'bg-blue-50' : ''
+                  packageType === 'voucher' ? 'bg-red-50' : ''
                 }`}
                 onClick={() => {
                   setPackageType('voucher');
@@ -2130,7 +2124,7 @@ export default function PackageAdmin() {
                       可抵扣现金的优惠券，满额可用
                     </Text>
                   </View>
-                  {packageType === 'voucher' && <Check size={20} color="#3b82f6" />}
+                  {packageType === 'voucher' && <Check size={20} color="#FF4757" />}
                 </View>
               </View>
             </View>
@@ -2189,7 +2183,7 @@ export default function PackageAdmin() {
                   <View
                     key={merchant.id}
                     className={`px-4 py-4 border-b border-gray-100 ${
-                      selectedMerchant?.id === merchant.id ? 'bg-blue-50' : ''
+                      selectedMerchant?.id === merchant.id ? 'bg-red-50' : ''
                     }`}
                     onClick={() => {
                       setSelectedMerchant(merchant);
@@ -2213,7 +2207,7 @@ export default function PackageAdmin() {
                         )}
                       </View>
                       {selectedMerchant?.id === merchant.id && (
-                        <Check size={20} color="#3b82f6" />
+                        <Check size={20} color="#FF4757" />
                       )}
                     </View>
                   </View>
@@ -2284,12 +2278,12 @@ export default function PackageAdmin() {
                     key={unit}
                     className={`py-2 px-3 rounded-lg border text-center ${
                       specUnit === unit
-                        ? 'bg-blue-50 border-blue-500'
+                        ? 'bg-red-50 border-[#FF4757]'
                         : 'bg-white border-gray-200'
                     }`}
                     onClick={() => setSpecUnit(unit)}
                   >
-                    <Text className={`block text-sm ${specUnit === unit ? 'text-blue-500' : 'text-gray-700'}`}>
+                    <Text className={`block text-sm ${specUnit === unit ? 'text-[#FF4757]' : 'text-gray-700'}`}>
                       {unit}
                     </Text>
                   </View>
@@ -2300,7 +2294,7 @@ export default function PackageAdmin() {
             {/* 确认按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={confirmSpec}
               >
                 <Text className="block text-white font-medium text-base">确认</Text>
@@ -2335,24 +2329,24 @@ export default function PackageAdmin() {
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempPurchaseLimitType === 'unlimited'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempPurchaseLimitType('unlimited')}
                 >
-                  <Text className={`block text-sm ${tempPurchaseLimitType === 'unlimited' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempPurchaseLimitType === 'unlimited' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     不限制购买
                   </Text>
                 </View>
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempPurchaseLimitType === 'limited'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempPurchaseLimitType('limited')}
                 >
-                  <Text className={`block text-sm ${tempPurchaseLimitType === 'limited' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempPurchaseLimitType === 'limited' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     限制购买
                   </Text>
                 </View>
@@ -2366,7 +2360,7 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-800">每人最多购买</Text>
                     <View
                       className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        tempPurchaseLimit > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                        tempPurchaseLimit > 0 ? 'bg-[#FF4757]' : 'bg-gray-300'
                       }`}
                       onClick={() => setTempPurchaseLimit(tempPurchaseLimit > 0 ? 0 : 1)}
                     >
@@ -2403,7 +2397,7 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-800">每人每天最多购买</Text>
                     <View
                       className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        tempPurchaseLimitPerDay > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                        tempPurchaseLimitPerDay > 0 ? 'bg-[#FF4757]' : 'bg-gray-300'
                       }`}
                       onClick={() => setTempPurchaseLimitPerDay(tempPurchaseLimitPerDay > 0 ? 0 : 1)}
                     >
@@ -2440,7 +2434,7 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-800">每人每月最多购买</Text>
                     <View
                       className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        tempPurchaseLimitPerMonth > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                        tempPurchaseLimitPerMonth > 0 ? 'bg-[#FF4757]' : 'bg-gray-300'
                       }`}
                       onClick={() => setTempPurchaseLimitPerMonth(tempPurchaseLimitPerMonth > 0 ? 0 : 1)}
                     >
@@ -2478,7 +2472,7 @@ export default function PackageAdmin() {
             {/* 确认按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => {
                   updateFormData('purchase_limit_type', tempPurchaseLimitType)
                   if (tempPurchaseLimitType === 'unlimited') {
@@ -2529,24 +2523,24 @@ export default function PackageAdmin() {
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempValidDateType === 'days'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempValidDateType('days')}
                 >
-                  <Text className={`block text-sm ${tempValidDateType === 'days' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempValidDateType === 'days' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     指定天数可用
                   </Text>
                 </View>
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempValidDateType === 'date_range'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempValidDateType('date_range')}
                 >
-                  <Text className={`block text-sm ${tempValidDateType === 'date_range' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempValidDateType === 'date_range' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     指定日期可用
                   </Text>
                 </View>
@@ -2619,7 +2613,7 @@ export default function PackageAdmin() {
                         setTempEndDate(formData.valid_date_end)
                       }}
                     >
-                      <Text className="block text-sm text-blue-500">编辑</Text>
+                      <Text className="block text-sm text-[#FF4757]">编辑</Text>
                       <Text className="block text-sm text-gray-400">›</Text>
                     </View>
                   </View>
@@ -2637,7 +2631,7 @@ export default function PackageAdmin() {
             {/* 确认按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => {
                   // 根据选择的类型决定保存哪种数据
                   if (tempValidDateType === 'date_range' && tempStartDate && tempEndDate) {
@@ -2704,24 +2698,24 @@ export default function PackageAdmin() {
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempUnavailableDateType === 'all'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempUnavailableDateType('all')}
                 >
-                  <Text className={`block text-sm ${tempUnavailableDateType === 'all' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempUnavailableDateType === 'all' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     所有日期均可用
                   </Text>
                 </View>
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempUnavailableDateType === 'partial'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempUnavailableDateType('partial')}
                 >
-                  <Text className={`block text-sm ${tempUnavailableDateType === 'partial' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempUnavailableDateType === 'partial' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     部分日期不可用
                   </Text>
                 </View>
@@ -2783,7 +2777,7 @@ export default function PackageAdmin() {
                   {tempUnavailableWeekdays.length === 0 &&
                    tempUnavailableHolidays.length === 0 &&
                    tempUnavailableCalendarDates.length === 0 && (
-                    <Text className="block text-sm text-red-500 mt-2">
+                    <Text className="block text-sm text-[#FF4757] mt-2">
                       请至少设定一个不可消费日期
                     </Text>
                   )}
@@ -2794,7 +2788,7 @@ export default function PackageAdmin() {
             {/* 保存按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => {
                   updateFormData('unavailable_date_type', tempUnavailableDateType)
                   updateFormData('unavailable_weekdays', tempUnavailableWeekdays)
@@ -2835,24 +2829,24 @@ export default function PackageAdmin() {
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempAvailableTimeType === 'business_hours'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempAvailableTimeType('business_hours')}
                 >
-                  <Text className={`block text-sm ${tempAvailableTimeType === 'business_hours' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempAvailableTimeType === 'business_hours' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     营业时间可用
                   </Text>
                 </View>
                 <View
                   className={`flex-1 py-3 rounded-lg border-2 text-center ${
                     tempAvailableTimeType === 'custom'
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[#FF4757] bg-red-50'
                       : 'border-gray-200 bg-white'
                   }`}
                   onClick={() => setTempAvailableTimeType('custom')}
                 >
-                  <Text className={`block text-sm ${tempAvailableTimeType === 'custom' ? 'text-blue-500 font-medium' : 'text-gray-600'}`}>
+                  <Text className={`block text-sm ${tempAvailableTimeType === 'custom' ? 'text-[#FF4757] font-medium' : 'text-gray-600'}`}>
                     仅指定时间可用
                   </Text>
                 </View>
@@ -2864,7 +2858,7 @@ export default function PackageAdmin() {
                   <View className="flex items-center justify-between">
                     <View className="flex items-center gap-1">
                       <Text className="block text-base font-medium text-gray-900">每日可用时段</Text>
-                      <Text className="block text-red-500">*</Text>
+                      <Text className="block text-[#FF4757]">*</Text>
                     </View>
                     <View
                       className="flex items-center gap-1"
@@ -2886,7 +2880,7 @@ export default function PackageAdmin() {
             {/* 保存按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => {
                   updateFormData('available_time_type', tempAvailableTimeType)
                   updateFormData('available_time_start', tempAvailableTimeStart)
@@ -2938,7 +2932,7 @@ export default function PackageAdmin() {
                   <View
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                       tempUnavailableWeekdays.includes(index)
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-[#FF4757] bg-[#FF4757]'
                         : 'border-gray-300 bg-white'
                     }`}
                   >
@@ -2953,7 +2947,7 @@ export default function PackageAdmin() {
             {/* 确定按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => setShowWeekdayPicker(false)}
               >
                 <Text className="block text-white font-medium">确定</Text>
@@ -3010,7 +3004,7 @@ export default function PackageAdmin() {
                   <View
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                       tempUnavailableHolidays.includes(holiday.id)
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-[#FF4757] bg-[#FF4757]'
                         : 'border-gray-300 bg-white'
                     }`}
                   >
@@ -3025,7 +3019,7 @@ export default function PackageAdmin() {
             {/* 确定按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => setShowHolidayPicker(false)}
               >
                 <Text className="block text-white font-medium">确定</Text>
@@ -3059,17 +3053,17 @@ export default function PackageAdmin() {
               <View className="flex items-center justify-center gap-4 mb-4">
                 <View
                   className={`text-center px-4 py-2 rounded-lg ${
-                    timePickerMode === 'start' ? 'bg-blue-50 border border-blue-200' : ''
+                    timePickerMode === 'start' ? 'bg-red-50 border border-red-200' : ''
                   }`}
                   onClick={() => setTimePickerMode('start')}
                 >
-                  <Text className="block text-sm text-blue-500 mb-1">开始</Text>
-                  <Text className="block text-2xl font-medium text-blue-500">{tempAvailableTimeStart}</Text>
+                  <Text className="block text-sm text-[#FF4757] mb-1">开始</Text>
+                  <Text className="block text-2xl font-medium text-[#FF4757]">{tempAvailableTimeStart}</Text>
                 </View>
                 <Text className="block text-lg text-gray-400">至</Text>
                 <View
                   className={`text-center px-4 py-2 rounded-lg ${
-                    timePickerMode === 'end' ? 'bg-blue-50 border border-blue-200' : ''
+                    timePickerMode === 'end' ? 'bg-red-50 border border-red-200' : ''
                   }`}
                   onClick={() => setTimePickerMode('end')}
                 >
@@ -3089,7 +3083,7 @@ export default function PackageAdmin() {
                         (timePickerMode === 'start'
                           ? parseInt(tempAvailableTimeStart.split(':')[0])
                           : parseInt(tempAvailableTimeEnd.split(':')[0])) === i
-                          ? 'text-blue-500 font-medium bg-blue-50'
+                          ? 'text-[#FF4757] font-medium bg-red-50'
                           : 'text-gray-600'
                       }`}
                       onClick={() => {
@@ -3119,7 +3113,7 @@ export default function PackageAdmin() {
                           (timePickerMode === 'start'
                             ? parseInt(tempAvailableTimeStart.split(':')[1])
                             : parseInt(tempAvailableTimeEnd.split(':')[1])) === minutes
-                            ? 'text-blue-500 font-medium bg-blue-50'
+                            ? 'text-[#FF4757] font-medium bg-red-50'
                             : 'text-gray-600'
                         }`}
                         onClick={() => {
@@ -3145,7 +3139,7 @@ export default function PackageAdmin() {
             {/* 确定按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => setShowTimePicker(false)}
               >
                 <Text className="block text-white font-medium">确定</Text>
@@ -3180,7 +3174,7 @@ export default function PackageAdmin() {
                 <Text className="block text-base text-gray-800">启用限制</Text>
                 <View
                   className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                    formData.limit_usage_count ? 'bg-blue-500' : 'bg-gray-300'
+                    formData.limit_usage_count ? 'bg-[#FF4757]' : 'bg-gray-300'
                   }`}
                   onClick={() => updateFormData('limit_usage_count', !formData.limit_usage_count)}
                 >
@@ -3218,7 +3212,7 @@ export default function PackageAdmin() {
             {/* 确定按钮 */}
             <View className="p-4 border-t border-gray-200">
               <Button
-                className="w-full bg-blue-500"
+                className="w-full bg-[#FF4757]"
                 onClick={() => {
                   if (formData.limit_usage_count) {
                     updateFormData('usage_count_limit', tempLimitUsageCount)
@@ -3295,7 +3289,7 @@ export default function PackageAdmin() {
                 <Text className="block font-medium">清除</Text>
               </Button>
               <Button
-                className="flex-1 bg-blue-500"
+                className="flex-1 bg-[#FF4757]"
                 onClick={confirmDate}
               >
                 <Text className="block text-white font-medium">确认</Text>
@@ -3381,7 +3375,7 @@ export default function PackageAdmin() {
                 <Text className="block font-medium">清除</Text>
               </Button>
               <Button
-                className="flex-1 bg-blue-500"
+                className="flex-1 bg-[#FF4757]"
                 onClick={() => {
                   // 将选中的日期转换为字符串格式
                   const dateStrings = calendarSelectedDates.map(d => format(d, 'yyyy-MM-dd'))
@@ -3412,14 +3406,14 @@ export default function PackageAdmin() {
           )}
           {currentStep < steps.length - 1 ? (
             <Button
-              className="flex-1 bg-blue-500"
+              className="flex-1 bg-[#FF4757]"
               onClick={handleNextStep}
             >
               <Text className="block text-white font-medium">下一步</Text>
             </Button>
           ) : (
             <Button
-              className="flex-1 bg-blue-500"
+              className="flex-1 bg-[#FF4757]"
               onClick={handleSubmit}
               disabled={submitting}
             >

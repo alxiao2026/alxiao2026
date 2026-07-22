@@ -91,11 +91,11 @@ export default function OrderList() {
             className="flex-1 flex items-center justify-center py-3"
             onClick={() => setActiveTab(tab.key)}
           >
-            <Text className={`block text-sm ${activeTab === tab.key ? 'text-red-500 font-semibold' : 'text-gray-600'}`}>
+            <Text className={`block text-sm ${activeTab === tab.key ? 'text-[#FF4757] font-semibold' : 'text-gray-600'}`}>
               {tab.label}
             </Text>
             {activeTab === tab.key && (
-              <View className="absolute bottom-0 w-8 h-1 bg-red-500 rounded-full" />
+              <View className="absolute bottom-0 w-8 h-1 bg-[#FF4757] rounded-full" />
             )}
           </View>
         ))}
@@ -146,7 +146,7 @@ export default function OrderList() {
                       )}
                     </View>
                     <View className="flex flex-col items-end">
-                      <Text className="block text-lg font-bold text-red-500">
+                      <Text className="block text-lg font-bold text-[#FF4757]">
                         ¥{parseFloat(String(order.price)).toFixed(0)}
                       </Text>
                       {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
@@ -163,7 +163,7 @@ export default function OrderList() {
                       {order.status === 'pending' && (
                         <>
                           <Clock size={14} color="#FF6B35" />
-                          <Text className="block text-xs text-orange-500">待核销</Text>
+                          <Text className="block text-xs text-[#FF4757]">待核销</Text>
                         </>
                       )}
                       {order.status === 'used' && (

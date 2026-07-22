@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Calendar, Funnel } from 'lucide-react-taro';
+import { Calendar, Funnel } from 'lucide-react-taro';
 
 const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv());
 
@@ -114,30 +114,20 @@ export default function OrderDetailsPage() {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 头部 */}
-      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-4">
-        <View className="flex flex-row items-center justify-between mb-4">
-          <View className="flex flex-row items-center gap-2" onClick={() => Taro.navigateBack()}>
-            <ChevronLeft size={20} color="#ffffff" />
-            <Text className="block text-white text-base font-semibold">订单明细</Text>
-          </View>
-          <View className="flex flex-row items-center gap-2">
-            <View className="bg-white rounded-full px-4 py-2 flex flex-row items-center gap-1" onClick={() => setShowFilter(!showFilter)}>
-              <Funnel size={16} color="#3b82f6" />
-              <Text className="block text-blue-500 text-sm font-medium">筛选</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 店铺名 */}
-        <Text className="block text-white text-sm">
+      {/* 店铺名与筛选入口 */}
+      <View className="flex flex-row items-center justify-between px-4 pt-3">
+        <Text className="block text-sm text-gray-600 font-medium">
           {merchantInfo ? merchantInfo.name : '膨胀团 · 订单明细'}
         </Text>
+        <View className="bg-white rounded-full px-4 py-2 flex flex-row items-center gap-1 shadow-sm" onClick={() => setShowFilter(!showFilter)}>
+          <Funnel size={16} color="#FF4757" />
+          <Text className="block text-[#FF4757] text-sm font-medium">筛选</Text>
+        </View>
       </View>
 
       {/* 筛选面板 */}
       {showFilter && (
-        <View className="bg-white mx-4 -mt-2 rounded-xl p-4 shadow-sm relative z-10">
+        <View className="bg-white mx-4 mt-3 rounded-xl p-4 shadow-sm relative z-10">
           <Text className="block text-sm font-semibold text-gray-800 mb-3">日期筛选</Text>
           <View className="flex flex-row gap-3 mb-3">
             <View className="flex-1">
@@ -201,7 +191,7 @@ export default function OrderDetailsPage() {
             <Button variant="outline" className="flex-1" onClick={handleClearFilter}>
               <Text className="text-sm">清除</Text>
             </Button>
-            <Button className="flex-1 bg-blue-500" onClick={handleApplyFilter}>
+            <Button className="flex-1 bg-[#FF4757]" onClick={handleApplyFilter}>
               <Text className="text-sm text-white">应用</Text>
             </Button>
           </View>
@@ -254,7 +244,7 @@ export default function OrderDetailsPage() {
                         用户：{order.nick_name || '匿名用户'} · {order.quantity || 1}份
                       </Text>
                       {order.verification_code && (
-                        <Text className="block text-xs text-blue-500 mt-1">
+                        <Text className="block text-xs text-[#FF4757] mt-1">
                           核销码：{order.verification_code}
                         </Text>
                       )}

@@ -222,7 +222,7 @@ const ProfileEditPage = () => {
               <User size={40} color="#D1D5DB" />
             </View>
           )}
-          <View className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-red-500 flex items-center justify-center border-2 border-white">
+          <View className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#FF4757] flex items-center justify-center border-2 border-white">
             <Camera size={14} color="#FFFFFF" />
           </View>
         </View>
@@ -273,7 +273,7 @@ const ProfileEditPage = () => {
                 }`}
                 onClick={() => setGender(opt.value)}
               >
-                <Text className={`text-sm font-medium ${gender === opt.value ? 'text-red-500' : 'text-gray-500'}`}>
+                <Text className={`text-sm font-medium ${gender === opt.value ? 'text-[#FF4757]' : 'text-gray-500'}`}>
                   {opt.label}
                 </Text>
               </View>
@@ -299,7 +299,7 @@ const ProfileEditPage = () => {
       {/* 保存按钮 */}
       <View className="mx-4 mt-6 mb-8">
         <Button
-          className="w-full bg-red-500 text-white rounded-full py-3 border-0"
+          className="w-full bg-[#FF4757] text-white rounded-full py-3 border-0"
           disabled={saving}
           onClick={handleSave}
         >

@@ -3,8 +3,6 @@ import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import {
-  ArrowLeft,
-  Share2,
   Phone,
   Clock,
   Check,
@@ -127,14 +125,6 @@ export default function PackageDetail() {
     } catch (err) {
       console.error('加载商家失败:', err)
     }
-  }
-
-  const handleBack = () => {
-    Taro.navigateBack()
-  }
-
-  const handleShare = () => {
-    Taro.showToast({ title: '分享功能开发中', icon: 'none' })
   }
 
   const [buying, setBuying] = useState(false)
@@ -350,18 +340,6 @@ export default function PackageDetail() {
 
   return (
     <View className="min-h-screen bg-gray-50 pb-24">
-      {/* 顶部导航 */}
-      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-        <View onClick={handleBack} className="p-2 bg-white rounded-full" style={{ opacity: 0.8 }}>
-          <ArrowLeft size={20} color="#333" />
-        </View>
-        <View className="flex flex-row gap-2">
-          <View onClick={handleShare} className="p-2 bg-white rounded-full" style={{ opacity: 0.8 }}>
-            <Share2 size={20} color="#333" />
-          </View>
-        </View>
-      </View>
-
       <ScrollView scrollY className="h-screen">
         {/* 头图轮播 */}
         <View className="w-full h-64 bg-gray-200 relative">
@@ -468,8 +446,8 @@ export default function PackageDetail() {
                 <View className="flex flex-row items-center gap-2 mb-2">
                   <Text className="block text-base font-bold text-gray-800">{combo.name}</Text>
                   {combo.select_count > 0 && combo.items.length > 0 && (
-                    <View className="bg-orange-50 px-2 py-1 rounded">
-                      <Text className="block text-xs text-orange-600">
+                    <View className="bg-red-50 px-2 py-1 rounded">
+                      <Text className="block text-xs text-[#FF4757]">
                         {combo.items.length}选{combo.select_count}
                       </Text>
                     </View>
@@ -784,7 +762,7 @@ export default function PackageDetail() {
         <View className="flex flex-row items-end gap-3">
           <View className="flex flex-col">
             <Text className="block text-xs text-gray-500">到手价</Text>
-            <Text className="block text-xl font-bold text-red-500">¥{currentPrice.toFixed(0)}</Text>
+            <Text className="block text-xl font-bold text-[#FF4757]">¥{currentPrice.toFixed(0)}</Text>
           </View>
           {originalPrice > currentPrice && (
             <Text className="block text-sm text-gray-400 line-through pb-1">¥{originalPrice.toFixed(0)}</Text>
@@ -792,7 +770,7 @@ export default function PackageDetail() {
         </View>
         <View
           onClick={handleBuy}
-          className={`px-8 py-3 rounded-full ${buying ? 'bg-red-300' : 'bg-red-500'}`}
+          className={`px-8 py-3 rounded-full ${buying ? 'bg-[#ffaab3]' : 'bg-[#FF4757]'}`}
         >
           <Text className="block text-base font-semibold text-white">
             {buying ? '购买中...' : '立即购买'}
@@ -826,7 +804,7 @@ export default function PackageDetail() {
               <View className="flex-1">
                 <Text className="block text-sm font-semibold text-gray-900 leading-5">{pkg.name}</Text>
                 <View className="flex flex-row items-end gap-2 mt-1">
-                  <Text className="block text-lg font-bold text-red-500">¥{pkg.price}</Text>
+                  <Text className="block text-lg font-bold text-[#FF4757]">¥{pkg.price}</Text>
                   {pkg.original_price && parseFloat(String(pkg.original_price)) > parseFloat(String(pkg.price)) && (
                     <Text className="block text-xs text-gray-400 line-through pb-1">¥{pkg.original_price}</Text>
                   )}
@@ -847,7 +825,7 @@ export default function PackageDetail() {
                 <Text className="block text-base font-bold text-gray-900 w-8 text-center">{quantity}</Text>
                 <View
                   onClick={() => handleQuantityChange(1)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${checkResult && !checkResult.can_buy && quantity >= (checkResult.remaining || 1) ? 'bg-gray-100' : 'bg-red-500'}`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${checkResult && !checkResult.can_buy && quantity >= (checkResult.remaining || 1) ? 'bg-gray-100' : 'bg-[#FF4757]'}`}
                 >
                   <Plus size={16} color={checkResult && !checkResult.can_buy && quantity >= (checkResult.remaining || 1) ? '#d1d5db' : '#ffffff'} />
                 </View>
@@ -878,7 +856,7 @@ export default function PackageDetail() {
             {/* 校验结果提示 */}
             {checkResult && !checkResult.can_buy && (
               <View className="bg-red-50 rounded-lg px-3 py-2 mt-2">
-                <Text className="block text-xs text-red-500">{checkResult.reason}</Text>
+                <Text className="block text-xs text-[#FF4757]">{checkResult.reason}</Text>
               </View>
             )}
 
@@ -886,11 +864,11 @@ export default function PackageDetail() {
             <View className="flex flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100">
               <View>
                 <Text className="block text-xs text-gray-500">合计</Text>
-                <Text className="block text-xl font-bold text-red-500">¥{(parseFloat(String(pkg.price)) * quantity).toFixed(2)}</Text>
+                <Text className="block text-xl font-bold text-[#FF4757]">¥{(parseFloat(String(pkg.price)) * quantity).toFixed(2)}</Text>
               </View>
               <View
                 onClick={handleConfirmBuy}
-                className={`px-8 py-3 rounded-full ${buying || checking || (checkResult && !checkResult.can_buy) ? 'bg-gray-300' : 'bg-red-500'}`}
+                className={`px-8 py-3 rounded-full ${buying || checking || (checkResult && !checkResult.can_buy) ? 'bg-gray-300' : 'bg-[#FF4757]'}`}
               >
                 <Text className="block text-base font-semibold text-white">
                   {buying ? '提交中...' : checking ? '校验中...' : '确认购买'}
@@ -914,7 +892,7 @@ export default function PackageDetail() {
             {/* 按钮组 */}
             <View className="flex flex-col gap-3 w-full">
               <View
-                className="w-full bg-red-500 rounded-full py-3 flex items-center justify-center"
+                className="w-full bg-[#FF4757] rounded-full py-3 flex items-center justify-center"
                 onClick={() => {
                   setShowLotteryEntry(false)
                   Taro.navigateTo({ url: `/pages/order-detail/index?id=${paidOrderId}` })

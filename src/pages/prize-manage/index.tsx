@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash2, Gift, ChevronLeft } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -152,22 +152,10 @@ export default function PrizeManagePage() {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 头部 */}
-      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-4 flex flex-row items-center justify-between">
-        <View className="flex flex-row items-center gap-2" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={20} color="#ffffff" />
-          <Text className="block text-white text-base font-semibold">奖品管理</Text>
-        </View>
-        <View className="bg-white rounded-full px-4 py-2 flex flex-row items-center" onClick={openCreatePrize}>
-          <Plus size={16} color="#3b82f6" />
-          <Text className="block text-blue-500 text-sm font-medium ml-1">新建奖品</Text>
-        </View>
-      </View>
-
       {/* 总概率提示 */}
       <View className="px-4 mt-3">
-        <View className="bg-orange-50 border border-orange-200 rounded-xl p-3">
-          <Text className="block text-xs text-orange-600">
+        <View className="bg-red-50 border border-red-200 rounded-xl p-3">
+          <Text className="block text-xs text-[#FF4757]">
             总概率: <Text className="font-bold">{prizes.filter(p => p.is_active).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
             （建议总概率保持 100%，确保100%中奖）
           </Text>
@@ -205,20 +193,20 @@ export default function PrizeManagePage() {
                     )}
                     <View className="flex flex-row items-center gap-4 mt-2">
                       <Text className="block text-xs text-gray-400">
-                        概率: <Text className="text-red-500 font-semibold">{prize.probability}%</Text>
+                        概率: <Text className="text-[#FF4757] font-semibold">{prize.probability}%</Text>
                       </Text>
                       <Text className="block text-xs text-gray-400">
                         库存: <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
                       </Text>
                       {prize.prize_type === 'coupon' && (
                         <Text className="block text-xs text-gray-400">
-                          金额: <Text className="text-red-500 font-semibold">¥{prize.coupon_amount}</Text>
+                          金额: <Text className="text-[#FF4757] font-semibold">¥{prize.coupon_amount}</Text>
                           {Number(prize.coupon_min_spend) > 0 && ` 满${prize.coupon_min_spend}可用`}
                         </Text>
                       )}
                       {prize.prize_type === 'product' && (
                         <Text className="block text-xs text-gray-400">
-                          价值: <Text className="text-blue-500 font-semibold">¥{prize.product_value}</Text>
+                          价值: <Text className="text-[#FF4757] font-semibold">¥{prize.product_value}</Text>
                         </Text>
                       )}
                     </View>
@@ -243,6 +231,18 @@ export default function PrizeManagePage() {
         )}
       </View>
 
+      {/* 底部新建奖品按钮 */}
+      <View style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        padding: '12px 16px', backgroundColor: '#fff', borderTop: '1px solid #f3f4f6', zIndex: 100
+      }}
+      >
+        <View className="bg-[#FF4757] rounded-full py-3 flex flex-row items-center justify-center gap-1" onClick={openCreatePrize}>
+          <Plus size={18} color="#ffffff" />
+          <Text className="block text-white text-base font-semibold">新建奖品</Text>
+        </View>
+      </View>
+
       {/* 编辑弹窗 */}
       {showDialog && (
         <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -262,7 +262,7 @@ export default function PrizeManagePage() {
                   <Text className="block text-sm text-black mb-2">奖品模式</Text>
                   <View className="flex flex-row gap-2">
                     {PRIZE_TYPE_OPTIONS.map((opt) => (
-                      <View key={opt.value} className={`flex-1 rounded-xl px-3 py-2 border text-center ${prizeForm.prize_type === opt.value ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white'}`} onClick={() => setPrizeForm({ ...prizeForm, prize_type: opt.value })}>
+                      <View key={opt.value} className={`flex-1 rounded-xl px-3 py-2 border text-center ${prizeForm.prize_type === opt.value ? 'border-[#FF4757] bg-red-50' : 'border-gray-200 bg-white'}`} onClick={() => setPrizeForm({ ...prizeForm, prize_type: opt.value })}>
                         <Text className={`block text-sm ${prizeForm.prize_type === opt.value ? 'text-red-600 font-medium' : 'text-gray-600'}`}>{opt.label}</Text>
                       </View>
                     ))}
@@ -328,7 +328,7 @@ export default function PrizeManagePage() {
               <Button variant="outline" className="flex-1" onClick={() => setShowDialog(false)}>
                 <Text className="block text-sm">取消</Text>
               </Button>
-              <Button className="flex-1 bg-red-500" onClick={handleSavePrize}>
+              <Button className="flex-1 bg-[#FF4757]" onClick={handleSavePrize}>
                 <Text className="block text-white text-sm">{editingPrize ? '保存' : '创建'}</Text>
               </Button>
             </View>
