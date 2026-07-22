@@ -74,12 +74,17 @@ const IndexPage = () => {
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
   const [showLottery, setShowLottery] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'hot' | 'new'>('all');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [canAccessAdmin, setCanAccessAdmin] = useState(false);
 
   // 读取缓存用户ID
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
+    setIsLoggedIn(Taro.getStorageSync('is_logged_in') === true);
+    const roleCode = Taro.getStorageSync('role_code');
+    setCanAccessAdmin(roleCode === 1 || roleCode === 2);
     if (savedUserId) {
       setUserId(savedUserId);
       if (savedNickName) setNickName(savedNickName);
@@ -101,6 +106,13 @@ const IndexPage = () => {
 
   // 页面每次显示时刷新数据（下单后返回自动更新销量）
   useDidShow(() => {
+    // 同步最新登录状态（登录页返回后更新头部显示）
+    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
+    setIsLoggedIn(loggedIn);
+    const savedNickName = Taro.getStorageSync('nick_name');
+    const savedAvatar = Taro.getStorageSync('avatar_url');
+    if (savedNickName) setNickName(savedNickName);
+    if (savedAvatar) setAvatarUrl(savedAvatar);
     if (!userId) return;
     fetchPrizes();
     fetchPackages();
@@ -137,17 +149,12 @@ const IndexPage = () => {
     }
   };
 
-  // 微信登录获取用户信息
-  const handleLogin = async () => {
-    try {
-      const res = await Taro.getUserProfile({ desc: '用于展示用户信息', lang: 'zh_CN' });
-      const { nickName: name, avatarUrl: avatar } = res.userInfo;
-      setNickName(name);
-      setAvatarUrl(avatar);
-      Taro.setStorageSync('nick_name', name);
-      Taro.setStorageSync('avatar_url', avatar);
-    } catch (err) {
-      console.log('用户取消授权:', err);
+  // 用户区域点击：已登录进个人中心，未登录跳登录页
+  const handleUserBarClick = () => {
+    if (isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/user-center/index' });
+    } else {
+      Taro.navigateTo({ url: '/pages/login/index' });
     }
   };
 
@@ -201,13 +208,15 @@ const IndexPage = () => {
               <Text className="block text-lg font-bold text-white">膨胀团</Text>
             </View>
             <View className="flex flex-row items-center gap-2">
-              <View
-                className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-1"
-                onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
-              >
-                <LayoutDashboard size={13} color="#fff" />
-                <Text className="block text-xs text-white">管理</Text>
-              </View>
+              {canAccessAdmin && (
+                <View
+                  className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-1"
+                  onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
+                >
+                  <LayoutDashboard size={13} color="#fff" />
+                  <Text className="block text-xs text-white">管理</Text>
+                </View>
+              )}
               <View
                 className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-1"
                 onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
@@ -221,15 +230,9 @@ const IndexPage = () => {
           {/* 第二行：用户信息 */}
           <View
             className="flex flex-row items-center gap-3"
-            onClick={() => {
-              if (avatarUrl) {
-                Taro.navigateTo({ url: '/pages/user-center/index' });
-              } else {
-                handleLogin();
-              }
-            }}
+            onClick={handleUserBarClick}
           >
-            {avatarUrl ? (
+            {isLoggedIn && avatarUrl ? (
               <Image src={avatarUrl} className="w-12 h-12 rounded-full border-2 border-white" mode="aspectFill" />
             ) : (
               <View className="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center border-2 border-white border-opacity-40">
@@ -237,8 +240,8 @@ const IndexPage = () => {
               </View>
             )}
             <View className="flex-1">
-              <Text className="block text-base font-semibold text-white">{nickName}</Text>
-              {!avatarUrl ? (
+              <Text className="block text-base font-semibold text-white">{isLoggedIn ? nickName : '游客'}</Text>
+              {!isLoggedIn ? (
                 <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>点击登录，享受更多优惠</Text>
               ) : (
                 <View className="flex flex-row items-center gap-1 mt-1">
