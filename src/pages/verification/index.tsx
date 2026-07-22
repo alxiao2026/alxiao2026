@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScanLine, ClipboardList, FileText, RotateCcw, MessageSquare, Store, Search, ChevronRight } from 'lucide-react-taro';
+import { ScanLine, ClipboardList, FileText, RotateCcw, MessageSquare, Store, Search, ChevronRight, ListOrdered } from 'lucide-react-taro';
 
 interface OrderItem {
   id: string;
@@ -188,6 +188,7 @@ export default function VerificationPage() {
   };
 
   const menuItems = [
+    { icon: ListOrdered, label: '订单明细', color: '#3b82f6', bg: '#eff6ff', action: () => Taro.navigateTo({ url: '/pages/order-details/index' }) },
     { icon: ClipboardList, label: '预约处理', color: '#3b82f6', bg: '#eff6ff', action: () => fetchOrders('paid') },
     { icon: FileText, label: '核销明细', color: '#3b82f6', bg: '#eff6ff', action: () => fetchOrders('used') },
     { icon: RotateCcw, label: '处理售后', color: '#f59e0b', bg: '#fffbeb', action: () => fetchOrders('refunded') },

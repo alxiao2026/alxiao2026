@@ -13,7 +13,8 @@ export default defineAppConfig({
     'pages/verification/index',
     'pages/product-manage/index',
     'pages/prize-manage/index',
-    'pages/lottery-settings/index'
+    'pages/lottery-settings/index',
+    'pages/order-details/index'
   ],
   window: {
     backgroundTextStyle: 'light',

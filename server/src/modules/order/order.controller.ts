@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, HttpCode } from '@nestjs/common';
 import { OrderService, Order } from './order.service';
 
 @Controller('orders')
@@ -6,7 +6,11 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get()
-  async findAll(): Promise<{ code: number; data: Order[] }> {
+  async findAll(@Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string): Promise<{ code: number; data: Order[] }> {
+    if (merchantId) {
+      const data = await this.orderService.findByMerchant(merchantId, status, startDate, endDate);
+      return { code: 200, data };
+    }
     const data = await this.orderService.findAll();
     return { code: 200, data };
   }

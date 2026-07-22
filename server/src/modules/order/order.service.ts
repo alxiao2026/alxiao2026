@@ -52,6 +52,39 @@ function localTimeStr(d: Date): string {
 export class OrderService {
   private client = getSupabaseClient();
 
+  async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string): Promise<Order[]> {
+    // 先查该商家的所有套餐ID
+    const { data: packages, error: pkgError } = await this.client
+      .from('packages')
+      .select('id')
+      .eq('merchant_id', merchantId);
+    if (pkgError) throw new Error(`查询商家套餐失败: ${pkgError.message}`);
+    const packageIds = (packages || []).map((p: any) => p.id);
+    if (packageIds.length === 0) return [];
+
+    let query = this.client
+      .from('orders')
+      .select('*')
+      .in('package_id', packageIds)
+      .order('created_at', { ascending: false });
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+    if (startDate) {
+      query = query.gte('created_at', `${startDate}T00:00:00`);
+    }
+    if (endDate) {
+      query = query.lte('created_at', `${endDate}T23:59:59`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(`查询商家订单失败: ${error.message}`);
+    const orders = (data as Order[]) || [];
+    await this.refundExpiredOrders(orders);
+    return orders;
+  }
+
   async findAll(): Promise<Order[]> {
     const { data, error } = await this.client
       .from('orders')
