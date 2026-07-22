@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Picker } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -140,31 +140,21 @@ export default function OrderDetailsPage() {
           <View className="flex flex-row gap-3 mb-3">
             <View className="flex-1">
               <Text className="block text-xs text-gray-500 mb-1">开始日期</Text>
-              <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
-                <Calendar size={14} color="#9ca3af" />
-                <Text className="block text-sm text-gray-700">{startDate || '选择日期'}</Text>
-              </View>
-              <input
-                type="date"
-                className="absolute opacity-0 w-full h-full top-0 left-0"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0 }}
-              />
+              <Picker mode="date" value={startDate} onChange={(e) => setStartDate(e.detail.value as string)}>
+                <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+                  <Calendar size={14} color="#9ca3af" />
+                  <Text className="block text-sm text-gray-700">{startDate || '选择日期'}</Text>
+                </View>
+              </Picker>
             </View>
             <View className="flex-1">
               <Text className="block text-xs text-gray-500 mb-1">结束日期</Text>
-              <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
-                <Calendar size={14} color="#9ca3af" />
-                <Text className="block text-sm text-gray-700">{endDate || '选择日期'}</Text>
-              </View>
-              <input
-                type="date"
-                className="absolute opacity-0 w-full h-full top-0 left-0"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0 }}
-              />
+              <Picker mode="date" value={endDate} onChange={(e) => setEndDate(e.detail.value as string)}>
+                <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+                  <Calendar size={14} color="#9ca3af" />
+                  <Text className="block text-sm text-gray-700">{endDate || '选择日期'}</Text>
+                </View>
+              </Picker>
             </View>
           </View>
           <View className="flex flex-row gap-2">
