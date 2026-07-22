@@ -1,5 +1,5 @@
 import { View, Text, Image, Picker } from '@tarojs/components'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Taro, { useDidShow, useDidHide } from '@tarojs/taro'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
@@ -245,6 +245,26 @@ export default function PackageAdmin() {
     fileSize: number
   }>({ visible: false, imagePath: '', fileSize: 0 })
 
+  // 用 ref 追踪最新状态，确保选图/页面隐藏时能拿到最新值（避免闭包捕获过期状态）
+  const stateRef = useRef({
+    formData,
+    featureItems,
+    combinations,
+    currentStep,
+    packageType,
+    selectedMerchant,
+  })
+  useEffect(() => {
+    stateRef.current = {
+      formData,
+      featureItems,
+      combinations,
+      currentStep,
+      packageType,
+      selectedMerchant,
+    }
+  }, [formData, featureItems, combinations, currentStep, packageType, selectedMerchant])
+
   useEffect(() => {
     if (id) {
       fetchPackage(id)
@@ -256,20 +276,22 @@ export default function PackageAdmin() {
   }, [id])
 
   // 同步保存草稿（立即执行，无防抖，用于页面隐藏/选图前等关键时机）
+  // 使用 stateRef 获取最新状态，避免闭包捕获过期值
   const saveDraftNow = useCallback(() => {
     if (id) return
     try {
-      const hasData = formData.name || formData.category || formData.price ||
-                     featureItems.length > 0 || combinations.length > 0 ||
-                     selectedMerchant || formData.cover_image
+      const s = stateRef.current
+      const hasData = s.formData.name || s.formData.category || s.formData.price ||
+                     s.featureItems.length > 0 || s.combinations.length > 0 ||
+                     s.selectedMerchant || s.formData.cover_image
       if (hasData) {
         const draft = {
-          formData,
-          featureItems,
-          combinations,
-          currentStep,
-          packageType,
-          selectedMerchant,
+          formData: s.formData,
+          featureItems: s.featureItems,
+          combinations: s.combinations,
+          currentStep: s.currentStep,
+          packageType: s.packageType,
+          selectedMerchant: s.selectedMerchant,
           savedAt: Date.now()
         }
         Taro.setStorageSync('package_draft', JSON.stringify(draft))
@@ -277,7 +299,7 @@ export default function PackageAdmin() {
     } catch (e) {
       console.error('同步保存草稿失败:', e)
     }
-  }, [formData, featureItems, combinations, currentStep, packageType, selectedMerchant, id])
+  }, [id])
 
   // 页面隐藏时立即保存草稿（防止选图/切后台导致页面销毁后状态丢失）
   useDidHide(() => {
