@@ -11,6 +11,8 @@ export interface CreateMerchantDto {
   description?: string;
   latitude?: string;
   longitude?: string;
+  admin_phone: string;
+  admin_password: string;
 }
 
 export interface UpdateMerchantDto {
@@ -65,6 +67,8 @@ export class MerchantService {
 
   async create(body: CreateMerchantDto): Promise<Merchant> {
     if (!body.name) throw new BadRequestException('商家名称不能为空');
+    if (!body.admin_phone) throw new BadRequestException('管理员手机号不能为空');
+    if (!body.admin_password) throw new BadRequestException('管理员登录密码不能为空');
 
     const { data, error } = await this.client
       .from('merchants')
@@ -81,7 +85,45 @@ export class MerchantService {
       .single();
 
     if (error) throw new Error(`创建商家失败：${error.message}`);
-    return data as Merchant;
+    const merchant = data as Merchant;
+
+    // 创建商家管理员账号
+    try {
+      const { data: userData, error: userError } = await this.client
+        .from('users')
+        .insert({
+          user_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          nick_name: `${body.name}管理员`,
+          avatar_url: null,
+          phone: body.admin_phone,
+          password: body.admin_password,
+          role: 'merchant',
+          merchant_id: merchant.id,
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        console.error('[Merchant] 创建管理员账号失败:', userError.message);
+        // 如果手机号已存在，尝试更新该用户
+        if (userError.message.includes('unique') || userError.message.includes('duplicate')) {
+          await this.client
+            .from('users')
+            .update({
+              password: body.admin_password,
+              role: 'merchant',
+              merchant_id: merchant.id,
+            })
+            .eq('phone', body.admin_phone);
+        }
+      } else {
+        console.log(`[Merchant] 商家管理员账号创建成功: ${body.admin_phone} -> merchant_id=${merchant.id}`);
+      }
+    } catch (e: any) {
+      console.error('[Merchant] 创建管理员账号异常:', e.message);
+    }
+
+    return merchant;
   }
 
   async update(id: number, body: UpdateMerchantDto): Promise<Merchant> {

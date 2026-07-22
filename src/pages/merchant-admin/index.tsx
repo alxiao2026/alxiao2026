@@ -45,6 +45,8 @@ export default function MerchantAdmin() {
     description: '',
     latitude: '',
     longitude: '',
+    admin_phone: '',
+    admin_password: '',
   });
 
   useEffect(() => {
@@ -78,6 +80,8 @@ export default function MerchantAdmin() {
       description: '',
       latitude: '',
       longitude: '',
+      admin_phone: '',
+      admin_password: '',
     });
     setShowForm(true);
   };
@@ -94,6 +98,8 @@ export default function MerchantAdmin() {
       description: merchant.description || '',
       latitude: merchant.latitude || '',
       longitude: merchant.longitude || '',
+      admin_phone: '',
+      admin_password: '',
     });
     // 解析营业时间
     if (merchant.business_hours) {
@@ -190,6 +196,26 @@ export default function MerchantAdmin() {
     if (formData.phone && !/^1\d{10}$/.test(formData.phone)) {
       Taro.showToast({ title: '请输入正确的11位手机号', icon: 'none' });
       return;
+    }
+
+    // 新增商家时验证管理员账号
+    if (!editingMerchant) {
+      if (!formData.admin_phone) {
+        Taro.showToast({ title: '请输入管理员手机号', icon: 'none' });
+        return;
+      }
+      if (!/^1\d{10}$/.test(formData.admin_phone)) {
+        Taro.showToast({ title: '请输入正确的11位管理员手机号', icon: 'none' });
+        return;
+      }
+      if (!formData.admin_password) {
+        Taro.showToast({ title: '请输入管理员登录密码', icon: 'none' });
+        return;
+      }
+      if (formData.admin_password.length < 6) {
+        Taro.showToast({ title: '密码长度至少6位', icon: 'none' });
+        return;
+      }
     }
 
     try {
@@ -396,6 +422,47 @@ export default function MerchantAdmin() {
                   <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
                 )}
               </View>
+
+              {/* 管理员手机号 - 仅新增商家时显示 */}
+              {!editingMerchant && (
+                <View className="mb-4">
+                  <Text className="block text-sm font-medium text-gray-800 mb-2">管理员手机号</Text>
+                  <Input
+                    className="w-full"
+                    placeholder="请输入管理员11位手机号"
+                    value={formData.admin_phone}
+                    onInput={(e) => setFormData({ ...formData, admin_phone: e.detail.value })}
+                    maxlength={11}
+                    type="number"
+                  />
+                  {formData.admin_phone && formData.admin_phone.length === 11 && (
+                    <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
+                  )}
+                  {formData.admin_phone && formData.admin_phone.length > 0 && formData.admin_phone.length < 11 && (
+                    <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
+                  )}
+                </View>
+              )}
+
+              {/* 管理员密码 - 仅新增商家时显示 */}
+              {!editingMerchant && (
+                <View className="mb-4">
+                  <Text className="block text-sm font-medium text-gray-800 mb-2">管理员登录密码</Text>
+                  <Input
+                    className="w-full"
+                    placeholder="请输入管理员登录密码（至少6位）"
+                    value={formData.admin_password}
+                    onInput={(e) => setFormData({ ...formData, admin_password: e.detail.value })}
+                    password
+                  />
+                  {formData.admin_password && formData.admin_password.length >= 6 && (
+                    <Text className="block text-xs text-green-600 mt-1">✓ 密码格式正确</Text>
+                  )}
+                  {formData.admin_password && formData.admin_password.length > 0 && formData.admin_password.length < 6 && (
+                    <Text className="block text-xs text-red-500 mt-1">密码长度至少6位</Text>
+                  )}
+                </View>
+              )}
 
               {/* 营业时间 */}
               <View className="mb-4">
