@@ -108,6 +108,31 @@ export class OrderService {
     return orders;
   }
 
+  /** 获取用户未参与抽奖的订单（paid 状态且无抽奖记录） */
+  async findUnparticipatedByUserId(userId: string): Promise<Order[]> {
+    // 1. 获取用户所有 paid 状态的订单
+    const { data: orders, error } = await this.client
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'paid')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`查询用户订单失败: ${error.message}`);
+    const allOrders = (orders as Order[]) || [];
+    if (allOrders.length === 0) return [];
+
+    // 2. 获取这些订单中已有抽奖记录的 order_id
+    const orderIds = allOrders.map(o => o.id);
+    const { data: records } = await this.client
+      .from('lottery_records')
+      .select('order_id')
+      .in('order_id', orderIds);
+    const participatedIds = new Set((records || []).map((r: any) => r.order_id));
+
+    // 3. 过滤出未参与抽奖的订单
+    return allOrders.filter(o => !participatedIds.has(o.id));
+  }
+
   async findOne(id: string): Promise<Order> {
     const { data, error } = await this.client
       .from('orders')

@@ -15,6 +15,12 @@ export class OrderController {
     return { code: 200, data };
   }
 
+  @Get('user/:userId/unparticipated')
+  async findUnparticipatedByUserId(@Param('userId') userId: string) {
+    const data = await this.orderService.findUnparticipatedByUserId(userId);
+    return { code: 200, data };
+  }
+
   @Get('user/:userId')
   async findByUserId(@Param('userId') userId: string): Promise<{ code: number; data: Order[] }> {
     const data = await this.orderService.findByUserId(userId);

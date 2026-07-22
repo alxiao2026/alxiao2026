@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ClipboardList, Wallet, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -97,6 +97,10 @@ const UserCenterPage = () => {
     Taro.navigateTo({ url });
   };
 
+  const goToLotteryRecords = () => {
+    Taro.navigateTo({ url: '/pages/lottery-records/index' });
+  };
+
   const goToProfileEdit = () => {
     Taro.navigateTo({ url: '/pages/profile-edit/index' });
   };
@@ -111,6 +115,12 @@ const UserCenterPage = () => {
   const level = memberLevelMap[profile?.member_level || 'normal'] || memberLevelMap.normal;
 
   const menuItems = [
+    {
+      icon: <Trophy size={20} color="#6B7280" />,
+      label: '中奖记录',
+      desc: '历史中奖 & 未参与订单',
+      onClick: goToLotteryRecords
+    },
     {
       icon: <Pencil size={20} color="#6B7280" />,
       label: '编辑资料',
@@ -169,7 +179,7 @@ const UserCenterPage = () => {
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50">
       {/* 顶部用户区域 */}
-      <View className="bg-gradient-to-br from-red-500 to-orange-500 px-5 pt-14 pb-8">
+      <View className="bg-red-500 px-5 pt-14 pb-8">
         <View className="flex items-center">
           {/* 头像 */}
           <View className="mr-4" onClick={avatarUrl ? goToProfileEdit : handleLogin}>
@@ -201,15 +211,6 @@ const UserCenterPage = () => {
               <Sparkles size={14} color="#FDE68A" />
               <Text className="text-amber-200 text-xs ml-1">积分：{profile?.points || 0}</Text>
             </View>
-          </View>
-
-          {/* 编辑按钮 */}
-          <View
-            className="bg-white bg-opacity-20 rounded-full px-4 py-2 flex items-center"
-            onClick={goToProfileEdit}
-          >
-            <Pencil size={14} color="#FFFFFF" />
-            <Text className="text-white text-xs ml-1">编辑</Text>
           </View>
         </View>
       </View>
