@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, ListFilter, ChevronDown, Ellipsis, Store } from 'lucide-react-taro';
+import { Search, ListFilter, ChevronDown, ChevronLeft, Ellipsis, Store } from 'lucide-react-taro';
 
 interface Package {
   id: string;
@@ -113,6 +113,14 @@ export default function ProductManagePage() {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 头部 */}
+      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-4">
+        <View className="flex flex-row items-center gap-2" onClick={() => Taro.navigateBack()}>
+          <ChevronLeft size={20} color="#ffffff" />
+          <Text className="block text-white text-base font-semibold">商品管理</Text>
+        </View>
+      </View>
+
+      {/* 标题与筛选区 */}
       <View className="bg-white px-4 pt-4 pb-3">
         <View className="flex flex-row items-center justify-between mb-3">
           <Text className="block text-lg font-bold text-gray-800">团购商品</Text>
@@ -262,10 +270,7 @@ export default function ProductManagePage() {
 
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'row', padding: '12px', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', zIndex: 100 }}>
-        <View className="flex-1 bg-gray-100 rounded-xl py-3 flex items-center justify-center">
-          <Text className="block text-sm text-gray-700 font-medium">爆款商机</Text>
-        </View>
-        <View className="ml-3 flex-1 bg-blue-500 rounded-xl py-3 flex items-center justify-center" onClick={() => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
+        <View className="flex-1 bg-blue-500 rounded-xl py-3 flex items-center justify-center" onClick={() => Taro.navigateTo({ url: '/pages/package-admin/index' })}>
           <Text className="block text-white text-sm font-bold">创建商品</Text>
         </View>
       </View>

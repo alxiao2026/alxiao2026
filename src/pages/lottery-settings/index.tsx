@@ -4,7 +4,6 @@ import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ChevronLeft } from 'lucide-react-taro';
 
@@ -53,14 +52,14 @@ export default function LotterySettingsPage() {
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 头部 */}
-      <View className="bg-white px-4 pt-4 pb-3 flex flex-row items-center justify-between">
+      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-4 flex flex-row items-center justify-between">
         <View className="flex flex-row items-center gap-2" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={20} color="#374151" />
-          <Text className="block text-lg font-bold text-gray-800">抽奖设置</Text>
+          <ChevronLeft size={20} color="#ffffff" />
+          <Text className="block text-white text-base font-semibold">抽奖设置</Text>
         </View>
-        <Button onClick={handleSave} disabled={saving}>
-          <Text className="text-sm">{saving ? '保存中...' : '保存设置'}</Text>
-        </Button>
+        <View className="bg-white rounded-full px-4 py-2 flex flex-row items-center" onClick={() => { if (!saving) handleSave(); }}>
+          <Text className="block text-blue-500 text-sm font-medium">{saving ? '保存中...' : '保存设置'}</Text>
+        </View>
       </View>
 
       <ScrollView scrollY className="px-4 pt-3 pb-20">
