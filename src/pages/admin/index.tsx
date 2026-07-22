@@ -1,4 +1,4 @@
-import { View, Text, Image } from '@tarojs/components';
+import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
@@ -899,13 +899,16 @@ const AdminPage = () => {
       {/* 编辑弹窗 */}
       {showDialog && (
         <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
-            <Text className="block text-lg font-bold text-black mb-4">
-              {activeTab === 'prizes'
-                ? (editingPrize ? '编辑奖品' : '添加奖品')
-                : (editingPackage ? '编辑套餐' : '添加套餐')}
-            </Text>
+          <View className="bg-white rounded-2xl w-full max-w-sm" style={{ display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
+            <View className="px-6 pt-6 pb-2">
+              <Text className="block text-lg font-bold text-black">
+                {activeTab === 'prizes'
+                  ? (editingPrize ? '编辑奖品' : '添加奖品')
+                  : (editingPackage ? '编辑套餐' : '添加套餐')}
+              </Text>
+            </View>
 
+            <ScrollView scrollY style={{ flex: 1 }} className="px-6">
             {activeTab === 'prizes' ? (
               /* 奖品表单 */
               <View className="space-y-4">
@@ -1137,8 +1140,9 @@ const AdminPage = () => {
                 </View>
               </View>
             )}
+            </ScrollView>
 
-            <View className="flex flex-row gap-3 mt-6">
+            <View className="flex flex-row gap-3 px-6 py-4 border-t border-gray-100">
               <View className="flex-1">
                 <Button variant="outline" className="w-full" onClick={closeDialog}>
                   <Text className="block text-sm">取消</Text>
