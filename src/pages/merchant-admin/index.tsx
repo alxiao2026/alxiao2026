@@ -440,46 +440,41 @@ export default function MerchantAdmin() {
                 )}
               </View>
 
-              {/* 管理员手机号 - 仅新增商家时显示 */}
-              {!editingMerchant && (
-                <View className="mb-4">
-                  <Text className="block text-sm font-medium text-gray-800 mb-2">管理员手机号</Text>
-                  <Input
-                    className="w-full"
-                    placeholder="请输入管理员11位手机号"
-                    value={formData.admin_phone}
-                    onInput={(e) => setFormData({ ...formData, admin_phone: e.detail.value })}
-                    maxlength={11}
-                    type="number"
-                  />
-                  {formData.admin_phone && formData.admin_phone.length === 11 && (
-                    <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
-                  )}
-                  {formData.admin_phone && formData.admin_phone.length > 0 && formData.admin_phone.length < 11 && (
-                    <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
-                  )}
-                </View>
-              )}
+              {/* 管理员手机号 */}
+              <View className="mb-4">
+                <Text className="block text-sm font-medium text-gray-800 mb-2">管理员手机号</Text>
+                <Input
+                  className="w-full"
+                  placeholder="请输入管理员11位手机号"
+                  value={formData.admin_phone}
+                  onInput={(e) => setFormData({ ...formData, admin_phone: e.detail.value })}
+                  maxlength={11}
+                  type="number"
+                />
+                {formData.admin_phone && formData.admin_phone.length === 11 && (
+                  <Text className="block text-xs text-green-600 mt-1">✓ 手机号格式正确</Text>
+                )}
+                {formData.admin_phone && formData.admin_phone.length > 0 && formData.admin_phone.length < 11 && (
+                  <Text className="block text-xs text-red-500 mt-1">请输入11位手机号</Text>
+                )}
+              </View>
 
-              {/* 管理员密码 - 仅新增商家时显示 */}
-              {!editingMerchant && (
-                <View className="mb-4">
-                  <Text className="block text-sm font-medium text-gray-800 mb-2">管理员登录密码</Text>
-                  <Input
-                    className="w-full"
-                    placeholder="请输入管理员登录密码（至少6位）"
-                    value={formData.admin_password}
-                    onInput={(e) => setFormData({ ...formData, admin_password: e.detail.value })}
-                    password
-                  />
-                  {formData.admin_password && formData.admin_password.length >= 6 && (
-                    <Text className="block text-xs text-green-600 mt-1">✓ 密码格式正确</Text>
-                  )}
-                  {formData.admin_password && formData.admin_password.length > 0 && formData.admin_password.length < 6 && (
-                    <Text className="block text-xs text-red-500 mt-1">密码长度至少6位</Text>
-                  )}
-                </View>
-              )}
+              {/* 管理员密码 */}
+              <View className="mb-4">
+                <Text className="block text-sm font-medium text-gray-800 mb-2">管理员登录密码</Text>
+                <Input
+                  className="w-full"
+                  placeholder="请输入管理员登录密码（至少6位）"
+                  value={formData.admin_password}
+                  onInput={(e) => setFormData({ ...formData, admin_password: e.detail.value })}
+                />
+                {formData.admin_password && formData.admin_password.length >= 6 && (
+                  <Text className="block text-xs text-green-600 mt-1">✓ 密码格式正确</Text>
+                )}
+                {formData.admin_password && formData.admin_password.length > 0 && formData.admin_password.length < 6 && (
+                  <Text className="block text-xs text-red-500 mt-1">密码长度至少6位</Text>
+                )}
+              </View>
 
               {/* 营业时间 */}
               <View className="mb-4">
