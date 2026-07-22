@@ -1,6 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// 角色编码：0=普通消费者，1=商家用户，2=系统管理员
+export const ROLE_CONSUMER = 0;
+export const ROLE_MERCHANT = 1;
+export const ROLE_ADMIN = 2;
+
+export function roleToCode(role: string): number {
+  if (role === 'merchant') return ROLE_MERCHANT;
+  if (role === 'admin') return ROLE_ADMIN;
+  return ROLE_CONSUMER;
+}
+
+export interface UserPermissions {
+  role_code: number;
+  role: string;
+  merchant_id: number | null;
+  can_access_admin: boolean;      // 是否可访问管理后台（商家或管理员）
+  can_view_all_merchants: boolean; // 是否可查看全平台数据（仅管理员）
+  can_manage_own_store: boolean;   // 是否可管理本店（仅商家）
+}
+
 export interface User {
   id: string;
   user_id: string;
@@ -17,7 +37,7 @@ export interface User {
   total_orders: number;
   total_spent: string;
   is_active: boolean;
-  role: 'consumer' | 'merchant';
+  role: 'consumer' | 'merchant' | 'admin';
   merchant_id: number | null;
   last_login_at: string | null;
   created_at: string;
@@ -332,6 +352,29 @@ export class UserService {
     return (data || []) as MerchantInfo[];
   }
 
+  /** 获取用户权限信息（前端仅做显示/隐藏控制） */
+  async getUserPermissions(userId: string): Promise<UserPermissions> {
+    const supabase = getSupabaseClient();
+    const { data: user } = await supabase
+      .from('users')
+      .select('role, merchant_id')
+      .eq('user_id', userId)
+      .single();
+
+    const role = user?.role || 'consumer';
+    const merchantId = user?.merchant_id || null;
+    const roleCode = roleToCode(role);
+
+    return {
+      role_code: roleCode,
+      role,
+      merchant_id: merchantId,
+      can_access_admin: roleCode === ROLE_MERCHANT || roleCode === ROLE_ADMIN,
+      can_view_all_merchants: roleCode === ROLE_ADMIN,
+      can_manage_own_store: roleCode === ROLE_MERCHANT && merchantId !== null,
+    };
+  }
+
   /** 获取商家统计数据 */
   async getMerchantStats(userId: string): Promise<{
     totalSales: number;
@@ -373,12 +416,15 @@ export class UserService {
           .in('package_id', packageIds);
         orders = allOrders || [];
       }
-    } else {
-      // 非商家用户：返回全平台统计数据（管理后台通用视图）
+    } else if (user && user.role === 'admin') {
+      // 系统管理员：返回全平台统计数据
       const { data: allOrders } = await supabase
         .from('orders')
         .select('status, price, quantity, verified_count, created_at');
       orders = allOrders || [];
+    } else {
+      // 普通消费者：无权限查看商家统计，返回空数据
+      orders = [];
     }
 
     // 总售卖数据

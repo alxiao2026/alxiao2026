@@ -2,7 +2,7 @@ import { View, Text } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -11,36 +11,89 @@ const AdminPage = () => {
     todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
     todayVerifiedAmount: '0.00', todayVerifiedCount: 0
   });
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [merchantName, setMerchantName] = useState('');
+
+  const checkPermission = async () => {
+    try {
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+      if (!userId) {
+        setHasAccess(false);
+        return;
+      }
+      const res = await Network.request({ url: `/api/users/${userId}/permissions` });
+      const perms = (res.data as any)?.data;
+      if (!perms || !perms.can_access_admin) {
+        setHasAccess(false);
+        return;
+      }
+      setHasAccess(true);
+      // 获取门店名称
+      try {
+        const merchantRes = await Network.request({ url: `/api/users/${userId}/merchant` });
+        const merchant = (merchantRes.data as any)?.data;
+        if (merchant?.name) setMerchantName(merchant.name);
+      } catch { /* 非商家用户忽略 */ }
+    } catch (err) {
+      console.error('[Admin] 权限检查失败:', err);
+      setHasAccess(false);
+    }
+  };
 
   const fetchMerchantInfo = async () => {
     try {
       const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
       if (!userId) return;
-      const res = await Network.request({ url: `/api/users/${userId}/merchant` });
-      const merchant = (res.data as any)?.data;
-      if (!merchant) return;
-      try {
-        const statsRes = await Network.request({ url: `/api/users/${userId}/merchant-stats` });
-        const envelope = (statsRes as any)?.data || statsRes;
-        const statsData = envelope?.data || envelope;
-        if (statsData && typeof statsData === 'object' && 'totalSales' in statsData) {
-          setMerchantStats(statsData);
-        }
-      } catch (e) {
-        console.error('[fetchMerchantInfo] 获取商家统计失败:', e);
+      const statsRes = await Network.request({ url: `/api/users/${userId}/merchant-stats` });
+      const envelope = (statsRes as any)?.data || statsRes;
+      const statsData = envelope?.data || envelope;
+      if (statsData && typeof statsData === 'object' && 'totalSales' in statsData) {
+        setMerchantStats(statsData);
       }
-    } catch (err) {
-      console.log('当前用户非商家或未绑定门店');
+    } catch (e) {
+      console.error('[fetchMerchantInfo] 获取商家统计失败:', e);
     }
   };
 
   useEffect(() => {
-    fetchMerchantInfo();
+    checkPermission();
   }, []);
 
+  useEffect(() => {
+    if (hasAccess) fetchMerchantInfo();
+  }, [hasAccess]);
+
   useDidShow(() => {
-    fetchMerchantInfo();
+    if (hasAccess) fetchMerchantInfo();
   });
+
+  // 权限未确认时显示加载
+  if (hasAccess === null) {
+    return (
+      <View className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <Text className="block text-gray-400">加载中...</Text>
+      </View>
+    );
+  }
+
+  // 无权限访问
+  if (!hasAccess) {
+    return (
+      <View className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-8">
+        <View className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+          <Lock size={28} color="#9CA3AF" />
+        </View>
+        <Text className="block text-gray-800 text-lg font-semibold mb-2">无权限访问</Text>
+        <Text className="block text-gray-500 text-sm text-center mb-6">该功能仅对商家用户开放{'\n'}请使用商家管理员账号登录</Text>
+        <View
+          className="bg-blue-500 rounded-full px-8 py-3"
+          onClick={() => Taro.reLaunch({ url: '/pages/index/index' })}
+        >
+          <Text className="block text-white font-medium">返回首页</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="min-h-screen bg-gray-100">
@@ -52,7 +105,9 @@ const AdminPage = () => {
             <View className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
               <Store size={18} color="#ffffff" />
             </View>
-            <Text className="block text-white text-base font-semibold">膨胀团 · 管理后台</Text>
+            <Text className="block text-white text-base font-semibold">
+              {merchantName ? `${merchantName} · 管理后台` : '膨胀团 · 管理后台'}
+            </Text>
           </View>
           <View className="bg-white bg-opacity-20 rounded-full px-3 py-2" onClick={() => Taro.navigateTo({ url: '/pages/index/index' })}>
             <Text className="block text-white text-xs">去店员版 ›</Text>

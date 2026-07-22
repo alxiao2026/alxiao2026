@@ -28,16 +28,17 @@ const LoginPage = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const saveAndGoBack = (uid: string, name: string, avatar: string, role?: string, merchantId?: number) => {
+  const saveAndGoBack = (uid: string, name: string, avatar: string, role?: string, merchantId?: number, roleCode?: number) => {
     Taro.setStorageSync('user_id', uid);
     Taro.setStorageSync('is_logged_in', '1');
     Taro.setStorageSync('nick_name', name);
     Taro.setStorageSync('avatar_url', avatar);
     if (role) Taro.setStorageSync('user_role', role);
+    if (roleCode !== undefined) Taro.setStorageSync('role_code', String(roleCode));
     if (merchantId) Taro.setStorageSync('merchant_id', String(merchantId));
     Taro.showToast({ title: '登录成功', icon: 'success' });
     setTimeout(() => {
-      if (role === 'merchant') {
+      if (roleCode === 1 || roleCode === 2) {
         Taro.reLaunch({ url: '/pages/admin/index' });
       } else {
         Taro.navigateBack();
@@ -45,11 +46,11 @@ const LoginPage = () => {
     }, 800);
   };
 
-  const handleResponse = (res: { data?: { code?: number; data?: { user_id: string; nick_name: string; avatar_url: string; role?: string; merchant_id?: number } } }) => {
+  const handleResponse = (res: { data?: { code?: number; data?: { user_id: string; nick_name: string; avatar_url: string; role?: string; merchant_id?: number; role_code?: number } } }) => {
     console.log('[Login] response:', JSON.stringify(res.data));
     if (res.data?.code === 200 && res.data?.data) {
       const user = res.data.data;
-      saveAndGoBack(user.user_id, user.nick_name || '', user.avatar_url || '', user.role, user.merchant_id);
+      saveAndGoBack(user.user_id, user.nick_name || '', user.avatar_url || '', user.role, user.merchant_id, user.role_code);
     } else {
       Taro.showToast({ title: '登录失败，请重试', icon: 'none' });
     }

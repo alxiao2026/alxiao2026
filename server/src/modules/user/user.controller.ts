@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Param, Body, HttpCode, Query } from '@nestjs/common';
-import { UserService, UpdateUserBody } from './user.service';
+import { UserService, UpdateUserBody, roleToCode } from './user.service';
 
 @Controller('users')
 export class UserController {
@@ -20,7 +20,7 @@ export class UserController {
   async loginByPassword(@Body() body: { phone: string; password: string; nick_name?: string }) {
     console.log('[UserController] loginByPassword:', body.phone);
     const user = await this.userService.loginByPassword(body.phone, body.password, body.nick_name);
-    return { code: 200, msg: 'success', data: user };
+    return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
   /** 手机验证码登录 */
@@ -29,7 +29,7 @@ export class UserController {
   async loginBySms(@Body() body: { phone: string; code: string; nick_name?: string }) {
     console.log('[UserController] loginBySms:', body.phone);
     const user = await this.userService.loginBySms(body.phone, body.code, body.nick_name);
-    return { code: 200, msg: 'success', data: user };
+    return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
   /** 微信授权登录 */
@@ -98,6 +98,14 @@ export class UserController {
     console.log('[UserController] getMerchantList');
     const merchants = await this.userService.getMerchantList();
     return { code: 200, msg: 'success', data: merchants };
+  }
+
+  /** 获取用户权限信息（前端仅做显示/隐藏控制，不做权限判断） */
+  @Get(':userId/permissions')
+  async getUserPermissions(@Param('userId') userId: string) {
+    console.log('[UserController] getUserPermissions:', userId);
+    const permissions = await this.userService.getUserPermissions(userId);
+    return { code: 200, msg: 'success', data: permissions };
   }
 
   /** 获取商家统计数据 */

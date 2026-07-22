@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ClipboardList, Wallet, ChevronRight, ChevronLeft, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -29,6 +29,15 @@ interface UserStats {
   total_saved: string;
 }
 
+interface UserPermissions {
+  role_code: number;
+  role: string;
+  merchant_id: number | null;
+  can_access_admin: boolean;
+  can_view_all_merchants: boolean;
+  can_manage_own_store: boolean;
+}
+
 const UserCenterPage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -36,6 +45,7 @@ const UserCenterPage = () => {
   const [userId, setUserId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [nickName, setNickName] = useState('');
+  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
 
   const fetchProfile = useCallback(async (uid: string) => {
     try {
@@ -61,6 +71,18 @@ const UserCenterPage = () => {
     }
   }, []);
 
+  const fetchPermissions = useCallback(async (uid: string) => {
+    try {
+      const res = await Network.request({ url: `/api/users/${uid}/permissions` });
+      console.log('[UserCenter] permissions:', res.data);
+      if (res.data?.code === 200 && res.data?.data) {
+        setPermissions(res.data.data);
+      }
+    } catch (e) {
+      console.error('获取用户权限失败:', e);
+    }
+  }, []);
+
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
@@ -82,11 +104,11 @@ const UserCenterPage = () => {
         }
       }).catch((e) => console.error('用户登录失败:', e));
 
-      Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId)]).finally(() => setLoading(false));
+      Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId)]).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [fetchProfile, fetchStats]);
+  }, [fetchProfile, fetchStats, fetchPermissions]);
 
   const handleLogin = () => {
     Taro.navigateTo({ url: '/pages/login/index' });
@@ -114,7 +136,17 @@ const UserCenterPage = () => {
 
   const level = memberLevelMap[profile?.member_level || 'normal'] || memberLevelMap.normal;
 
+  const goToAdmin = () => {
+    Taro.navigateTo({ url: '/pages/admin/index' });
+  };
+
   const menuItems = [
+    ...(permissions?.can_access_admin ? [{
+      icon: <Store size={20} color="#6B7280" />,
+      label: '管理后台',
+      desc: permissions?.can_view_all_merchants ? '全平台数据管理' : '本店数据管理',
+      onClick: goToAdmin
+    }] : []),
     {
       icon: <Trophy size={20} color="#6B7280" />,
       label: '中奖记录',
@@ -316,12 +348,14 @@ const UserCenterPage = () => {
                   Taro.removeStorageSync('avatar_url');
                   Taro.removeStorageSync('is_logged_in');
                   Taro.removeStorageSync('user_role');
+                  Taro.removeStorageSync('role_code');
                   Taro.removeStorageSync('merchant_id');
                   setUserId('');
                   setProfile(null);
                   setStats(null);
                   setNickName('');
                   setAvatarUrl('');
+                  setPermissions(null);
                   Taro.showToast({ title: '已退出登录', icon: 'success' });
                 }
               }
