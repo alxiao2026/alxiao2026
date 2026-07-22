@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Calendar, Funnel } from 'lucide-react-taro';
 
+const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv());
+
 interface OrderItem {
   id: string;
   package_name: string;
@@ -140,21 +142,59 @@ export default function OrderDetailsPage() {
           <View className="flex flex-row gap-3 mb-3">
             <View className="flex-1">
               <Text className="block text-xs text-gray-500 mb-1">开始日期</Text>
-              <Picker mode="date" value={startDate} onChange={(e) => setStartDate(e.detail.value as string)}>
-                <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+              {isMiniApp ? (
+                <Picker mode="date" value={startDate} onChange={(e) => setStartDate(e.detail.value as string)}>
+                  <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+                    <Calendar size={14} color="#9ca3af" />
+                    <Text className="block text-sm text-gray-700">{startDate || '选择日期'}</Text>
+                  </View>
+                </Picker>
+              ) : (
+                <View
+                  className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'date';
+                    input.value = startDate;
+                    input.onchange = (e) => {
+                      const val = (e.target as HTMLInputElement).value;
+                      if (val) setStartDate(val);
+                    };
+                    input.click();
+                  }}
+                >
                   <Calendar size={14} color="#9ca3af" />
                   <Text className="block text-sm text-gray-700">{startDate || '选择日期'}</Text>
                 </View>
-              </Picker>
+              )}
             </View>
             <View className="flex-1">
               <Text className="block text-xs text-gray-500 mb-1">结束日期</Text>
-              <Picker mode="date" value={endDate} onChange={(e) => setEndDate(e.detail.value as string)}>
-                <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+              {isMiniApp ? (
+                <Picker mode="date" value={endDate} onChange={(e) => setEndDate(e.detail.value as string)}>
+                  <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">
+                    <Calendar size={14} color="#9ca3af" />
+                    <Text className="block text-sm text-gray-700">{endDate || '选择日期'}</Text>
+                  </View>
+                </Picker>
+              ) : (
+                <View
+                  className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'date';
+                    input.value = endDate;
+                    input.onchange = (e) => {
+                      const val = (e.target as HTMLInputElement).value;
+                      if (val) setEndDate(val);
+                    };
+                    input.click();
+                  }}
+                >
                   <Calendar size={14} color="#9ca3af" />
                   <Text className="block text-sm text-gray-700">{endDate || '选择日期'}</Text>
                 </View>
-              </Picker>
+              )}
             </View>
           </View>
           <View className="flex flex-row gap-2">
