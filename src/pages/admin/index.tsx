@@ -454,16 +454,16 @@ const AdminPage = () => {
       <View className="bg-white rounded-2xl mx-4 -mt-4 p-4 shadow-sm relative z-10">
         <View className="flex flex-row flex-wrap">
           {[
-            { icon: 'scan', label: '验券及退款', color: '#3b82f6', bg: '#eff6ff', tab: 'verify' },
-            { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', tab: 'packages' },
-            { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', tab: 'prizes' },
-            { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', tab: 'merchants' },
-            { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', tab: 'lottery-settings' },
+            { icon: 'scan', label: '验券及退款', color: '#3b82f6', bg: '#eff6ff', page: '/pages/verification/index' },
+            { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index' },
+            { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index' },
+            { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index' },
+            { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index' },
           ].map((item) => (
             <View
-              key={item.tab}
+              key={item.label}
               className="w-1/5 flex flex-col items-center py-2"
-              onClick={() => setActiveTab(item.tab)}
+              onClick={() => Taro.navigateTo({ url: item.page })}
             >
               <View className="w-12 h-12 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
                 {item.icon === 'scan' && <ScanLine size={22} color={item.color} />}
