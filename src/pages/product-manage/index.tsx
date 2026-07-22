@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, ListFilter, ChevronDown, ChevronLeft, Ellipsis, Store } from 'lucide-react-taro';
+import { Search, ListFilter, ChevronDown, Ellipsis, Store } from 'lucide-react-taro';
 
 interface Package {
   id: string;
@@ -112,14 +112,6 @@ export default function ProductManagePage() {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 头部 */}
-      <View className="bg-gradient-to-b from-blue-500 to-blue-400 px-4 pt-4 pb-4">
-        <View className="flex flex-row items-center gap-2" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={20} color="#ffffff" />
-          <Text className="block text-white text-base font-semibold">商品管理</Text>
-        </View>
-      </View>
-
       {/* 标题与筛选区 */}
       <View className="bg-white px-4 pt-4 pb-3">
         <View className="flex flex-row items-center justify-between mb-3">
