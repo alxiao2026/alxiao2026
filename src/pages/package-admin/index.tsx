@@ -1,6 +1,6 @@
 import { View, Text, Image, Picker } from '@tarojs/components'
-import { useState, useEffect } from 'react'
-import Taro from '@tarojs/taro'
+import { useState, useEffect, useCallback } from 'react'
+import Taro, { useDidShow, useDidHide } from '@tarojs/taro'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -255,37 +255,79 @@ export default function PackageAdmin() {
     loadMerchants()
   }, [id])
 
-  // 自动保存草稿（监听 formData 变化）
+  // 同步保存草稿（立即执行，无防抖，用于页面隐藏/选图前等关键时机）
+  const saveDraftNow = useCallback(() => {
+    if (id) return
+    try {
+      const hasData = formData.name || formData.category || formData.price ||
+                     featureItems.length > 0 || combinations.length > 0 ||
+                     selectedMerchant || formData.cover_image
+      if (hasData) {
+        const draft = {
+          formData,
+          featureItems,
+          combinations,
+          currentStep,
+          packageType,
+          selectedMerchant,
+          savedAt: Date.now()
+        }
+        Taro.setStorageSync('package_draft', JSON.stringify(draft))
+      }
+    } catch (e) {
+      console.error('同步保存草稿失败:', e)
+    }
+  }, [formData, featureItems, combinations, currentStep, packageType, selectedMerchant, id])
+
+  // 页面隐藏时立即保存草稿（防止选图/切后台导致页面销毁后状态丢失）
+  useDidHide(() => {
+    saveDraftNow()
+  })
+
+  // 页面重新显示时，如果当前状态为空但草稿有数据，说明页面被重建了，恢复草稿
+  useDidShow(() => {
+    if (id) return
+    const hasCurrentData = formData.name || formData.category || formData.price ||
+                           featureItems.length > 0 || combinations.length > 0 ||
+                           selectedMerchant || formData.cover_image
+    if (!hasCurrentData) {
+      const draftStr = Taro.getStorageSync('package_draft')
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr)
+          if (draft.formData) setFormData(draft.formData)
+          if (draft.featureItems) setFeatureItems(draft.featureItems)
+          if (draft.combinations) {
+            const normalized = draft.combinations.map((combo: ProductCombination) => ({
+              ...combo,
+              items: combo.items.map((item: ProductItem) => ({
+                ...item,
+                quantity: Number(item.quantity) || 1
+              }))
+            }))
+            setCombinations(normalized)
+          }
+          if (draft.currentStep !== undefined) setCurrentStep(draft.currentStep)
+          if (draft.packageType) setPackageType(draft.packageType)
+          if (draft.selectedMerchant) setSelectedMerchant(draft.selectedMerchant)
+        } catch (e) {
+          console.error('页面恢复草稿失败:', e)
+        }
+      }
+    }
+  })
+
+  // 自动保存草稿（监听 formData 变化，500ms 防抖）
   useEffect(() => {
     // 只在新建模式下自动保存
     if (id) return
-    
+
     const timer = setTimeout(() => {
-      try {
-        // 检查是否有任何数据需要保存
-        const hasData = formData.name || formData.category || formData.price || 
-                       featureItems.length > 0 || combinations.length > 0 ||
-                       selectedMerchant || formData.cover_image
-        
-        if (hasData) {
-          const draft = {
-            formData,
-            featureItems,
-            combinations,
-            currentStep,
-            packageType,
-            selectedMerchant,
-            savedAt: Date.now()
-          }
-          Taro.setStorageSync('package_draft', JSON.stringify(draft))
-        }
-      } catch (e) {
-        console.error('自动保存失败:', e)
-      }
-    }, 500) // 500ms 防抖
+      saveDraftNow()
+    }, 500)
 
     return () => clearTimeout(timer)
-  }, [formData, featureItems, combinations, currentStep, packageType, selectedMerchant, id])
+  }, [saveDraftNow, id])
 
   const loadMerchants = async () => {
     try {
@@ -793,6 +835,8 @@ export default function PackageAdmin() {
     }
 
     // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
+    // 选图前立即保存草稿，防止页面被系统回收后状态丢失
+    saveDraftNow()
     try {
       const res = await Taro.chooseMedia({
         count: 1,
@@ -929,6 +973,8 @@ export default function PackageAdmin() {
     }
 
     // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
+    // 选图前立即保存草稿，防止页面被系统回收后状态丢失
+    saveDraftNow()
     try {
       const res = await Taro.chooseMedia({
         count: remaining,
