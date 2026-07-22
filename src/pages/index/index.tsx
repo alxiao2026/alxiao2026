@@ -280,7 +280,8 @@ const IndexPage = () => {
                       )}
                     </View>
                     <Text className="block text-xs text-gray-700 text-center" numberOfLines={1}>{prize.name}</Text>
-                    <Text className="block text-xs text-red-500 font-semibold mt-1">剩余{prize.stock}份</Text>
+                    <Text className="block text-xs text-orange-500 mt-1">中奖率{prize.probability}%</Text>
+                    <Text className="block text-xs text-red-500 font-semibold">剩余{prize.stock}份</Text>
                   </View>
                 ))}
               </View>

@@ -38,6 +38,7 @@ export class PrizeService {
       .from('prizes')
       .select('*')
       .eq('is_active', true)
+      .gt('stock', 0)
       .order('created_at', { ascending: true });
     if (error) throw new Error(`查询活动奖品失败: ${error.message}`);
     return (data as Prize[]) || [];
