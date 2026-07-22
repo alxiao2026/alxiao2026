@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import {
-  ClipboardList, Wallet, ChevronRight, Pencil,
+  ClipboardList, Wallet, ChevronRight, ChevronLeft, Pencil,
   Settings, Info, LogOut,
   ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy
 } from 'lucide-react-taro';
@@ -178,6 +178,14 @@ const UserCenterPage = () => {
 
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50">
+      {/* 自定义导航栏 */}
+      <View className="bg-red-500 flex items-center px-4 py-3">
+        <View onClick={() => Taro.navigateBack()} className="mr-3">
+          <ChevronLeft size={22} color="#ffffff" />
+        </View>
+        <Text className="block text-white text-lg font-semibold flex-1 text-center mr-8">个人中心</Text>
+      </View>
+
       {/* 顶部用户区域 */}
       <View className="bg-red-500 px-5 pt-6 pb-8">
         <View className="flex items-center">
