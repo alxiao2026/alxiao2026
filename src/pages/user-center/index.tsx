@@ -350,13 +350,8 @@ const UserCenterPage = () => {
                   Taro.removeStorageSync('user_role');
                   Taro.removeStorageSync('role_code');
                   Taro.removeStorageSync('merchant_id');
-                  setUserId('');
-                  setProfile(null);
-                  setStats(null);
-                  setNickName('');
-                  setAvatarUrl('');
-                  setPermissions(null);
-                  Taro.showToast({ title: '已退出登录', icon: 'success' });
+                  // 直接跳转登录页，关闭所有页面避免停留在中间页
+                  Taro.reLaunch({ url: '/pages/login/index' });
                 }
               }
             });
