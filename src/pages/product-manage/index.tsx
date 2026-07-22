@@ -30,15 +30,41 @@ export default function ProductManagePage() {
   const [searchText] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Package | null>(null);
+  const [merchantId, setMerchantId] = useState<string | null>(null);
+  const [merchantLoaded, setMerchantLoaded] = useState(false);
 
   useEffect(() => {
-    fetchPackages();
+    loadMerchantInfo();
   }, []);
+
+  useEffect(() => {
+    if (merchantLoaded) {
+      fetchPackages();
+    }
+  }, [merchantLoaded, merchantId]);
+
+  const loadMerchantInfo = async () => {
+    const userId = Taro.getStorageSync('user_id');
+    if (userId) {
+      try {
+        const res = await Network.request({ url: `/api/users/${userId}/merchant` });
+        const data = (res.data as any)?.data || res.data;
+        if (data && data.id) {
+          setMerchantId(String(data.id));
+        }
+      } catch (err) {
+        console.error('获取商家信息失败:', err);
+      }
+    }
+    setMerchantLoaded(true);
+  };
 
   const fetchPackages = async () => {
     setLoading(true);
     try {
-      const res = await Network.request({ url: '/api/packages' });
+      // 商家账号只加载本店套餐，超级管理员加载全部
+      const url = merchantId ? `/api/packages?merchant_id=${merchantId}` : '/api/packages';
+      const res = await Network.request({ url });
       const data = (res.data as any)?.data || res.data;
       setPackages(Array.isArray(data) ? data : []);
     } catch (err) {

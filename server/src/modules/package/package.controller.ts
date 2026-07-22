@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
 import { PackageService } from './package.service';
 
 @Controller('packages')
@@ -6,8 +6,8 @@ export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Get()
-  findAll() {
-    return this.packageService.findAll();
+  findAll(@Query('merchant_id') merchantId?: string) {
+    return this.packageService.findAll(merchantId);
   }
 
   @Get('active')

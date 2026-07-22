@@ -53,11 +53,15 @@ export interface Package {
 export class PackageService {
   private client = getSupabaseClient();
 
-  async findAll(): Promise<Package[]> {
-    const { data, error } = await this.client
+  async findAll(merchantId?: string): Promise<Package[]> {
+    let query = this.client
       .from('packages')
       .select('*')
       .order('created_at', { ascending: true });
+    if (merchantId) {
+      query = query.eq('merchant_id', merchantId);
+    }
+    const { data, error } = await query;
     if (error) throw new Error(`查询套餐列表失败：${error.message}`);
     const packages = (data as Package[]) || [];
     // 为每个套餐计算实时销量
