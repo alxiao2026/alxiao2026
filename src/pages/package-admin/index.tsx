@@ -693,6 +693,30 @@ export default function PackageAdmin() {
     return true
   }
 
+  // 小程序端：超过 5MB 的图片先自动压缩再上传（压缩失败/仍超限返回 null）
+  const prepareUploadImage = async (
+    filePath: string,
+    size: number
+  ): Promise<{ path: string; size: number } | null> => {
+    if (size <= MAX_IMAGE_SIZE) return { path: filePath, size }
+    let curPath = filePath
+    let curSize = size
+    for (const quality of [70, 40]) {
+      try {
+        const res = await Taro.compressImage({ src: curPath, quality })
+        const info = await Taro.getFileInfo({ filePath: res.tempFilePath })
+        curPath = res.tempFilePath
+        curSize = (info as { size?: number }).size || 0
+        console.log(`[PackageAdmin] 压缩图片 q=${quality}: ${(size / 1048576).toFixed(1)}MB -> ${(curSize / 1048576).toFixed(2)}MB`)
+        if (curSize <= MAX_IMAGE_SIZE) return { path: curPath, size: curSize }
+      } catch (e) {
+        console.error('[PackageAdmin] 压缩图片失败:', e)
+        break
+      }
+    }
+    return null
+  }
+
   // H5 端通过 FormData 上传文件（Taro.uploadFile 不支持 File 对象）
   const h5UploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData()
@@ -749,14 +773,24 @@ export default function PackageAdmin() {
 
       const tempFile = res.tempFiles[0]
       if (!tempFile) return
-      if (!checkImageSize(tempFile.size)) return
+      // 大图先自动压缩再上传
+      const prepared = await prepareUploadImage(tempFile.tempFilePath, tempFile.size)
+      if (!prepared) {
+        Taro.showModal({
+          title: '图片过大',
+          content: '图片压缩后仍超过 5MB 限制，建议裁剪图片或更换其他图片后重试。',
+          showCancel: false,
+          confirmText: '知道了'
+        })
+        return
+      }
 
       setUploadingCover(true)
       Taro.showLoading({ title: '上传中...', mask: true })
       try {
         const uploadRes = await Network.uploadFile({
           url: '/api/upload',
-          filePath: tempFile.tempFilePath,
+          filePath: prepared.path,
           name: 'file'
         })
         // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
@@ -837,9 +871,25 @@ export default function PackageAdmin() {
       })
 
       if (!res.tempFiles || res.tempFiles.length === 0) return
-      // 校验每个文件大小
+      // 逐张校验：超限图片先自动压缩，压缩后仍超限的跳过（不中断整批）
+      const preparedFiles: { path: string; size: number }[] = []
+      let oversizeCount = 0
       for (const f of res.tempFiles) {
-        if (!checkImageSize(f.size)) return
+        const prepared = await prepareUploadImage(f.tempFilePath, f.size)
+        if (prepared) {
+          preparedFiles.push(prepared)
+        } else {
+          oversizeCount++
+        }
+      }
+      if (preparedFiles.length === 0) {
+        Taro.showModal({
+          title: '图片过大',
+          content: '所选图片压缩后仍超过 5MB 限制，建议裁剪图片或更换其他图片后重试。',
+          showCancel: false,
+          confirmText: '知道了'
+        })
+        return
       }
 
       setUploadingEnv(true)
@@ -847,11 +897,11 @@ export default function PackageAdmin() {
       try {
         const newUrls = [...formData.environment_images]
         let failCount = 0
-        for (const f of res.tempFiles) {
+        for (const f of preparedFiles) {
           try {
             const uploadRes = await Network.uploadFile({
               url: '/api/upload',
-              filePath: f.tempFilePath,
+              filePath: f.path,
               name: 'file'
             })
             // 小程序 uploadFile 返回的 data 是字符串，必须 JSON.parse
@@ -870,8 +920,9 @@ export default function PackageAdmin() {
         if (newUrls.length > formData.environment_images.length) {
           updateFormData('environment_images', newUrls)
         }
-        if (failCount > 0) {
-          Taro.showToast({ title: `${failCount}张图片上传失败，请重试`, icon: 'none' })
+        const totalFail = failCount + oversizeCount
+        if (totalFail > 0) {
+          Taro.showToast({ title: `${totalFail}张图片上传失败，请重试`, icon: 'none' })
         } else {
           Taro.showToast({ title: '上传成功', icon: 'success' })
         }

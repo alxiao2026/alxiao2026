@@ -76,6 +76,30 @@ const ProfileEditPage = () => {
     return true
   }
 
+  // 小程序端：超过 5MB 的图片先自动压缩再上传（压缩失败/仍超限返回 null）
+  const prepareUploadImage = async (
+    filePath: string,
+    size: number
+  ): Promise<{ path: string; size: number } | null> => {
+    if (size <= MAX_IMAGE_SIZE) return { path: filePath, size }
+    let curPath = filePath
+    let curSize = size
+    for (const quality of [70, 40]) {
+      try {
+        const res = await Taro.compressImage({ src: curPath, quality })
+        const info = await Taro.getFileInfo({ filePath: res.tempFilePath })
+        curPath = res.tempFilePath
+        curSize = (info as { size?: number }).size || 0
+        console.log(`[ProfileEdit] 压缩图片 q=${quality}: ${(size / 1048576).toFixed(1)}MB -> ${(curSize / 1048576).toFixed(2)}MB`)
+        if (curSize <= MAX_IMAGE_SIZE) return { path: curPath, size: curSize }
+      } catch (e) {
+        console.error('[ProfileEdit] 压缩图片失败:', e)
+        break
+      }
+    }
+    return null
+  }
+
   const handleChooseAvatar = async () => {
     console.log('[ProfileEdit] 点击更换头像, env:', Taro.getEnv());
     // 上传周期内禁止重复触发
@@ -107,8 +131,18 @@ const ProfileEditPage = () => {
       });
       const tempFile = res.tempFiles[0];
       if (!tempFile) return;
-      if (!checkImageSize(tempFile.size)) return;
-      await uploadAvatarMini(tempFile.tempFilePath);
+      // 大图先自动压缩再上传
+      const prepared = await prepareUploadImage(tempFile.tempFilePath, tempFile.size);
+      if (!prepared) {
+        Taro.showModal({
+          title: '图片过大',
+          content: '图片压缩后仍超过 5MB 限制，建议裁剪图片或更换其他图片后重试。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+        return;
+      }
+      await uploadAvatarMini(prepared.path);
     } catch (err) {
       const errMsg = (err as { errMsg?: string })?.errMsg || '';
       // 用户取消选择不提示
