@@ -514,7 +514,7 @@ const AdminPage = () => {
 
       {/* Tabs */}
       <View className="px-4 pt-3">
-        <Tabs defaultValue="prizes" onValueChange={(v) => setActiveTab(v)}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="w-full">
             <TabsTrigger value="prizes" className="flex-1">
               <Gift size={14} color="#6b7280" className="mr-1" />
