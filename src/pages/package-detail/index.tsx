@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import Taro, { useRouter } from '@tarojs/taro'
+import { useState } from 'react'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import {
@@ -86,14 +86,17 @@ export default function PackageDetail() {
   const [merchant, setMerchant] = useState<Merchant | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  // 每次页面显示时重新加载，确保门店等后台数据变更后展示最新内容
+  useDidShow(() => {
     if (id) {
       loadPackage()
     }
-  }, [id])
+  })
 
   const loadPackage = async () => {
     try {
+      // 重新加载前先清空商家信息，避免展示过期数据
+      setMerchant(null)
       const res = await Network.request({
         url: `/api/packages/${id}`,
       })
