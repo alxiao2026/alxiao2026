@@ -120,9 +120,9 @@ export default function OrderDetailsPage() {
             <Text className="block text-white text-base font-semibold">订单明细</Text>
           </View>
           <View className="flex flex-row items-center gap-2">
-            <View className="bg-white bg-opacity-20 rounded-full px-3 py-2 flex flex-row items-center gap-1" onClick={() => setShowFilter(!showFilter)}>
-              <Funnel size={14} color="#ffffff" />
-              <Text className="block text-white text-xs">筛选</Text>
+            <View className="bg-white rounded-full px-4 py-2 flex flex-row items-center gap-1" onClick={() => setShowFilter(!showFilter)}>
+              <Funnel size={16} color="#3b82f6" />
+              <Text className="block text-blue-500 text-sm font-medium">筛选</Text>
             </View>
           </View>
         </View>
