@@ -144,6 +144,22 @@ export default function PackageDetail() {
 
   // 打开购买确认弹窗
   const handleBuy = () => {
+    const userId = Taro.getStorageSync('user_id');
+    const isGuest = !userId || String(userId).startsWith('user_');
+    if (isGuest) {
+      Taro.showModal({
+        title: '提示',
+        content: '请先登录后再下单购买',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/login/index' });
+          }
+        },
+      });
+      return;
+    }
     if (!pkg) return
     setQuantity(1)
     setCheckResult(null)
@@ -156,8 +172,12 @@ export default function PackageDetail() {
     if (!pkg) return
     setChecking(true)
     try {
-      const userId = Taro.getStorageSync('user_id') || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-      Taro.setStorageSync('user_id', userId)
+      const userId = Taro.getStorageSync('user_id')
+      if (!userId) {
+        setChecking(false)
+        setCheckResult({ can_buy: false, reason: '请先登录后再下单购买' })
+        return
+      }
       const res = await Network.request({
         url: '/api/orders/check-purchase',
         method: 'POST',
@@ -193,8 +213,12 @@ export default function PackageDetail() {
 
     setBuying(true)
     try {
-      const userId = Taro.getStorageSync('user_id') || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-      Taro.setStorageSync('user_id', userId)
+      const userId = Taro.getStorageSync('user_id')
+      if (!userId) {
+        setBuying(false)
+        Taro.showModal({ title: '请先登录', content: '登录后才能下单购买', showCancel: false })
+        return
+      }
       const nickName = Taro.getStorageSync('nick_name') || ''
 
       console.log('[PackageDetail] 创建订单, package:', pkg.name, 'price:', pkg.price, 'quantity:', quantity)
