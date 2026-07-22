@@ -16,6 +16,7 @@ import {
   Minus,
   Plus,
   X,
+  CircleCheck,
 } from 'lucide-react-taro'
 
 interface Package {
@@ -138,6 +139,8 @@ export default function PackageDetail() {
   const [quantity, setQuantity] = useState(1)
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<{ can_buy: boolean; reason?: string; remaining?: number } | null>(null)
+  const [showLotteryEntry, setShowLotteryEntry] = useState(false)
+  const [paidOrderId, setPaidOrderId] = useState('')
 
   // 打开购买确认弹窗
   const handleBuy = () => {
@@ -213,16 +216,56 @@ export default function PackageDetail() {
       const orderData = res.data?.data || res.data
       if (orderData?.id) {
         setShowPurchaseModal(false)
-        Taro.showToast({ title: '购买成功', icon: 'success' })
-        setTimeout(() => {
-          Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
-        }, 800)
+        // 校验支付是否成功：查询订单状态
+        try {
+          const verifyRes = await Network.request({
+            url: `/api/orders/${orderData.id}`,
+            method: 'GET',
+          })
+          const orderInfo = (verifyRes.data as any)?.data || verifyRes.data
+          console.log('[PackageDetail] 支付校验响应:', orderInfo)
+          if (orderInfo?.id && orderInfo?.status !== 'refunded' && orderInfo?.status !== 'expired') {
+            // 支付成功，弹出抽奖入口
+            setPaidOrderId(orderData.id)
+            setShowLotteryEntry(true)
+          } else {
+            Taro.showModal({
+              title: '提示',
+              content: '您还未支付，支付成功即可参与膨胀活动',
+              showCancel: false,
+              confirmText: '去支付',
+              success: () => {
+                Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
+              },
+            })
+          }
+        } catch (verifyErr) {
+          console.error('[PackageDetail] 支付校验失败:', verifyErr)
+          // 校验失败也提示未支付
+          Taro.showModal({
+            title: '提示',
+            content: '您还未支付，支付成功即可参与膨胀活动',
+            showCancel: false,
+            confirmText: '去支付',
+            success: () => {
+              Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
+            },
+          })
+        }
       } else {
-        Taro.showToast({ title: '购买失败，请重试', icon: 'none' })
+        Taro.showModal({
+          title: '提示',
+          content: '您还未支付，支付成功即可参与膨胀活动',
+          showCancel: false,
+        })
       }
     } catch (err) {
       console.error('[PackageDetail] 购买失败:', err)
-      Taro.showToast({ title: '购买失败，请重试', icon: 'none' })
+      Taro.showModal({
+        title: '提示',
+        content: '您还未支付，支付成功即可参与膨胀活动',
+        showCancel: false,
+      })
     } finally {
       setBuying(false)
     }
@@ -826,6 +869,41 @@ export default function PackageDetail() {
                 <Text className="block text-base font-semibold text-white">
                   {buying ? '提交中...' : checking ? '校验中...' : '确认购买'}
                 </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 抽奖入口弹窗 */}
+      {showLotteryEntry && (
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <View className="bg-white rounded-2xl p-8 mx-8 w-full max-w-sm flex flex-col items-center">
+            {/* 成功图标 */}
+            <View className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-4">
+              <CircleCheck size={32} color="#22c55e" />
+            </View>
+            <Text className="block text-xl font-bold text-gray-800 mb-2">支付成功</Text>
+            <Text className="block text-sm text-gray-500 mb-6 text-center">恭喜您，现在可以参与抽奖活动{'\n'}赢取优惠券、商品或霸王餐</Text>
+            {/* 按钮组 */}
+            <View className="flex flex-col gap-3 w-full">
+              <View
+                className="w-full bg-red-500 rounded-full py-3 flex items-center justify-center"
+                onClick={() => {
+                  setShowLotteryEntry(false)
+                  Taro.navigateTo({ url: `/pages/order-detail/index?id=${paidOrderId}` })
+                }}
+              >
+                <Text className="block text-base font-semibold text-white">去抽奖</Text>
+              </View>
+              <View
+                className="w-full bg-gray-100 rounded-full py-3 flex items-center justify-center"
+                onClick={() => {
+                  setShowLotteryEntry(false)
+                  Taro.navigateTo({ url: `/pages/order-detail/index?id=${paidOrderId}` })
+                }}
+              >
+                <Text className="block text-base text-gray-600">查看订单</Text>
               </View>
             </View>
           </View>
