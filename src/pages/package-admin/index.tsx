@@ -283,6 +283,23 @@ export default function PackageAdmin() {
 
   const loadMerchants = async () => {
     try {
+      // 商家账号（role_code=1）只允许选择本店，超级管理员可选择全部商家
+      const userId = Taro.getStorageSync('user_id') || ''
+      if (userId) {
+        const merchantRes = await Network.request({
+          url: `/api/users/${userId}/merchant`
+        })
+        console.log('当前用户绑定商家响应:', merchantRes.data)
+        const myMerchant = merchantRes.data?.data
+        if (myMerchant && myMerchant.id) {
+          // 商家账号：只显示本店并自动选中
+          setMerchants([myMerchant])
+          setSelectedMerchant(myMerchant)
+          setFormData(prev => ({ ...prev, merchant_id: String(myMerchant.id) }))
+          return
+        }
+      }
+      // 超级管理员或未绑定商家：加载全部商家
       const res = await Network.request({ url: '/api/merchants' })
       console.log('商家列表响应:', res.data)
       if (res.data?.code === 200) {
@@ -871,7 +888,8 @@ export default function PackageAdmin() {
         auto_renew: formData.auto_renew || false,
         category: formData.category || null,
         package_type: packageType,
-        merchant_id: selectedMerchant?.id || null,
+        // 商家账号仅1家可选门店时，强制使用本店ID，防止竞态或越权写入其他商家
+        merchant_id: merchants.length === 1 ? merchants[0]?.id : (selectedMerchant?.id || null),
         combinations: combinations,
         // 交易规则
         purchase_limit: formData.purchase_limit,
@@ -1194,16 +1212,24 @@ export default function PackageAdmin() {
                   <Text className="block text-sm text-gray-600 mb-2">商家名称</Text>
                   <View
                     className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
-                    onClick={() => setShowMerchantPicker(true)}
+                    onClick={() => {
+                      // 商家账号（仅1家可选门店）锁定选择，不可切换到其他商家
+                      if (merchants.length > 1) {
+                        setShowMerchantPicker(true)
+                      }
+                    }}
                   >
                     <Text className="block text-sm text-gray-800">
                       {selectedMerchant ? selectedMerchant.name : '请选择商家'}
                     </Text>
                     <View className="flex items-center gap-2">
-                      {selectedMerchant && (
+                      {selectedMerchant && merchants.length <= 1 && (
+                        <Badge className="bg-green-100 text-green-600 text-xs">本店</Badge>
+                      )}
+                      {selectedMerchant && merchants.length > 1 && (
                         <Badge className="bg-blue-100 text-blue-600 text-xs">已选择</Badge>
                       )}
-                      <ChevronRight size={16} color="#9ca3af" />
+                      {merchants.length > 1 && <ChevronRight size={16} color="#9ca3af" />}
                     </View>
                   </View>
                 </View>
