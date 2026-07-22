@@ -16,6 +16,7 @@ export interface Prize {
   coupon_min_spend: string;
   product_name: string;
   product_value: string;
+  merchant_id: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -24,11 +25,14 @@ export interface Prize {
 export class PrizeService {
   private client = getSupabaseClient();
 
-  async findAll(): Promise<Prize[]> {
-    const { data, error } = await this.client
+  async findAll(merchantId?: string): Promise<Prize[]> {
+    let query = this.client
       .from('prizes')
-      .select('*')
-      .order('created_at', { ascending: true });
+      .select('*');
+    if (merchantId) {
+      query = query.eq('merchant_id', Number(merchantId));
+    }
+    const { data, error } = await query.order('created_at', { ascending: true });
     if (error) throw new Error(`查询奖品列表失败: ${error.message}`);
     return (data as Prize[]) || [];
   }
@@ -66,6 +70,7 @@ export class PrizeService {
     coupon_min_spend?: number;
     product_name?: string;
     product_value?: number;
+    merchant_id?: number | null;
   }): Promise<Prize> {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
 
@@ -77,6 +82,7 @@ export class PrizeService {
         probability: body.probability || '0',
         image_url: body.image_url || null,
         stock: body.stock ?? 0,
+        merchant_id: body.merchant_id ?? null,
         prize_type: body.prize_type || 'coupon',
         coupon_amount: body.coupon_amount ?? 0,
         coupon_min_spend: body.coupon_min_spend ?? 0,

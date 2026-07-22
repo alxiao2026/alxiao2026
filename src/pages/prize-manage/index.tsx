@@ -22,6 +22,7 @@ interface Prize {
   coupon_min_spend: string;
   product_name: string;
   product_value: string;
+  merchant_id: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -35,6 +36,7 @@ const PRIZE_TYPE_OPTIONS = [
 export default function PrizeManagePage() {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [loading, setLoading] = useState(true);
+  const [merchantId, setMerchantId] = useState<number | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPrize, setEditingPrize] = useState<Prize | null>(null);
   const [prizeForm, setPrizeForm] = useState({
@@ -45,13 +47,33 @@ export default function PrizeManagePage() {
   });
 
   useEffect(() => {
-    fetchPrizes();
+    initMerchantAndFetch();
   }, []);
 
-  const fetchPrizes = async () => {
+  // 获取当前登录账号绑定的门店，商家账号仅显示本店奖品
+  const initMerchantAndFetch = async () => {
+    const userId = Taro.getStorageSync('user_id');
+    let boundMerchantId: number | null = null;
+    if (userId) {
+      try {
+        const res = await Network.request({ url: `/api/users/${userId}/merchant` });
+        const merchant = (res.data as any)?.data;
+        if (merchant?.id) {
+          boundMerchantId = merchant.id;
+        }
+      } catch (err) {
+        console.error('获取商家信息失败:', err);
+      }
+    }
+    setMerchantId(boundMerchantId);
+    await fetchPrizes(boundMerchantId);
+  };
+
+  const fetchPrizes = async (mid: number | null = merchantId) => {
     setLoading(true);
     try {
-      const res = await Network.request({ url: '/api/prizes' });
+      const url = mid ? `/api/prizes?merchant_id=${mid}` : '/api/prizes';
+      const res = await Network.request({ url });
       setPrizes((res.data as any)?.data || (res.data as Prize[]) || []);
     } catch (err) {
       console.error('获取奖品失败:', err);
@@ -86,6 +108,8 @@ export default function PrizeManagePage() {
         coupon_amount: Number(prizeForm.coupon_amount) || 0, coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
       };
+      // 商家账号创建奖品自动挂到本店
+      if (merchantId) payload.merchant_id = merchantId;
       if (editingPrize) {
         await Network.request({ url: `/api/prizes/${editingPrize.id}`, method: 'PUT', data: payload });
       } else {

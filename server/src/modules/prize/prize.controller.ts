@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
 import { PrizeService } from './prize.service';
 
 @Controller('prizes')
@@ -6,8 +6,8 @@ export class PrizeController {
   constructor(private readonly prizeService: PrizeService) {}
 
   @Get()
-  findAll() {
-    return this.prizeService.findAll();
+  findAll(@Query('merchant_id') merchantId?: string) {
+    return this.prizeService.findAll(merchantId);
   }
 
   @Get('active')
@@ -21,7 +21,7 @@ export class PrizeController {
   }
 
   @Post()
-  create(@Body() body: { name: string; description?: string; probability?: string; image_url?: string; stock?: number }) {
+  create(@Body() body: { name: string; description?: string; probability?: string; image_url?: string; stock?: number; prize_type?: 'coupon' | 'product' | 'free_meal'; coupon_amount?: number; coupon_min_spend?: number; product_name?: string; product_value?: number; merchant_id?: number | null }) {
     return this.prizeService.create(body);
   }
 
