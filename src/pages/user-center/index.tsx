@@ -314,6 +314,9 @@ const UserCenterPage = () => {
                   Taro.removeStorageSync('user_id');
                   Taro.removeStorageSync('nick_name');
                   Taro.removeStorageSync('avatar_url');
+                  Taro.removeStorageSync('is_logged_in');
+                  Taro.removeStorageSync('user_role');
+                  Taro.removeStorageSync('merchant_id');
                   setUserId('');
                   setProfile(null);
                   setStats(null);

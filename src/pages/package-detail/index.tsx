@@ -144,9 +144,8 @@ export default function PackageDetail() {
 
   // 打开购买确认弹窗
   const handleBuy = () => {
-    const userId = Taro.getStorageSync('user_id');
-    const isGuest = !userId || String(userId).startsWith('user_');
-    if (isGuest) {
+    const isLoggedIn = Taro.getStorageSync('is_logged_in');
+    if (!isLoggedIn) {
       Taro.showModal({
         title: '提示',
         content: '请先登录后再下单购买',

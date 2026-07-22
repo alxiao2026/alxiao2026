@@ -30,6 +30,7 @@ const LoginPage = () => {
 
   const saveAndGoBack = (uid: string, name: string, avatar: string, role?: string, merchantId?: number) => {
     Taro.setStorageSync('user_id', uid);
+    Taro.setStorageSync('is_logged_in', '1');
     Taro.setStorageSync('nick_name', name);
     Taro.setStorageSync('avatar_url', avatar);
     if (role) Taro.setStorageSync('user_role', role);
