@@ -238,6 +238,12 @@ export default function PackageAdmin() {
   const [featureItems, setFeatureItems] = useState<FeatureItem[]>([])
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingEnv, setUploadingEnv] = useState(false)
+  // 封面图裁切预览状态
+  const [cropPreview, setCropPreview] = useState<{
+    visible: boolean
+    imagePath: string
+    fileSize: number
+  }>({ visible: false, imagePath: '', fileSize: 0 })
 
   useEffect(() => {
     if (id) {
@@ -726,6 +732,21 @@ export default function PackageAdmin() {
     return null
   }
 
+  // 裁切图片为 4:3（仅小程序端支持，H5 直接返回原图）
+  const cropImageTo4x3 = async (filePath: string): Promise<string | null> => {
+    const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
+    if (!isMiniApp) return filePath
+    try {
+      const res = await Taro.cropImage({ src: filePath, cropScale: '4:3' })
+      return res.tempFilePath
+    } catch (e) {
+      const errMsg = (e as { errMsg?: string })?.errMsg || ''
+      if (errMsg.includes('cancel')) return null
+      console.error('[PackageAdmin] cropImage failed, use original:', e)
+      return filePath
+    }
+  }
+
   // H5 端通过 FormData 上传文件（Taro.uploadFile 不支持 File 对象）
   const h5UploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData()
@@ -782,58 +803,82 @@ export default function PackageAdmin() {
 
       const tempFile = res.tempFiles[0]
       if (!tempFile) return
-      // 大图先自动压缩再上传
-      const prepared = await prepareUploadImage(tempFile.tempFilePath, tempFile.size)
-      if (!prepared) {
-        Taro.showModal({
-          title: '图片过大',
-          content: '图片压缩后仍超过 5MB 限制，建议裁剪图片或更换其他图片后重试。',
-          showCancel: false,
-          confirmText: '知道了'
-        })
-        return
-      }
 
-      setUploadingCover(true)
-      Taro.showLoading({ title: '上传中...', mask: true })
+      // 自动裁切为 4:3
+      const croppedPath = await cropImageTo4x3(tempFile.tempFilePath)
+      if (!croppedPath) return // 用户取消裁切
+
+      // 获取裁切后文件大小
+      let croppedSize = tempFile.size
       try {
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload',
-          filePath: prepared.path,
-          name: 'file',
-          timeout: 30000
-        })
-        console.log('[PackageAdmin] upload cover statusCode:', uploadRes.statusCode)
-        // 后端返回非 200 或非 JSON 时防御性处理
-        if (uploadRes.statusCode !== 200) {
-          Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' })
-          return
-        }
-        let resData: any
-        try {
-          resData = JSON.parse(uploadRes.data)
-        } catch {
-          console.error('[PackageAdmin] upload cover response parse error:', uploadRes.data)
-          Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' })
-          return
-        }
-        console.log('[PackageAdmin] upload cover response:', resData)
-        if (resData?.code === 200 && resData?.data?.url) {
-          updateFormData('cover_image', resData.data.url)
-          Taro.showToast({ title: '上传成功', icon: 'success' })
-        } else {
-          Taro.showToast({ title: resData?.msg || '上传失败，请重试', icon: 'none' })
-        }
-      } finally {
-        Taro.hideLoading()
-      }
+        const fileInfo = await Taro.getFileInfo({ filePath: croppedPath })
+        croppedSize = (fileInfo as { size?: number }).size || tempFile.size
+      } catch { /* 忽略，用原始大小 */ }
+
+      // 显示预览效果图，确认后再上传
+      setCropPreview({ visible: true, imagePath: croppedPath, fileSize: croppedSize })
     } catch (error) {
       const errMsg = (error as { errMsg?: string })?.errMsg || ''
       // 用户取消选择不提示
       if (errMsg.includes('cancel')) return
       console.error('[PackageAdmin] upload cover failed:', error)
       Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
+    }
+  }
+
+  // 确认裁切预览后上传封面图
+  const handleConfirmCropUpload = async () => {
+    const { imagePath, fileSize } = cropPreview
+    setCropPreview({ visible: false, imagePath: '', fileSize: 0 })
+    if (!imagePath) return
+
+    // 大图先自动压缩再上传
+    const prepared = await prepareUploadImage(imagePath, fileSize)
+    if (!prepared) {
+      Taro.showModal({
+        title: '图片过大',
+        content: '图片压缩后仍超过 5MB 限制，建议裁剪图片或更换其他图片后重试。',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+      return
+    }
+
+    setUploadingCover(true)
+    Taro.showLoading({ title: '上传中...', mask: true })
+    try {
+      const uploadRes = await Network.uploadFile({
+        url: '/api/upload',
+        filePath: prepared.path,
+        name: 'file',
+        timeout: 30000
+      })
+      console.log('[PackageAdmin] upload cover statusCode:', uploadRes.statusCode)
+      // 后端返回非 200 或非 JSON 时防御性处理
+      if (uploadRes.statusCode !== 200) {
+        Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' })
+        return
+      }
+      let resData: any
+      try {
+        resData = JSON.parse(uploadRes.data)
+      } catch {
+        console.error('[PackageAdmin] upload cover response parse error:', uploadRes.data)
+        Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' })
+        return
+      }
+      console.log('[PackageAdmin] upload cover response:', resData)
+      if (resData?.code === 200 && resData?.data?.url) {
+        updateFormData('cover_image', resData.data.url)
+        Taro.showToast({ title: '上传成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: resData?.msg || '上传失败，请重试', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[PackageAdmin] upload cover failed:', error)
+      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
     } finally {
+      Taro.hideLoading()
       setUploadingCover(false)
     }
   }
@@ -3548,6 +3593,49 @@ export default function PackageAdmin() {
           )}
         </View>
       </View>
+
+      {/* 封面图裁切预览弹窗 */}
+      {cropPreview.visible && (
+        <View style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}
+        >
+          <View className="bg-white rounded-2xl overflow-hidden mx-6" style={{ width: '85%', maxWidth: 360 }}>
+            <View className="p-5">
+              <Text className="block text-base font-semibold text-gray-800 text-center mb-4">预览效果</Text>
+              <View className="w-full rounded-lg overflow-hidden bg-gray-100" style={{ position: 'relative', paddingBottom: '75%' }}>
+                <Image
+                  src={cropPreview.imagePath}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                  mode="aspectFill"
+                />
+              </View>
+              <Text className="block text-xs text-gray-400 text-center mt-3">图片已自动裁切为 4:3 比例</Text>
+            </View>
+            <View className="flex flex-row" style={{ borderTop: '1px solid #f3f4f6' }}>
+              <View className="flex-1">
+                <Button
+                  className="w-full rounded-none border-none"
+                  variant="ghost"
+                  onClick={() => setCropPreview({ visible: false, imagePath: '', fileSize: 0 })}
+                >
+                  <Text className="block text-gray-500 text-sm py-3">重新选择</Text>
+                </Button>
+              </View>
+              <View className="flex-1" style={{ borderLeft: '1px solid #f3f4f6' }}>
+                <Button
+                  className="w-full rounded-none border-none bg-[#FF4757]"
+                  onClick={handleConfirmCropUpload}
+                >
+                  <Text className="block text-white text-sm py-3">确认上传</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
