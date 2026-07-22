@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Gift, ShoppingBag, Store, ScanLine, ClipboardCheck, TrendingUp, CircleCheck, Package } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, ShoppingBag, Store, ScanLine, ClipboardCheck, TrendingUp, CircleCheck, Package, Zap } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -51,6 +51,8 @@ interface Package {
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState('prizes');
+  const [lotterySettings, setLotterySettings] = useState<Record<string, string>>({});
+
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,9 +123,19 @@ const AdminPage = () => {
     }
   };
 
+  const fetchLotterySettings = async () => {
+    try {
+      const res = await Network.request({ url: '/api/lottery/settings' });
+      const data = (res.data as any)?.data || res.data;
+      if (data && typeof data === 'object') setLotterySettings(data);
+    } catch (e) {
+      console.error('获取抽奖设置失败:', e);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchPrizes(), fetchPackages(), fetchMerchantInfo()]);
+    await Promise.all([fetchPrizes(), fetchPackages(), fetchMerchantInfo(), fetchLotterySettings()]);
     setLoading(false);
   };
 
@@ -134,6 +146,7 @@ const AdminPage = () => {
   // 页面每次显示时刷新商家统计数据（下单后返回自动更新）
   useDidShow(() => {
     fetchMerchantInfo();
+    if (activeTab === 'lottery') fetchLotterySettings();
   });
 
   // ========== 奖品管理 ==========
@@ -502,6 +515,10 @@ const AdminPage = () => {
             <TabsTrigger value="merchants" className="flex-1">
               <Store size={14} color="#6b7280" className="mr-1" />
               <Text className="block text-sm">商家管理</Text>
+            </TabsTrigger>
+            <TabsTrigger value="lottery" className="flex-1">
+              <Zap size={14} color="#6b7280" className="mr-1" />
+              <Text className="block text-sm">抽奖设置</Text>
             </TabsTrigger>
           </TabsList>
 
@@ -892,6 +909,138 @@ const AdminPage = () => {
                 <Text className="text-white text-sm">进入商家管理</Text>
               </Button>
             </View>
+          </TabsContent>
+
+          <TabsContent value="lottery" className="mt-3">
+            <Card className="bg-white border-0 shadow-sm">
+              <CardContent className="p-4">
+                <View className="flex items-center justify-between mb-4">
+                  <Text className="text-base font-bold text-black">抽奖设置</Text>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await Network.request({
+                          url: '/api/lottery/settings',
+                          method: 'POST',
+                          data: lotterySettings as unknown as Record<string, string>,
+                        });
+                        Taro.showToast({ title: '保存成功', icon: 'success' });
+                      } catch {
+                        Taro.showToast({ title: '保存失败', icon: 'none' });
+                      }
+                    }}
+                  >
+                    <Text className="text-white text-sm">保存设置</Text>
+                  </Button>
+                </View>
+
+                {/* 加权抽奖开关 */}
+                <View className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <View>
+                    <Text className="block text-sm font-medium text-black">启用加权抽奖</Text>
+                    <Text className="block text-xs text-gray-400 mt-1">开启后按用户权重影响中奖概率</Text>
+                  </View>
+                  <View
+                    className={`w-12 h-7 rounded-full flex items-center px-1 cursor-pointer ${lotterySettings.weight_enabled === 'true' ? 'bg-red-500 justify-end' : 'bg-gray-300 justify-start'}`}
+                    onClick={() => setLotterySettings(prev => ({ ...prev, weight_enabled: prev.weight_enabled === 'true' ? 'false' : 'true' }))}
+                  >
+                    <View className="w-5 h-5 bg-white rounded-full shadow" />
+                  </View>
+                </View>
+
+                {/* 基础权重设置 */}
+                <View className="py-3 border-b border-gray-100">
+                  <Text className="block text-sm font-medium text-black mb-2">基础权重</Text>
+                  <View className="flex items-center gap-3 mb-2">
+                    <Text className="text-xs text-gray-500 w-20">普通访客</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_visitor}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_visitor: e.detail.value }))}
+                    />
+                  </View>
+                  <View className="flex items-center gap-3">
+                    <Text className="text-xs text-gray-500 w-20">已下单客户</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_ordered}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_ordered: e.detail.value }))}
+                    />
+                  </View>
+                </View>
+
+                {/* 分享权重设置 */}
+                <View className="py-3 border-b border-gray-100">
+                  <Text className="block text-sm font-medium text-black mb-2">分享权重</Text>
+                  <View className="flex items-center gap-3 mb-2">
+                    <Text className="text-xs text-gray-500 w-20">分享1位</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_share_base}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_share_base: e.detail.value }))}
+                    />
+                  </View>
+                  <View className="flex items-center gap-3">
+                    <Text className="text-xs text-gray-500 w-20">每多1位递增</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_share_increment}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_share_increment: e.detail.value }))}
+                    />
+                  </View>
+                </View>
+
+                {/* 社交媒体权重 */}
+                <View className="py-3 border-b border-gray-100">
+                  <View className="flex items-center gap-3">
+                    <Text className="text-xs text-gray-500 w-20">每条社媒发布</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_social_post}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_social_post: e.detail.value }))}
+                    />
+                  </View>
+                  <Text className="block text-xs text-gray-400 mt-1">抖音/小红书/微视频，每项+1</Text>
+                </View>
+
+                {/* 权重封顶 */}
+                <View className="py-3 border-b border-gray-100">
+                  <View className="flex items-center gap-3">
+                    <Text className="text-xs text-gray-500 w-20">权重封顶值</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.weight_cap}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, weight_cap: e.detail.value }))}
+                    />
+                  </View>
+                </View>
+
+                {/* 限流设置 */}
+                <View className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <View>
+                    <Text className="block text-sm font-medium text-black">IP限流</Text>
+                    <Text className="block text-xs text-gray-400 mt-1">防止同一IP高频请求</Text>
+                  </View>
+                  <View
+                    className={`w-12 h-7 rounded-full flex items-center px-1 cursor-pointer ${lotterySettings.rate_limit_enabled === 'true' ? 'bg-red-500 justify-end' : 'bg-gray-300 justify-start'}`}
+                    onClick={() => setLotterySettings(prev => ({ ...prev, rate_limit_enabled: prev.rate_limit_enabled === 'true' ? 'false' : 'true' }))}
+                  >
+                    <View className="w-5 h-5 bg-white rounded-full shadow" />
+                  </View>
+                </View>
+                <View className="py-3">
+                  <View className="flex items-center gap-3">
+                    <Text className="text-xs text-gray-500 w-20">每分钟最大</Text>
+                    <Input
+                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                      value={lotterySettings.rate_limit_max}
+                      onInput={(e) => setLotterySettings(prev => ({ ...prev, rate_limit_max: e.detail.value }))}
+                    />
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </View>
