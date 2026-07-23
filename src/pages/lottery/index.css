@@ -1,0 +1,103 @@
+/* 盲盒抽奖页动画 - 关键帧场景使用 CSS */
+
+/* 盲盒待机浮动（呼吸感） */
+@keyframes box-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* 选中盲盒开奖前剧烈摇晃 */
+@keyframes box-shake {
+  0%, 100% { transform: rotate(0deg) scale(1.1); }
+  10% { transform: rotate(-10deg) scale(1.12); }
+  20% { transform: rotate(10deg) scale(1.15); }
+  30% { transform: rotate(-12deg) scale(1.12); }
+  40% { transform: rotate(12deg) scale(1.18); }
+  50% { transform: rotate(-10deg) scale(1.15); }
+  60% { transform: rotate(10deg) scale(1.2); }
+  70% { transform: rotate(-8deg) scale(1.15); }
+  80% { transform: rotate(8deg) scale(1.18); }
+  90% { transform: rotate(-4deg) scale(1.12); }
+}
+
+/* 盲盒爆开消失 */
+@keyframes box-explode {
+  0% { transform: scale(1.2); opacity: 1; }
+  40% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* 金色光芒旋转 */
+@keyframes ray-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 奖品卡片弹入 */
+@keyframes prize-pop {
+  0% { transform: scale(0.3) translateY(60px); opacity: 0; }
+  55% { transform: scale(1.08) translateY(-6px); opacity: 1; }
+  75% { transform: scale(0.96) translateY(2px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* 彩带飘落 */
+@keyframes confetti-fall {
+  0% { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(112vh) rotate(720deg); opacity: 0; }
+}
+
+/* 光圈脉冲 */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+/* 星星闪烁 */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* 标题微光 */
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+  50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.9); }
+}
+
+.lottery-box-float {
+  animation: box-float 2.4s ease-in-out infinite;
+}
+
+.lottery-box-shake {
+  animation: box-shake 0.7s ease-in-out infinite;
+}
+
+.lottery-box-explode {
+  animation: box-explode 0.6s ease-out forwards;
+}
+
+.lottery-ray-spin {
+  animation: ray-spin 8s linear infinite;
+}
+
+.lottery-prize-pop {
+  animation: prize-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.lottery-confetti {
+  animation: confetti-fall 3.2s linear forwards;
+}
+
+.lottery-glow-pulse {
+  animation: glow-pulse 1.6s ease-in-out infinite;
+}
+
+.lottery-star-twinkle {
+  animation: star-twinkle 1.4s ease-in-out infinite;
+}
+
+.lottery-title-glow {
+  animation: title-glow 2s ease-in-out infinite;
+}

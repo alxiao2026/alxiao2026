@@ -154,3 +154,11 @@ image {
   background-color: var(--selection);
   color: var(--selection-foreground);
 }
+
+/* 小程序原生 Button 默认边框/背景清除（Button 组件 openType 开放能力场景使用） */
+button::after {
+  border: none;
+}
+button[plain] {
+  background-color: transparent;
+}

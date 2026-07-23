@@ -895,7 +895,7 @@ export default function PackageDetail() {
                 className="w-full bg-[#FF4757] rounded-full py-3 flex items-center justify-center"
                 onClick={() => {
                   setShowLotteryEntry(false)
-                  Taro.navigateTo({ url: `/pages/order-detail/index?id=${paidOrderId}` })
+                  Taro.navigateTo({ url: `/pages/lottery/index?orderId=${paidOrderId}` })
                 }}
               >
                 <Text className="block text-base font-semibold text-white">去抽奖</Text>

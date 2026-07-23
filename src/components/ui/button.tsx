@@ -1,5 +1,5 @@
 import * as React from "react"
-import { View } from "@tarojs/components"
+import { View, Button as TaroButton } from "@tarojs/components"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -39,17 +39,38 @@ export interface ButtonProps
   asChild?: boolean
   disabled?: boolean
   className?: string
+  /** 小程序开放能力（如 openType="share" 触发分享面板），传入后底层自动切换为原生 Button 渲染 */
+  openType?: "share" | "contact" | "getPhoneNumber" | "openSetting" | "feedback" | "chooseAvatar" | "launchApp" | "agreePrivacyAuthorization"
+  onGetPhoneNumber?: (e: { detail?: { encryptedData?: string; iv?: string; code?: string; errMsg?: string } }) => void
 }
 
 const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
-  ({ className, variant, size, asChild = false, disabled, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, disabled, openType, onGetPhoneNumber, children, ...props }, ref) => {
     const tabIndex = (props as { tabIndex?: number }).tabIndex ?? (disabled ? -1 : 0)
+    const cls = cn(
+      buttonVariants({ variant, size, className }),
+      disabled && "opacity-50 pointer-events-none"
+    )
+
+    // 小程序开放能力场景（分享/获取手机号等）：必须使用原生 Button 才能触发对应能力
+    if (openType) {
+      return (
+        <TaroButton
+          openType={openType}
+          disabled={disabled}
+          plain
+          className={cls}
+          onClick={props.onClick}
+          onGetPhoneNumber={onGetPhoneNumber}
+        >
+          {children}
+        </TaroButton>
+      )
+    }
+
     return (
       <View
-        className={cn(
-          buttonVariants({ variant, size, className }),
-          disabled && "opacity-50 pointer-events-none"
-        )}
+        className={cls}
         ref={ref}
         {...({ tabIndex } as { tabIndex?: number })}
         hoverClass={
@@ -58,7 +79,9 @@ const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
             : "border-ring ring-2 ring-ring ring-offset-2 ring-offset-background"
         }
         {...props}
-      />
+      >
+        {children}
+      </View>
     )
   }
 )

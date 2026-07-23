@@ -8,15 +8,17 @@ export class LotteryController {
 
   @Post('draw')
   @HttpCode(200)
-  draw(@Body() body: { order_id: string; user_id: string }, @Req() req: Request) {
+  async draw(@Body() body: { order_id: string; user_id: string }, @Req() req: Request) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
     const ua = req.headers['user-agent'] || '';
-    return this.lotteryService.draw(body.order_id, body.user_id, ip, ua);
+    const data = await this.lotteryService.draw(body.order_id, body.user_id, ip, ua);
+    return { code: 200, msg: 'success', data };
   }
 
   @Get('record/:orderId')
-  getRecordByOrderId(@Param('orderId') orderId: string) {
-    return this.lotteryService.getRecordByOrderId(orderId);
+  async getRecordByOrderId(@Param('orderId') orderId: string) {
+    const data = await this.lotteryService.getRecordByOrderId(orderId);
+    return { code: 200, msg: 'success', data };
   }
 
   @Get('user/:userId')

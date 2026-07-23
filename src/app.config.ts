@@ -15,7 +15,8 @@ export default defineAppConfig({
     'pages/prize-manage/index',
     'pages/lottery-settings/index',
     'pages/order-details/index',
-    'pages/lottery-records/index'
+    'pages/lottery-records/index',
+    'pages/lottery/index'
   ],
   window: {
     backgroundTextStyle: 'light',
