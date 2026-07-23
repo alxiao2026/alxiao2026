@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 
 interface Merchant {
@@ -20,6 +20,7 @@ interface Merchant {
   description?: string;
   latitude?: string;
   longitude?: string;
+  images?: string[];
 }
 
 export default function MerchantAdmin() {
@@ -33,6 +34,8 @@ export default function MerchantAdmin() {
   const [timePickerType, setTimePickerType] = useState<'open' | 'close'>('open');
   const [tempOpenTime, setTempOpenTime] = useState('09:00');
   const [tempCloseTime, setTempCloseTime] = useState('22:00');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -45,6 +48,7 @@ export default function MerchantAdmin() {
     description: '',
     latitude: '',
     longitude: '',
+    images: [] as string[],
     admin_phone: '',
     admin_password: '',
   });
@@ -80,6 +84,7 @@ export default function MerchantAdmin() {
       description: '',
       latitude: '',
       longitude: '',
+      images: [],
       admin_phone: '',
       admin_password: '',
     });
@@ -98,6 +103,7 @@ export default function MerchantAdmin() {
       description: merchant.description || '',
       latitude: merchant.latitude || '',
       longitude: merchant.longitude || '',
+      images: merchant.images || [],
       admin_phone: '',
       admin_password: '',
     });
@@ -135,6 +141,239 @@ export default function MerchantAdmin() {
     // 只允许数字，最多11位
     const cleaned = value.replace(/\D/g, '').slice(0, 11);
     setFormData({ ...formData, phone: cleaned });
+  };
+
+  // 上传首图（Logo）
+  const handleUploadLogo = async () => {
+    const env = Taro.getEnv();
+    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+    
+    if (uploadingLogo) return;
+    
+    try {
+      setUploadingLogo(true);
+      
+      if (isMiniApp) {
+        const res = await Taro.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+        });
+        
+        const tempFilePath = res.tempFiles[0].tempFilePath;
+        const fileSize = res.tempFiles[0].size;
+        
+        // 检查文件大小（5M限制）
+        if (fileSize > 5 * 1024 * 1024) {
+          Taro.showToast({ title: '图片不能超过5M', icon: 'none' });
+          return;
+        }
+        
+        Taro.showLoading({ title: '上传中...' });
+        
+        const uploadRes = await Network.uploadFile({
+          url: '/api/upload',
+          filePath: tempFilePath,
+          name: 'file',
+        });
+        
+        Taro.hideLoading();
+        
+        if (uploadRes.statusCode === 200) {
+          const data = JSON.parse(uploadRes.data);
+          if (data.code === 200 && data.data?.url) {
+            setFormData({ ...formData, logo: data.data.url });
+            Taro.showToast({ title: '上传成功', icon: 'success' });
+          } else {
+            Taro.showToast({ title: '上传失败', icon: 'none' });
+          }
+        } else {
+          Taro.showToast({ title: '上传失败', icon: 'none' });
+        }
+      } else {
+        // H5端使用input选择文件
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          if (file.size > 5 * 1024 * 1024) {
+            Taro.showToast({ title: '图片不能超过5M', icon: 'none' });
+            return;
+          }
+          
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', file);
+          
+          Taro.showLoading({ title: '上传中...' });
+          
+          try {
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              body: formDataUpload,
+            });
+            
+            const data = await response.json();
+            Taro.hideLoading();
+            
+            if (data.code === 200 && data.data?.url) {
+              setFormData({ ...formData, logo: data.data.url });
+              Taro.showToast({ title: '上传成功', icon: 'success' });
+            } else {
+              Taro.showToast({ title: '上传失败', icon: 'none' });
+            }
+          } catch (error) {
+            Taro.hideLoading();
+            Taro.showToast({ title: '上传失败', icon: 'none' });
+          }
+        };
+        input.click();
+      }
+    } catch (error) {
+      console.error('上传首图失败:', error);
+      Taro.hideLoading();
+      Taro.showToast({ title: '上传失败', icon: 'none' });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  // 上传环境图
+  const handleUploadEnvImage = async () => {
+    const env = Taro.getEnv();
+    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+    
+    if (uploadingImages) return;
+    
+    try {
+      setUploadingImages(true);
+      
+      if (isMiniApp) {
+        const res = await Taro.chooseMedia({
+          count: 9,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+        });
+        
+        const newImages: string[] = [];
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const file of res.tempFiles) {
+          if (file.size > 5 * 1024 * 1024) {
+            failCount++;
+            continue;
+          }
+          
+          try {
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload',
+              filePath: file.tempFilePath,
+              name: 'file',
+            });
+            
+            if (uploadRes.statusCode === 200) {
+              const data = JSON.parse(uploadRes.data);
+              if (data.code === 200 && data.data?.url) {
+                newImages.push(data.data.url);
+                successCount++;
+              } else {
+                failCount++;
+              }
+            } else {
+              failCount++;
+            }
+          } catch (error) {
+            failCount++;
+          }
+        }
+        
+        if (successCount > 0) {
+          setFormData({ ...formData, images: [...formData.images, ...newImages] });
+        }
+        
+        if (failCount > 0) {
+          Taro.showToast({ 
+            title: `${successCount}张成功，${failCount}张失败`, 
+            icon: 'none' 
+          });
+        } else {
+          Taro.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
+        }
+      } else {
+        // H5端
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = async (e: any) => {
+          const files = Array.from(e.target.files) as File[];
+          const newImages: string[] = [];
+          let successCount = 0;
+          let failCount = 0;
+          
+          for (const file of files) {
+            if (file.size > 5 * 1024 * 1024) {
+              failCount++;
+              continue;
+            }
+            
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+            
+            try {
+              const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formDataUpload,
+              });
+              
+              const data = await response.json();
+              
+              if (data.code === 200 && data.data?.url) {
+                newImages.push(data.data.url);
+                successCount++;
+              } else {
+                failCount++;
+              }
+            } catch (error) {
+              failCount++;
+            }
+          }
+          
+          if (successCount > 0) {
+            setFormData({ ...formData, images: [...formData.images, ...newImages] });
+          }
+          
+          if (failCount > 0) {
+            Taro.showToast({ 
+              title: `${successCount}张成功，${failCount}张失败`, 
+              icon: 'none' 
+            });
+          } else {
+            Taro.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
+          }
+        };
+        input.click();
+      }
+    } catch (error) {
+      console.error('上传环境图失败:', error);
+      Taro.showToast({ title: '上传失败', icon: 'none' });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  // 删除图片
+  const handleRemoveImage = (type: 'logo' | 'env', index?: number) => {
+    if (type === 'logo') {
+      setFormData({ ...formData, logo: '' });
+    } else if (type === 'env' && index !== undefined) {
+      const newImages = [...formData.images];
+      newImages.splice(index, 1);
+      setFormData({ ...formData, images: newImages });
+    }
   };
 
   const handleChooseLocation = async () => {
@@ -478,6 +717,74 @@ export default function MerchantAdmin() {
                 {formData.admin_password && formData.admin_password.length > 0 && formData.admin_password.length < 6 && (
                   <Text className="block text-xs text-[#FF4757] mt-1">密码长度至少6位</Text>
                 )}
+              </View>
+
+
+              {/* 商家首图 */}
+              <View className="mb-4">
+                <Text className="block text-sm font-medium text-gray-800 mb-2">商家首图 *</Text>
+                {formData.logo ? (
+                  <View className="relative">
+                    <Image
+                      src={formData.logo}
+                      className="w-full h-48 rounded-lg object-cover"
+                      mode="aspectFill"
+                    />
+                    <Button
+                      className="absolute top-2 right-2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
+                      onClick={() => handleRemoveImage('logo')}
+                    >
+                      <X size={16} color="#fff" />
+                    </Button>
+                  </View>
+                ) : (
+                  <Button
+                    className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center"
+                    onClick={handleUploadLogo}
+                    disabled={uploadingLogo}
+                  >
+                    <ImageIcon size={32} color="#9ca3af" />
+                    <Text className="block text-sm text-gray-500 mt-2">
+                      {uploadingLogo ? '上传中...' : '点击上传首图'}
+                    </Text>
+                    <Text className="block text-xs text-gray-400 mt-1">建议尺寸 750x400，不超过5M</Text>
+                  </Button>
+                )}
+              </View>
+
+              {/* 商家环境图 */}
+              <View className="mb-4">
+                <Text className="block text-sm font-medium text-gray-800 mb-2">商家环境图（选填）</Text>
+                <View className="grid grid-cols-3 gap-2">
+                  {formData.images.map((img, index) => (
+                    <View key={index} className="relative">
+                      <Image
+                        src={img}
+                        className="w-full h-24 rounded-lg object-cover"
+                        mode="aspectFill"
+                      />
+                      <Button
+                        className="absolute top-1 right-1 w-6 h-6 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
+                        onClick={() => handleRemoveImage('env', index)}
+                      >
+                        <X size={12} color="#fff" />
+                      </Button>
+                    </View>
+                  ))}
+                  {formData.images.length < 9 && (
+                    <Button
+                      className="w-full h-24 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center"
+                      onClick={handleUploadEnvImage}
+                      disabled={uploadingImages}
+                    >
+                      <Plus size={20} color="#9ca3af" />
+                      <Text className="block text-xs text-gray-500 mt-1">
+                        {uploadingImages ? '上传中' : '添加'}
+                      </Text>
+                    </Button>
+                  )}
+                </View>
+                <Text className="block text-xs text-gray-400 mt-2">最多9张，每张不超过5M</Text>
               </View>
 
               {/* 营业时间 */}

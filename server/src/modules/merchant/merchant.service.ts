@@ -4,6 +4,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 export interface CreateMerchantDto {
   name: string;
   logo?: string;
+  images?: string[];
   address?: string;
   phone?: string;
   business_hours?: string;
@@ -18,6 +19,7 @@ export interface CreateMerchantDto {
 export interface UpdateMerchantDto {
   name?: string;
   logo?: string;
+  images?: string[];
   address?: string;
   phone?: string;
   business_hours?: string;
@@ -77,6 +79,7 @@ export class MerchantService {
       .insert({
         name: body.name,
         logo: body.logo,
+        images: body.images || [],
         address: body.address,
         phone: body.phone,
         business_hours: body.business_hours,
