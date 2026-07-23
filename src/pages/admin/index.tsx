@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
@@ -13,6 +13,7 @@ const AdminPage = () => {
   });
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
+  const [merchantLogo, setMerchantLogo] = useState('');
   const [roleCode, setRoleCode] = useState<number>(0);
 
   const checkPermission = async () => {
@@ -30,11 +31,12 @@ const AdminPage = () => {
       }
       setRoleCode(perms.role_code ?? 0);
       setHasAccess(true);
-      // 获取门店名称
+      // 获取门店名称和 logo
       try {
         const merchantRes = await Network.request({ url: `/api/users/${userId}/merchant` });
         const merchant = (merchantRes.data as any)?.data;
         if (merchant?.name) setMerchantName(merchant.name);
+        if (merchant?.logo) setMerchantLogo(merchant.logo);
       } catch { /* 非商家用户忽略 */ }
     } catch (err) {
       console.error('[Admin] 权限检查失败:', err);
@@ -104,15 +106,19 @@ const AdminPage = () => {
         {/* 店铺名 + 切换按钮 */}
         <View className="flex flex-row items-center justify-between mb-5">
           <View className="flex flex-row items-center gap-2">
-            <View className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-              <Store size={18} color="#ffffff" />
-            </View>
+            {merchantLogo ? (
+              <Image src={merchantLogo} className="w-8 h-8 rounded-lg" mode="aspectFill" />
+            ) : (
+              <View className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                <Store size={18} color="#ffffff" />
+              </View>
+            )}
             <Text className="block text-white text-base font-semibold">
               {merchantName || '膨胀团'}
             </Text>
           </View>
-          <View className="bg-white bg-opacity-20 rounded-full px-3 py-2" onClick={() => Taro.navigateTo({ url: '/pages/index/index' })}>
-            <Text className="block text-white text-xs">去店员版 ›</Text>
+          <View className="bg-white bg-opacity-20 rounded-full px-3 py-2" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+            <Text className="block text-white text-xs">返回首页</Text>
           </View>
         </View>
 
