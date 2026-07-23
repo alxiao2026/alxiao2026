@@ -22,53 +22,61 @@ export class LotteryController {
   }
 
   @Get('user/:userId')
-  getUserRecords(@Param('userId') userId: string) {
-    return this.lotteryService.getUserRecords(userId);
+  async getUserRecords(@Param('userId') userId: string) {
+    const data = await this.lotteryService.getUserRecords(userId);
+    return { code: 200, msg: 'success', data };
   }
 
   @Get('winners')
-  getWinners() {
-    return this.lotteryService.getWinners();
+  async getWinners() {
+    const data = await this.lotteryService.getWinners();
+    return { code: 200, msg: 'success', data };
   }
 
   /** 商品兑换码核销 */
   @Post('redeem')
   @HttpCode(200)
-  redeemProduct(@Body() body: { redemption_code: string; merchant_user_id: string }, @Req() req: Request) {
+  async redeemProduct(@Body() body: { redemption_code: string; merchant_user_id: string }, @Req() req: Request) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
-    return this.lotteryService.redeemProduct(body.redemption_code, body.merchant_user_id, ip);
+    const data = await this.lotteryService.redeemProduct(body.redemption_code, body.merchant_user_id, ip);
+    return { code: 200, msg: 'success', data };
   }
 
   /** 获取抽奖设置 */
   @Get('settings')
-  getSettings() {
-    return this.lotteryService.getSettings();
+  async getSettings() {
+    const data = await this.lotteryService.getSettings();
+    return { code: 200, msg: 'success', data };
   }
 
   /** 更新抽奖设置 */
   @Post('settings')
   @HttpCode(200)
-  updateSettings(@Body() body: Record<string, string>) {
-    return this.lotteryService.updateSettings(body);
+  async updateSettings(@Body() body: Record<string, string>) {
+    const data = await this.lotteryService.updateSettings(body);
+    return { code: 200, msg: 'success', data };
   }
 
   /** 获取操作日志 */
   @Get('logs')
-  getLogs(@Body() body?: { limit?: number }) {
-    return this.lotteryService.getLogs(body?.limit || 100);
+  async getLogs(@Body() body?: { limit?: number }) {
+    const data = await this.lotteryService.getLogs(body?.limit || 100);
+    return { code: 200, msg: 'success', data };
   }
 
   /** 用户分享次数+1 */
   @Post('share/:userId')
   @HttpCode(200)
-  incrementShareCount(@Param('userId') userId: string) {
-    return this.lotteryService.incrementShareCount(userId);
+  async incrementShareCount(@Param('userId') userId: string) {
+    const data = await this.lotteryService.incrementShareCount(userId);
+    return { code: 200, msg: 'success', data };
   }
 
   /** 用户社交媒体发布次数+1 */
   @Post('social-post/:userId')
   @HttpCode(200)
-  incrementSocialPostCount(@Param('userId') userId: string) {
-    return this.lotteryService.incrementSocialPostCount(userId);
+  async incrementSocialPostCount(@Param('userId') userId: string) {
+    const data = await this.lotteryService.incrementSocialPostCount(userId);
+    return { code: 200, msg: 'success', data };
   }
 }
