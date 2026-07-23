@@ -480,14 +480,56 @@ export class LotteryService {
     return (data as LotteryRecord) || null;
   }
 
-  async getUserRecords(userId: string): Promise<LotteryRecord[]> {
+  async getUserRecords(userId: string): Promise<any[]> {
     const { data, error } = await this.client
       .from('lottery_records')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户抽奖记录失败: ${error.message}`);
-    return (data as LotteryRecord[]) || [];
+    const records = (data as LotteryRecord[]) || [];
+    if (records.length === 0) return [];
+
+    // 联表补充奖品详情（类型、优惠券金额、商品信息等）
+    const prizeIds = [...new Set(records.map(r => r.prize_id).filter(Boolean))];
+    const prizeMap = new Map<string, any>();
+    if (prizeIds.length > 0) {
+      const { data: prizes } = await this.client
+        .from('prizes')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url')
+        .in('id', prizeIds);
+      (prizes || []).forEach((p: any) => prizeMap.set(p.id, p));
+    }
+
+    // 对 id 匹配失败的记录（奖品被删除重建导致 prize_id 为孤儿引用），按奖品名称回退匹配
+    const prizeNameMap = new Map<string, any>();
+    const unmatchedNames = [
+      ...new Set(
+        records
+          .filter(r => r.prize_id && !prizeMap.has(r.prize_id) && r.prize_name)
+          .map(r => r.prize_name),
+      ),
+    ];
+    if (unmatchedNames.length > 0) {
+      const { data: namePrizes } = await this.client
+        .from('prizes')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url')
+        .in('name', unmatchedNames);
+      (namePrizes || []).forEach((p: any) => prizeNameMap.set(p.name, p));
+    }
+
+    return records.map(r => {
+      const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
+      return {
+        ...r,
+        prize_type: prize?.prize_type || '',
+        coupon_amount: prize?.coupon_amount ?? null,
+        coupon_condition: prize?.coupon_min_spend ?? null,
+        product_name: prize?.product_name || '',
+        product_value: prize?.product_value ?? null,
+        prize_image: prize?.image_url || '',
+      };
+    });
   }
 
   /** 获取往期中奖名单（中奖记录 + 用户昵称，按时间倒序，最多50条） */

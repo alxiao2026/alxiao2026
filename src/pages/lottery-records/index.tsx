@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import Taro from '@tarojs/taro'
+import { useState } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
@@ -15,12 +15,15 @@ interface LotteryRecord {
   prize_id: string
   prize_name: string
   prize_type: string
-  coupon_amount?: number
-  coupon_condition?: number
+  is_winner: boolean
+  coupon_amount?: string | number | null
+  coupon_condition?: string | number | null
   product_name?: string
-  product_value?: number
+  product_value?: string | number | null
+  prize_image?: string
   redemption_code?: string
-  refund_amount?: number
+  refund_amount?: string | number | null
+  refund_status?: string
   created_at: string
 }
 
@@ -44,17 +47,15 @@ export default function LotteryRecordsPage() {
   const [records, setRecords] = useState<LotteryRecord[]>([])
   const [unparticipated, setUnparticipated] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
-  const [userId, setUserId] = useState('')
 
-  useEffect(() => {
-    const info = Taro.getStorageSync('userInfo')
-    const uid = info?.id || info?.userId || ''
-    setUserId(uid)
+  // 页面每次显示时刷新（首次进入 / 从盲盒抽奖页返回都会触发）
+  useDidShow(() => {
+    const uid = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || ''
     if (uid) {
       loadRecords(uid)
       loadUnparticipated(uid)
     }
-  }, [])
+  })
 
   const loadRecords = async (uid: string) => {
     setLoading(true)
@@ -103,56 +104,24 @@ export default function LotteryRecordsPage() {
     return map[type] || 'bg-gray-100 text-gray-700'
   }
 
-  const getStatusBadge = (status: string) => {
-    const map: Record<string, { label: string; className: string }> = {
-      pending: { label: '待使用', className: 'bg-yellow-100 text-yellow-700' },
-      used: { label: '已使用', className: 'bg-green-100 text-green-700' },
-      expired: { label: '已过期', className: 'bg-red-100 text-red-700' },
-      refunded: { label: '已退款', className: 'bg-gray-100 text-gray-700' },
+  const getRecordBadge = (record: LotteryRecord) => {
+    if (!record.is_winner || !record.prize_id) {
+      return { label: '未中奖', className: 'bg-gray-100 text-gray-500' }
     }
-    return map[status] || { label: status, className: 'bg-gray-100 text-gray-700' }
+    if (record.prize_type === 'free_meal') {
+      return record.refund_status === 'completed'
+        ? { label: '已返现', className: 'bg-green-100 text-green-700' }
+        : { label: '返现中', className: 'bg-yellow-100 text-yellow-700' }
+    }
+    if (record.prize_type === 'product') {
+      return { label: '待核销', className: 'bg-yellow-100 text-yellow-700' }
+    }
+    return { label: '待使用', className: 'bg-yellow-100 text-yellow-700' }
   }
 
-  const handleParticipate = async (order: Order) => {
-    if (!userId) return
-    const res = await Taro.showModal({
-      title: '参与抽奖',
-      content: `确定使用订单「${order.package_name || order.shop_name}」参与抽奖吗？`,
-    })
-    if (!res.confirm) return
-
-    Taro.showLoading({ title: '抽奖中...' })
-    try {
-      const drawRes = await Network.request({
-        url: '/api/lottery/draw',
-        method: 'POST',
-        data: { user_id: userId, order_id: order.id },
-      })
-      Taro.hideLoading()
-      console.log('抽奖结果:', drawRes.data)
-      const envelope = drawRes.data as any
-      if (envelope?.code === 200 && envelope?.data) {
-        const result = envelope.data
-        if (result.won) {
-          Taro.showModal({
-            title: '🎉 恭喜中奖！',
-            content: `奖品：${result.prize_name}\n${result.prize_type === 'coupon' ? `优惠券金额：¥${result.coupon_amount}` : result.prize_type === 'product' ? `商品：${result.product_name}` : `返现：¥${result.refund_amount}`}`,
-            showCancel: false,
-          })
-        } else {
-          Taro.showToast({ title: result.message || '很遗憾，未中奖', icon: 'none' })
-        }
-        // 刷新数据
-        loadRecords(userId)
-        loadUnparticipated(userId)
-      } else {
-        Taro.showToast({ title: envelope?.msg || '抽奖失败', icon: 'none' })
-      }
-    } catch (err) {
-      Taro.hideLoading()
-      console.error('抽奖失败:', err)
-      Taro.showToast({ title: '抽奖失败，请重试', icon: 'none' })
-    }
+  // 跳转盲盒抽奖页（含分享引导与开奖动画，与支付成功后的抽奖体验一致）
+  const handleParticipate = (order: Order) => {
+    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${order.id}` })
   }
 
   return (
@@ -184,7 +153,7 @@ export default function LotteryRecordsPage() {
             ) : (
               <View className="space-y-3 pb-4">
                 {records.map((record) => {
-                  const statusBadge = getStatusBadge(record.prize_type === 'coupon' ? 'pending' : 'used')
+                  const statusBadge = getRecordBadge(record)
                   return (
                     <Card key={record.id} className="bg-white rounded-xl border-0 shadow-sm">
                       <CardContent className="p-4">
@@ -192,9 +161,11 @@ export default function LotteryRecordsPage() {
                           <View className="flex-1">
                             <View className="flex items-center gap-2 mb-2">
                               <Text className="text-base font-semibold text-gray-900">{record.prize_name}</Text>
-                              <Badge className={`${getPrizeTypeColor(record.prize_type)} text-xs`}>
-                                <Text>{getPrizeTypeLabel(record.prize_type)}</Text>
-                              </Badge>
+                              {record.prize_type ? (
+                                <Badge className={`${getPrizeTypeColor(record.prize_type)} text-xs`}>
+                                  <Text>{getPrizeTypeLabel(record.prize_type)}</Text>
+                                </Badge>
+                              ) : null}
                             </View>
                             {record.prize_type === 'coupon' && record.coupon_amount && (
                               <Text className="block text-sm text-[#FF4757] font-medium">

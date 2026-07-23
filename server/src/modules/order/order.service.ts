@@ -108,14 +108,14 @@ export class OrderService {
     return orders;
   }
 
-  /** 获取用户未参与抽奖的订单（paid 状态且无抽奖记录） */
-  async findUnparticipatedByUserId(userId: string): Promise<Order[]> {
-    // 1. 获取用户所有 paid 状态的订单
+  /** 获取用户未参与抽奖的订单（有效状态且无抽奖记录），补充套餐封面与订单总额 */
+  async findUnparticipatedByUserId(userId: string): Promise<any[]> {
+    // 1. 获取用户有效状态的订单（pending 待使用 / completed 已完成）
     const { data: orders, error } = await this.client
       .from('orders')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'paid')
+      .in('status', ['pending', 'completed'])
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户订单失败: ${error.message}`);
     const allOrders = (orders as Order[]) || [];
@@ -130,7 +130,25 @@ export class OrderService {
     const participatedIds = new Set((records || []).map((r: any) => r.order_id));
 
     // 3. 过滤出未参与抽奖的订单
-    return allOrders.filter(o => !participatedIds.has(o.id));
+    const unparticipated = allOrders.filter(o => !participatedIds.has(o.id));
+    if (unparticipated.length === 0) return [];
+
+    // 4. 联表补充套餐封面图，计算订单总额
+    const packageIds = [...new Set(unparticipated.map(o => o.package_id).filter(Boolean))] as string[];
+    const pkgMap = new Map<string, any>();
+    if (packageIds.length > 0) {
+      const { data: packages } = await this.client
+        .from('packages')
+        .select('id, cover_image')
+        .in('id', packageIds);
+      (packages || []).forEach((p: any) => pkgMap.set(p.id, p));
+    }
+
+    return unparticipated.map(o => ({
+      ...o,
+      package_cover: pkgMap.get(o.package_id || '')?.cover_image || '',
+      total_amount: (parseFloat(o.price || '0') * (o.quantity || 1)).toFixed(2),
+    }));
   }
 
   async findOne(id: string): Promise<Order> {
