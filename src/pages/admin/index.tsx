@@ -117,8 +117,8 @@ const AdminPage = () => {
               {merchantName || '膨胀团'}
             </Text>
           </View>
-          <View className="bg-white bg-opacity-20 rounded-full px-3 py-2" onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}>
-            <Text className="block text-white text-xs">返回个人中心</Text>
+          <View className="bg-white rounded-full px-3 py-2" onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}>
+            <Text className="block text-[#FF4757] text-xs">返回个人中心</Text>
           </View>
         </View>
 
