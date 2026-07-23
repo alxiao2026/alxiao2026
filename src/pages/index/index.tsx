@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import {
-  Gift, LogIn, LayoutDashboard, User,
+  Gift, LogIn,
   MapPin, ChevronRight, Clock, Flame, Award
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
@@ -70,8 +70,6 @@ const readLoggedIn = (): boolean => {
   return v === true || v === '1' || v === 'true';
 };
 
-const readRoleCode = (): number => Number(Taro.getStorageSync('role_code') || 0);
-
 const IndexPage = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -83,7 +81,6 @@ const IndexPage = () => {
   const [showLottery, setShowLottery] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'hot' | 'new'>('all');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [canAccessAdmin, setCanAccessAdmin] = useState(false);
 
   // 从后端拉取最新用户信息，保证昵称/头像/登录态实时同步
   const refreshUserInfo = async (uid: string) => {
@@ -113,8 +110,6 @@ const IndexPage = () => {
     const savedAvatar = Taro.getStorageSync('avatar_url');
     const loggedIn = readLoggedIn();
     setIsLoggedIn(loggedIn);
-    const roleCode = readRoleCode();
-    setCanAccessAdmin(roleCode === 1 || roleCode === 2);
     if (savedUserId) {
       setUserId(savedUserId);
       if (savedNickName) setNickName(savedNickName);
@@ -140,8 +135,6 @@ const IndexPage = () => {
     // 同步最新登录状态（登录页返回后更新头部显示）
     const loggedIn = readLoggedIn();
     setIsLoggedIn(loggedIn);
-    const roleCode = readRoleCode();
-    setCanAccessAdmin(roleCode === 1 || roleCode === 2);
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
@@ -237,29 +230,11 @@ const IndexPage = () => {
       <ScrollView className="flex-1" scrollY>
         {/* ===== 顶部渐变头部 ===== */}
         <View className="bg-gradient-to-b from-[#FF4757] via-[#ff5c6e] to-[#ff8a94] px-4 pt-10 pb-16">
-          {/* 第一行：Logo + 右侧入口 */}
+          {/* 第一行：Logo */}
           <View className="flex flex-row items-center justify-between mb-5">
             <View className="flex flex-row items-center gap-2">
               <Image src={LOGO_URL} className="w-9 h-9 rounded-lg" mode="aspectFit" />
               <Text className="block text-lg font-bold text-white">膨胀团</Text>
-            </View>
-            <View className="flex flex-row items-center gap-2">
-              {canAccessAdmin && (
-                <View
-                  className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-3 py-1"
-                  onClick={() => Taro.navigateTo({ url: '/pages/admin/index' })}
-                >
-                  <LayoutDashboard size={13} color="#fff" />
-                  <Text className="block text-xs text-white">管理</Text>
-                </View>
-              )}
-              <View
-                className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-1"
-                onClick={() => Taro.navigateTo({ url: '/pages/user-center/index' })}
-              >
-                <User size={13} color="#ff6a00" />
-                <Text className="block text-xs font-medium" style={{ color: '#ff6a00' }}>我的</Text>
-              </View>
             </View>
           </View>
 
