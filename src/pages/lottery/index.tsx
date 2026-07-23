@@ -5,7 +5,6 @@ import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import {
   Gift,
-  Sparkles,
   Ticket,
   Coffee,
   UtensilsCrossed,
@@ -49,14 +48,14 @@ interface PrizePoolItem {
 const LOGO_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
 
-// 马卡龙配色盲盒：浅粉 / 淡紫 / 浅黄交替
-const BOX_THEMES = [
-  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
-  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
-  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
-  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
-  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
-  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
+// 6 个盲盒图片（3D 黏土风，透明底，TOS 存储）
+const BOX_IMAGES = [
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_01_45dc4601-87ab-4b74-b73e-8ad791462c4a.png?sign=3f7f187fd6f94e9ee6b31e4bf31b9947ae9b146db9484a16f3130224e2c6b030007c2c54ecabcaff7dc8b6cb57ee2e7f0eb6da353df8f68b1854503b87ec8bed',
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_02_5b21c9dd-a0e6-41c1-9b12-6a966adbf089.png?sign=5df6113cb1923de274a7010aeac3583e42c1f3762ad2bda0bcbd4c4ba6e42ecd435fbd1a334cf02d3a43be406e140eebd4a53f0be6c25f34c1c76d0d5b2d55cd',
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_03_6d0b58c5-1912-4e8f-960b-3c139a9c1818.png?sign=e638413f007a69a297447b5a9fd75c5250cf34b350a34a13fb6f0b8c01b5b49ea2ecadac0f2c59b0c264b2995b84c207c1c4a6656a1bb2118e33b70fb8bda0c1',
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_04_20dd92d0-5a6c-4e2e-a5ef-99ad9a614615.png?sign=3f9c53b9b22d7fb8fbb11e68e4e6943e8fd73a1e5f381d1f413ef1b7ee973ce7da355654837804cc52a1c34d3ba9ec6b64066d57a1a5a958a6b8085ff217198e',
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_05_4a5c5580-0263-443f-8e9e-3ea0af316abb.png?sign=36875cc8e135f3a0f686efeb70d4c92864979be32e259c1c116b0fdc1db211dc284ad9ca7c67e98f5d6b4048834f673b0331e4c040141de644814f3bd0d94134',
+  'https://coze-coding-project.tos-s3.cn-beijing.volces.com/upload/lottery_box_06_1b7882e3-b769-44f3-8934-a4c08e3850ab.png?sign=97271537800e1bfcbfd9b1e22294af85eb1a41382b7b55387e02d72e0ec4a9c7ac1d9f66b62e40496aa89216171a12b0c8766bd5d79214883cb61ff118750ef0',
 ]
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
@@ -449,7 +448,7 @@ export default function Lottery() {
   const renderBoxes = () => (
     <View className="clay-card mx-5 px-4 pt-5 pb-5" style={{ position: 'relative', zIndex: 2 }}>
       <View className="grid grid-cols-2 gap-4">
-        {BOX_THEMES.map((theme, index) => {
+        {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
           const dimmed = isOpening && !isSelected
@@ -462,93 +461,12 @@ export default function Lottery() {
             >
               <View
                 className={`w-full ${
-                  openingThis && !exploding ? 'clay-box-shake' : openingThis ? '' : 'clay-box-float'
+                  openingThis && !exploding ? 'clay-box-shake' : openingThis ? 'clay-box-burst' : 'clay-box-float'
                 }`}
-                style={{ position: 'relative', aspectRatio: '0.9', animationDelay: `${index * 0.3}s` }}
+                style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
-                {/* 盒身（下半） */}
-                <View
-                  className={openingThis && exploding ? 'clay-box-open-body' : ''}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    top: '28%',
-                    borderRadius: '22px',
-                    background: `linear-gradient(160deg, ${theme.face[0]} 0%, ${theme.face[1]} 100%)`,
-                    boxShadow: '0 8px 16px rgba(180, 100, 40, 0.25), inset 0 2px 0 rgba(255,255,255,0.6)',
-                  }}
-                />
-                {/* 盒盖（上半，开盒时翻开飞走） */}
-                <View
-                  className={openingThis && exploding ? 'clay-lid' : ''}
-                  style={{
-                    position: 'absolute',
-                    left: '-4%',
-                    right: '-4%',
-                    top: 0,
-                    height: '34%',
-                    borderRadius: '18px',
-                    borderBottomLeftRadius: '50% 24%',
-                    borderBottomRightRadius: '50% 24%',
-                    background: `linear-gradient(180deg, ${theme.lid} 0%, ${theme.face[1]} 100%)`,
-                    boxShadow: '0 4px 8px rgba(180, 100, 40, 0.2), inset 0 2px 0 rgba(255,255,255,0.5)',
-                    zIndex: 3,
-                  }}
-                />
-                {/* 盒面：大问号 */}
-                {!(openingThis && exploding) && (
-                  <View
-                    className="flex items-center justify-center"
-                    style={{ position: 'absolute', left: 0, right: 0, top: '26%', bottom: '18%', zIndex: 2 }}
-                  >
-                    <Text
-                      className="font-black"
-                      style={{
-                        fontSize: '52px',
-                        color: '#FFFDF6',
-                        textShadow: '0 3px 0 rgba(180,100,40,0.18)',
-                      }}
-                    >
-                      ?
-                    </Text>
-                  </View>
-                )}
-                {/* 盒面：编号 */}
-                <Text
-                  className="font-black"
-                  style={{
-                    position: 'absolute',
-                    left: '10%',
-                    bottom: '6%',
-                    zIndex: 2,
-                    fontSize: '15px',
-                    color: 'rgba(255,255,255,0.9)',
-                    textShadow: `0 1px 0 ${theme.num}`,
-                  }}
-                >
-                  {String(index + 1).padStart(2, '0')}
-                </Text>
-                {/* 盒面：小星星 + 小IP贴 */}
-                <View style={{ position: 'absolute', right: '8%', bottom: '6%', zIndex: 2 }}>
-                  <Sparkles size={16} color="rgba(255,255,255,0.9)" />
-                </View>
-                <View
-                  className="bg-white rounded-full overflow-hidden"
-                  style={{
-                    position: 'absolute',
-                    right: '8%',
-                    top: '30%',
-                    zIndex: 4,
-                    width: '26px',
-                    height: '26px',
-                    boxShadow: '0 2px 4px rgba(180,100,40,0.25)',
-                  }}
-                >
-                  <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
-                </View>
-
+                {/* 盲盒图片 */}
+                <Image src={img} className="w-full" mode="widthFix" />
                 {/* 开盒金光粒子 */}
                 {openingThis && exploding &&
                   sparkles.map((s) => (
@@ -799,29 +717,13 @@ export default function Lottery() {
                     <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
                   )}
                 </View>
-                {/* 盒身 */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: '6px',
-                    width: '150px',
-                    height: '86px',
-                    borderRadius: '20px',
-                    background: 'linear-gradient(160deg, #FFC7DD 0%, #FF9BBF 100%)',
-                    boxShadow: '0 10px 20px rgba(200, 100, 40, 0.3), inset 0 2px 0 rgba(255,255,255,0.6)',
-                    zIndex: 2,
-                  }}
-                >
-                  <Text
-                    className="font-black"
-                    style={{ position: 'absolute', left: '12%', bottom: '10%', fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}
-                  >
-                    {String((selectedBox ?? 0) + 1).padStart(2, '0')}
-                  </Text>
-                  <View style={{ position: 'absolute', right: '10%', bottom: '12%' }}>
-                    <Sparkles size={16} color="rgba(255,255,255,0.9)" />
-                  </View>
-                </View>
+                {/* 盒身：选中的盲盒图片 */}
+                <Image
+                  src={BOX_IMAGES[selectedBox ?? 0]}
+                  mode="widthFix"
+                  className="clay-prize-pop"
+                  style={{ position: 'absolute', bottom: '0', width: '140px', zIndex: 2 }}
+                />
               </View>
 
               {renderPrizeExtra()}

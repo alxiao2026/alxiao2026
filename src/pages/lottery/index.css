@@ -100,6 +100,25 @@
 .clay-box-open-body {
   animation: clayBodySink 0.8s ease forwards;
 }
+
+/* 选中盲盒爆开（图片整体放大旋转淡出） */
+.clay-box-burst {
+  animation: clayBoxBurst 0.85s ease-in forwards;
+}
+@keyframes clayBoxBurst {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.18) rotate(-5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.65) rotate(10deg) translateY(-36px);
+    opacity: 0;
+  }
+}
 @keyframes clayBodySink {
   to {
     transform: translateY(8px) scale(0.96);
