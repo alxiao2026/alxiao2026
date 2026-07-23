@@ -6,6 +6,50 @@ export const healthCheck = pgTable("health_check", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
+// 商家表
+export const merchants = pgTable("merchants", {
+	id: serial().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	logo: varchar("logo", { length: 512 }),
+	address: varchar("address", { length: 512 }),
+	phone: varchar("phone", { length: 50 }),
+	business_hours: varchar("business_hours", { length: 100 }),
+	category: varchar("category", { length: 100 }),
+	description: text("description"),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// 用户表（角色：consumer=普通消费者，merchant=商家用户，admin=系统管理员）
+export const users = pgTable("users", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	user_id: varchar("user_id", { length: 128 }).notNull().unique(),
+	nick_name: varchar("nick_name", { length: 128 }),
+	avatar_url: varchar("avatar_url", { length: 512 }),
+	phone: varchar("phone", { length: 20 }).unique(),
+	password: varchar("password", { length: 128 }),
+	login_type: varchar("login_type", { length: 20 }).notNull().default("password"), // password/sms/wechat
+	open_id: varchar("open_id", { length: 128 }),
+	gender: varchar("gender", { length: 10 }).notNull().default("unknown"),
+	birthday: varchar("birthday", { length: 20 }),
+	member_level: varchar("member_level", { length: 20 }).notNull().default("normal"),
+	points: integer("points").notNull().default(0),
+	total_orders: integer("total_orders").notNull().default(0),
+	total_spent: numeric("total_spent", { precision: 12, scale: 2 }).notNull().default("0"),
+	is_active: boolean("is_active").notNull().default(true),
+	role: varchar("role", { length: 20 }).notNull().default("consumer"), // consumer/merchant/admin
+	merchant_id: integer("merchant_id").references(() => merchants.id),
+	share_count: integer("share_count").notNull().default(0), // 分享次数（抽奖权重）
+	social_post_count: integer("social_post_count").notNull().default(0), // 社媒发布次数（抽奖权重）
+	last_login_at: timestamp("last_login_at", { withTimezone: true }),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updated_at: timestamp("updated_at", { withTimezone: true }),
+}, (table) => [
+	index("users_phone_idx").on(table.phone),
+	index("users_role_idx").on(table.role),
+	index("users_merchant_id_idx").on(table.merchant_id),
+]);
+
 // 奖品表
 export const prizes = pgTable("prizes", {
 	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -106,16 +150,36 @@ export const lotteryRecords = pgTable("lottery_records", {
 	index("lottery_records_prize_id_idx").on(table.prize_id),
 ]);
 
-// 商家表
-export const merchants = pgTable("merchants", {
-	id: serial().primaryKey(),
-	name: varchar("name", { length: 255 }).notNull(),
-	logo: varchar("logo", { length: 512 }),
-	address: varchar("address", { length: 512 }),
-	phone: varchar("phone", { length: 50 }),
-	business_hours: varchar("business_hours", { length: 100 }),
-	category: varchar("category", { length: 100 }),
-	description: text("description"),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+// 抽奖设置表（键值对存储）
+export const lotterySettings = pgTable("lottery_settings", {
+	setting_key: varchar("setting_key", { length: 64 }).primaryKey(),
+	setting_value: text("setting_value"),
 	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
+
+// 抽奖接口限流表（按 IP 滑动窗口）
+export const lotteryRateLimits = pgTable("lottery_rate_limits", {
+	ip_address: varchar("ip_address", { length: 64 }).primaryKey(),
+	request_count: integer("request_count").notNull().default(0),
+	window_start: timestamp("window_start", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 抽奖操作日志表
+export const lotteryLogs = pgTable("lottery_logs", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	user_id: varchar("user_id", { length: 128 }).notNull(),
+	order_id: varchar("order_id", { length: 36 }),
+	action: varchar("action", { length: 32 }).notNull(),
+	user_weight: numeric("user_weight", { precision: 6, scale: 2 }).notNull().default("1"), // 用户权重倍数
+	prize_id: varchar("prize_id", { length: 36 }),
+	prize_name: varchar("prize_name", { length: 128 }),
+	is_winner: boolean("is_winner").notNull().default(false),
+	ip_address: varchar("ip_address", { length: 64 }),
+	user_agent: varchar("user_agent", { length: 512 }),
+	detail: jsonb("detail"),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+	index("lottery_logs_user_id_idx").on(table.user_id),
+	index("lottery_logs_order_id_idx").on(table.order_id),
+	index("lottery_logs_created_at_idx").on(table.created_at),
+]);
