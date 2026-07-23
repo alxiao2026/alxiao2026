@@ -1,103 +1,229 @@
-/* 盲盒抽奖页动画 - 关键帧场景使用 CSS */
+/* ===== 膨胀盲盒 · 3D黏土软萌风 ===== */
 
-/* 盲盒待机浮动（呼吸感） */
-@keyframes box-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+/* 立体气泡大标题（黄色泡泡字 + 橙红厚度阴影） */
+.clay-title {
+  color: #ffd93d;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-shadow:
+    0 2px 0 #ff9f43,
+    0 4px 0 #f37b21,
+    0 6px 0 #d95a10,
+    0 10px 18px rgba(217, 90, 16, 0.35);
 }
 
-/* 选中盲盒开奖前剧烈摇晃 */
-@keyframes box-shake {
-  0%, 100% { transform: rotate(0deg) scale(1.1); }
-  10% { transform: rotate(-10deg) scale(1.12); }
-  20% { transform: rotate(10deg) scale(1.15); }
-  30% { transform: rotate(-12deg) scale(1.12); }
-  40% { transform: rotate(12deg) scale(1.18); }
-  50% { transform: rotate(-10deg) scale(1.15); }
-  60% { transform: rotate(10deg) scale(1.2); }
-  70% { transform: rotate(-8deg) scale(1.15); }
-  80% { transform: rotate(8deg) scale(1.18); }
-  90% { transform: rotate(-4deg) scale(1.12); }
+/* 3D 黏土主按钮（橙红渐变 + 底部厚度 + 按压下沉） */
+.clay-btn {
+  background: linear-gradient(180deg, #ffc53d 0%, #ff7a29 55%, #f74e16 100%);
+  border-radius: 999px;
+  box-shadow:
+    0 6px 0 #c23a0e,
+    0 14px 24px rgba(247, 78, 22, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.clay-btn:active {
+  transform: translateY(4px) scale(0.98);
+  box-shadow:
+    0 2px 0 #c23a0e,
+    0 6px 12px rgba(247, 78, 22, 0.3);
+}
+.clay-btn-waiting {
+  filter: saturate(0.75) brightness(1.06);
 }
 
-/* 盲盒爆开消失 */
-@keyframes box-explode {
-  0% { transform: scale(1.2); opacity: 1; }
-  40% { transform: scale(1.5); opacity: 1; }
-  100% { transform: scale(2.4); opacity: 0; }
+/* 白色悬浮大卡 */
+.clay-card {
+  background: #fffdf6;
+  border-radius: 28px;
+  box-shadow:
+    0 10px 24px rgba(214, 140, 42, 0.18),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* 金色光芒旋转 */
-@keyframes ray-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* 红橙胶囊标题（今日奖池 / 盲盒玩法） */
+.clay-pill {
+  background: linear-gradient(180deg, #ff8a5c 0%, #f74e16 100%);
+  border-radius: 999px;
+  box-shadow:
+    0 4px 0 #c23a0e,
+    0 8px 14px rgba(247, 78, 22, 0.28);
+}
+
+/* ===== 盲盒动画 ===== */
+.clay-box-float {
+  animation: clayBoxFloat 2.6s ease-in-out infinite;
+}
+@keyframes clayBoxFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.clay-box-shake {
+  animation: clayBoxShake 0.45s ease-in-out infinite;
+}
+@keyframes clayBoxShake {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1.06);
+  }
+  25% {
+    transform: rotate(-4deg) scale(1.06);
+  }
+  75% {
+    transform: rotate(4deg) scale(1.06);
+  }
+}
+
+/* 盒盖向上翻开飞走 */
+.clay-lid {
+  animation: clayLidOpen 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  box-shadow: 0 6px 12px rgba(120, 60, 0, 0.25);
+  z-index: 5;
+}
+@keyframes clayLidOpen {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120%) rotate(-22deg);
+    opacity: 0;
+  }
+}
+
+/* 开盒后盒身轻微下沉 */
+.clay-box-open-body {
+  animation: clayBodySink 0.8s ease forwards;
+}
+@keyframes clayBodySink {
+  to {
+    transform: translateY(8px) scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+/* 金光粒子从盒中飘出 */
+.clay-sparkle {
+  animation: claySparkleRise 1.15s ease-out forwards;
+}
+@keyframes claySparkleRise {
+  0% {
+    transform: translateY(0) scale(0.4);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-130px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* “惊喜即将出现”气泡呼吸 */
+.clay-bubble {
+  animation: clayBubbleBreath 1s ease-in-out infinite;
+}
+@keyframes clayBubbleBreath {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+/* IP 从盒中弹跳探出 */
+.clay-ip-bounce {
+  animation: clayIpBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes clayIpBounce {
+  0% {
+    transform: translateY(34px) scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-12px) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* 奖品卡片弹入 */
-@keyframes prize-pop {
-  0% { transform: scale(0.3) translateY(60px); opacity: 0; }
-  55% { transform: scale(1.08) translateY(-6px); opacity: 1; }
-  75% { transform: scale(0.96) translateY(2px); }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
+.clay-prize-pop {
+  animation: clayPrizePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes clayPrizePop {
+  0% {
+    transform: scale(0.4) translateY(40px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
-/* 彩带飘落 */
-@keyframes confetti-fall {
-  0% { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
-  85% { opacity: 1; }
-  100% { transform: translateY(112vh) rotate(720deg); opacity: 0; }
+/* 彩带彩屑飘落 */
+.clay-confetti {
+  animation: clayConfettiFall 2.8s linear forwards;
+}
+@keyframes clayConfettiFall {
+  0% {
+    transform: translateY(-24px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0.2;
+  }
 }
 
-/* 光圈脉冲 */
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.18); }
+/* 金色光芒旋转 */
+.clay-ray-spin {
+  animation: clayRaySpin 7s linear infinite;
+}
+@keyframes clayRaySpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* 星星闪烁 */
-@keyframes star-twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+/* 加载态脉动 */
+.clay-pulse {
+  animation: clayPulse 1.4s ease-in-out infinite;
+}
+@keyframes clayPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
 }
 
-/* 标题微光 */
-@keyframes title-glow {
-  0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
-  50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.9); }
+/* ===== 游戏手柄渐变底部导航 ===== */
+.clay-tabbar {
+  background: linear-gradient(135deg, #ffe9a8 0%, #ffd3ec 55%, #c9aef0 100%);
+  border-radius: 40px;
+  box-shadow:
+    0 8px 20px rgba(150, 100, 200, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7);
 }
-
-.lottery-box-float {
-  animation: box-float 2.4s ease-in-out infinite;
-}
-
-.lottery-box-shake {
-  animation: box-shake 0.7s ease-in-out infinite;
-}
-
-.lottery-box-explode {
-  animation: box-explode 0.6s ease-out forwards;
-}
-
-.lottery-ray-spin {
-  animation: ray-spin 8s linear infinite;
-}
-
-.lottery-prize-pop {
-  animation: prize-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.lottery-confetti {
-  animation: confetti-fall 3.2s linear forwards;
-}
-
-.lottery-glow-pulse {
-  animation: glow-pulse 1.6s ease-in-out infinite;
-}
-
-.lottery-star-twinkle {
-  animation: star-twinkle 1.4s ease-in-out infinite;
-}
-
-.lottery-title-glow {
-  animation: title-glow 2s ease-in-out infinite;
+.clay-tab-active {
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  box-shadow: 0 3px 8px rgba(150, 100, 200, 0.22);
 }

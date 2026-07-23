@@ -1,11 +1,13 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '幸运盲盒',
-      navigationBarBackgroundColor: '#1a0533',
+      navigationBarTitleText: '膨胀盲盒',
+      navigationBarBackgroundColor: '#FF6B4A',
       navigationBarTextStyle: 'white',
+      backgroundColor: '#FFF3CC',
     })
   : {
-      navigationBarTitleText: '幸运盲盒',
-      navigationBarBackgroundColor: '#1a0533',
+      navigationBarTitleText: '膨胀盲盒',
+      navigationBarBackgroundColor: '#FF6B4A',
       navigationBarTextStyle: 'white',
+      backgroundColor: '#FFF3CC',
     }

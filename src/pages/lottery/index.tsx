@@ -7,11 +7,14 @@ import {
   Gift,
   Sparkles,
   Ticket,
-  Package as PackageIcon,
+  Coffee,
   UtensilsCrossed,
   House,
   Share2,
   PartyPopper,
+  ClipboardList,
+  User,
+  Coins,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -36,16 +39,29 @@ interface OrderInfo {
   shop_name?: string
 }
 
-const BOX_COLORS: Array<[string, string]> = [
-  ['#FF4757', '#FF6B81'],
-  ['#FF7F50', '#FFA502'],
-  ['#FF6B9D', '#EE5A9B'],
-  ['#A55EEA', '#8854D0'],
-  ['#45AAF2', '#2E86DE'],
-  ['#F7B731', '#FA8231'],
+interface PrizePoolItem {
+  id: string
+  name: string
+  prize_type?: string
+  image_url?: string | null
+}
+
+const LOGO_URL =
+  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
+
+// 马卡龙配色盲盒：浅粉 / 淡紫 / 浅黄交替
+const BOX_THEMES = [
+  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
+  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
+  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
+  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
+  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
+  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
 ]
 
-const CONFETTI_COLORS = ['#FF4757', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF6B9D', '#2ED573', '#FFFFFF']
+const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
+
+const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
 
 export default function Lottery() {
   const router = useRouter()
@@ -60,6 +76,8 @@ export default function Lottery() {
   const [drawResult, setDrawResult] = useState<DrawResultData | null>(null)
   const [exploding, setExploding] = useState(false)
   const [drawing, setDrawing] = useState(false)
+  const [prizePool, setPrizePool] = useState<PrizePoolItem[]>([])
+  const [nickName] = useState(() => Taro.getStorageSync('nick_name') || '玩家001')
 
   const stateRef = useRef({ sharePending, orderId, selectedBox, stage })
   stateRef.current = { sharePending, orderId, selectedBox, stage }
@@ -67,13 +85,13 @@ export default function Lottery() {
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
 
-  // 彩带粒子（中奖时）
+  // 中奖彩带粒子
   const confetti = useMemo(
     () =>
-      Array.from({ length: 24 }, (_, i) => ({
+      Array.from({ length: 26 }, (_, i) => ({
         id: i,
-        left: `${(i * 41) % 100}%`,
-        delay: `${(i % 8) * 0.28}s`,
+        left: `${(i * 37) % 100}%`,
+        delay: `${(i % 8) * 0.25}s`,
         color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
         size: i % 3 === 0 ? 10 : 7,
         round: i % 2 === 0,
@@ -81,15 +99,16 @@ export default function Lottery() {
     []
   )
 
-  // 星星粒子（盲盒页背景氛围）
-  const stars = useMemo(
+  // 开盒金光粒子
+  const sparkles = useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) => ({
+      Array.from({ length: 10 }, (_, i) => ({
         id: i,
-        left: `${(i * 67) % 96}%`,
-        top: `${(i * 37) % 88}%`,
-        delay: `${(i % 5) * 0.4}s`,
-        size: 3 + (i % 3),
+        left: `${8 + ((i * 23) % 84)}%`,
+        delay: `${(i % 5) * 0.12}s`,
+        size: 6 + (i % 4) * 3,
+        color: ['#FFD700', '#FFF3B0', '#FFB340', '#FFFFFF'][i % 4],
+        round: i % 2 === 0,
       })),
     []
   )
@@ -134,10 +153,24 @@ export default function Lottery() {
     return false
   }
 
+  // 今日奖池
+  const fetchPrizePool = async () => {
+    try {
+      console.log('[Lottery] 请求奖池', { url: '/api/prizes/active', method: 'GET' })
+      const res = await Network.request({ url: '/api/prizes/active', method: 'GET' })
+      const list = (res.data as any)?.data || []
+      console.log('[Lottery] 奖池响应', list)
+      if (Array.isArray(list)) setPrizePool(list.slice(0, 4))
+    } catch (err) {
+      console.error('[Lottery] 获取奖池失败:', err)
+    }
+  }
+
   useEffect(() => {
     const init = async () => {
       const uid = Taro.getStorageSync('user_id') || ''
       setUserId(uid)
+      void fetchPrizePool()
       if (!orderId) {
         Taro.showToast({ title: '缺少订单参数', icon: 'none' })
         setTimeout(() => Taro.navigateBack(), 1200)
@@ -210,6 +243,11 @@ export default function Lottery() {
     void startDraw(index)
   }
 
+  const handleMainButton = () => {
+    if (stage !== 'select') return
+    Taro.showToast({ title: '点击上方任意盲盒开启惊喜', icon: 'none' })
+  }
+
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   const startDraw = async (boxIndex?: number) => {
@@ -278,7 +316,7 @@ export default function Lottery() {
       setStage('result')
       setExploding(false)
       setDrawing(false)
-    }, 600)
+    }, 900)
   }
 
   const goHome = () => {
@@ -289,12 +327,23 @@ export default function Lottery() {
     Taro.navigateTo({ url: '/pages/lottery-records/index' })
   }
 
-  const renderPrizeIcon = () => {
-    const type = drawResult?.prize_type
-    if (type === 'coupon') return <Ticket size={44} color="#FF4757" />
-    if (type === 'product') return <PackageIcon size={44} color="#A55EEA" />
-    if (type === 'free_meal') return <UtensilsCrossed size={44} color="#2ED573" />
-    return <Gift size={44} color="#FF4757" />
+  const goUserCenter = () => {
+    Taro.navigateTo({ url: '/pages/user-center/index' })
+  }
+
+  const handleTab = (key: string) => {
+    if (key === 'hall') goHome()
+    else if (key === 'task') Taro.showToast({ title: '任务中心敬请期待', icon: 'none' })
+    else if (key === 'mine') goUserCenter()
+  }
+
+  const renderPoolIcon = (item: PrizePoolItem, index: number) => {
+    const color = POOL_ICON_COLORS[index % POOL_ICON_COLORS.length]
+    const name = item.name || ''
+    if (name.includes('霸王餐') || name.includes('免单')) return <UtensilsCrossed size={22} color={color} />
+    if (name.includes('饮') || name.includes('茶') || name.includes('咖啡')) return <Coffee size={22} color={color} />
+    if (name.includes('券')) return <Ticket size={22} color={color} />
+    return <Gift size={22} color={color} />
   }
 
   const renderPrizeExtra = () => {
@@ -303,7 +352,7 @@ export default function Lottery() {
     if (type === 'coupon' && drawResult.coupon_amount) {
       const minSpend = parseFloat(drawResult.coupon_min_spend || '0')
       return (
-        <Text className="block text-sm text-gray-500 mt-2">
+        <Text className="block text-sm text-amber-700 mt-2 text-center">
           {minSpend > 0 ? `满 ¥${minSpend} 可用 · ` : ''}立减 ¥{drawResult.coupon_amount}
         </Text>
       )
@@ -312,12 +361,14 @@ export default function Lottery() {
       return (
         <View className="mt-3 w-full">
           {drawResult.product_name ? (
-            <Text className="block text-sm text-gray-500 mb-2">奖品：{drawResult.product_name}</Text>
+            <Text className="block text-sm text-amber-700 mb-2 text-center">奖品：{drawResult.product_name}</Text>
           ) : null}
           {drawResult.redemption_code ? (
-            <View className="bg-gray-50 rounded-xl px-4 py-3">
-              <Text className="block text-xs text-gray-400 mb-1">兑换码（到店出示）</Text>
-              <Text className="block text-base font-bold text-gray-800 tracking-wider">{drawResult.redemption_code}</Text>
+            <View className="bg-amber-50 rounded-xl px-4 py-3">
+              <Text className="block text-xs text-amber-500 mb-1 text-center">兑换码（到店出示）</Text>
+              <Text className="block text-base font-bold text-amber-800 tracking-wider text-center">
+                {drawResult.redemption_code}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -325,7 +376,7 @@ export default function Lottery() {
     }
     if (type === 'free_meal') {
       return (
-        <Text className="block text-sm text-gray-500 mt-2">
+        <Text className="block text-sm text-amber-700 mt-2 text-center">
           本单免单 ¥{drawResult.refund_amount}，退款将原路返回
         </Text>
       )
@@ -333,206 +384,531 @@ export default function Lottery() {
     // 兼容已抽记录（无 prize_type）
     if (drawResult.redemption_code) {
       return (
-        <View className="bg-gray-50 rounded-xl px-4 py-3 mt-3 w-full">
-          <Text className="block text-xs text-gray-400 mb-1">兑换码（到店出示）</Text>
-          <Text className="block text-base font-bold text-gray-800 tracking-wider">{drawResult.redemption_code}</Text>
+        <View className="bg-amber-50 rounded-xl px-4 py-3 mt-3 w-full">
+          <Text className="block text-xs text-amber-500 mb-1 text-center">兑换码（到店出示）</Text>
+          <Text className="block text-base font-bold text-amber-800 tracking-wider text-center">
+            {drawResult.redemption_code}
+          </Text>
         </View>
       )
     }
     if (drawResult.refund_amount && parseFloat(drawResult.refund_amount) > 0) {
       return (
-        <Text className="block text-sm text-gray-500 mt-2">返现 ¥{drawResult.refund_amount} 将原路返回</Text>
+        <Text className="block text-sm text-amber-700 mt-2 text-center">
+          返现 ¥{drawResult.refund_amount} 将原路返回
+        </Text>
       )
     }
     return null
   }
 
-  return (
-    <View
-      className="min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(180deg, #1a0533 0%, #3b1155 45%, #5b1a4a 100%)' }}
-    >
-      {/* 背景星星 */}
-      {stage !== 'result' &&
-        stars.map((s) => (
-          <View
-            key={s.id}
-            className="lottery-star-twinkle"
-            style={{
-              position: 'absolute',
-              left: s.left,
-              top: s.top,
-              width: `${s.size}px`,
-              height: `${s.size}px`,
-              borderRadius: '50%',
-              backgroundColor: '#FFD700',
-              animationDelay: s.delay,
-              zIndex: 1,
-            }}
-          />
-        ))}
-
-      {/* 标题区 */}
-      <View className="pt-14 pb-6 flex flex-col items-center" style={{ position: 'relative', zIndex: 2 }}>
-        <View className="flex flex-row items-center gap-2">
-          <Sparkles size={22} color="#FFD700" />
-          <Text className="block text-2xl font-bold text-white lottery-title-glow">幸运盲盒</Text>
-          <Sparkles size={22} color="#FFD700" />
+  // ===== 顶栏：IP头像 + 玩家 + 膨胀团胶囊 | 我的奖品 =====
+  const renderTopBar = () => (
+    <View className="flex flex-row items-center justify-between px-4 pt-3" style={{ position: 'relative', zIndex: 5 }}>
+      <View className="flex flex-row items-center gap-2">
+        <View className="bg-white rounded-full p-1" style={{ boxShadow: '0 3px 8px rgba(200, 90, 20, 0.25)' }}>
+          <Image src={LOGO_URL} className="w-9 h-9 rounded-full" mode="aspectFill" />
         </View>
-        <Text className="block text-sm text-white text-opacity-70 mt-2">
-          {stage === 'select' && '挑选一个盲盒，开启你的专属好运'}
-          {stage === 'opening' && '正在为你开奖...'}
-          {stage === 'result' && (drawResult?.is_winner ? '恭喜！好运降临' : '开奖结果')}
-          {stage === 'loading' && '加载中...'}
-        </Text>
-        {orderInfo?.package_name ? (
-          <Text className="block text-xs text-white text-opacity-50 mt-1">订单：{orderInfo.package_name}</Text>
-        ) : null}
+        <Text className="text-base font-black text-amber-900">{nickName}</Text>
+        <View className="clay-pill px-3 py-1">
+          <Text className="text-xs font-bold text-white">膨胀团</Text>
+        </View>
       </View>
+      <View
+        className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
+        style={{ boxShadow: '0 3px 8px rgba(200, 90, 20, 0.2)' }}
+        onClick={goRecords}
+      >
+        <Coins size={16} color="#F7B731" />
+        <Text className="text-sm font-bold text-amber-900">我的奖品</Text>
+      </View>
+    </View>
+  )
 
-      {/* 盲盒选择区 */}
-      {(stage === 'select' || stage === 'opening') && (
-        <View className="flex-1 px-6" style={{ position: 'relative', zIndex: 2 }}>
-          <View className="grid grid-cols-3 gap-4 mt-4">
-            {BOX_COLORS.map(([from, to], index) => {
-              const isSelected = selectedBox === index
-              const isOpening = stage === 'opening'
-              const dimmed = isOpening && !isSelected
-              return (
+  // ===== 立体气泡标题 =====
+  const renderTitle = () => {
+    let main = '膨胀盲盒'
+    let sub = '下单获得一次翻盒机会'
+    if (stage === 'opening') {
+      main = '膨胀盲盒'
+      sub = '正在打开惊喜'
+    } else if (stage === 'result') {
+      main = drawResult?.is_winner ? '恭喜中奖!' : '差一点点'
+      sub = drawResult?.is_winner ? '膨胀团为你送上惊喜福利' : '好运正在路上'
+    }
+    return (
+      <View className="flex flex-col items-center mt-2 mb-4" style={{ position: 'relative', zIndex: 2 }}>
+        <Text className="block clay-title text-4xl">{main}</Text>
+        <Text className="block text-sm font-bold text-amber-800 mt-3">{sub}</Text>
+        <Text className="block text-xs font-bold text-amber-600 mt-1">— 抢免单 —</Text>
+      </View>
+    )
+  }
+
+  // ===== 6宫格盲盒 =====
+  const renderBoxes = () => (
+    <View className="clay-card mx-5 px-4 pt-5 pb-5" style={{ position: 'relative', zIndex: 2 }}>
+      <View className="grid grid-cols-2 gap-4">
+        {BOX_THEMES.map((theme, index) => {
+          const isSelected = selectedBox === index
+          const isOpening = stage === 'opening'
+          const dimmed = isOpening && !isSelected
+          const openingThis = isOpening && isSelected
+          return (
+            <View
+              key={index}
+              style={{ opacity: dimmed ? 0.25 : 1, transition: 'opacity 0.4s' }}
+              onClick={() => handleBoxClick(index)}
+            >
+              <View
+                className={`w-full ${
+                  openingThis && !exploding ? 'clay-box-shake' : openingThis ? '' : 'clay-box-float'
+                }`}
+                style={{ position: 'relative', aspectRatio: '0.9', animationDelay: `${index * 0.3}s` }}
+              >
+                {/* 盒身（下半） */}
                 <View
-                  key={index}
-                  className="flex flex-col items-center"
+                  className={openingThis && exploding ? 'clay-box-open-body' : ''}
                   style={{
-                    opacity: dimmed ? 0.25 : 1,
-                    transition: 'opacity 0.4s',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    top: '28%',
+                    borderRadius: '22px',
+                    background: `linear-gradient(160deg, ${theme.face[0]} 0%, ${theme.face[1]} 100%)`,
+                    boxShadow: '0 8px 16px rgba(180, 100, 40, 0.25), inset 0 2px 0 rgba(255,255,255,0.6)',
                   }}
-                  onClick={() => handleBoxClick(index)}
-                >
+                />
+                {/* 盒盖（上半，开盒时翻开飞走） */}
+                <View
+                  className={openingThis && exploding ? 'clay-lid' : ''}
+                  style={{
+                    position: 'absolute',
+                    left: '-4%',
+                    right: '-4%',
+                    top: 0,
+                    height: '34%',
+                    borderRadius: '18px',
+                    borderBottomLeftRadius: '50% 24%',
+                    borderBottomRightRadius: '50% 24%',
+                    background: `linear-gradient(180deg, ${theme.lid} 0%, ${theme.face[1]} 100%)`,
+                    boxShadow: '0 4px 8px rgba(180, 100, 40, 0.2), inset 0 2px 0 rgba(255,255,255,0.5)',
+                    zIndex: 3,
+                  }}
+                />
+                {/* 盒面：大问号 */}
+                {!(openingThis && exploding) && (
                   <View
-                    className={`w-full rounded-2xl flex flex-col items-center justify-center ${
-                      isOpening && isSelected && !exploding
-                        ? 'lottery-box-shake'
-                        : isOpening && isSelected && exploding
-                          ? 'lottery-box-explode'
-                          : 'lottery-box-float'
-                    }`}
+                    className="flex items-center justify-center"
+                    style={{ position: 'absolute', left: 0, right: 0, top: '26%', bottom: '18%', zIndex: 2 }}
+                  >
+                    <Text
+                      className="font-black"
+                      style={{
+                        fontSize: '52px',
+                        color: '#FFFDF6',
+                        textShadow: '0 3px 0 rgba(180,100,40,0.18)',
+                      }}
+                    >
+                      ?
+                    </Text>
+                  </View>
+                )}
+                {/* 盒面：编号 */}
+                <Text
+                  className="font-black"
+                  style={{
+                    position: 'absolute',
+                    left: '10%',
+                    bottom: '6%',
+                    zIndex: 2,
+                    fontSize: '15px',
+                    color: 'rgba(255,255,255,0.9)',
+                    textShadow: `0 1px 0 ${theme.num}`,
+                  }}
+                >
+                  {String(index + 1).padStart(2, '0')}
+                </Text>
+                {/* 盒面：小星星 + 小IP贴 */}
+                <View style={{ position: 'absolute', right: '8%', bottom: '6%', zIndex: 2 }}>
+                  <Sparkles size={16} color="rgba(255,255,255,0.9)" />
+                </View>
+                <View
+                  className="bg-white rounded-full overflow-hidden"
+                  style={{
+                    position: 'absolute',
+                    right: '8%',
+                    top: '30%',
+                    zIndex: 4,
+                    width: '26px',
+                    height: '26px',
+                    boxShadow: '0 2px 4px rgba(180,100,40,0.25)',
+                  }}
+                >
+                  <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
+                </View>
+
+                {/* 开盒金光粒子 */}
+                {openingThis && exploding &&
+                  sparkles.map((s) => (
+                    <View
+                      key={s.id}
+                      className="clay-sparkle"
+                      style={{
+                        position: 'absolute',
+                        left: s.left,
+                        top: '20%',
+                        width: `${s.size}px`,
+                        height: `${s.size}px`,
+                        borderRadius: s.round ? '50%' : '2px',
+                        backgroundColor: s.color,
+                        animationDelay: s.delay,
+                        zIndex: 6,
+                      }}
+                    />
+                  ))}
+
+                {/* “惊喜即将出现”气泡 */}
+                {openingThis && (
+                  <View
+                    className="clay-bubble bg-white rounded-full px-3 py-1"
                     style={{
-                      aspectRatio: '0.85',
-                      background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
-                      boxShadow: isSelected
-                        ? `0 0 24px ${from}, 0 8px 16px rgba(0,0,0,0.35)`
-                        : '0 8px 16px rgba(0,0,0,0.35)',
-                      animationDelay: `${index * 0.25}s`,
-                      border: isSelected ? '2px solid #FFD700' : '2px solid rgba(255,255,255,0.25)',
+                      position: 'absolute',
+                      top: '-10%',
+                      right: '-8%',
+                      zIndex: 7,
+                      boxShadow: '0 3px 8px rgba(180,100,40,0.25)',
                     }}
                   >
-                    <Gift size={36} color="rgba(255,255,255,0.95)" />
-                    <Text className="block text-lg font-bold text-white mt-2">?</Text>
+                    <Text className="text-xs font-bold text-amber-800">惊喜即将出现</Text>
                   </View>
-                  <Text className="block text-xs text-white text-opacity-60 mt-2">{index + 1}号盒</Text>
-                </View>
-              )
-            })}
-          </View>
+                )}
+              </View>
+            </View>
+          )
+        })}
+      </View>
+    </View>
+  )
 
-          {stage === 'select' && (
-            <Text className="block text-center text-xs text-white text-opacity-50 mt-8">
-              每个盲盒都藏着不同的惊喜：优惠券 / 商品 / 霸王餐
+  // ===== 3D 主按钮 =====
+  const renderMainButton = () => (
+    <View className="mx-6 mt-5" style={{ position: 'relative', zIndex: 2 }}>
+      <Button
+        className={`w-full h-14 border-none ${stage === 'opening' ? 'clay-btn clay-btn-waiting' : 'clay-btn'}`}
+        onClick={handleMainButton}
+      >
+        <Text
+          className="text-xl font-black text-white"
+          style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+        >
+          {stage === 'opening' ? '稍等一下' : '选择一个盲盒'}
+        </Text>
+      </Button>
+    </View>
+  )
+
+  // ===== 今日奖池 =====
+  const renderPrizePool = () => {
+    if (prizePool.length === 0) return null
+    return (
+      <View className="mt-5 mb-4" style={{ position: 'relative', zIndex: 2 }}>
+        <View className="flex flex-row justify-center">
+          <View className="clay-pill px-5 py-2">
+            <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
+              今日奖池
             </Text>
-          )}
+          </View>
         </View>
-      )}
-
-      {/* 结果展示区 */}
-      {stage === 'result' && drawResult && (
-        <View className="flex-1 flex flex-col items-center justify-center px-8 pb-10" style={{ position: 'relative', zIndex: 2 }}>
-          {/* 中奖彩带 */}
-          {drawResult.is_winner &&
-            confetti.map((c) => (
-              <View
-                key={c.id}
-                className="lottery-confetti"
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: c.left,
-                  width: `${c.size}px`,
-                  height: `${c.size}px`,
-                  backgroundColor: c.color,
-                  borderRadius: c.round ? '50%' : '2px',
-                  animationDelay: c.delay,
-                  zIndex: 3,
-                }}
-              />
+        <View className="clay-card mx-5 mt-3 px-4 py-4">
+          <View className="flex flex-row justify-between">
+            {prizePool.map((item, index) => (
+              <View key={item.id} className="flex flex-col items-center" style={{ width: '23%' }}>
+                {item.image_url ? (
+                  <Image
+                    src={item.image_url}
+                    className="w-12 h-12 rounded-2xl"
+                    mode="aspectFill"
+                    style={{ boxShadow: '0 3px 6px rgba(180,100,40,0.2)' }}
+                  />
+                ) : (
+                  <View
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-50"
+                    style={{ boxShadow: '0 3px 6px rgba(180,100,40,0.15)' }}
+                  >
+                    {renderPoolIcon(item, index)}
+                  </View>
+                )}
+                <Text className="block text-xs font-bold text-amber-900 mt-2 text-center" numberOfLines={1}>
+                  {item.name}
+                </Text>
+              </View>
             ))}
+          </View>
+        </View>
+      </View>
+    )
+  }
 
-          {/* 光芒背景 */}
-          {drawResult.is_winner && (
+  // ===== 游戏手柄渐变底部导航 =====
+  const renderTabBar = () => {
+    const tabs = [
+      { key: 'hall', label: '大厅', icon: House, active: false },
+      { key: 'box', label: '膨胀盲盒', icon: Gift, active: true },
+      { key: 'task', label: '任务', icon: ClipboardList, active: false },
+      { key: 'mine', label: '我的', icon: User, active: false },
+    ]
+    return (
+      <View
+        style={{
+          position: 'fixed',
+          bottom: 14,
+          left: 16,
+          right: 16,
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          padding: '10px 8px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+        }}
+        className="clay-tabbar"
+      >
+        {tabs.map((tab) => {
+          const IconComp = tab.icon
+          return (
             <View
-              className="lottery-ray-spin"
+              key={tab.key}
+              className={`flex flex-col items-center px-4 py-1 ${tab.active ? 'clay-tab-active' : ''}`}
+              onClick={() => handleTab(tab.key)}
+            >
+              <IconComp size={20} color={tab.active ? '#E8739F' : '#B89A6A'} />
+              <Text
+                className="block mt-1"
+                style={{
+                  fontSize: '10px',
+                  fontWeight: tab.active ? 800 : 600,
+                  color: tab.active ? '#E8739F' : '#B89A6A',
+                }}
+              >
+                {tab.label}
+              </Text>
+            </View>
+          )
+        })}
+      </View>
+    )
+  }
+
+  // ===== 中奖结果页 =====
+  const renderResult = () => {
+    if (!drawResult) return null
+    const win = drawResult.is_winner
+    return (
+      <View className="flex-1 flex flex-col" style={{ position: 'relative', zIndex: 2 }}>
+        {/* 彩带 */}
+        {win &&
+          confetti.map((c) => (
+            <View
+              key={c.id}
+              className="clay-confetti"
               style={{
-                position: 'absolute',
-                width: '320px',
-                height: '320px',
-                borderRadius: '50%',
-                background:
-                  'conic-gradient(from 0deg, rgba(255,215,0,0.28) 0deg, transparent 30deg, rgba(255,215,0,0.28) 60deg, transparent 90deg, rgba(255,215,0,0.28) 120deg, transparent 150deg, rgba(255,215,0,0.28) 180deg, transparent 210deg, rgba(255,215,0,0.28) 240deg, transparent 270deg, rgba(255,215,0,0.28) 300deg, transparent 330deg)',
-                zIndex: 1,
+                position: 'fixed',
+                top: 0,
+                left: c.left,
+                width: `${c.size}px`,
+                height: `${c.size}px`,
+                backgroundColor: c.color,
+                borderRadius: c.round ? '50%' : '2px',
+                animationDelay: c.delay,
+                zIndex: 3,
               }}
             />
-          )}
+          ))}
 
-          {/* 奖品卡片 */}
-          <View
-            className="bg-white rounded-3xl px-8 py-8 w-full flex flex-col items-center lottery-prize-pop"
-            style={{ position: 'relative', zIndex: 2, boxShadow: '0 16px 40px rgba(0,0,0,0.4)' }}
-          >
-            {drawResult.is_winner ? (
-              <>
+        <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
+          {/* 盲盒玩法胶囊 */}
+          <View className="clay-pill px-5 py-2" style={{ marginTop: '-38px' }}>
+            <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
+              盲盒玩法
+            </Text>
+          </View>
+
+          {win ? (
+            <>
+              {/* 奖品名胶囊卡片 */}
+              <View
+                className="mt-5 px-6 py-3 rounded-2xl"
+                style={{
+                  position: 'relative',
+                  background: '#FFF3CC',
+                  boxShadow: '0 4px 10px rgba(200, 120, 30, 0.2), inset 0 2px 0 rgba(255,255,255,0.8)',
+                }}
+              >
+                <Text className="block text-xl font-black text-amber-800 text-center">{drawResult.prize_name}</Text>
                 <View
-                  className="w-20 h-20 rounded-full flex items-center justify-center lottery-glow-pulse"
-                  style={{ background: 'linear-gradient(135deg, #FFF3D6 0%, #FFE1A8 100%)' }}
+                  className="rounded-full px-2 py-1"
+                  style={{
+                    position: 'absolute',
+                    top: '-12px',
+                    right: '-14px',
+                    background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
+                    transform: 'rotate(8deg)',
+                    boxShadow: '0 3px 6px rgba(247,78,22,0.35)',
+                  }}
+                >
+                  <Text className="font-bold text-white" style={{ fontSize: '10px' }}>
+                    限量惊喜
+                  </Text>
+                </View>
+              </View>
+
+              {/* 打开的盲盒 + IP 弹跳探出 */}
+              <View className="flex items-center justify-center mt-4" style={{ position: 'relative', width: '100%', height: '180px' }}>
+                {/* 金色光芒 */}
+                <View
+                  className="clay-ray-spin"
+                  style={{
+                    position: 'absolute',
+                    width: '200px',
+                    height: '200px',
+                    borderRadius: '50%',
+                    background:
+                      'conic-gradient(from 0deg, rgba(255,200,60,0.45) 0deg, transparent 30deg, rgba(255,200,60,0.45) 60deg, transparent 90deg, rgba(255,200,60,0.45) 120deg, transparent 150deg, rgba(255,200,60,0.45) 180deg, transparent 210deg, rgba(255,200,60,0.45) 240deg, transparent 270deg, rgba(255,200,60,0.45) 300deg, transparent 330deg)',
+                    zIndex: 1,
+                  }}
+                />
+                {/* IP 从盒中弹跳探出 */}
+                <View
+                  className="clay-ip-bounce bg-white rounded-full overflow-hidden"
+                  style={{
+                    position: 'absolute',
+                    top: '6px',
+                    width: '96px',
+                    height: '96px',
+                    zIndex: 3,
+                    boxShadow: '0 8px 16px rgba(200, 100, 30, 0.3)',
+                    border: '4px solid #FFE9A8',
+                  }}
                 >
                   {drawResult.image_url ? (
-                    <Image src={drawResult.image_url} className="w-14 h-14 rounded-full" mode="aspectFill" />
+                    <Image src={drawResult.image_url} className="w-full h-full" mode="aspectFill" />
                   ) : (
-                    renderPrizeIcon()
+                    <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
                   )}
                 </View>
-                <Text className="block text-xs font-semibold text-[#F7B731] mt-4 tracking-widest">CONGRATULATIONS</Text>
-                <Text className="block text-xl font-bold text-gray-800 mt-1 text-center">{drawResult.prize_name}</Text>
-                {renderPrizeExtra()}
-              </>
-            ) : (
-              <>
-                <View className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
-                  <PartyPopper size={40} color="#9ca3af" />
+                {/* 盒身 */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: '6px',
+                    width: '150px',
+                    height: '86px',
+                    borderRadius: '20px',
+                    background: 'linear-gradient(160deg, #FFC7DD 0%, #FF9BBF 100%)',
+                    boxShadow: '0 10px 20px rgba(200, 100, 40, 0.3), inset 0 2px 0 rgba(255,255,255,0.6)',
+                    zIndex: 2,
+                  }}
+                >
+                  <Text
+                    className="font-black"
+                    style={{ position: 'absolute', left: '12%', bottom: '10%', fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}
+                  >
+                    {String((selectedBox ?? 0) + 1).padStart(2, '0')}
+                  </Text>
+                  <View style={{ position: 'absolute', right: '10%', bottom: '12%' }}>
+                    <Sparkles size={16} color="rgba(255,255,255,0.9)" />
+                  </View>
                 </View>
-                <Text className="block text-xl font-bold text-gray-800 mt-4">差一点点</Text>
-                <Text className="block text-sm text-gray-500 mt-2 text-center">
-                  好运正在路上{'\n'}下次一定能中大奖
-                </Text>
-              </>
-            )}
-          </View>
-
-          {/* 底部操作按钮 */}
-          <View className="flex flex-col gap-3 w-full mt-6" style={{ position: 'relative', zIndex: 2 }}>
-            {drawResult.is_winner && (
-              <Button className="w-full rounded-full bg-[#FF4757] text-white h-12" onClick={goRecords}>
-                <Text className="text-base font-semibold text-white">查看我的奖品</Text>
-              </Button>
-            )}
-            <Button
-              className={`w-full rounded-full h-12 ${drawResult.is_winner ? 'bg-white bg-opacity-15' : 'bg-[#FF4757]'}`}
-              onClick={goHome}
-            >
-              <View className="flex flex-row items-center gap-2">
-                <House size={18} color="#fff" />
-                <Text className="text-base font-semibold text-white">返回首页</Text>
               </View>
+
+              {renderPrizeExtra()}
+            </>
+          ) : (
+            <>
+              <View
+                className="w-20 h-20 rounded-full flex items-center justify-center mt-6"
+                style={{ background: 'linear-gradient(135deg, #FFF0D6 0%, #FFE1A8 100%)' }}
+              >
+                <PartyPopper size={40} color="#E8A33D" />
+              </View>
+              <Text className="block text-lg font-black text-amber-800 mt-4 text-center">
+                好运正在路上{'\n'}下次一定能中大奖
+              </Text>
+            </>
+          )}
+        </View>
+
+        {/* 操作按钮 */}
+        <View className="mx-6 mt-6 flex flex-col gap-3">
+          {win && (
+            <Button className="w-full h-14 border-none clay-btn" onClick={goRecords}>
+              <Text
+                className="text-xl font-black text-white"
+                style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '3px' }}
+              >
+                立即领取
+              </Text>
             </Button>
+          )}
+          <Button
+            className={`w-full h-12 border-none ${win ? 'bg-white' : 'clay-btn'}`}
+            style={win ? { boxShadow: '0 4px 10px rgba(200, 120, 30, 0.2)' } : {}}
+            onClick={goHome}
+          >
+            <View className="flex flex-row items-center gap-2">
+              {!win && <House size={18} color="#fff" />}
+              <Text className={`text-base font-black ${win ? 'text-amber-800' : 'text-white'}`}>返回首页</Text>
+            </View>
+          </Button>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View className="min-h-screen flex flex-col" style={{ background: '#FFF3CC' }}>
+      {/* 顶部红橙渐变圆弧装饰 */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '120px',
+          background: 'linear-gradient(180deg, #FF6B4A 0%, #FF9A3D 100%)',
+          borderBottomLeftRadius: '36px',
+          borderBottomRightRadius: '36px',
+          zIndex: 0,
+        }}
+      />
+
+      {renderTopBar()}
+      {renderTitle()}
+
+      {/* 选盒 / 开盒阶段 */}
+      {(stage === 'select' || stage === 'opening') && (
+        <>
+          {renderBoxes()}
+          {renderMainButton()}
+          {stage === 'select' && renderPrizePool()}
+          <View style={{ height: '120px' }} />
+          {renderTabBar()}
+        </>
+      )}
+
+      {/* 结果阶段 */}
+      {stage === 'result' && renderResult()}
+
+      {/* 加载态 */}
+      {stage === 'loading' && (
+        <View className="flex-1 flex flex-col items-center justify-center" style={{ position: 'relative', zIndex: 2 }}>
+          <View className="clay-pulse bg-white rounded-full p-4" style={{ boxShadow: '0 8px 20px rgba(200, 100, 30, 0.25)' }}>
+            <Image src={LOGO_URL} className="w-16 h-16 rounded-full" mode="aspectFill" />
           </View>
+          <Text className="block text-sm font-bold text-amber-700 mt-4">加载中...</Text>
         </View>
       )}
 
@@ -545,57 +921,51 @@ export default function Lottery() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.65)',
+            backgroundColor: 'rgba(120, 70, 10, 0.5)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <View className="bg-white rounded-3xl px-8 py-8 mx-8 w-full max-w-sm flex flex-col items-center">
-            <View
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #FFE1E6 0%, #FFC2CC 100%)' }}
-            >
-              <Share2 size={30} color="#FF4757" />
+          <View className="clay-card px-8 py-8 mx-8 w-full max-w-sm flex flex-col items-center">
+            <View className="bg-white rounded-full p-2" style={{ boxShadow: '0 6px 14px rgba(200, 100, 30, 0.25)' }}>
+              <Image src={LOGO_URL} className="w-16 h-16 rounded-full" mode="aspectFill" />
             </View>
-            <Text className="block text-xl font-bold text-gray-800 mt-4">分享给好友开奖</Text>
-            <Text className="block text-sm text-gray-500 mt-2 text-center">
+            <Text className="block text-xl font-black text-amber-900 mt-4">分享给好友开奖</Text>
+            <Text className="block text-sm text-amber-700 mt-2 text-center">
               把好运分享出去{'\n'}即可立即开启你选的盲盒
             </Text>
             <View className="flex flex-col gap-3 w-full mt-6">
               {isMiniApp ? (
                 <Button
                   openType="share"
-                  className="w-full h-12 rounded-full bg-[#FF4757] text-base font-semibold text-white"
+                  className="w-full h-12 border-none clay-btn"
                   onClick={() => setSharePending(true)}
                 >
-                  喊好友助力，立即开奖
+                  <View className="flex flex-row items-center gap-2">
+                    <Share2 size={18} color="#fff" />
+                    <Text className="text-base font-black text-white">喊好友助力，立即开奖</Text>
+                  </View>
                 </Button>
               ) : (
-                <Button className="w-full rounded-full bg-[#FF4757] text-white h-12" onClick={handleH5Share}>
-                  <Text className="text-base font-semibold text-white">分享给好友，立即开奖</Text>
+                <Button className="w-full h-12 border-none clay-btn" onClick={handleH5Share}>
+                  <View className="flex flex-row items-center gap-2">
+                    <Share2 size={18} color="#fff" />
+                    <Text className="text-base font-black text-white">分享给好友，立即开奖</Text>
+                  </View>
                 </Button>
               )}
               <Button
-                className="w-full rounded-full bg-gray-100 h-12"
+                className="w-full rounded-full bg-amber-50 h-12 border-none"
                 onClick={() => {
                   setNeedShare(false)
                   setSelectedBox(null)
                 }}
               >
-                <Text className="text-base text-gray-600">再想想</Text>
+                <Text className="text-base font-bold text-amber-700">再想想</Text>
               </Button>
             </View>
-          </View>
-        </View>
-      )}
-
-      {/* 加载态 */}
-      {stage === 'loading' && (
-        <View className="flex-1 flex items-center justify-center" style={{ position: 'relative', zIndex: 2 }}>
-          <View className="lottery-glow-pulse">
-            <Gift size={56} color="#FFD700" />
           </View>
         </View>
       )}
