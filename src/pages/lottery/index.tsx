@@ -15,6 +15,7 @@ import {
   ClipboardList,
   User,
   Coins,
+  Star,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -49,14 +50,14 @@ interface PrizePoolItem {
 const LOGO_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
 
-// 马卡龙配色盲盒：浅粉 / 淡紫 / 浅黄交替
+// 马卡龙配色盲盒（立方体）：晴空蓝 / 浅粉 / 桃粉 / 淡紫 / 奶黄 / 暖橙
 const BOX_THEMES = [
-  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
-  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
-  { face: ['#FFC7DD', '#FFA8C9'], lid: '#FF9BBF', num: '#E8739F' },
-  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
-  { face: ['#DCC8F5', '#C4A3EC'], lid: '#B48FE3', num: '#8B5FC7' },
-  { face: ['#FFE9A8', '#FFD97A'], lid: '#FFC95E', num: '#E8A33D' },
+  { top: '#CDEBFA', face: ['#8FCCF2', '#62ABE6'], num: '#2E7CC4', dark: '#3D7DB8' },
+  { top: '#FFDEE7', face: ['#FFB3C6', '#FF8FAB'], num: '#E85D82', dark: '#C94F70' },
+  { top: '#FFE6DA', face: ['#FFBFA8', '#FF9C7E'], num: '#E8704A', dark: '#C75B38' },
+  { top: '#EFE3FA', face: ['#D2B0EF', '#B488E2'], num: '#8B5FC7', dark: '#6E45A3' },
+  { top: '#FFF6D1', face: ['#FFE083', '#FFCB52'], num: '#E8A33D', dark: '#C78224' },
+  { top: '#FFE8CC', face: ['#FFC38D', '#FFA266'], num: '#E87F3A', dark: '#C76528' },
 ]
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
@@ -445,15 +446,29 @@ export default function Lottery() {
     )
   }
 
-  // ===== 6宫格盲盒 =====
+  // ===== 6宫格立方体盲盒（3列×2行） =====
   const renderBoxes = () => (
-    <View className="clay-card mx-5 px-4 pt-5 pb-5" style={{ position: 'relative', zIndex: 2 }}>
-      <View className="grid grid-cols-2 gap-4">
+    <View
+      className="clay-card mx-5 px-3 pb-4"
+      style={{ position: 'relative', zIndex: 2, marginTop: '20px', paddingTop: '46px' }}
+    >
+      {/* 骑缝胶囊：盲盒玩法 */}
+      <View
+        className="clay-pill px-5 py-2"
+        style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', zIndex: 5 }}
+      >
+        <Text className="text-sm font-black text-white" style={{ letterSpacing: '3px' }}>
+          盲盒玩法
+        </Text>
+      </View>
+
+      <View className="grid grid-cols-3 gap-3">
         {BOX_THEMES.map((theme, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
           const dimmed = isOpening && !isSelected
           const openingThis = isOpening && isSelected
+          const exploded = openingThis && exploding
           return (
             <View
               key={index}
@@ -464,93 +479,156 @@ export default function Lottery() {
                 className={`w-full ${
                   openingThis && !exploding ? 'clay-box-shake' : openingThis ? '' : 'clay-box-float'
                 }`}
-                style={{ position: 'relative', aspectRatio: '0.9', animationDelay: `${index * 0.3}s` }}
+                style={{ position: 'relative', aspectRatio: '0.88', animationDelay: `${index * 0.3}s` }}
               >
-                {/* 盒身（下半） */}
+                {/* 盒身正面 */}
                 <View
-                  className={openingThis && exploding ? 'clay-box-open-body' : ''}
+                  className={exploded ? 'clay-box-open-body' : ''}
                   style={{
                     position: 'absolute',
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    top: '28%',
-                    borderRadius: '22px',
-                    background: `linear-gradient(160deg, ${theme.face[0]} 0%, ${theme.face[1]} 100%)`,
-                    boxShadow: '0 8px 16px rgba(180, 100, 40, 0.25), inset 0 2px 0 rgba(255,255,255,0.6)',
-                  }}
-                />
-                {/* 盒盖（上半，开盒时翻开飞走） */}
-                <View
-                  className={openingThis && exploding ? 'clay-lid' : ''}
-                  style={{
-                    position: 'absolute',
-                    left: '-4%',
-                    right: '-4%',
-                    top: 0,
-                    height: '34%',
-                    borderRadius: '18px',
-                    borderBottomLeftRadius: '50% 24%',
-                    borderBottomRightRadius: '50% 24%',
-                    background: `linear-gradient(180deg, ${theme.lid} 0%, ${theme.face[1]} 100%)`,
-                    boxShadow: '0 4px 8px rgba(180, 100, 40, 0.2), inset 0 2px 0 rgba(255,255,255,0.5)',
-                    zIndex: 3,
-                  }}
-                />
-                {/* 盒面：大问号 */}
-                {!(openingThis && exploding) && (
-                  <View
-                    className="flex items-center justify-center"
-                    style={{ position: 'absolute', left: 0, right: 0, top: '26%', bottom: '18%', zIndex: 2 }}
-                  >
-                    <Text
-                      className="font-black"
-                      style={{
-                        fontSize: '52px',
-                        color: '#FFFDF6',
-                        textShadow: '0 3px 0 rgba(180,100,40,0.18)',
-                      }}
-                    >
-                      ?
-                    </Text>
-                  </View>
-                )}
-                {/* 盒面：编号 */}
-                <Text
-                  className="font-black"
-                  style={{
-                    position: 'absolute',
-                    left: '10%',
-                    bottom: '6%',
+                    top: '20%',
+                    borderRadius: '16px',
+                    background: `linear-gradient(165deg, ${theme.face[0]} 0%, ${theme.face[1]} 100%)`,
+                    boxShadow: '0 7px 14px rgba(180, 100, 40, 0.22), inset 0 2px 0 rgba(255,255,255,0.55)',
                     zIndex: 2,
-                    fontSize: '15px',
-                    color: 'rgba(255,255,255,0.9)',
-                    textShadow: `0 1px 0 ${theme.num}`,
                   }}
-                >
-                  {String(index + 1).padStart(2, '0')}
-                </Text>
-                {/* 盒面：小星星 + 小IP贴 */}
-                <View style={{ position: 'absolute', right: '8%', bottom: '6%', zIndex: 2 }}>
-                  <Sparkles size={16} color="rgba(255,255,255,0.9)" />
-                </View>
+                />
+
+                {/* 盒口暗影（开盖后露出） */}
+                {exploded && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: '6%',
+                      right: '6%',
+                      top: '17%',
+                      height: '11%',
+                      borderRadius: '50%',
+                      background: theme.dark,
+                      zIndex: 3,
+                    }}
+                  />
+                )}
+
+                {/* 盒内金色光球（开盖后） */}
+                {exploded && (
+                  <View
+                    className="clay-pulse"
+                    style={{
+                      position: 'absolute',
+                      left: '16%',
+                      right: '16%',
+                      top: 0,
+                      aspectRatio: '1',
+                      borderRadius: '50%',
+                      background:
+                        'radial-gradient(circle at 50% 45%, #FFF6C9 0%, #FFD93D 45%, rgba(255,217,61,0) 75%)',
+                      zIndex: 4,
+                    }}
+                  />
+                )}
+
+                {/* 盒盖（顶面 + 前檐一体，开盒时整体后翻） */}
                 <View
-                  className="bg-white rounded-full overflow-hidden"
-                  style={{
-                    position: 'absolute',
-                    right: '8%',
-                    top: '30%',
-                    zIndex: 4,
-                    width: '26px',
-                    height: '26px',
-                    boxShadow: '0 2px 4px rgba(180,100,40,0.25)',
-                  }}
+                  className={exploded ? 'clay-lid-flip' : ''}
+                  style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '30%', zIndex: 5 }}
                 >
-                  <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
+                  {/* 顶面（等距平行四边形） */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: '8%',
+                      right: '8%',
+                      height: '55%',
+                      transform: 'skewX(-14deg)',
+                      borderTopLeftRadius: '10px',
+                      borderTopRightRadius: '10px',
+                      background: `linear-gradient(180deg, ${theme.top} 0%, ${theme.face[0]} 100%)`,
+                      boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.65)',
+                    }}
+                  />
+                  {/* 前檐 */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: '52%',
+                      borderTopLeftRadius: '14px',
+                      borderTopRightRadius: '14px',
+                      borderBottomLeftRadius: '6px',
+                      borderBottomRightRadius: '6px',
+                      background: `linear-gradient(180deg, ${theme.face[0]} 0%, ${theme.face[1]} 100%)`,
+                      boxShadow: '0 3px 5px rgba(180,100,40,0.18), inset 0 2px 0 rgba(255,255,255,0.5)',
+                    }}
+                  />
                 </View>
 
+                {/* 盒面元素（未爆开时显示） */}
+                {!exploded && (
+                  <>
+                    {/* 大问号 */}
+                    <View
+                      className="flex items-center justify-center"
+                      style={{ position: 'absolute', left: 0, right: 0, top: '34%', zIndex: 6 }}
+                    >
+                      <Text
+                        className="font-black"
+                        style={{
+                          fontSize: '38px',
+                          color: '#FFFDF6',
+                          textShadow: '0 3px 0 rgba(180,100,40,0.15)',
+                          lineHeight: '40px',
+                        }}
+                      >
+                        ?
+                      </Text>
+                    </View>
+                    {/* 金星贴纸 */}
+                    <View className="clay-star-twinkle" style={{ position: 'absolute', left: '12%', top: '62%', zIndex: 6 }}>
+                      <Star size={13} color="#FFE066" />
+                    </View>
+                    {/* IP 表情贴 */}
+                    <View
+                      className="bg-white rounded-full overflow-hidden"
+                      style={{
+                        position: 'absolute',
+                        right: '10%',
+                        top: '36%',
+                        width: '22px',
+                        height: '22px',
+                        zIndex: 6,
+                        boxShadow: '0 2px 4px rgba(180,100,40,0.25)',
+                      }}
+                    >
+                      <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
+                    </View>
+                    {/* 编号 */}
+                    <Text
+                      className="block font-black text-center"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: '4%',
+                        zIndex: 6,
+                        fontSize: '14px',
+                        color: 'rgba(255,255,255,0.95)',
+                        textShadow: `0 1.5px 0 ${theme.num}`,
+                      }}
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </Text>
+                  </>
+                )}
+
                 {/* 开盒金光粒子 */}
-                {openingThis && exploding &&
+                {exploded &&
                   sparkles.map((s) => (
                     <View
                       key={s.id}
@@ -558,13 +636,13 @@ export default function Lottery() {
                       style={{
                         position: 'absolute',
                         left: s.left,
-                        top: '20%',
+                        top: '14%',
                         width: `${s.size}px`,
                         height: `${s.size}px`,
                         borderRadius: s.round ? '50%' : '2px',
                         backgroundColor: s.color,
                         animationDelay: s.delay,
-                        zIndex: 6,
+                        zIndex: 7,
                       }}
                     />
                   ))}
@@ -575,13 +653,55 @@ export default function Lottery() {
                     className="clay-bubble bg-white rounded-full px-3 py-1"
                     style={{
                       position: 'absolute',
-                      top: '-10%',
-                      right: '-8%',
-                      zIndex: 7,
+                      top: '-8%',
+                      right: '-10%',
+                      zIndex: 8,
                       boxShadow: '0 3px 8px rgba(180,100,40,0.25)',
                     }}
                   >
                     <Text className="text-xs font-bold text-amber-800">惊喜即将出现</Text>
+                  </View>
+                )}
+
+                {/* “获得次数”提示气泡（中间盒，选择阶段） */}
+                {index === 1 && stage === 'select' && (
+                  <View
+                    className="clay-bubble"
+                    style={{
+                      position: 'absolute',
+                      top: '-34px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 10,
+                      background: '#FFFDF6',
+                      borderRadius: '12px',
+                      padding: '5px 8px',
+                      boxShadow: '0 4px 10px rgba(180,100,40,0.2)',
+                      width: '96px',
+                    }}
+                  >
+                    <Text className="block text-center font-black" style={{ fontSize: '11px', color: '#7C4A03' }}>
+                      获得次数 1 次
+                    </Text>
+                    <View className="flex flex-row items-center justify-center" style={{ marginTop: '2px' }}>
+                      <Coins size={10} color="#F5B301" />
+                      <Text className="font-bold" style={{ fontSize: '10px', color: '#B8860B', marginLeft: '3px' }}>
+                        点击翻盒
+                      </Text>
+                    </View>
+                    {/* 小三角尾巴 */}
+                    <View
+                      style={{
+                        position: 'absolute',
+                        bottom: '-4px',
+                        left: '50%',
+                        transform: 'translateX(-50%) rotate(45deg)',
+                        width: '9px',
+                        height: '9px',
+                        background: '#FFFDF6',
+                        borderRadius: '2px',
+                      }}
+                    />
                   </View>
                 )}
               </View>
@@ -589,23 +709,45 @@ export default function Lottery() {
           )
         })}
       </View>
-    </View>
-  )
 
-  // ===== 3D 主按钮 =====
-  const renderMainButton = () => (
-    <View className="mx-6 mt-5" style={{ position: 'relative', zIndex: 2 }}>
-      <Button
-        className={`w-full h-14 border-none ${stage === 'opening' ? 'clay-btn clay-btn-waiting' : 'clay-btn'}`}
-        onClick={handleMainButton}
-      >
-        <Text
-          className="text-xl font-black text-white"
-          style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+      {/* 金币小胶囊条 */}
+      <View className="flex flex-row justify-center items-center" style={{ marginTop: '14px' }}>
+        {['今日奖池', '点击翻盒', '惊喜连连'].map((text, i) => (
+          <View
+            key={i}
+            className="flex flex-row items-center rounded-full"
+            style={{
+              padding: '4px 10px',
+              margin: '0 4px',
+              background: i === 0 ? 'linear-gradient(180deg, #FFC53D, #FF7A29)' : '#FFF6DC',
+              boxShadow: '0 2px 4px rgba(180,100,40,0.15)',
+            }}
+          >
+            <Coins size={11} color={i === 0 ? '#FFFFFF' : '#F5B301'} />
+            <Text
+              className="font-bold"
+              style={{ fontSize: '11px', color: i === 0 ? '#FFFFFF' : '#B8860B', marginLeft: '3px' }}
+            >
+              {text}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* 3D 主按钮（卡片内） */}
+      <View style={{ marginTop: '14px' }}>
+        <Button
+          className={`w-full h-14 border-none ${stage === 'opening' ? 'clay-btn clay-btn-waiting' : 'clay-btn'}`}
+          onClick={handleMainButton}
         >
-          {stage === 'opening' ? '稍等一下' : '选择一个盲盒'}
-        </Text>
-      </Button>
+          <Text
+            className="text-xl font-black text-white"
+            style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+          >
+            {stage === 'opening' ? '稍等一下' : '选择一个盲盒'}
+          </Text>
+        </Button>
+      </View>
     </View>
   )
 
@@ -892,7 +1034,6 @@ export default function Lottery() {
       {(stage === 'select' || stage === 'opening') && (
         <>
           {renderBoxes()}
-          {renderMainButton()}
           {stage === 'select' && renderPrizePool()}
           <View style={{ height: '120px' }} />
           {renderTabBar()}
