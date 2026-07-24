@@ -100,25 +100,25 @@ const AdminLotteryRecordsPage = () => {
       <View className="bg-gradient-to-b from-[#FF4757] to-[#ff6b7a] px-4 pt-5 pb-12">
         <View className="flex flex-row">
           <View className="flex-1 items-center">
-            <View className="flex flex-row items-center gap-1 mb-1">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
               <Users size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">总抽奖次数</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold">{records.length}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{records.length}</Text>
           </View>
           <View className="flex-1 items-center">
-            <View className="flex flex-row items-center gap-1 mb-1">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
               <Trophy size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">中奖次数</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold">{winnerCount}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{winnerCount}</Text>
           </View>
           <View className="flex-1 items-center">
-            <View className="flex flex-row items-center gap-1 mb-1">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
               <UtensilsCrossed size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">霸王餐</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold">{freeMealCount}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{freeMealCount}</Text>
           </View>
         </View>
       </View>
