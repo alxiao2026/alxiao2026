@@ -61,6 +61,9 @@ const BOX_IMAGES = [
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_06_513884ca.jpg?sign=1787471318-b5fd5b0a49-0-7fd587b797f06bf4c4410600153c88ee19eec6ae91a5c387a4db69369df57cf9',
 ]
 
+// 选择智能盲盒按钮背景图（用户提供的设计稿）
+const SELECT_BTN_BG_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/select_btn_bg_8726ffc2.jpg?sign=1787471844-38def42a93-0-a2d1794b1f5b8c73d7d7c21bbc6eaad5eefb8c8506e0814411be3d7d20a7901a'
+
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
 
 const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
@@ -464,7 +467,7 @@ export default function Lottery() {
           <Text className="block text-white text-sm font-black">盲盒玩法</Text>
         </View>
       </View>
-      <View className="grid grid-cols-3 gap-x-1 gap-y-2">
+      <View className="grid grid-cols-3 gap-x-1 gap-y-2 px-3">
         {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
@@ -473,7 +476,7 @@ export default function Lottery() {
           return (
             <View
               key={index}
-              style={{ opacity: dimmed ? 0.25 : 1, transition: 'opacity 0.4s' }}
+              style={{ opacity: dimmed ? 0.25 : 1, transition: 'opacity 0.4s', transform: 'scale(0.85)' }}
               onClick={() => handleBoxClick(index)}
             >
               <View
@@ -529,20 +532,40 @@ export default function Lottery() {
     </View>
   )
 
-  // ===== 3D 主按钮 =====
+  // ===== 主按钮（使用用户提供的按钮图片背景） =====
   const renderMainButton = () => (
     <View className="mx-6 mt-5" style={{ position: 'relative', zIndex: 2 }}>
-      <Button
-        className={`w-full h-14 border-none ${stage === 'opening' ? 'clay-btn clay-btn-waiting' : 'clay-btn'}`}
+      <View
+        className="w-full rounded-2xl overflow-hidden"
+        style={{
+          position: 'relative',
+          opacity: stage === 'opening' ? 0.7 : 1,
+          boxShadow: '0 4px 12px rgba(200,80,20,0.3)',
+        }}
         onClick={handleMainButton}
       >
-        <Text
-          className="text-xl font-black text-white"
-          style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+        <Image
+          src={SELECT_BTN_BG_URL}
+          className="w-full h-14"
+          mode="aspectFill"
+        />
+        <View
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          {stage === 'opening' ? '稍等一下' : '选择一个盲盒'}
-        </Text>
-      </Button>
+          <Text
+            className="text-xl font-black text-white"
+            style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+          >
+            {stage === 'opening' ? '稍等一下' : '选择智能盲盒'}
+          </Text>
+        </View>
+      </View>
     </View>
   )
 
