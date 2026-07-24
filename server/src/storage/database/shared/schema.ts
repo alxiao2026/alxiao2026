@@ -167,6 +167,11 @@ export const lotteryRecords = pgTable("lottery_records", {
 	prize_id: varchar("prize_id", { length: 36 }).references(() => prizes.id),
 	prize_name: varchar("prize_name", { length: 128 }),
 	is_winner: boolean("is_winner").notNull().default(false),
+	redemption_code: varchar("redemption_code", { length: 32 }),
+	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }),
+	refund_status: varchar("refund_status", { length: 32 }),
+	user_weight: numeric("user_weight", { precision: 6, scale: 2 }).notNull().default("1"), // 用户权重倍数
+	ip_address: varchar("ip_address", { length: 64 }),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
 	index("lottery_records_order_id_idx").on(table.order_id),

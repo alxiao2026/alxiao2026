@@ -48,6 +48,10 @@ interface PrizePoolItem {
 const LOGO_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
 
+// 顶部主题头图（膨胀盲盒标题已内置于图片）
+const HERO_BG_URL =
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/hero_bg_71b09a95.png?sign=1787456474-43e9d4f471-0-371319e46f8941b0b40affeb0c62d43f658fab24c9e0ad8b7f1a33bb50867987'
+
 // 6 个盲盒图片（3D 黏土风，已裁剪透明画布，TOS 存储）
 const BOX_IMAGES = [
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_01_tight_34a68dde_fcf8d726.png?sign=1787453593-55a9fffdd7-0-7c7939b3797a7aafc93dfb0b12b695145445267670ca27fcd232a28212c6a1c9',
@@ -409,9 +413,6 @@ export default function Lottery() {
           <Image src={LOGO_URL} className="w-9 h-9 rounded-full" mode="aspectFill" />
         </View>
         <Text className="text-base font-black text-amber-900">{nickName}</Text>
-        <View className="clay-pill px-3 py-1">
-          <Text className="text-xs font-bold text-white">膨胀团</Text>
-        </View>
       </View>
       <View
         className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
@@ -424,25 +425,35 @@ export default function Lottery() {
     </View>
   )
 
-  // ===== 立体气泡标题 =====
-  const renderTitle = () => {
-    let main = '膨胀盲盒'
-    let sub = '下单获得一次翻盒机会'
-    if (stage === 'opening') {
-      main = '膨胀盲盒'
-      sub = '正在打开惊喜'
-    } else if (stage === 'result') {
-      main = drawResult?.is_winner ? '恭喜中奖!' : '差一点点'
-      sub = drawResult?.is_winner ? '膨胀团为你送上惊喜福利' : '好运正在路上'
-    }
-    return (
-      <View className="flex flex-col items-center mt-2 mb-4" style={{ position: 'relative', zIndex: 2 }}>
-        <Text className="block clay-title text-4xl">{main}</Text>
-        <Text className="block text-sm font-bold text-amber-800 mt-3">{sub}</Text>
-        <Text className="block text-xs font-bold text-amber-600 mt-1">— 抢免单 —</Text>
+  // ===== 顶部主题头图（标题内置于图片，顶栏叠加在图上，动态阶段文案在图下方） =====
+  const renderHero = () => (
+    <View className="mb-4" style={{ position: 'relative', zIndex: 2 }}>
+      <Image src={HERO_BG_URL} className="w-full" style={{ display: 'block' }} mode="widthFix" />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 }}>
+        {renderTopBar()}
       </View>
-    )
-  }
+      {stage !== 'select' && stage !== 'loading' && (
+        <View className="flex flex-col items-center mt-3 px-6">
+          <Text
+            className="block text-xl font-black text-white"
+            style={{ textShadow: '0 2px 4px rgba(180, 80, 10, 0.35)' }}
+          >
+            {stage === 'opening' ? '正在打开惊喜' : drawResult?.is_winner ? '恭喜中奖!' : '差一点点'}
+          </Text>
+          <Text
+            className="block text-xs font-bold text-white mt-1"
+            style={{ textShadow: '0 1px 3px rgba(180, 80, 10, 0.3)' }}
+          >
+            {stage === 'opening'
+              ? '膨胀团为你准备了好运'
+              : drawResult?.is_winner
+                ? '膨胀团为你送上惊喜福利'
+                : '好运正在路上'}
+          </Text>
+        </View>
+      )}
+    </View>
+  )
 
   // ===== 6宫格盲盒 =====
   const renderBoxes = () => (
@@ -771,24 +782,11 @@ export default function Lottery() {
   }
 
   return (
-    <View className="min-h-screen flex flex-col" style={{ background: '#FFF3CC' }}>
-      {/* 顶部红橙渐变圆弧装饰 */}
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '120px',
-          background: 'linear-gradient(180deg, #FF6B4A 0%, #FF9A3D 100%)',
-          borderBottomLeftRadius: '36px',
-          borderBottomRightRadius: '36px',
-          zIndex: 0,
-        }}
-      />
-
-      {renderTopBar()}
-      {renderTitle()}
+    <View
+      className="min-h-screen flex flex-col"
+      style={{ background: 'linear-gradient(180deg, #FCCA8B 0%, #FF9A3D 55%, #FF8A5C 100%)' }}
+    >
+      {renderHero()}
 
       {/* 选盒 / 开盒阶段 */}
       {(stage === 'select' || stage === 'opening') && (
