@@ -799,13 +799,6 @@ export default function Lottery() {
           ))}
 
         <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
-          {/* 盲盒玩法胶囊 */}
-          <View className="clay-pill px-5 py-2" style={{ marginTop: '-38px' }}>
-            <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
-              盲盒玩法
-            </Text>
-          </View>
-
           {win ? (
             <>
               {/* 奖品名胶囊卡片 */}
@@ -835,41 +828,8 @@ export default function Lottery() {
                 </View>
               </View>
 
-              {/* 打开的盲盒 + IP 弹跳探出 */}
+              {/* 打开的盲盒 */}
               <View className="flex items-center justify-center mt-4" style={{ position: 'relative', width: '100%', height: '180px' }}>
-                {/* 金色光芒 */}
-                <View
-                  className="clay-ray-spin"
-                  style={{
-                    position: 'absolute',
-                    width: '200px',
-                    height: '200px',
-                    borderRadius: '50%',
-                    background:
-                      'conic-gradient(from 0deg, rgba(255,200,60,0.45) 0deg, transparent 30deg, rgba(255,200,60,0.45) 60deg, transparent 90deg, rgba(255,200,60,0.45) 120deg, transparent 150deg, rgba(255,200,60,0.45) 180deg, transparent 210deg, rgba(255,200,60,0.45) 240deg, transparent 270deg, rgba(255,200,60,0.45) 300deg, transparent 330deg)',
-                    zIndex: 1,
-                  }}
-                />
-                {/* IP 从盒中弹跳探出 */}
-                <View
-                  className="clay-ip-bounce bg-white rounded-full overflow-hidden"
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    width: '96px',
-                    height: '96px',
-                    zIndex: 3,
-                    boxShadow: '0 8px 16px rgba(200, 100, 30, 0.3)',
-                    border: '4px solid #FFE9A8',
-                  }}
-                >
-                  {drawResult.image_url ? (
-                    <Image src={drawResult.image_url} className="w-full h-full" mode="aspectFill" />
-                  ) : (
-                    <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
-                  )}
-                </View>
-                {/* 盒身：选中的盲盒图片 */}
                 <Image
                   src={BOX_IMAGES[selectedBox ?? 0]}
                   mode="aspectFit"

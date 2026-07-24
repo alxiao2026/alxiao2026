@@ -41,14 +41,6 @@
 }
 
 /* 红橙胶囊标题（今日奖池 / 盲盒玩法） */
-.clay-pill {
-  background: linear-gradient(180deg, #ff8a5c 0%, #f74e16 100%);
-  border-radius: 999px;
-  box-shadow:
-    0 4px 0 #c23a0e,
-    0 8px 14px rgba(247, 78, 22, 0.28);
-}
-
 /* ===== 盲盒动画 ===== */
 .clay-box-float {
   animation: clayBoxFloat 2.6s ease-in-out infinite;
@@ -158,25 +150,6 @@
   }
 }
 
-/* IP 从盒中弹跳探出 */
-.clay-ip-bounce {
-  animation: clayIpBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-@keyframes clayIpBounce {
-  0% {
-    transform: translateY(34px) scale(0.5);
-    opacity: 0;
-  }
-  60% {
-    transform: translateY(-12px) scale(1.06);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
 /* 奖品卡片弹入 */
 .clay-prize-pop {
   animation: clayPrizePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -204,16 +177,6 @@
   100% {
     transform: translateY(110vh) rotate(720deg);
     opacity: 0.2;
-  }
-}
-
-/* 金色光芒旋转 */
-.clay-ray-spin {
-  animation: clayRaySpin 7s linear infinite;
-}
-@keyframes clayRaySpin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
