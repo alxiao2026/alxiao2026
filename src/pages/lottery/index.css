@@ -289,8 +289,8 @@
 .win-popup-wrap {
   position: relative;
   z-index: 1;
-  width: 90%;
-  max-width: 600rpx;
+  width: 92%;
+  max-width: 92vw;
   margin: auto;
   background: transparent;
   display: flex;
