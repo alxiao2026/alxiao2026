@@ -277,14 +277,44 @@ export class LotteryService {
 
   // ========== 库存锁（原子扣减） ==========
 
-  /** 使用数据库 RPC 函数原子扣减库存，防止并发超发 */
+  /** 原子扣减库存，防止并发超发。返回新库存，失败返回 -1 */
   private async atomicDecrementStock(prizeId: string): Promise<number> {
-    const { data, error } = await this.client.rpc('decrement_prize_stock', { prize_id_param: prizeId });
-    if (error) {
-      console.error('库存扣减失败:', error.message);
+    // 先尝试 RPC 函数（如果 schema cache 已刷新）
+    const { data: rpcData, error: rpcError } = await this.client.rpc('decrement_prize_stock', { prize_id_param: prizeId });
+    if (!rpcError && rpcData !== null && rpcData !== undefined) {
+      return rpcData as number;
+    }
+
+    // RPC 不可用时，使用乐观锁降级：先查后减
+    const { data: prize, error: queryError } = await this.client
+      .from('prizes')
+      .select('stock')
+      .eq('id', prizeId)
+      .maybeSingle();
+
+    if (queryError || !prize) {
+      console.error('库存查询失败:', queryError?.message || 'prize not found');
       return -1;
     }
-    return data as number;
+
+    const currentStock = (prize as any).stock as number;
+    if (currentStock <= 0) {
+      return -1;
+    }
+
+    // 乐观锁：只在 stock 仍为当前值时更新
+    const { error: updateError } = await this.client
+      .from('prizes')
+      .update({ stock: currentStock - 1 })
+      .eq('id', prizeId)
+      .eq('stock', currentStock);
+
+    if (updateError) {
+      console.error('库存扣减失败:', updateError.message);
+      return -1;
+    }
+
+    return currentStock - 1;
   }
 
   // ========== 抽奖主流程 ==========
@@ -334,30 +364,55 @@ export class LotteryService {
       .order('created_at', { ascending: true });
     if (prizesError) throw new Error(`查询奖品失败: ${prizesError.message}`);
 
-    const activePrizes = (prizes as Prize[]) || [];
+    const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
 
-    // 6. 加权抽奖（CSPRNG）
-    const result = this.calculateWeightedLottery(activePrizes, userWeight);
+    // 5a. 预过滤：排除不满足条件的奖品（如消费券未达最低消费额），确保百分百中奖
+    const eligiblePrizes = ((prizes as Prize[]) || []).filter(p => {
+      if (p.prize_type === 'coupon') {
+        const minSpend = parseFloat(p.coupon_min_spend || '0');
+        const couponAmt = parseFloat(p.coupon_amount || '0');
+        return orderTotal >= minSpend && couponAmt > 0;
+      }
+      return true; // product 和 free_meal 始终可抽
+    });
+
+    if (eligiblePrizes.length === 0) {
+      throw new BadRequestException('当前没有可抽取的奖品');
+    }
+
+    // 6. 加权抽奖（CSPRNG）— 仅从符合条件的奖品中抽取
+    let result = this.calculateWeightedLottery(eligiblePrizes, userWeight);
 
     // 7. 处理中奖模式逻辑
     let redemptionCode = '';
     let refundAmount = 0;
     let refundStatus = '';
 
+    // 8. 中奖则原子扣减库存（防并发超发）；失败则从剩余奖品中重新抽取
+    const triedPrizeIds = new Set<string>();
+    while (result.is_winner && result.prize) {
+      triedPrizeIds.add(result.prize.id);
+      const newStock = await this.atomicDecrementStock(result.prize.id);
+      if (newStock >= 0) {
+        result.prize.stock = newStock;
+        break; // 扣减成功
+      }
+      // 库存扣减失败，从剩余可抽奖品中重新抽取
+      const remainingPrizes = eligiblePrizes.filter(p => !triedPrizeIds.has(p.id));
+      if (remainingPrizes.length === 0) {
+        // 所有奖品库存都已耗尽，无法继续
+        result = { is_winner: false, prize: null };
+        break;
+      }
+      result = this.calculateWeightedLottery(remainingPrizes, userWeight);
+    }
+
+    // 9. 处理中奖模式逻辑
     if (result.is_winner && result.prize) {
       const prize = result.prize;
-      const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
-
       if (prize.prize_type === 'coupon') {
-        const minSpend = parseFloat(prize.coupon_min_spend || '0');
-        const couponAmt = parseFloat(prize.coupon_amount || '0');
-        if (orderTotal >= minSpend && couponAmt > 0) {
-          refundAmount = couponAmt;
-          refundStatus = 'pending';
-        } else {
-          result.is_winner = false;
-          result.prize = null;
-        }
+        refundAmount = parseFloat(prize.coupon_amount || '0');
+        refundStatus = 'pending';
       } else if (prize.prize_type === 'product') {
         redemptionCode = `PRD-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       } else if (prize.prize_type === 'free_meal') {
@@ -366,22 +421,7 @@ export class LotteryService {
       }
     }
 
-    // 8. 中奖则原子扣减库存（防并发超发）
-    if (result.is_winner && result.prize) {
-      const newStock = await this.atomicDecrementStock(result.prize.id);
-      if (newStock < 0) {
-        // 库存不足，视为未中奖
-        result.is_winner = false;
-        result.prize = null;
-        refundAmount = 0;
-        refundStatus = '';
-        redemptionCode = '';
-      } else {
-        result.prize.stock = newStock;
-      }
-    }
-
-    // 9. 记录抽奖结果
+    // 10. 记录抽奖结果
     const recordData: Record<string, any> = {
       order_id: orderId,
       user_id: userId,
@@ -402,7 +442,7 @@ export class LotteryService {
       .single();
     if (recordError) throw new Error(`保存抽奖记录失败: ${recordError.message}`);
 
-    // 10. 写入操作日志
+    // 11. 写入操作日志
     await this.logOperation({
       user_id: userId,
       order_id: orderId,
