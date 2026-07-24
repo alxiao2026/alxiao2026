@@ -62,8 +62,6 @@ const BOX_IMAGES = [
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_06_513884ca.jpg?sign=1787471318-b5fd5b0a49-0-7fd587b797f06bf4c4410600153c88ee19eec6ae91a5c387a4db69369df57cf9',
 ]
 
-// 选择智能盲盒按钮图片（用户上传）
-const SELECT_BTN_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/user_select_btn_34fd89f8.jpg?sign=1787473094-cf8cba5a76-0-3f5f9fd29bd8a53eed9666df3f1a57c2f10bd1c360467af1183e386002530ec5'
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
 
@@ -248,11 +246,6 @@ export default function Lottery() {
       return
     }
     void startDraw(index)
-  }
-
-  const handleMainButton = () => {
-    if (stage !== 'select') return
-    Taro.showToast({ title: '点击上方任意盲盒开启惊喜', icon: 'none' })
   }
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -533,44 +526,6 @@ export default function Lottery() {
       <View className="flex flex-row justify-center items-center mt-2" style={{ gap: '4px' }}>
         <Gift size={12} color="#E8A33D" />
         <Text className="block text-xs text-amber-500 font-bold">点击盲盒，开启你的惊喜</Text>
-      </View>
-    </View>
-  )
-
-  // ===== 主按钮（用户上传图片样式） =====
-  const renderMainButton = () => (
-    <View className="mx-6 mt-5" style={{ position: 'relative', zIndex: 2 }}>
-      <View
-        style={{
-          width: '100%',
-          height: '60px',
-          borderRadius: '30px',
-          overflow: 'hidden',
-          opacity: stage === 'opening' ? 0.7 : 1,
-          position: 'relative',
-          boxShadow: '0 6px 20px rgba(247, 78, 22, 0.35)',
-        }}
-        onClick={handleMainButton}
-      >
-        <Image
-          src={SELECT_BTN_URL}
-          mode="aspectFill"
-          style={{ width: '100%', height: '100%' }}
-        />
-        {stage === 'opening' && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.6)',
-            }}
-          >
-            <Text className="text-lg font-bold" style={{ color: '#C0392B' }}>稍等一下</Text>
-          </View>
-        )}
       </View>
     </View>
   )
@@ -863,7 +818,6 @@ export default function Lottery() {
       {(stage === 'select' || stage === 'opening') && (
         <>
           {renderBoxes()}
-          {renderMainButton()}
           {stage === 'select' && renderPrizePool()}
           <View style={{ height: '120px' }} />
           {renderTabBar()}
