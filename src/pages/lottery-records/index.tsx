@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Trophy, Package, Clock, Gift, QrCode } from 'lucide-react-taro'
 
 interface LotteryRecord {
@@ -25,6 +26,9 @@ interface LotteryRecord {
   refund_amount?: string | number | null
   refund_status?: string
   created_at: string
+  expired?: boolean
+  expiry_date?: string
+  expiry_hours?: number
 }
 
 interface Order {
@@ -47,6 +51,12 @@ export default function LotteryRecordsPage() {
   const [records, setRecords] = useState<LotteryRecord[]>([])
   const [unparticipated, setUnparticipated] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
+
+  // 核销码弹窗状态
+  const [qrDialogOpen, setQrDialogOpen] = useState(false)
+  const [qrLoading, setQrLoading] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [currentRecord, setCurrentRecord] = useState<LotteryRecord | null>(null)
 
   // 页面每次显示时刷新（首次进入 / 从盲盒抽奖页返回都会触发）
   useDidShow(() => {
@@ -86,6 +96,35 @@ export default function LotteryRecordsPage() {
     }
   }
 
+  // 打开核销码弹窗并加载二维码
+  const handleViewQRCode = async (record: LotteryRecord) => {
+    setCurrentRecord(record)
+    setQrCodeUrl('')
+    setQrDialogOpen(true)
+    setQrLoading(true)
+    try {
+      console.log('[Records] 获取核销二维码', { url: `/api/lottery/qrcode/${record.id}`, method: 'GET' })
+      const res = await Network.request({ url: `/api/lottery/qrcode/${record.id}`, method: 'GET' })
+      console.log('[Records] 核销二维码响应', res.data)
+      const data = (res.data as any)?.data
+      if (data?.qrcode) {
+        setQrCodeUrl(data.qrcode)
+        // 用后端的实时过期状态更新当前记录
+        setCurrentRecord(prev => prev ? {
+          ...prev,
+          expired: !!data.expired,
+          expiry_date: data.expiry_date || prev.expiry_date,
+          expiry_hours: data.expiry_hours ?? prev.expiry_hours,
+        } : prev)
+      }
+    } catch (err) {
+      console.error('[Records] 获取核销二维码失败', err)
+      Taro.showToast({ title: '二维码加载失败', icon: 'none' })
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
   const getPrizeTypeLabel = (type: string) => {
     const map: Record<string, string> = {
       coupon: '优惠券',
@@ -104,17 +143,23 @@ export default function LotteryRecordsPage() {
     return map[type] || 'bg-gray-100 text-gray-700'
   }
 
+  const isRedeemed = (record: LotteryRecord) =>
+    record.refund_status === 'redeemed' || record.refund_status === 'completed'
+
   const getRecordBadge = (record: LotteryRecord) => {
     if (!record.is_winner || !record.prize_id) {
       return { label: '未中奖', className: 'bg-gray-100 text-gray-500' }
     }
+    if (record.redemption_code && record.expired && !isRedeemed(record)) {
+      return { label: '已过期', className: 'bg-gray-100 text-gray-500' }
+    }
     if (record.prize_type === 'free_meal') {
-      return record.refund_status === 'completed'
+      return isRedeemed(record)
         ? { label: '已返现', className: 'bg-green-100 text-green-700' }
         : { label: '返现中', className: 'bg-yellow-100 text-yellow-700' }
     }
     if (record.prize_type === 'product') {
-      return record.refund_status === 'completed'
+      return isRedeemed(record)
         ? { label: '已核销', className: 'bg-green-100 text-green-700' }
         : { label: '待核销', className: 'bg-yellow-100 text-yellow-700' }
     }
@@ -124,6 +169,16 @@ export default function LotteryRecordsPage() {
   // 跳转盲盒抽奖页（含分享引导与开奖动画，与支付成功后的抽奖体验一致）
   const handleParticipate = (order: Order) => {
     Taro.navigateTo({ url: `/pages/lottery/index?orderId=${order.id}` })
+  }
+
+  const formatExpiryDate = (dateStr?: string) => {
+    if (!dateStr) return ''
+    return new Date(dateStr).toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
   return (
@@ -181,23 +236,33 @@ export default function LotteryRecordsPage() {
                                 {record.product_value && (
                                   <Text className="block text-sm text-gray-500">价值：¥{record.product_value}</Text>
                                 )}
-                                {record.redemption_code && (
-                                  <Text className="block text-sm text-[#FF4757] font-mono mt-1">兑换码：{record.redemption_code}</Text>
+                              </View>
+                            )}
+                            {record.prize_type === 'free_meal' && record.refund_amount && (
+                              <Text className="block text-sm text-green-500 font-medium">返现金额：¥{record.refund_amount}</Text>
+                            )}
+                            {/* 兑换码与有效期 */}
+                            {record.redemption_code && (
+                              <View className="mt-1">
+                                <Text className="block text-sm text-[#FF4757] font-mono">兑换码：{record.redemption_code}</Text>
+                                {(record.expiry_hours ?? 0) > 0 && (
+                                  <Text className={`block text-xs mt-1 ${record.expired && !isRedeemed(record) ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {record.expired && !isRedeemed(record)
+                                      ? `已过期（有效期${record.expiry_hours}小时，${formatExpiryDate(record.expiry_date)}到期）`
+                                      : `有效期至 ${formatExpiryDate(record.expiry_date)}`}
+                                  </Text>
                                 )}
-                                {record.refund_status !== 'completed' && (
+                                {!isRedeemed(record) && (
                                   <Button
                                     className="mt-2 bg-[#FF4757] hover:bg-[#e63846] text-white rounded-lg"
                                     size="sm"
-                                    onClick={() => Taro.navigateTo({ url: `/pages/lottery/index?orderId=${record.order_id}` })}
+                                    onClick={() => handleViewQRCode(record)}
                                   >
                                     <QrCode size={14} color="#ffffff" />
                                     <Text className="ml-1 text-xs">查看核销码</Text>
                                   </Button>
                                 )}
                               </View>
-                            )}
-                            {record.prize_type === 'free_meal' && record.refund_amount && (
-                              <Text className="block text-sm text-green-500 font-medium">返现金额：¥{record.refund_amount}</Text>
                             )}
                             <View className="flex items-center gap-1 mt-2">
                               <Clock size={12} color="#9ca3af" />
@@ -268,6 +333,66 @@ export default function LotteryRecordsPage() {
           </TabsContent>
         </Tabs>
       </View>
+
+      {/* 核销码弹窗 */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="bg-white rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-center text-base font-semibold text-gray-900">
+              {currentRecord?.prize_name || '核销码'}
+            </DialogTitle>
+          </DialogHeader>
+          <View className="flex flex-col items-center mt-2">
+            {/* 过期提示 */}
+            {currentRecord?.expired && !isRedeemed(currentRecord) ? (
+              <View className="flex flex-col items-center py-6">
+                <Text className="block text-lg font-bold text-red-600 text-center">兑奖已过期</Text>
+                <Text className="block text-xs text-gray-400 mt-2 text-center">
+                  兑奖有效期为 {currentRecord.expiry_hours} 小时，已于 {formatExpiryDate(currentRecord.expiry_date)} 过期
+                </Text>
+                <Text className="block text-xs text-gray-400 mt-1 text-center">如有疑问请联系商家</Text>
+              </View>
+            ) : (
+              <>
+                {/* 二维码 */}
+                <View className="bg-white rounded-2xl p-3 border border-gray-100 flex items-center justify-center">
+                  {qrLoading ? (
+                    <View style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text className="block text-sm text-gray-400 text-center">二维码加载中...</Text>
+                    </View>
+                  ) : qrCodeUrl ? (
+                    <Image
+                      src={qrCodeUrl}
+                      mode="aspectFit"
+                      style={{ width: '200px', height: '200px' }}
+                    />
+                  ) : (
+                    <View style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text className="block text-sm text-gray-400 text-center">二维码加载失败</Text>
+                    </View>
+                  )}
+                </View>
+                <Text className="block text-xs text-gray-400 mt-3 text-center">请出示给商家扫码核销</Text>
+                {/* 兑换码 */}
+                {currentRecord?.redemption_code && (
+                  <View className="bg-amber-50 rounded-xl px-4 py-2 mt-3 flex flex-row items-center justify-center gap-2">
+                    <Text className="block text-xs text-amber-500">兑换码</Text>
+                    <Text className="block text-sm font-bold text-amber-800 tracking-wider">
+                      {currentRecord.redemption_code}
+                    </Text>
+                  </View>
+                )}
+                {/* 有效期 */}
+                {(currentRecord?.expiry_hours ?? 0) > 0 && (
+                  <Text className="block text-xs text-gray-400 mt-2 text-center">
+                    有效期至 {formatExpiryDate(currentRecord?.expiry_date)}
+                  </Text>
+                )}
+              </>
+            )}
+          </View>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }

@@ -743,9 +743,11 @@ export class LotteryService {
       (namePrizes || []).forEach((p: any) => prizeNameMap.set(p.name, p));
     }
 
+    const expiryHours = await this.getRedemptionExpiryHours();
+
     return records.map(r => {
       const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
-      return {
+      const result: any = {
         ...r,
         prize_type: prize?.prize_type || '',
         coupon_amount: prize?.coupon_amount ?? null,
@@ -754,6 +756,15 @@ export class LotteryService {
         product_value: prize?.product_value ?? null,
         prize_image: prize?.image_url || '',
       };
+      // 补充过期信息
+      if (r.redemption_code) {
+        const createdAt = new Date(r.created_at).getTime();
+        const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
+        result.expired = Date.now() > expiresAt.getTime();
+        result.expiry_date = expiresAt.toISOString();
+        result.expiry_hours = expiryHours;
+      }
+      return result;
     });
   }
 
