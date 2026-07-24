@@ -124,6 +124,8 @@ export default function PackageAdmin() {
   const [showMerchantPicker, setShowMerchantPicker] = useState(false)
   const [merchants, setMerchants] = useState<any[]>([])
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null)
+  // 是否为绑定了门店的商家账号（锁定本店，禁止切换其他商家）
+  const [merchantLocked, setMerchantLocked] = useState(false)
 
   // 商品搭配
   const [combinations, setCombinations] = useState<ProductCombination[]>([])
@@ -365,11 +367,13 @@ export default function PackageAdmin() {
           // 商家账号：只显示本店并自动选中
           setMerchants([myMerchant])
           setSelectedMerchant(myMerchant)
+          setMerchantLocked(true)
           setFormData(prev => ({ ...prev, merchant_id: String(myMerchant.id) }))
           return
         }
       }
       // 超级管理员或未绑定商家：加载全部商家
+      setMerchantLocked(false)
       const res = await Network.request({ url: '/api/merchants' })
       console.log('商家列表响应:', res.data)
       if (res.data?.code === 200) {
@@ -1444,23 +1448,36 @@ export default function PackageAdmin() {
                   <View
                     className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
                     onClick={() => {
-                      // 商家账号（仅1家可选门店）锁定选择，不可切换到其他商家
-                      if (merchants.length > 1) {
-                        setShowMerchantPicker(true)
+                      // 商家账号锁定本店，不可切换到其他商家
+                      if (merchantLocked) return
+                      if (merchants.length === 0) {
+                        Taro.showModal({
+                          title: '暂无商家',
+                          content: '请先在「商家收录」中添加商家后再选择',
+                          confirmText: '去添加',
+                          cancelText: '取消',
+                          success: (res) => {
+                            if (res.confirm) {
+                              Taro.navigateTo({ url: '/pages/merchant-admin/index' })
+                            }
+                          }
+                        })
+                        return
                       }
+                      setShowMerchantPicker(true)
                     }}
                   >
                     <Text className="block text-sm text-gray-800">
                       {selectedMerchant ? selectedMerchant.name : '请选择商家'}
                     </Text>
                     <View className="flex items-center gap-2">
-                      {selectedMerchant && merchants.length <= 1 && (
+                      {selectedMerchant && merchantLocked && (
                         <Badge className="bg-green-100 text-green-600 text-xs">本店</Badge>
                       )}
-                      {selectedMerchant && merchants.length > 1 && (
+                      {selectedMerchant && !merchantLocked && (
                         <Badge className="bg-red-100 text-[#FF4757] text-xs">已选择</Badge>
                       )}
-                      {merchants.length > 1 && <ChevronRight size={16} color="#9ca3af" />}
+                      {!merchantLocked && <ChevronRight size={16} color="#9ca3af" />}
                     </View>
                   </View>
                 </View>
