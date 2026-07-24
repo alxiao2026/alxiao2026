@@ -11,11 +11,14 @@ export const merchants = pgTable("merchants", {
 	id: serial().primaryKey(),
 	name: varchar("name", { length: 255 }).notNull(),
 	logo: varchar("logo", { length: 512 }),
+	images: jsonb("images"), // 商家环境图 URL 数组
 	address: varchar("address", { length: 512 }),
 	phone: varchar("phone", { length: 50 }),
 	business_hours: varchar("business_hours", { length: 100 }),
 	category: varchar("category", { length: 100 }),
 	description: text("description"),
+	latitude: varchar("latitude", { length: 32 }),
+	longitude: varchar("longitude", { length: 32 }),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -59,10 +62,17 @@ export const prizes = pgTable("prizes", {
 	image_url: varchar("image_url", { length: 512 }),
 	stock: integer("stock").notNull().default(0),
 	is_active: boolean("is_active").notNull().default(true),
+	prize_type: varchar("prize_type", { length: 20 }).notNull().default("coupon"), // coupon=优惠券 / product=实物
+	coupon_amount: numeric("coupon_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券面额
+	coupon_min_spend: numeric("coupon_min_spend", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券最低消费
+	product_name: varchar("product_name", { length: 128 }).notNull().default(""), // 实物奖品名称
+	product_value: numeric("product_value", { precision: 10, scale: 2 }).notNull().default("0"), // 实物奖品价值
+	merchant_id: integer("merchant_id"), // 所属商家（空为平台奖品）
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
 }, (table) => [
 	index("prizes_is_active_idx").on(table.is_active),
+	index("prizes_merchant_id_idx").on(table.merchant_id),
 ]);
 
 // 订单表
@@ -71,9 +81,18 @@ export const orders = pgTable("orders", {
 	user_id: varchar("user_id", { length: 128 }).notNull(),
 	nick_name: varchar("nick_name", { length: 128 }),
 	avatar_url: varchar("avatar_url", { length: 512 }),
+	package_id: varchar("package_id", { length: 36 }), // 关联套餐 ID（历史订单保留，不加强外键）
 	package_name: varchar("package_name", { length: 128 }).notNull().default("基础套餐"),
 	price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
-	status: varchar("status", { length: 20 }).notNull().default("paid"), // paid, completed
+	original_price: numeric("original_price", { precision: 10, scale: 2 }),
+	quantity: integer("quantity").notNull().default(1), // 购买份数
+	verified_count: integer("verified_count").notNull().default(0), // 已核销份数
+	verification_code: varchar("verification_code", { length: 32 }), // 核销码
+	verified_at: timestamp("verified_at", { withTimezone: true }), // 最近核销时间
+	expire_at: timestamp("expire_at", { withTimezone: true }), // 过期时间
+	shop_name: varchar("shop_name", { length: 128 }), // 消费门店名称
+	order_no: varchar("order_no", { length: 64 }), // 订单编号
+	status: varchar("status", { length: 20 }).notNull().default("pending"), // pending/paid/completed/expired/refunded
 	shared: boolean("shared").notNull().default(false),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
@@ -81,6 +100,9 @@ export const orders = pgTable("orders", {
 	index("orders_user_id_idx").on(table.user_id),
 	index("orders_status_idx").on(table.status),
 	index("orders_created_at_idx").on(table.created_at),
+	index("orders_package_id_idx").on(table.package_id),
+	index("orders_verification_code_idx").on(table.verification_code),
+	index("orders_order_no_idx").on(table.order_no),
 ]);
 
 // 基础套餐表
@@ -120,7 +142,9 @@ export const packages = pgTable("packages", {
 	available_time_start: varchar("available_time_start", { length: 10 }), // 可用时段开始
 	available_time_end: varchar("available_time_end", { length: 10 }), // 可用时段结束
 	limit_usage_count: boolean("limit_usage_count").default(false), // 限制使用张数
+	usage_count_limit: integer("usage_count_limit"), // 限用张数上限
 	need_reservation: boolean("need_reservation").default(false), // 需要预约
+	reservation_hours: integer("reservation_hours"), // 需提前预约小时数
 	// 消费规则
 	other_discount: text("other_discount"), // 店内其他优惠
 	private_room: text("private_room"), // 包间说明
