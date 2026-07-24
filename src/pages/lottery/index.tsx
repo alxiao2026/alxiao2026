@@ -51,14 +51,14 @@ const LOGO_URL =
 const TITLE_CARD_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/title_card_f19ec67b.jpg?sign=1787462487-e5e95baf36-0-60f38917a60395dd4a8b20ba47fcf8f70c600030174c3dcd403e4dde7828161c'
 
-// 6 个盲盒图片（用户提供的 3D 黏土风，TOS 存储）
+// 6 个盲盒图片（用户提供的 3D 黏土风，不裁切原始比例，TOS 存储）
 const BOX_IMAGES = [
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_01_89ea36f8.jpg?sign=1787470674-7f5652a507-0-c58b08ff67de39d32ab9105fa960586f70c73551015c642fda13dcb32e048c3e',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_02_ce781b91.jpg?sign=1787470675-b93733c715-0-59c84377d6d9bfd34f89843c3d82904126fef2817c01cf105d8951c14dc3c00b',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_03_617334d7.jpg?sign=1787470675-a956a9209e-0-acf56ce106c6ca54c1b7e00d40e611763c69453e8e8e8d19284432d5f8339d73',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_04_0c3d94f9.jpg?sign=1787470676-e5cb404787-0-06e04dd0e98b0812328ea80a58f41f0df758c2d393e291542e629b4418370737',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_05_8e1b4a34.jpg?sign=1787470707-03848712ef-0-b929ad10c3e32c9e952f53264b3e841322faaf24fe709430ff50175280f983ca',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_06_a179e18e.jpg?sign=1787470676-d6a2ee7e44-0-ea6648b5b6a6db42c525e3afc17a36263e5c416a2ffbf9cd31b2aa01c21019b1',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_01_71b79235.jpg?sign=1787471315-f0df2855a5-0-a8eee7d11331d50154a76b5ef3f156ba743239c5a857ee29f0808df066dc4e3e',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_02_b67fc1f7.jpg?sign=1787471315-6fa305fa43-0-4175e00faeba9d80a9eada841375fcc2d6834f2b2f70472f1da194a7f8d1758d',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_03_ae83f602.jpg?sign=1787471316-8fec97d945-0-b00ca560dc83e7423243fc3ae0ba7f6fae6417584b727330d930420d4610da5f',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_04_c9420ef2.jpg?sign=1787471317-af9a1b724f-0-41af6f9d4ad190e6200a28646bb2424ae11072eb7dc32ed7a4934da0ef0770a3',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_05_21225e6f.jpg?sign=1787471318-92250a8d49-0-6777e37e416c89ffaf640acbc6fc7011cf49b4cd86f94544dd90a6c614a30e9c',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_06_513884ca.jpg?sign=1787471318-b5fd5b0a49-0-7fd587b797f06bf4c4410600153c88ee19eec6ae91a5c387a4db69369df57cf9',
 ]
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
@@ -439,7 +439,7 @@ export default function Lottery() {
 
   // ===== 盲盒玩法区：白卡 + 顶部胶囊标签 =====
   const renderBoxes = () => (
-    <View className="clay-card mx-4 mt-6 px-3 pt-5 pb-3" style={{ position: 'relative', zIndex: 2 }}>
+    <View className="clay-card mx-4 mt-6 px-3 pt-5 pb-6" style={{ position: 'relative', zIndex: 2 }}>
       {/* 玩法标签胶囊（压在卡片上边缘） */}
       <View
         style={{
@@ -482,8 +482,10 @@ export default function Lottery() {
                 }`}
                 style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
-                {/* 盲盒图片（正方形，CSS 固定宽高比，避免 H5 widthFix 高度测量漂移） */}
-                <Image src={img} className="w-full h-auto aspect-square mx-auto" style={{ display: 'block' }} mode="aspectFit" />
+                {/* 盲盒图片（不裁切，保持原始比例，圆角） */}
+                <View className="rounded-xl overflow-hidden bg-orange-50">
+                  <Image src={img} className="w-full h-auto" style={{ display: 'block' }} mode="widthFix" />
+                </View>
                 {/* 开盒金光粒子 */}
                 {openingThis && exploding &&
                   sparkles.map((s) => (
