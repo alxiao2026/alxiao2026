@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ClipboardList, ChevronRight, ChevronLeft, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -42,6 +42,7 @@ const UserCenterPage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [lotteryCount, setLotteryCount] = useState(0);
+  const [freeMealCount, setFreeMealCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -90,7 +91,9 @@ const UserCenterPage = () => {
       console.log('[UserCenter] lottery records:', res.data);
       const records = (res.data as any)?.data;
       if (Array.isArray(records)) {
-        setLotteryCount(records.filter((r: any) => r.is_winner).length);
+        const winners = records.filter((r: any) => r.is_winner);
+        setLotteryCount(winners.length);
+        setFreeMealCount(winners.filter((r: any) => r.prize_type === 'free_meal').length);
       }
     } catch (e) {
       console.error('获取抽奖记录失败:', e);
@@ -315,13 +318,13 @@ const UserCenterPage = () => {
               {lotteryCount}<Text className="text-sm"> 次中奖</Text>
             </Text>
           </View>
-          <View className="flex-1 py-4 flex flex-col items-center">
+          <View className="flex-1 py-4 flex flex-col items-center" onClick={goToLotteryRecords}>
             <View className="flex items-center mb-1">
-              <Sparkles size={16} color="#22C55E" />
-              <Text className="text-xs text-gray-500 ml-1">累计节省</Text>
+              <UtensilsCrossed size={16} color="#EF4444" />
+              <Text className="text-xs text-gray-500 ml-1">累计中霸王餐</Text>
             </View>
-            <Text className="text-xl font-bold text-green-600 block">
-              <Text className="text-sm">¥</Text>{stats?.total_saved || '0.00'}
+            <Text className="text-xl font-bold text-red-500 block">
+              {freeMealCount}<Text className="text-sm"> 次</Text>
             </Text>
           </View>
         </View>
