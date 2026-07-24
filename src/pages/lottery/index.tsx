@@ -820,15 +820,9 @@ export default function Lottery() {
 
                 {/* 奶油卡片 */}
                 <View className="win-popup-card">
-                  <Text className="win-popup-card-title">恭喜中奖</Text>
-                  <View className="win-popup-pill">
-                    <Text className="win-popup-pill-text">盲盒玩法</Text>
-                  </View>
-                  <Text className="block win-popup-divider">— 膨胀团为你送上惊喜福利 —</Text>
-
                   {/* 奖品名胶囊卡片 */}
                   <View
-                    className="mt-5 px-6 py-3 rounded-2xl"
+                    className="mt-2 px-6 py-3 rounded-2xl"
                     style={{
                       position: 'relative',
                       background: '#FFF3CC',
