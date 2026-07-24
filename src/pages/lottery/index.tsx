@@ -13,6 +13,7 @@ import {
   PartyPopper,
   ClipboardList,
   User,
+  Sparkles,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -61,8 +62,7 @@ const BOX_IMAGES = [
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_06_513884ca.jpg?sign=1787471318-b5fd5b0a49-0-7fd587b797f06bf4c4410600153c88ee19eec6ae91a5c387a4db69369df57cf9',
 ]
 
-// 选择智能盲盒按钮背景图（用户提供的设计稿）
-const SELECT_BTN_BG_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/select_btn_bg_8726ffc2.jpg?sign=1787471844-38def42a93-0-a2d1794b1f5b8c73d7d7c21bbc6eaad5eefb8c8506e0814411be3d7d20a7901a'
+// 选择智能盲盒按钮（已重新设计为 3D 黏土风格 CSS 按钮）
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
 
@@ -442,12 +442,12 @@ export default function Lottery() {
 
   // ===== 盲盒玩法区：白卡 + 顶部胶囊标签 =====
   const renderBoxes = () => (
-    <View className="clay-card mx-4 mt-6 px-3 pt-5 pb-6" style={{ position: 'relative', zIndex: 2 }}>
+    <View className="clay-card mx-4 mt-6 px-3 pt-5 pb-4" style={{ position: 'relative', zIndex: 2 }}>
       {/* 玩法标签胶囊（压在卡片上边缘） */}
       <View
         style={{
           position: 'absolute',
-          top: '-16px',
+          top: '-18px',
           left: 0,
           right: 0,
           display: 'flex',
@@ -457,17 +457,16 @@ export default function Lottery() {
         }}
       >
         <View
-          className="px-6 py-1 rounded-full"
-          style={{
-            background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
-            border: '2px solid #FFFFFF',
-            boxShadow: '0 3px 8px rgba(247, 78, 22, 0.35)',
-          }}
+          className="clay-tag px-6 flex flex-row items-center"
+          style={{ gap: '4px', paddingTop: '6px', paddingBottom: '6px' }}
         >
-          <Text className="block text-white text-sm font-black">盲盒玩法</Text>
+          <Sparkles size={14} color="#FFF3B0" />
+          <Text className="block text-white text-sm font-black" style={{ letterSpacing: '1px', textShadow: '0 1px 2px rgba(160, 50, 5, 0.3)' }}>
+            盲盒玩法
+          </Text>
         </View>
       </View>
-      <View className="grid grid-cols-3 gap-x-1 gap-y-2 px-3">
+      <View className="grid grid-cols-3 gap-x-1 gap-y-2 px-3 mt-1">
         {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
@@ -529,38 +528,48 @@ export default function Lottery() {
           )
         })}
       </View>
+      {/* 提示文字 */}
+      <View className="flex flex-row justify-center items-center mt-2" style={{ gap: '4px' }}>
+        <Gift size={12} color="#E8A33D" />
+        <Text className="block text-xs text-amber-500 font-bold">点击盲盒，开启你的惊喜</Text>
+      </View>
     </View>
   )
 
-  // ===== 主按钮（使用用户提供的按钮图片背景） =====
+  // ===== 主按钮（3D 黏土风格 CTA 按钮） =====
   const renderMainButton = () => (
     <View className="mx-6 mt-5" style={{ position: 'relative', zIndex: 2 }}>
       <View
-        className="w-full rounded-2xl overflow-hidden"
+        className={`w-full clay-cta-btn ${stage === 'select' ? 'clay-cta-glow' : ''}`}
         style={{
-          position: 'relative',
+          height: '60px',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
           opacity: stage === 'opening' ? 0.7 : 1,
-          boxShadow: '0 4px 12px rgba(200,80,20,0.3)',
+          position: 'relative',
         }}
         onClick={handleMainButton}
       >
-        <Image
-          src={SELECT_BTN_BG_URL}
-          className="w-full h-14"
-          mode="aspectFill"
-        />
+        {/* 顶部高光 */}
         <View
           style={{
             position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            top: '4px',
+            left: '12px',
+            right: '12px',
+            height: '18px',
+            borderRadius: '16px',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 100%)',
+            pointerEvents: 'none',
           }}
-        >
+        />
+        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+          <Gift size={22} color="#FFF3B0" />
           <Text
             className="text-xl font-black text-white"
-            style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '2px' }}
+            style={{ textShadow: '0 2px 0 rgba(160, 50, 5, 0.45)', letterSpacing: '3px' }}
           >
             {stage === 'opening' ? '稍等一下' : '选择智能盲盒'}
           </Text>
@@ -579,7 +588,7 @@ export default function Lottery() {
         <View
           style={{
             position: 'absolute',
-            top: '-16px',
+            top: '-18px',
             left: 0,
             right: 0,
             display: 'flex',
@@ -589,14 +598,11 @@ export default function Lottery() {
           }}
         >
           <View
-            className="px-6 py-1 rounded-full"
-            style={{
-              background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
-              border: '2px solid #FFFFFF',
-              boxShadow: '0 3px 8px rgba(247, 78, 22, 0.35)',
-            }}
+            className="clay-tag px-6 flex flex-row items-center"
+            style={{ gap: '4px', paddingTop: '6px', paddingBottom: '6px' }}
           >
-            <Text className="block text-white text-sm font-black" style={{ letterSpacing: '2px' }}>
+            <Sparkles size={14} color="#FFF3B0" />
+            <Text className="block text-white text-sm font-black" style={{ letterSpacing: '2px', textShadow: '0 1px 2px rgba(160, 50, 5, 0.3)' }}>
               今日奖品
             </Text>
           </View>
