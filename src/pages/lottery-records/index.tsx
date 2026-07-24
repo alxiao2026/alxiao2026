@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Trophy, Package, Clock, Gift } from 'lucide-react-taro'
+import { Trophy, Package, Clock, Gift, QrCode } from 'lucide-react-taro'
 
 interface LotteryRecord {
   id: string
@@ -114,7 +114,9 @@ export default function LotteryRecordsPage() {
         : { label: '返现中', className: 'bg-yellow-100 text-yellow-700' }
     }
     if (record.prize_type === 'product') {
-      return { label: '待核销', className: 'bg-yellow-100 text-yellow-700' }
+      return record.refund_status === 'completed'
+        ? { label: '已核销', className: 'bg-green-100 text-green-700' }
+        : { label: '待核销', className: 'bg-yellow-100 text-yellow-700' }
     }
     return { label: '待使用', className: 'bg-yellow-100 text-yellow-700' }
   }
@@ -181,6 +183,16 @@ export default function LotteryRecordsPage() {
                                 )}
                                 {record.redemption_code && (
                                   <Text className="block text-sm text-[#FF4757] font-mono mt-1">兑换码：{record.redemption_code}</Text>
+                                )}
+                                {record.refund_status !== 'completed' && (
+                                  <Button
+                                    className="mt-2 bg-[#FF4757] hover:bg-[#e63846] text-white rounded-lg"
+                                    size="sm"
+                                    onClick={() => Taro.navigateTo({ url: `/pages/lottery/index?orderId=${record.order_id}` })}
+                                  >
+                                    <QrCode size={14} color="#ffffff" />
+                                    <Text className="ml-1 text-xs">查看核销码</Text>
+                                  </Button>
                                 )}
                               </View>
                             )}

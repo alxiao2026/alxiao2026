@@ -21,6 +21,12 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  @Get('record-by-id/:recordId')
+  async getRecordById(@Param('recordId') recordId: string) {
+    const data = await this.lotteryService.getRecordById(recordId);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('user/:userId')
   async getUserRecords(@Param('userId') userId: string) {
     const data = await this.lotteryService.getUserRecords(userId);
@@ -39,6 +45,20 @@ export class LotteryController {
   async redeemProduct(@Body() body: { redemption_code: string; merchant_user_id: string }, @Req() req: Request) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
     const data = await this.lotteryService.redeemProduct(body.redemption_code, body.merchant_user_id, ip);
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 查询兑换码状态（商家扫码后先查状态，再确认核销） */
+  @Get('redeem/check/:code')
+  async checkRedemptionCode(@Param('code') code: string) {
+    const data = await this.lotteryService.checkRedemptionCode(code);
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 生成核销二维码 */
+  @Get('qrcode/:recordId')
+  async generateRedemptionQRCode(@Param('recordId') recordId: string) {
+    const data = await this.lotteryService.generateRedemptionQRCode(recordId);
     return { code: 200, msg: 'success', data };
   }
 

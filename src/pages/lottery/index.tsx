@@ -29,6 +29,8 @@ interface DrawResultData {
   coupon_amount?: string
   coupon_min_spend?: string
   product_name?: string
+  record_id?: string
+  refund_status?: string
 }
 
 interface OrderInfo {
@@ -70,6 +72,7 @@ const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
 export default function Lottery() {
   const router = useRouter()
   const orderId = router.params?.orderId || ''
+  const recordId = router.params?.recordId || ''
 
   const [stage, setStage] = useState<Stage>('loading')
   const [userId, setUserId] = useState('')
@@ -81,6 +84,7 @@ export default function Lottery() {
   const [exploding, setExploding] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [prizePool, setPrizePool] = useState<PrizePoolItem[]>([])
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
 
   const stateRef = useRef({ sharePending, orderId, selectedBox, stage })
   stateRef.current = { sharePending, orderId, selectedBox, stage }
@@ -123,6 +127,24 @@ export default function Lottery() {
     }
   })
 
+  // 商品奖品中奖后获取核销二维码
+  useEffect(() => {
+    if (stage === 'result' && drawResult?.prize_type === 'product' && drawResult?.record_id && !qrCodeUrl) {
+      console.log('[Lottery] 获取核销二维码', { record_id: drawResult.record_id })
+      Network.request({ url: `/api/lottery/qrcode/${drawResult.record_id}`, method: 'GET' })
+        .then((res) => {
+          console.log('[Lottery] 核销二维码响应', res.data)
+          const data = (res.data as any)?.data
+          if (data?.qrcode) {
+            setQrCodeUrl(data.qrcode)
+          }
+        })
+        .catch((err) => {
+          console.error('[Lottery] 获取核销二维码失败', err)
+        })
+    }
+  }, [stage, drawResult, qrCodeUrl])
+
   const fetchOrder = async (uid: string) => {
     console.log('[Lottery] 请求订单信息', { url: `/api/orders/${orderId}`, method: 'GET' })
     const res = await Network.request({ url: `/api/orders/${orderId}`, method: 'GET' })
@@ -138,6 +160,30 @@ export default function Lottery() {
   }
 
   const fetchRecord = async (): Promise<boolean> => {
+    // If we have recordId, use the record-by-id endpoint; otherwise use orderId
+    if (recordId) {
+      console.log('[Lottery] 查询抽奖记录(by recordId)', { url: `/api/lottery/record-by-id/${recordId}`, method: 'GET' })
+      const res = await Network.request({ url: `/api/lottery/record-by-id/${recordId}`, method: 'GET' })
+      console.log('[Lottery] 抽奖记录响应', res.data)
+      const envelope = res.data as any
+      const record = envelope?.data
+      if (record && record.id) {
+        setDrawResult({
+          is_winner: !!record.is_winner,
+          prize_name: record.prize_name || '',
+          prize_type: record.prize_type,
+          redemption_code: record.redemption_code || '',
+          refund_amount: record.refund_amount || '0',
+          record_id: record.id || '',
+          refund_status: record.refund_status || 'pending',
+        })
+        setStage('result')
+        return true
+      }
+      return false
+    }
+
+    if (!orderId) return false
     console.log('[Lottery] 查询抽奖记录', { url: `/api/lottery/record/${orderId}`, method: 'GET' })
     const res = await Network.request({ url: `/api/lottery/record/${orderId}`, method: 'GET' })
     console.log('[Lottery] 抽奖记录响应', res.data)
@@ -147,8 +193,11 @@ export default function Lottery() {
       setDrawResult({
         is_winner: !!record.is_winner,
         prize_name: record.prize_name || '',
+        prize_type: record.prize_type,
         redemption_code: record.redemption_code || '',
         refund_amount: record.refund_amount || '0',
+        record_id: record.id || '',
+        refund_status: record.refund_status || 'pending',
       })
       setStage('result')
       return true
@@ -176,7 +225,7 @@ export default function Lottery() {
       const uid = Taro.getStorageSync('user_id') || ''
       setUserId(uid)
       void fetchPrizePool()
-      if (!orderId) {
+      if (!orderId && !recordId) {
         Taro.showToast({ title: '缺少订单参数', icon: 'none' })
         setTimeout(() => Taro.navigateBack(), 1200)
         return
@@ -189,6 +238,11 @@ export default function Lottery() {
       try {
         const hasRecord = await fetchRecord()
         if (!hasRecord) {
+          if (!orderId) {
+            Taro.showToast({ title: '记录不存在', icon: 'none' })
+            setTimeout(() => Taro.navigateBack(), 1200)
+            return
+          }
           await fetchOrder(uid)
           setStage('select')
         }
@@ -287,6 +341,8 @@ export default function Lottery() {
           coupon_amount: prize?.coupon_amount,
           coupon_min_spend: prize?.coupon_min_spend,
           product_name: prize?.product_name,
+          record_id: record?.id || '',
+          refund_status: record?.refund_status || 'pending',
         })
       } else {
         throw new Error(envelope?.msg || '抽奖失败')
@@ -364,11 +420,45 @@ export default function Lottery() {
             <Text className="block text-sm text-amber-700 mb-2 text-center">奖品：{drawResult.product_name}</Text>
           ) : null}
           {drawResult.redemption_code ? (
-            <View className="bg-amber-50 rounded-xl px-4 py-3">
-              <Text className="block text-xs text-amber-500 mb-1 text-center">兑换码（到店出示）</Text>
-              <Text className="block text-base font-bold text-amber-800 tracking-wider text-center">
-                {drawResult.redemption_code}
-              </Text>
+            <View className="w-full flex flex-col items-center gap-3 mt-1">
+              {/* 核销二维码 */}
+              {drawResult.refund_status === 'redeemed' ? (
+                <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
+                  <Text className="block text-base text-green-600 font-bold">✓ 已核销</Text>
+                  <Text className="block text-xs text-gray-400 mt-1">奖品已领取</Text>
+                </View>
+              ) : (
+                <View className="bg-white rounded-2xl p-4 flex flex-col items-center" style={{ boxShadow: '0 4rpx 16rpx rgba(0,0,0,0.08)' }}>
+                  {qrCodeUrl ? (
+                    <Image
+                      src={qrCodeUrl}
+                      mode="aspectFit"
+                      style={{ width: '180px', height: '180px' }}
+                    />
+                  ) : (
+                    <View style={{ width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text className="block text-xs text-gray-400 text-center">二维码加载中...</Text>
+                    </View>
+                  )}
+                  <Text className="block text-xs text-gray-400 mt-2">商家扫一扫核销奖品</Text>
+                </View>
+              )}
+              {/* 核销码 */}
+              <View className="bg-amber-50 rounded-xl px-4 py-2 flex flex-row items-center justify-center gap-2">
+                <Text className="block text-xs text-amber-500">核销码</Text>
+                <Text className="block text-base font-bold text-amber-800 tracking-wider">
+                  {drawResult.redemption_code}
+                </Text>
+              </View>
+              {/* 核销状态 */}
+              {drawResult.refund_status === 'redeemed' && (
+                <View className="flex flex-row items-center gap-1">
+                  <View className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                    <Text className="text-white text-xs">✓</Text>
+                  </View>
+                  <Text className="block text-sm text-green-600 font-medium">已核销</Text>
+                </View>
+              )}
             </View>
           ) : null}
         </View>

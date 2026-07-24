@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import * as crypto from 'crypto';
+import * as QRCode from 'qrcode';
 
 export type PrizeType = 'coupon' | 'product' | 'free_meal';
 
@@ -508,6 +509,83 @@ export class LotteryService {
     return updated as LotteryRecord;
   }
 
+  /** 查询兑换码状态（商家扫码后先查状态，再确认核销） */
+  async checkRedemptionCode(redemptionCode: string): Promise<{
+    record_id: string;
+    prize_name: string;
+    product_name: string;
+    product_value: number | null;
+    user_id: string;
+    redemption_code: string;
+    refund_status: string;
+    created_at: string;
+    redeemed: boolean;
+  }> {
+    const { data: record, error } = await this.client
+      .from('lottery_records')
+      .select('id, prize_name, user_id, redemption_code, refund_status, created_at')
+      .eq('redemption_code', redemptionCode)
+      .eq('is_winner', true)
+      .maybeSingle();
+    if (error) throw new Error(`查询兑换码失败: ${error.message}`);
+    if (!record) throw new NotFoundException('兑换码无效');
+
+    // 补充奖品商品信息
+    let productName = '';
+    let productValue: number | null = null;
+    const r = record as any;
+    if (r.prize_name) {
+      const { data: prize } = await this.client
+        .from('prizes')
+        .select('product_name, product_value')
+        .eq('name', r.prize_name)
+        .maybeSingle();
+      if (prize) {
+        productName = (prize as any).product_name || '';
+        productValue = (prize as any).product_value ?? null;
+      }
+    }
+
+    return {
+      record_id: r.id,
+      prize_name: r.prize_name || '',
+      product_name: productName,
+      product_value: productValue,
+      user_id: r.user_id,
+      redemption_code: r.redemption_code,
+      refund_status: r.refund_status || '',
+      created_at: r.created_at,
+      redeemed: r.refund_status === 'redeemed',
+    };
+  }
+
+  /** 生成核销二维码（base64 data URL） */
+  async generateRedemptionQRCode(recordId: string): Promise<{ qrcode: string; redemption_code: string; prize_name: string }> {
+    const { data: record, error } = await this.client
+      .from('lottery_records')
+      .select('id, redemption_code, prize_name, is_winner, refund_status')
+      .eq('id', recordId)
+      .maybeSingle();
+    if (error) throw new Error(`查询记录失败: ${error.message}`);
+    if (!record) throw new NotFoundException('抽奖记录不存在');
+
+    const r = record as any;
+    if (!r.is_winner) throw new BadRequestException('未中奖，无法生成核销码');
+    if (!r.redemption_code) throw new BadRequestException('该奖品无核销码（仅实物商品支持核销）');
+
+    const qrDataUrl = await QRCode.toDataURL(r.redemption_code, {
+      width: 400,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+
+    return {
+      qrcode: qrDataUrl,
+      redemption_code: r.redemption_code,
+      prize_name: r.prize_name || '',
+    };
+  }
+
   // ========== 查询接口 ==========
 
   async getRecordByOrderId(orderId: string): Promise<LotteryRecord | null> {
@@ -518,6 +596,36 @@ export class LotteryService {
       .maybeSingle();
     if (error) throw new Error(`查询抽奖记录失败: ${error.message}`);
     return (data as LotteryRecord) || null;
+  }
+
+  async getRecordById(recordId: string): Promise<any> {
+    const { data, error } = await this.client
+      .from('lottery_records')
+      .select('*')
+      .eq('id', recordId)
+      .maybeSingle();
+    if (error) throw new Error(`查询抽奖记录失败: ${error.message}`);
+    if (!data) return null;
+
+    const record = data as any;
+
+    // 联表补充奖品详情
+    if (record.prize_id) {
+      const { data: prize } = await this.client
+        .from('prizes')
+        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend')
+        .eq('id', record.prize_id)
+        .maybeSingle();
+      if (prize) {
+        record.prize_type = (prize as any).prize_type;
+        record.product_name = (prize as any).product_name;
+        record.product_value = (prize as any).product_value;
+        record.coupon_amount = (prize as any).coupon_amount;
+        record.coupon_min_spend = (prize as any).coupon_min_spend;
+      }
+    }
+
+    return record;
   }
 
   async getUserRecords(userId: string): Promise<any[]> {
