@@ -50,7 +50,7 @@ const LOGO_URL =
 
 // 顶部主题头图（膨胀盲盒标题已内置于图片）
 const HERO_BG_URL =
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/hero_bg_71b09a95.png?sign=1787456474-43e9d4f471-0-371319e46f8941b0b40affeb0c62d43f658fab24c9e0ad8b7f1a33bb50867987'
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/hero_bg_v3_e2de9638.jpg?sign=1787457313-41bf0a0191-0-a2167d4ec59dda9adb8fc14c0cad12080fdd758626e3b9b9721987525b770acd'
 
 // 6 个盲盒图片（3D 黏土风，已裁剪透明画布，TOS 存储）
 const BOX_IMAGES = [
