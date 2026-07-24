@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { S3Storage } from 'coze-coding-dev-sdk';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -46,6 +47,7 @@ export interface LotterySettings {
   rate_limit_enabled: boolean;
   rate_limit_max: number;
   captcha_enabled: boolean;
+  redemption_expiry_hours: number;
 }
 
 const DEFAULT_SETTINGS: LotterySettings = {
@@ -59,11 +61,19 @@ const DEFAULT_SETTINGS: LotterySettings = {
   rate_limit_enabled: true,
   rate_limit_max: 10,
   captcha_enabled: false,
+  redemption_expiry_hours: 72,
 };
 
 @Injectable()
 export class LotteryService {
   private client = getSupabaseClient();
+  private storage = new S3Storage({
+    endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
+    accessKey: '',
+    secretKey: '',
+    bucketName: process.env.COZE_BUCKET_NAME,
+    region: 'cn-beijing'
+  });
   private settingsCache: { data: LotterySettings; expiry: number } | null = null;
   private static SETTINGS_CACHE_TTL = 30_000; // 30秒缓存
 
@@ -92,6 +102,7 @@ export class LotteryService {
       rate_limit_enabled: (map.get('rate_limit_enabled') || 'true') === 'true',
       rate_limit_max: parseInt(map.get('rate_limit_max') || '10', 10),
       captcha_enabled: (map.get('captcha_enabled') || 'false') === 'true',
+      redemption_expiry_hours: parseInt(map.get('redemption_expiry_hours') || '72', 10),
     };
 
     this.settingsCache = { data: settings, expiry: Date.now() + LotteryService.SETTINGS_CACHE_TTL };
@@ -416,9 +427,11 @@ export class LotteryService {
         refundStatus = 'pending';
       } else if (prize.prize_type === 'product') {
         redemptionCode = `PRD-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        refundStatus = 'pending';
       } else if (prize.prize_type === 'free_meal') {
         refundAmount = orderTotal;
         refundStatus = 'pending';
+        redemptionCode = `BWC-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       }
     }
 
@@ -486,9 +499,17 @@ export class LotteryService {
       throw new BadRequestException('该商品已兑换过');
     }
 
+    // 检查兑奖有效期
+    const expiryHours = await this.getRedemptionExpiryHours();
+    const createdAt = new Date(recordData.created_at).getTime();
+    const expiresAt = createdAt + expiryHours * 3600 * 1000;
+    if (Date.now() > expiresAt) {
+      throw new BadRequestException(`兑奖已过期（有效期${expiryHours}小时）`);
+    }
+
     const { data: updated, error: updateError } = await this.client
       .from('lottery_records')
-      .update({ refund_status: 'redeemed' })
+      .update({ refund_status: 'redeemed', redeemed_at: new Date().toISOString(), redeemed_by: merchantUserId })
       .eq('id', recordData.id)
       .select()
       .single();
@@ -520,6 +541,8 @@ export class LotteryService {
     refund_status: string;
     created_at: string;
     redeemed: boolean;
+    expired: boolean;
+    redemption_expiry_hours: number;
   }> {
     const { data: record, error } = await this.client
       .from('lottery_records')
@@ -556,14 +579,34 @@ export class LotteryService {
       refund_status: r.refund_status || '',
       created_at: r.created_at,
       redeemed: r.refund_status === 'redeemed',
+      expired: this.isRedemptionExpired(r.created_at),
+      redemption_expiry_hours: await this.getRedemptionExpiryHours(),
     };
   }
 
-  /** 生成核销二维码（base64 data URL） */
-  async generateRedemptionQRCode(recordId: string): Promise<{ qrcode: string; redemption_code: string; prize_name: string }> {
+  /** 检查核销是否已过期 */
+  private isRedemptionExpired(createdAt: string): boolean {
+    const expiryHours = (this.settingsCache as any)?.redemption_expiry_hours ?? 72;
+    const created = new Date(createdAt).getTime();
+    const expiresAt = created + expiryHours * 3600 * 1000;
+    return Date.now() > expiresAt;
+  }
+
+  /** 获取兑奖有效期（小时） */
+  async getRedemptionExpiryHours(): Promise<number> {
+    const { data } = await this.client
+      .from('lottery_settings')
+      .select('redemption_expiry_hours')
+      .limit(1)
+      .maybeSingle();
+    return (data as any)?.redemption_expiry_hours ?? 72;
+  }
+
+  /** 生成核销二维码（上传到TOS，返回URL） */
+  async generateRedemptionQRCode(recordId: string): Promise<{ qrcode: string; redemption_code: string; prize_name: string; expired: boolean; redemption_expiry_hours: number; expiry_date: string; expiry_hours: number; created_at: string }> {
     const { data: record, error } = await this.client
       .from('lottery_records')
-      .select('id, redemption_code, prize_name, is_winner, refund_status')
+      .select('id, redemption_code, prize_name, is_winner, refund_status, created_at')
       .eq('id', recordId)
       .maybeSingle();
     if (error) throw new Error(`查询记录失败: ${error.message}`);
@@ -571,18 +614,41 @@ export class LotteryService {
 
     const r = record as any;
     if (!r.is_winner) throw new BadRequestException('未中奖，无法生成核销码');
-    if (!r.redemption_code) throw new BadRequestException('该奖品无核销码（仅实物商品支持核销）');
+    if (!r.redemption_code) throw new BadRequestException('该奖品无核销码（仅商品类奖品支持核销）');
 
-    const qrDataUrl = await QRCode.toDataURL(r.redemption_code, {
+    // 生成 QR code PNG buffer
+    const qrBuffer = await QRCode.toBuffer(r.redemption_code, {
       width: 400,
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },
     });
 
+    // 上传到 TOS
+    const key = await this.storage.uploadFile({
+      fileContent: qrBuffer,
+      fileName: `lottery-qrcode-${r.redemption_code}.png`,
+      contentType: 'image/png',
+    });
+
+    // 生成签名 URL（有效期 30 天）
+    const qrcodeUrl = await this.storage.generatePresignedUrl({
+      key,
+      expireTime: 2592000, // 30 天
+    });
+
+    const expiryHours = await this.getRedemptionExpiryHours();
+    const createdAt = new Date(r.created_at).getTime();
+    const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
+
     return {
-      qrcode: qrDataUrl,
+      qrcode: qrcodeUrl,
       redemption_code: r.redemption_code,
       prize_name: r.prize_name || '',
+      expired: this.isRedemptionExpired(r.created_at),
+      redemption_expiry_hours: expiryHours,
+      expiry_date: expiresAt.toISOString(),
+      expiry_hours: expiryHours,
+      created_at: r.created_at,
     };
   }
 
@@ -623,6 +689,17 @@ export class LotteryService {
         record.coupon_amount = (prize as any).coupon_amount;
         record.coupon_min_spend = (prize as any).coupon_min_spend;
       }
+    }
+
+    // 补充过期信息
+    if (record.redemption_code) {
+      record.expired = this.isRedemptionExpired(record.created_at);
+      record.redemption_expiry_hours = await this.getRedemptionExpiryHours();
+      // 计算过期时间
+      const createdAt = new Date(record.created_at).getTime();
+      const expiresAt = new Date(createdAt + record.redemption_expiry_hours * 3600 * 1000);
+      record.expiry_date = expiresAt.toISOString();
+      record.expiry_hours = record.redemption_expiry_hours;
     }
 
     return record;

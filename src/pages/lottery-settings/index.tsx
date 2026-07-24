@@ -145,6 +145,20 @@ export default function LotterySettingsPage() {
             </View>
           </CardContent>
         </Card>
+
+        {/* 兑奖有效期设置 */}
+        <Card className="mb-3">
+          <CardContent className="p-4">
+            <View className="flex flex-row items-center gap-3">
+              <Text className="text-xs text-gray-500 w-24">兑奖有效期</Text>
+              <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
+                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.redemption_expiry_hours || '72'} onInput={(e) => updateSetting('redemption_expiry_hours', e.detail.value)} />
+              </View>
+              <Text className="text-xs text-gray-400">小时</Text>
+            </View>
+            <Text className="block text-xs text-gray-400 mt-2">中奖后需在此时间内到店核销，过期后无法兑奖</Text>
+          </CardContent>
+        </Card>
       </ScrollView>
 
       {/* 底部固定保存按钮 */}

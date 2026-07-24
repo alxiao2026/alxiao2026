@@ -31,6 +31,9 @@ interface DrawResultData {
   product_name?: string
   record_id?: string
   refund_status?: string
+  expired?: boolean
+  expiry_hours?: number
+  expiry_date?: string
 }
 
 interface OrderInfo {
@@ -127,10 +130,11 @@ export default function Lottery() {
     }
   })
 
-  // 商品奖品中奖后获取核销二维码
+  // 中奖后获取核销二维码（商品/霸王餐等可核销类型）
   useEffect(() => {
-    if (stage === 'result' && drawResult?.prize_type === 'product' && drawResult?.record_id && !qrCodeUrl) {
-      console.log('[Lottery] 获取核销二维码', { record_id: drawResult.record_id })
+    const redeemableTypes = ['product', 'free_meal', 'refund']
+    if (stage === 'result' && drawResult?.prize_type && redeemableTypes.includes(drawResult.prize_type) && drawResult?.record_id && !qrCodeUrl) {
+      console.log('[Lottery] 获取核销二维码', { record_id: drawResult.record_id, prize_type: drawResult.prize_type })
       Network.request({ url: `/api/lottery/qrcode/${drawResult.record_id}`, method: 'GET' })
         .then((res) => {
           console.log('[Lottery] 核销二维码响应', res.data)
@@ -176,6 +180,9 @@ export default function Lottery() {
           refund_amount: record.refund_amount || '0',
           record_id: record.id || '',
           refund_status: record.refund_status || 'pending',
+          expired: !!record.expired,
+          expiry_hours: record.expiry_hours || 0,
+          expiry_date: record.expiry_date || '',
         })
         setStage('result')
         return true
@@ -413,35 +420,55 @@ export default function Lottery() {
         </Text>
       )
     }
-    if (type === 'product') {
+    if (type === 'product' || type === 'free_meal') {
+      const isFreeMeal = type === 'free_meal'
       return (
         <View className="mt-3 w-full">
-          {drawResult.product_name ? (
+          {drawResult.product_name && !isFreeMeal ? (
             <Text className="block text-sm text-amber-700 mb-2 text-center">奖品：{drawResult.product_name}</Text>
           ) : null}
+          {isFreeMeal && (
+            <Text className="block text-sm text-amber-700 mb-2 text-center">
+              本单免单 ¥{drawResult.refund_amount}，退款将原路返回
+            </Text>
+          )}
           {drawResult.redemption_code ? (
             <View className="w-full flex flex-col items-center gap-3 mt-1">
-              {/* 核销二维码 */}
-              {drawResult.refund_status === 'redeemed' ? (
-                <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
-                  <Text className="block text-base text-green-600 font-bold">✓ 已核销</Text>
-                  <Text className="block text-xs text-gray-400 mt-1">奖品已领取</Text>
+              {/* 过期提示 */}
+              {drawResult.expired && (
+                <View className="bg-red-50 rounded-xl px-4 py-3 w-full flex flex-col items-center gap-1">
+                  <Text className="block text-base font-bold text-red-600 text-center">兑奖已过期</Text>
+                  <Text className="block text-xs text-red-400 text-center">
+                    兑奖有效期为 {drawResult.expiry_hours} 小时，已于 {drawResult.expiry_date ? new Date(drawResult.expiry_date).toLocaleString('zh-CN') : ''} 过期
+                  </Text>
+                  <Text className="block text-xs text-gray-400 text-center">请联系商家处理</Text>
                 </View>
-              ) : (
-                <View className="bg-white rounded-2xl p-4 flex flex-col items-center" style={{ boxShadow: '0 4rpx 16rpx rgba(0,0,0,0.08)' }}>
-                  {qrCodeUrl ? (
-                    <Image
-                      src={qrCodeUrl}
-                      mode="aspectFit"
-                      style={{ width: '180px', height: '180px' }}
-                    />
+              )}
+              {/* 核销二维码（未过期且未核销时显示） */}
+              {!drawResult.expired && (
+                <>
+                  {drawResult.refund_status === 'redeemed' ? (
+                    <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
+                      <Text className="block text-base text-green-600 font-bold">✓ 已核销</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">奖品已领取</Text>
+                    </View>
                   ) : (
-                    <View style={{ width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text className="block text-xs text-gray-400 text-center">二维码加载中...</Text>
+                    <View className="bg-white rounded-2xl p-4 flex flex-col items-center" style={{ boxShadow: '0 4rpx 16rpx rgba(0,0,0,0.08)' }}>
+                      {qrCodeUrl ? (
+                        <Image
+                          src={qrCodeUrl}
+                          mode="aspectFit"
+                          style={{ width: '180px', height: '180px' }}
+                        />
+                      ) : (
+                        <View style={{ width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text className="block text-xs text-gray-400 text-center">二维码加载中...</Text>
+                        </View>
+                      )}
+                      <Text className="block text-xs text-gray-400 mt-2">商家扫一扫核销奖品</Text>
                     </View>
                   )}
-                  <Text className="block text-xs text-gray-400 mt-2">商家扫一扫核销奖品</Text>
-                </View>
+                </>
               )}
               {/* 核销码 */}
               <View className="bg-amber-50 rounded-xl px-4 py-2 flex flex-row items-center justify-center gap-2">
@@ -450,8 +477,15 @@ export default function Lottery() {
                   {drawResult.redemption_code}
                 </Text>
               </View>
+              {/* 有效期提示 */}
+              {!drawResult.expired && (drawResult.expiry_hours ?? 0) > 0 && (
+                <Text className="block text-xs text-gray-400 text-center">
+                  兑奖有效期 {drawResult.expiry_hours} 小时
+                  {drawResult.expiry_date ? `，请于 ${new Date(drawResult.expiry_date).toLocaleString('zh-CN')} 前使用` : ''}
+                </Text>
+              )}
               {/* 核销状态 */}
-              {drawResult.refund_status === 'redeemed' && (
+              {drawResult.refund_status === 'redeemed' && !drawResult.expired && (
                 <View className="flex flex-row items-center gap-1">
                   <View className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
                     <Text className="text-white text-xs">✓</Text>
@@ -462,13 +496,6 @@ export default function Lottery() {
             </View>
           ) : null}
         </View>
-      )
-    }
-    if (type === 'free_meal') {
-      return (
-        <Text className="block text-sm text-amber-700 mt-2 text-center">
-          本单免单 ¥{drawResult.refund_amount}，退款将原路返回
-        </Text>
       )
     }
     // 兼容已抽记录（无 prize_type）
