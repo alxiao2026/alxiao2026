@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import {
-  ClipboardList, Wallet, ChevronRight, ChevronLeft, Pencil,
+  ClipboardList, ChevronRight, ChevronLeft, Pencil,
   Settings, Info, LogOut,
   ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store
 } from 'lucide-react-taro';
@@ -41,6 +41,7 @@ interface UserPermissions {
 const UserCenterPage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [lotteryCount, setLotteryCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -83,6 +84,19 @@ const UserCenterPage = () => {
     }
   }, []);
 
+  const fetchLotteryCount = useCallback(async (uid: string) => {
+    try {
+      const res = await Network.request({ url: `/api/lottery/user/${uid}` });
+      console.log('[UserCenter] lottery records:', res.data);
+      const records = (res.data as any)?.data;
+      if (Array.isArray(records)) {
+        setLotteryCount(records.filter((r: any) => r.is_winner).length);
+      }
+    } catch (e) {
+      console.error('获取抽奖记录失败:', e);
+    }
+  }, []);
+
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const savedNickName = Taro.getStorageSync('nick_name');
@@ -104,11 +118,11 @@ const UserCenterPage = () => {
         }
       }).catch((e) => console.error('用户登录失败:', e));
 
-      Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId)]).finally(() => setLoading(false));
+      Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId), fetchLotteryCount(savedUserId)]).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [fetchProfile, fetchStats, fetchPermissions]);
+  }, [fetchProfile, fetchStats, fetchPermissions, fetchLotteryCount]);
 
   const handleLogin = () => {
     Taro.navigateTo({ url: '/pages/login/index' });
@@ -292,13 +306,13 @@ const UserCenterPage = () => {
       {/* 消费数据 */}
       <View className="mx-4 mt-3 bg-white rounded-2xl overflow-hidden">
         <View className="flex flex-row">
-          <View className="flex-1 py-4 flex flex-col items-center border-r border-gray-50">
+          <View className="flex-1 py-4 flex flex-col items-center border-r border-gray-50" onClick={goToLotteryRecords}>
             <View className="flex items-center mb-1">
-              <Wallet size={16} color="#F97316" />
-              <Text className="text-xs text-gray-500 ml-1">累计消费</Text>
+              <Trophy size={16} color="#F97316" />
+              <Text className="text-xs text-gray-500 ml-1">抽奖记录</Text>
             </View>
             <Text className="text-xl font-bold text-gray-800 block">
-              <Text className="text-sm">¥</Text>{stats?.total_spent || '0.00'}
+              {lotteryCount}<Text className="text-sm"> 次中奖</Text>
             </Text>
           </View>
           <View className="flex-1 py-4 flex flex-col items-center">
