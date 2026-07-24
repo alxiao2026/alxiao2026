@@ -68,6 +68,10 @@ const BOX_IMAGES = [
 ]
 
 
+// 开奖动画素材：盲盒 IP 形象（奶油底合成版，与开奖遮罩底色一致）
+const MASCOT_BOX_URL =
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/mascot_box_451b2442.jpg?sign=1787489192-c654de1ecf-0-0eacf6121a57980b6f1c5976ed620a893d7453298b2507bdb4d264b75532f92b'
+
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
 
 const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
@@ -123,12 +127,35 @@ export default function Lottery() {
     []
   )
 
+  // 开盒爆射彩带粒子（8 个方向，配合 burst-1~burst-8 关键帧）
+  const burstParticles = useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) => ({
+        id: i,
+        dir: (i % 8) + 1,
+        delay: `${(i % 4) * 0.06}s`,
+        size: 6 + (i % 4) * 3,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        round: i % 2 === 0,
+      })),
+    []
+  )
+
   useShareAppMessage(() => {
     return {
       title: '膨胀团幸运盲盒，快来帮我开出霸王餐！',
       path: '/pages/index/index',
     }
   })
+
+  // 开盒动画期间隐藏 H5 顶部导航栏，确保奶油色遮罩全屏覆盖
+  useEffect(() => {
+    if (env !== Taro.ENV_TYPE.WEB) return
+    if (stage === 'opening') {
+      document.body.classList.add('lottery-opening-active')
+      return () => document.body.classList.remove('lottery-opening-active')
+    }
+  }, [env, stage])
 
   // 中奖后获取核销二维码（商品/霸王餐等可核销类型）
   useEffect(() => {
@@ -330,7 +357,7 @@ export default function Lottery() {
           method: 'POST',
           data: { order_id: orderId, user_id: userId },
         }),
-        delay(2400), // 保证开奖动画完整播放
+        delay(2200), // 保证摇晃动画完整播放
       ])
       console.log('[Lottery] 抽奖响应', res.data)
       const envelope = res.data as any
@@ -379,7 +406,7 @@ export default function Lottery() {
       setStage('result')
       setExploding(false)
       setDrawing(false)
-    }, 900)
+    }, 1300)
   }
 
   const goHome = () => {
@@ -798,16 +825,23 @@ export default function Lottery() {
             />
           ))}
 
-        <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
-          {/* 盲盒玩法胶囊 */}
-          <View className="clay-pill px-5 py-2" style={{ marginTop: '-38px' }}>
-            <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
-              盲盒玩法
-            </Text>
-          </View>
+        {win ? (
+          <>
+            {/* 金色 3D 标题（参考开奖动画样片） */}
+            <Text className="win-title win-title-enter">恭喜中奖</Text>
+            <Text className="win-subtitle win-subtitle-enter">膨胀团为你送上惊喜福利</Text>
 
-          {win ? (
-            <>
+            <View
+              className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center win-card-enter"
+              style={{ position: 'relative' }}
+            >
+              {/* 盲盒玩法胶囊 */}
+              <View className="clay-pill px-5 py-2" style={{ marginTop: '-38px' }}>
+                <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
+                  盲盒玩法
+                </Text>
+              </View>
+
               {/* 奖品名胶囊卡片 */}
               <View
                 className="mt-5 px-6 py-3 rounded-2xl"
@@ -835,68 +869,37 @@ export default function Lottery() {
                 </View>
               </View>
 
-              {/* 打开的盲盒 + IP 弹跳探出 */}
-              <View className="flex items-center justify-center mt-4" style={{ position: 'relative', width: '100%', height: '180px' }}>
-                {/* 金色光芒 */}
-                <View
-                  className="clay-ray-spin"
-                  style={{
-                    position: 'absolute',
-                    width: '200px',
-                    height: '200px',
-                    borderRadius: '50%',
-                    background:
-                      'conic-gradient(from 0deg, rgba(255,200,60,0.45) 0deg, transparent 30deg, rgba(255,200,60,0.45) 60deg, transparent 90deg, rgba(255,200,60,0.45) 120deg, transparent 150deg, rgba(255,200,60,0.45) 180deg, transparent 210deg, rgba(255,200,60,0.45) 240deg, transparent 270deg, rgba(255,200,60,0.45) 300deg, transparent 330deg)',
-                    zIndex: 1,
-                  }}
-                />
-                {/* IP 从盒中弹跳探出 */}
-                <View
-                  className="clay-ip-bounce bg-white rounded-full overflow-hidden"
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    width: '96px',
-                    height: '96px',
-                    zIndex: 3,
-                    boxShadow: '0 8px 16px rgba(200, 100, 30, 0.3)',
-                    border: '4px solid #FFE9A8',
-                  }}
-                >
-                  {drawResult.image_url ? (
-                    <Image src={drawResult.image_url} className="w-full h-full" mode="aspectFill" />
-                  ) : (
-                    <Image src={LOGO_URL} className="w-full h-full" mode="aspectFill" />
-                  )}
-                </View>
-                {/* 盒身：选中的盲盒图片 */}
-                <Image
-                  src={BOX_IMAGES[selectedBox ?? 0]}
-                  mode="aspectFit"
-                  className="clay-prize-pop"
-                  style={{ position: 'absolute', bottom: '0', width: '140px', height: '140px', zIndex: 2 }}
-                />
+              {/* 吉祥物破盒弹出（素材图 + 金色光芒） */}
+              <View className="mascot-stage">
+                <View className="clay-ray-spin mascot-stage-rays" />
+                <Image src={MASCOT_BOX_URL} className="mascot-pop-in" mode="aspectFit" />
               </View>
 
               {renderPrizeExtra()}
-            </>
-          ) : (
-            <>
-              <View
-                className="w-20 h-20 rounded-full flex items-center justify-center mt-6"
-                style={{ background: 'linear-gradient(135deg, #FFF0D6 0%, #FFE1A8 100%)' }}
-              >
-                <PartyPopper size={40} color="#E8A33D" />
-              </View>
-              <Text className="block text-lg font-black text-amber-800 mt-4 text-center">
-                好运正在路上{'\n'}下次一定能中大奖
+            </View>
+          </>
+        ) : (
+          <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
+            {/* 盲盒玩法胶囊 */}
+            <View className="clay-pill px-5 py-2" style={{ marginTop: '-38px' }}>
+              <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
+                盲盒玩法
               </Text>
-            </>
-          )}
-        </View>
+            </View>
+            <View
+              className="w-20 h-20 rounded-full flex items-center justify-center mt-6"
+              style={{ background: 'linear-gradient(135deg, #FFF0D6 0%, #FFE1A8 100%)' }}
+            >
+              <PartyPopper size={40} color="#E8A33D" />
+            </View>
+            <Text className="block text-lg font-black text-amber-800 mt-4 text-center">
+              好运正在路上{'\n'}下次一定能中大奖
+            </Text>
+          </View>
+        )}
 
         {/* 操作按钮 */}
-        <View className="mx-6 mt-6 flex flex-col gap-3">
+        <View className="mx-6 mt-6 flex flex-col gap-3 win-actions-enter">
           {win && (
             <Button className="w-full h-14 border-none clay-btn" onClick={goRecords}>
               <Text
@@ -929,7 +932,7 @@ export default function Lottery() {
         background: 'linear-gradient(180deg, #FF9A3D 0%, #FFC966 22%, #FFF0CC 48%, #FFE3A1 100%)',
       }}
     >
-      {renderTitleCard()}
+      {stage !== 'result' && renderTitleCard()}
 
       {/* 选盒 / 开盒阶段 */}
       {(stage === 'select' || stage === 'opening') && (
@@ -939,6 +942,32 @@ export default function Lottery() {
           <View style={{ height: '120px' }} />
           {renderTabBar()}
         </>
+      )}
+
+      {/* 开盒动画全屏遮罩（参考开奖视频：摇晃 → 爆开 → 吉祥物弹出） */}
+      {stage === 'opening' && (
+        <View className="lottery-opening-overlay">
+          <View className="opening-rays" />
+          {exploding && <View className="opening-flash" />}
+          {exploding &&
+            burstParticles.map((p) => (
+              <View key={p.id} className={`opening-burst burst-${p.dir}`} style={{ animationDelay: p.delay }}>
+                <View
+                  className="opening-burst-piece"
+                  style={{
+                    backgroundColor: p.color,
+                    width: `${p.size}px`,
+                    height: `${p.size}px`,
+                    borderRadius: p.round ? '50%' : '3px',
+                  }}
+                />
+              </View>
+            ))}
+          <View className={`opening-mascot-wrap ${exploding ? 'pop' : ''}`}>
+            <Image src={MASCOT_BOX_URL} className="opening-mascot" mode="aspectFit" />
+          </View>
+          <Text className="opening-status-text">{exploding ? '惊喜现身！' : '正在开启惊喜...'}</Text>
+        </View>
       )}
 
       {/* 结果阶段 */}

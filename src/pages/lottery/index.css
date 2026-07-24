@@ -300,3 +300,254 @@
   border-radius: 999px;
   box-shadow: 0 3px 8px rgba(150, 100, 200, 0.22);
 }
+
+/* ===== 开奖动画（参考视频：摇晃 → 爆开弹出 → 庆祝） ===== */
+.lottery-opening-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: #FFF6DC;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* H5 端：开盒动画期间隐藏顶部导航栏，保证奶油色遮罩全屏覆盖 */
+body.lottery-opening-active taro-view-core.z-1000 {
+  display: none !important;
+}
+
+/* 旋转金色光芒 */
+.opening-rays {
+  position: absolute;
+  width: 720px;
+  height: 720px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 196, 66, 0.28) 0deg 12deg,
+    rgba(255, 196, 66, 0) 12deg 24deg
+  );
+  animation: openingRaysSpin 9s linear infinite;
+}
+@keyframes openingRaysSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 爆开白色闪光环 */
+.opening-flash {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 226, 130, 0.75) 45%, rgba(255, 226, 130, 0) 72%);
+  animation: openingFlash 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes openingFlash {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(5.2);
+    opacity: 0;
+  }
+}
+
+/* 爆射彩带粒子（8 个方向） */
+.opening-burst {
+  position: absolute;
+  animation-duration: 1.05s;
+  animation-timing-function: cubic-bezier(0.15, 0.85, 0.45, 1);
+  animation-fill-mode: forwards;
+  opacity: 0;
+}
+.opening-burst-piece {
+  display: block;
+  animation: openingBurstSpin 1.05s ease-out forwards;
+}
+@keyframes openingBurstSpin {
+  0% { transform: rotate(0deg); opacity: 1; }
+  100% { transform: rotate(540deg); opacity: 0.15; }
+}
+.burst-1 { animation-name: burstFly1; }
+.burst-2 { animation-name: burstFly2; }
+.burst-3 { animation-name: burstFly3; }
+.burst-4 { animation-name: burstFly4; }
+.burst-5 { animation-name: burstFly5; }
+.burst-6 { animation-name: burstFly6; }
+.burst-7 { animation-name: burstFly7; }
+.burst-8 { animation-name: burstFly8; }
+@keyframes burstFly1 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(0px, -190px); opacity: 0; }
+}
+@keyframes burstFly2 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(135px, -135px); opacity: 0; }
+}
+@keyframes burstFly3 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(195px, 0px); opacity: 0; }
+}
+@keyframes burstFly4 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(125px, 145px); opacity: 0; }
+}
+@keyframes burstFly5 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(0px, 175px); opacity: 0; }
+}
+@keyframes burstFly6 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(-130px, 140px); opacity: 0; }
+}
+@keyframes burstFly7 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(-195px, 0px); opacity: 0; }
+}
+@keyframes burstFly8 {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(-135px, -130px); opacity: 0; }
+}
+
+/* 盲盒 IP：摇晃阶段 */
+.opening-mascot-wrap {
+  z-index: 2;
+  animation: mascotShake 0.85s ease-in-out infinite;
+  filter: drop-shadow(0 18px 28px rgba(214, 118, 20, 0.35));
+}
+@keyframes mascotShake {
+  0%, 100% { transform: rotate(0deg) translateY(0) scale(1); }
+  15% { transform: rotate(-7deg) translateY(-6px) scale(1.02); }
+  30% { transform: rotate(6deg) translateY(0) scale(1); }
+  45% { transform: rotate(-8deg) translateY(-8px) scale(1.03); }
+  60% { transform: rotate(7deg) translateY(-2px) scale(1.01); }
+  75% { transform: rotate(-5deg) translateY(-6px) scale(1.02); }
+  90% { transform: rotate(4deg) translateY(0) scale(1); }
+}
+
+/* 盲盒 IP：爆开弹出（弹簧 overshoot） */
+.opening-mascot-wrap.pop {
+  animation: mascotPopSpring 1.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes mascotPopSpring {
+  0% { transform: scale(0.82) translateY(26px); }
+  45% { transform: scale(1.14) translateY(-18px); }
+  65% { transform: scale(0.96) translateY(4px); }
+  82% { transform: scale(1.04) translateY(-5px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+.opening-mascot {
+  width: 272px;
+  height: 272px;
+  display: block;
+}
+
+/* 开奖状态文字 */
+.opening-status-text {
+  margin-top: 30px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #C26A1B;
+  z-index: 2;
+  animation: openingStatusPulse 1.2s ease-in-out infinite;
+}
+@keyframes openingStatusPulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+/* ===== 中奖结果页（参考视频终帧设计） ===== */
+/* 恭喜中奖 3D 金色标题 */
+.win-title {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  line-height: 1.2;
+  color: #FFC53D;
+  text-shadow:
+    0 -2px 0 #FFF6D8,
+    0 2px 0 #F08C00,
+    0 4px 0 #D9480F,
+    0 7px 14px rgba(217, 72, 15, 0.45);
+}
+.win-subtitle {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #9c6b30;
+}
+
+/* 结果页入场编排 */
+.win-title-enter {
+  animation: winTitleIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes winTitleIn {
+  0% { transform: translateY(-34px) scale(0.6); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.win-subtitle-enter {
+  animation: fadeSlideUp 0.5s ease-out 0.18s both;
+}
+.win-card-enter {
+  animation: cardPopIn 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.3s both;
+}
+.win-actions-enter {
+  animation: fadeSlideUp 0.5s ease-out 0.55s both;
+}
+@keyframes fadeSlideUp {
+  0% { transform: translateY(22px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes cardPopIn {
+  0% { transform: scale(0.72) translateY(30px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* 结果页 IP 舞台 */
+.mascot-stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  align-items: center;
+  justify-content: center;
+}
+.mascot-stage-rays {
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 196, 66, 0.32) 0deg 14deg,
+    rgba(255, 196, 66, 0) 14deg 28deg
+  );
+}
+.mascot-pop-in {
+  width: 216px;
+  height: 216px;
+  z-index: 2;
+  filter: drop-shadow(0 14px 22px rgba(214, 118, 20, 0.32));
+  animation: mascotPopIn 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.42s both,
+    mascotIdleBob 2.6s ease-in-out 1.4s infinite;
+}
+@keyframes mascotPopIn {
+  0% { transform: scale(0) translateY(50px); }
+  55% { transform: scale(1.12) translateY(-10px); }
+  75% { transform: scale(0.95) translateY(3px); }
+  100% { transform: scale(1) translateY(0); }
+}
+@keyframes mascotIdleBob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.015); }
+}
