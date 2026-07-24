@@ -107,6 +107,7 @@ export class PrizeService {
     coupon_min_spend: number;
     product_name: string;
     product_value: number;
+    merchant_id: number | null;
   }>): Promise<Prize> {
     const existing = await this.findOne(id);
 
@@ -122,6 +123,7 @@ export class PrizeService {
     if (body.coupon_min_spend !== undefined) updateData.coupon_min_spend = body.coupon_min_spend;
     if (body.product_name !== undefined) updateData.product_name = body.product_name;
     if (body.product_value !== undefined) updateData.product_value = body.product_value;
+    if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client

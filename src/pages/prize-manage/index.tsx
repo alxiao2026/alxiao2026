@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash2, Gift } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -45,6 +45,11 @@ export default function PrizeManagePage() {
     coupon_amount: '', coupon_min_spend: '',
     product_name: '', product_value: '',
   });
+  // 可用门店：null 表示全部门店通用；商家账号固定为本店
+  const [merchants, setMerchants] = useState<{ id: number; name: string }[]>([]);
+  const [boundMerchantName, setBoundMerchantName] = useState('');
+  const [formMerchantId, setFormMerchantId] = useState<number | null>(null);
+  const [showMerchantPicker, setShowMerchantPicker] = useState(false);
 
   useEffect(() => {
     initMerchantAndFetch();
@@ -60,13 +65,31 @@ export default function PrizeManagePage() {
         const merchant = (res.data as any)?.data;
         if (merchant?.id) {
           boundMerchantId = merchant.id;
+          setBoundMerchantName(merchant.name || '');
         }
       } catch (err) {
         console.error('获取商家信息失败:', err);
       }
     }
     setMerchantId(boundMerchantId);
+    // 超级管理员加载门店列表，用于奖品"可用门店"选择
+    if (!boundMerchantId) {
+      try {
+        const res = await Network.request({ url: '/api/merchants' });
+        const list = (res.data as any)?.data || [];
+        setMerchants(list.map((m: any) => ({ id: m.id, name: m.name })));
+      } catch (err) {
+        console.error('获取门店列表失败:', err);
+      }
+    }
     await fetchPrizes(boundMerchantId);
+  };
+
+  // 门店显示名：null=全部门店通用；本店=绑定门店名；其余从门店列表解析
+  const getMerchantName = (mid: number | null) => {
+    if (mid === null || mid === undefined) return '全部门店通用';
+    if (merchantId && mid === merchantId) return boundMerchantName || '本店';
+    return merchants.find((m) => m.id === mid)?.name || '指定门店';
   };
 
   const fetchPrizes = async (mid: number | null = merchantId) => {
@@ -85,6 +108,7 @@ export default function PrizeManagePage() {
   const openCreatePrize = () => {
     setEditingPrize(null);
     setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '' });
+    setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
 
@@ -96,6 +120,7 @@ export default function PrizeManagePage() {
       coupon_amount: prize.coupon_amount || '', coupon_min_spend: prize.coupon_min_spend || '',
       product_name: prize.product_name || '', product_value: prize.product_value || '',
     });
+    setFormMerchantId(prize.merchant_id ?? null);
     setShowDialog(true);
   };
 
@@ -108,8 +133,8 @@ export default function PrizeManagePage() {
         coupon_amount: Number(prizeForm.coupon_amount) || 0, coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
       };
-      // 商家账号创建奖品自动挂到本店
-      if (merchantId) payload.merchant_id = merchantId;
+      // 可用门店：null 表示全部门店通用；商家账号固定为本店
+      payload.merchant_id = merchantId ?? formMerchantId;
       if (editingPrize) {
         await Network.request({ url: `/api/prizes/${editingPrize.id}`, method: 'PUT', data: payload });
       } else {
@@ -187,6 +212,7 @@ export default function PrizeManagePage() {
                       <Badge variant="outline">
                         {prize.prize_type === 'coupon' ? '优惠券' : prize.prize_type === 'product' ? '商品' : '霸王餐'}
                       </Badge>
+                      <Badge variant="secondary">{getMerchantName(prize.merchant_id)}</Badge>
                     </View>
                     {prize.description && (
                       <Text className="block text-sm text-gray-500 mt-1">{prize.description}</Text>
@@ -268,6 +294,24 @@ export default function PrizeManagePage() {
                     ))}
                   </View>
                 </View>
+                {/* 可用门店 */}
+                <View>
+                  <Text className="block text-sm text-black mb-1">可用门店</Text>
+                  {merchantId ? (
+                    <View className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 flex flex-row items-center gap-2">
+                      <Store size={14} color="#6b7280" />
+                      <Text className="block text-sm text-gray-600">本店{boundMerchantName ? `（${boundMerchantName}）` : ''} · 不可修改</Text>
+                    </View>
+                  ) : (
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200 flex flex-row items-center justify-between" onClick={() => setShowMerchantPicker(true)}>
+                      <View className="flex flex-row items-center gap-2">
+                        <Store size={14} color="#6b7280" />
+                        <Text className="block text-sm text-gray-800">{getMerchantName(formMerchantId)}</Text>
+                      </View>
+                      <ChevronRight size={16} color="#9ca3af" />
+                    </View>
+                  )}
+                </View>
                 {prizeForm.prize_type === 'coupon' && (
                   <>
                     <View className="flex flex-row gap-3">
@@ -332,6 +376,35 @@ export default function PrizeManagePage() {
                 <Text className="block text-white text-sm">{editingPrize ? '保存' : '创建'}</Text>
               </Button>
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* 可用门店选择弹窗 */}
+      {showMerchantPicker && (
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }} onClick={() => setShowMerchantPicker(false)}>
+          <View className="bg-white w-full rounded-t-2xl" style={{ maxHeight: '60vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <View className="px-5 pt-5 pb-3 border-b border-gray-100">
+              <Text className="block text-base font-bold text-black">选择可用门店</Text>
+              <Text className="block text-xs text-gray-400 mt-1">中奖用户仅可在所选门店核销该奖品</Text>
+            </View>
+            <ScrollView scrollY style={{ flex: 1 }} className="px-5 py-2">
+              <View className="flex flex-row items-center justify-between py-3 border-b border-gray-50" onClick={() => { setFormMerchantId(null); setShowMerchantPicker(false); }}>
+                <Text className={`block text-sm ${formMerchantId === null ? 'text-[#FF4757] font-semibold' : 'text-gray-800'}`}>全部门店通用</Text>
+                {formMerchantId === null && <Check size={18} color="#FF4757" />}
+              </View>
+              {merchants.map((m) => (
+                <View key={m.id} className="flex flex-row items-center justify-between py-3 border-b border-gray-50" onClick={() => { setFormMerchantId(m.id); setShowMerchantPicker(false); }}>
+                  <Text className={`block text-sm ${formMerchantId === m.id ? 'text-[#FF4757] font-semibold' : 'text-gray-800'}`}>{m.name}</Text>
+                  {formMerchantId === m.id && <Check size={18} color="#FF4757" />}
+                </View>
+              ))}
+              {merchants.length === 0 && (
+                <View className="py-6">
+                  <Text className="block text-sm text-gray-400 text-center">暂无门店，请先在「商家收录」中添加</Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       )}
