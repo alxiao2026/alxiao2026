@@ -48,9 +48,9 @@ interface PrizePoolItem {
 const LOGO_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
 
-// 顶部主题头图（膨胀盲盒标题已内置于图片）
-const HERO_BG_URL =
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/hero_bg_v3_e2de9638.jpg?sign=1787457313-41bf0a0191-0-a2167d4ec59dda9adb8fc14c0cad12080fdd758626e3b9b9721987525b770acd'
+// 顶部标题区卡片图（膨胀盲盒大标题 + 副标题 + 装饰，按参考设计稿切图）
+const TITLE_CARD_URL =
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/title_card_f19ec67b.jpg?sign=1787462487-e5e95baf36-0-60f38917a60395dd4a8b20ba47fcf8f70c600030174c3dcd403e4dde7828161c'
 
 // 6 个盲盒图片（3D 黏土风，已裁剪透明画布，TOS 存储）
 const BOX_IMAGES = [
@@ -161,7 +161,9 @@ export default function Lottery() {
     try {
       console.log('[Lottery] 请求奖池', { url: '/api/prizes/active', method: 'GET' })
       const res = await Network.request({ url: '/api/prizes/active', method: 'GET' })
-      const list = (res.data as any)?.data || []
+      // 接口直接返回数组（无信封结构），兼容两种返回格式
+      const raw = res.data as any
+      const list = Array.isArray(raw) ? raw : (raw?.data || [])
       console.log('[Lottery] 奖池响应', list)
       if (Array.isArray(list)) setPrizePool(list.slice(0, 4))
     } catch (err) {
@@ -413,6 +415,9 @@ export default function Lottery() {
           <Image src={LOGO_URL} className="w-9 h-9 rounded-full" mode="aspectFill" />
         </View>
         <Text className="text-base font-black text-amber-900">{nickName}</Text>
+        <View className="clay-pill px-3 py-1">
+          <Text className="text-xs font-bold text-white">膨胀团</Text>
+        </View>
       </View>
       <View
         className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
@@ -425,39 +430,65 @@ export default function Lottery() {
     </View>
   )
 
-  // ===== 顶部主题头图（标题内置于图片，顶栏叠加在图上，动态阶段文案在图下方） =====
-  const renderHero = () => (
-    <View className="mb-4" style={{ position: 'relative', zIndex: 2 }}>
-      <Image src={HERO_BG_URL} className="w-full" style={{ display: 'block' }} mode="widthFix" />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 }}>
-        {renderTopBar()}
+  // ===== 顶部标题区：白框圆角卡片 + 设计稿标题图 =====
+  const renderTitleCard = () => (
+    <View style={{ position: 'relative', zIndex: 2 }}>
+      <View
+        className="mx-4 mt-3 rounded-3xl overflow-hidden"
+        style={{
+          border: '4px solid #FFFFFF',
+          boxShadow: '0 8px 20px rgba(220, 120, 30, 0.28)',
+        }}
+      >
+        <Image src={TITLE_CARD_URL} className="w-full h-auto" style={{ display: 'block' }} mode="widthFix" />
       </View>
+      {/* 开盒 / 结果阶段的动态文案 */}
       {stage !== 'select' && stage !== 'loading' && (
-        <View className="flex flex-col items-center mt-3 px-6">
+        <View className="flex flex-col items-center mt-2">
           <Text
-            className="block text-xl font-black text-white"
+            className="block text-lg font-black text-white"
             style={{ textShadow: '0 2px 4px rgba(180, 80, 10, 0.35)' }}
           >
-            {stage === 'opening' ? '正在打开惊喜' : drawResult?.is_winner ? '恭喜中奖!' : '差一点点'}
+            {stage === 'opening' ? '正在打开惊喜' : drawResult?.is_winner ? '恭喜中奖！' : '差一点点'}
           </Text>
           <Text
             className="block text-xs font-bold text-white mt-1"
             style={{ textShadow: '0 1px 3px rgba(180, 80, 10, 0.3)' }}
           >
-            {stage === 'opening'
-              ? '膨胀团为你准备了好运'
-              : drawResult?.is_winner
-                ? '膨胀团为你送上惊喜福利'
-                : '好运正在路上'}
+            {stage === 'opening' ? '膨胀团为你准备了好运' : drawResult?.is_winner ? '膨胀团为你送上惊喜福利' : '好运正在路上'}
           </Text>
         </View>
       )}
     </View>
   )
 
-  // ===== 6宫格盲盒 =====
+  // ===== 盲盒玩法区：白卡 + 顶部胶囊标签 =====
   const renderBoxes = () => (
-    <View className="clay-card mx-5 px-3 pt-4 pb-4" style={{ position: 'relative', zIndex: 2 }}>
+    <View className="clay-card mx-4 mt-8 px-3 pt-6 pb-4" style={{ position: 'relative', zIndex: 2 }}>
+      {/* 玩法标签胶囊（压在卡片上边缘） */}
+      <View
+        style={{
+          position: 'absolute',
+          top: '-16px',
+          left: 0,
+          right: 0,
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          zIndex: 3,
+        }}
+      >
+        <View
+          className="px-6 py-1 rounded-full"
+          style={{
+            background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
+            border: '2px solid #FFFFFF',
+            boxShadow: '0 3px 8px rgba(247, 78, 22, 0.35)',
+          }}
+        >
+          <Text className="block text-white text-sm font-black">盲盒玩法</Text>
+        </View>
+      </View>
       <View className="grid grid-cols-3 gap-x-2 gap-y-3">
         {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
@@ -476,8 +507,8 @@ export default function Lottery() {
                 }`}
                 style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
-                {/* 盲盒图片 */}
-                <Image src={img} className="w-full mx-auto" style={{ display: 'block' }} mode="widthFix" />
+                {/* 盲盒图片（正方形，CSS 固定宽高比，避免 H5 widthFix 高度测量漂移） */}
+                <Image src={img} className="w-full h-auto aspect-square mx-auto" style={{ display: 'block' }} mode="aspectFit" />
                 {/* 开盒金光粒子 */}
                 {openingThis && exploding &&
                   sparkles.map((s) => (
@@ -538,43 +569,78 @@ export default function Lottery() {
     </View>
   )
 
-  // ===== 今日奖池 =====
+  // ===== 今日奖品区：白卡 + 胶囊标签 + 4列浅橙格位 =====
   const renderPrizePool = () => {
-    if (prizePool.length === 0) return null
+    // 不足 4 个奖品时用占位格补齐，保持 4 列布局与参考图一致
+    const slots = [0, 1, 2, 3].map((i) => prizePool[i] || null)
     return (
-      <View className="mt-5 mb-4" style={{ position: 'relative', zIndex: 2 }}>
-        <View className="flex flex-row justify-center">
-          <View className="clay-pill px-5 py-2">
-            <Text className="text-sm font-black text-white" style={{ letterSpacing: '2px' }}>
-              今日奖池
+      <View className="clay-card mx-4 mt-8 mb-4 px-3 pt-7 pb-3" style={{ position: 'relative', zIndex: 2 }}>
+        {/* 奖品标签胶囊（压在卡片上边缘） */}
+        <View
+          style={{
+            position: 'absolute',
+            top: '-16px',
+            left: 0,
+            right: 0,
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            zIndex: 3,
+          }}
+        >
+          <View
+            className="px-6 py-1 rounded-full"
+            style={{
+              background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
+              border: '2px solid #FFFFFF',
+              boxShadow: '0 3px 8px rgba(247, 78, 22, 0.35)',
+            }}
+          >
+            <Text className="block text-white text-sm font-black" style={{ letterSpacing: '2px' }}>
+              今日奖品
             </Text>
           </View>
         </View>
-        <View className="clay-card mx-5 mt-3 px-4 py-4">
-          <View className="flex flex-row justify-between">
-            {prizePool.map((item, index) => (
-              <View key={item.id} className="flex flex-col items-center" style={{ width: '23%' }}>
-                {item.image_url ? (
-                  <Image
-                    src={item.image_url}
-                    className="w-12 h-12 rounded-2xl"
-                    mode="aspectFill"
-                    style={{ boxShadow: '0 3px 6px rgba(180,100,40,0.2)' }}
-                  />
-                ) : (
-                  <View
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-50"
-                    style={{ boxShadow: '0 3px 6px rgba(180,100,40,0.15)' }}
-                  >
-                    {renderPoolIcon(item, index)}
-                  </View>
-                )}
-                <Text className="block text-xs font-bold text-amber-900 mt-2 text-center" numberOfLines={1}>
+
+        <View className="grid grid-cols-4 gap-2">
+          {slots.map((item, index) =>
+            item ? (
+              <View key={item.id} className="flex flex-col items-center">
+                <View
+                  className="w-full aspect-square rounded-2xl flex items-center justify-center overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(160deg, #FFF2D9 0%, #FFE3B0 100%)',
+                    border: '1.5px solid #FFD98E',
+                  }}
+                >
+                  {item.image_url ? (
+                    <Image src={item.image_url} className="w-full h-full" mode="aspectFill" />
+                  ) : (
+                    renderPoolIcon(item, index)
+                  )}
+                </View>
+                <Text className="block text-xs font-bold text-amber-900 mt-1 text-center" numberOfLines={1}>
                   {item.name}
                 </Text>
               </View>
-            ))}
-          </View>
+            ) : (
+              <View key={`empty-${index}`} className="flex flex-col items-center">
+                <View
+                  className="w-full aspect-square rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(160deg, #FFF7E8 0%, #FFEFD2 100%)',
+                    border: '1.5px dashed #FFD98E',
+                  }}
+                >
+                  <Gift size={28} color="#E8B45A" />
+                </View>
+                <Text className="block text-xs font-bold text-amber-300 mt-1 text-center">敬请期待</Text>
+              </View>
+            )
+          )}
+        </View>
+        <View className="flex flex-row justify-center mt-2">
+          <Text className="block text-xs text-amber-500 font-bold">每日0点刷新库存</Text>
         </View>
       </View>
     )
@@ -731,9 +797,9 @@ export default function Lottery() {
                 {/* 盒身：选中的盲盒图片 */}
                 <Image
                   src={BOX_IMAGES[selectedBox ?? 0]}
-                  mode="widthFix"
+                  mode="aspectFit"
                   className="clay-prize-pop"
-                  style={{ position: 'absolute', bottom: '0', width: '140px', zIndex: 2 }}
+                  style={{ position: 'absolute', bottom: '0', width: '140px', height: '140px', zIndex: 2 }}
                 />
               </View>
 
@@ -784,9 +850,12 @@ export default function Lottery() {
   return (
     <View
       className="min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(180deg, #FCCA8B 0%, #FF9A3D 55%, #FF8A5C 100%)' }}
+      style={{
+        background: 'linear-gradient(180deg, #FF9A3D 0%, #FFC966 22%, #FFF0CC 48%, #FFE3A1 100%)',
+      }}
     >
-      {renderHero()}
+      {renderTopBar()}
+      {renderTitleCard()}
 
       {/* 选盒 / 开盒阶段 */}
       {(stage === 'select' || stage === 'opening') && (
