@@ -48,14 +48,14 @@ interface PrizePoolItem {
 const LOGO_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
 
-// 6 个盲盒图片（3D 黏土风，透明底，TOS 存储）
+// 6 个盲盒图片（3D 黏土风，已裁剪透明画布，TOS 存储）
 const BOX_IMAGES = [
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_01_2ff705cf.png?sign=1787408929-94f228aa69-0-b408ab5f5bc63090bf0948558b1c8d64371a0efd5bdcf71c1715287fd5f00619',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_02_0e9a3ad6.png?sign=1787408930-8e76306000-0-bebd31697e363bc2a1ea0cb9f40d6eda85559804fbd791e618db18f55c748ae0',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_03_48be2ff7.png?sign=1787408930-a68a74c625-0-dfac64a5e7e350d7ff2c8b9eb01359a49068e9f05dd0c2e41e85027e1784b596',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_04_15983725.png?sign=1787408930-ccc41c7c20-0-82d14c7bd7c569560289dc51c587722770617b75d5950f62b1a66324cc1c2b01',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_05_114d4429.png?sign=1787408931-1e5db09162-0-87a7234b30ce370eb1298a1d7fb221208853ffc99b9956adb476453abf40ed9e',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/lottery_box_06_272ab201.png?sign=1787408931-be32964ac3-0-b21b153fc8f79c56a4de1bd3a1b0d1400c9a4e4843e1aea33c6d779bc600f44f',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_01_tight_34a68dde_fcf8d726.png?sign=1787453593-55a9fffdd7-0-7c7939b3797a7aafc93dfb0b12b695145445267670ca27fcd232a28212c6a1c9',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_02_tight_dc981843_b2c49880.png?sign=1787453594-de5b018c45-0-93e367261ee70071a22419135c485209be30006b13dfdfc86647d5318e2fcc51',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_03_tight_97e0cf23_566392e5.png?sign=1787453594-5dee2c8f88-0-7defb0a0513c8cdacd2fb49d79d4b23bd99addeafcef2b9b79af8e5f63bcb5b7',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_04_tight_7261b570_d8b60eb8.png?sign=1787453594-4ce909398c-0-cf1c5db2a9da725ec6531043e8a68aab23156ecb9398361a0e8eb2edf0f25961',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_05_tight_bd3b69e6_80b50953.png?sign=1787453594-5b01baa0bb-0-82f5819de2d670389249b0b4c3fafdd9f14d175c58d7a9eb0b86cd1abb7f8039',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_06_tight_38fa21a0_87805941.png?sign=1787453594-82ef6f1a91-0-a5b1fc1ce43efdbee8abacd4bcebd79711303a1161313914db3c050a4c69b7a1',
 ]
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
@@ -466,7 +466,7 @@ export default function Lottery() {
                 style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
                 {/* 盲盒图片 */}
-                <Image src={img} className="w-full max-w-24 mx-auto" style={{ display: 'block' }} mode="widthFix" />
+                <Image src={img} className="w-full mx-auto" style={{ display: 'block' }} mode="widthFix" />
                 {/* 开盒金光粒子 */}
                 {openingThis && exploding &&
                   sparkles.map((s) => (
