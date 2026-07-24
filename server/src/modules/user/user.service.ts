@@ -388,6 +388,9 @@ export class UserService {
     todayRevenue: string;
     todayVerifiedAmount: string;
     todayVerifiedCount: number;
+    todayLotteryUsers: number;
+    todayRefundAmount: string;
+    todayFreeMealWinners: number;
   }> {
     const supabase = getSupabaseClient();
 
@@ -399,6 +402,7 @@ export class UserService {
       .single();
 
     let orders: any[] = [];
+    let merchantOrderIds: Set<string> | null = null;
 
     if (user && user.role === 'merchant' && user.merchant_id) {
       // 商家用户：只统计关联门店的数据
@@ -412,9 +416,12 @@ export class UserService {
       if (packageIds.length > 0) {
         const { data: allOrders } = await supabase
           .from('orders')
-          .select('status, price, quantity, verified_count, created_at')
+          .select('id, status, price, quantity, verified_count, created_at')
           .in('package_id', packageIds);
         orders = allOrders || [];
+        merchantOrderIds = new Set(orders.map(o => o.id));
+      } else {
+        merchantOrderIds = new Set();
       }
     } else if (user && user.role === 'admin') {
       // 系统管理员：返回全平台统计数据
@@ -460,6 +467,32 @@ export class UserService {
       .filter(o => o.status === 'used')
       .reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
 
+    // 今日抽奖统计（抽奖人数 / 返还金额 / 霸王餐中奖人数）
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const { data: todayLotteryRows } = await supabase
+      .from('lottery_records')
+      .select('order_id, user_id, refund_amount, is_winner, created_at, prizes(prize_type)')
+      .gte('created_at', todayStart.toISOString());
+    const todayLotteryRecords = (todayLotteryRows || []).filter((r: any) => {
+      const d = new Date(r.created_at);
+      const recordDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (recordDate !== todayStr) return false;
+      // 商家用户只统计自己门店订单产生的抽奖记录
+      if (merchantOrderIds && !merchantOrderIds.has(r.order_id)) return false;
+      return true;
+    });
+    const todayLotteryUsers = new Set(todayLotteryRecords.map((r: any) => r.user_id)).size;
+    const isFreeMeal = (r: any) => {
+      const prizeType = Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type;
+      return prizeType === 'free_meal';
+    };
+    const todayFreeMealRecords = todayLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
+    // 中奖人数按去重用户统计（同一用户多次中奖只算 1 人）
+    const todayFreeMealWinners = new Set(todayFreeMealRecords.map((r: any) => r.user_id)).size;
+    const todayRefundAmount = todayFreeMealRecords
+      .reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
+      .toFixed(2);
+
     return {
       totalSales,
       totalOrders,
@@ -471,7 +504,10 @@ export class UserService {
       todayOrders,
       todayRevenue,
       todayVerifiedAmount,
-      todayVerifiedCount
+      todayVerifiedCount,
+      todayLotteryUsers,
+      todayRefundAmount,
+      todayFreeMealWinners
     };
   }
 

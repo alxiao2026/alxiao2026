@@ -2,14 +2,15 @@ import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
     totalSales: 0, totalOrders: 0, totalRevenue: '0.00',
     verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
     todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
-    todayVerifiedAmount: '0.00', todayVerifiedCount: 0
+    todayVerifiedAmount: '0.00', todayVerifiedCount: 0,
+    todayLotteryUsers: 0, todayRefundAmount: '0.00', todayFreeMealWinners: 0
   });
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
@@ -201,6 +202,33 @@ const AdminPage = () => {
             </View>
             <Text className="block text-lg font-bold text-green-600">{merchantStats.todayVerifiedAmount}</Text>
             <Text className="block text-xs text-green-400 mt-1">{merchantStats.todayVerifiedCount}份</Text>
+          </View>
+        </View>
+        {/* 第二行：抽奖数据 */}
+        <View className="flex flex-row gap-3 mt-3">
+          <View className="flex-1 bg-purple-50 rounded-xl p-3">
+            <View className="flex flex-row items-center gap-2 mb-1">
+              <Users size={14} color="#8b5cf6" />
+              <Text className="block text-xs text-purple-600">今日抽奖人数</Text>
+            </View>
+            <Text className="block text-lg font-bold text-purple-600">{merchantStats.todayLotteryUsers}</Text>
+            <Text className="block text-xs text-purple-300 mt-1">人</Text>
+          </View>
+          <View className="flex-1 bg-amber-50 rounded-xl p-3">
+            <View className="flex flex-row items-center gap-2 mb-1">
+              <Coins size={14} color="#f59e0b" />
+              <Text className="block text-xs text-amber-600">今日返还金额</Text>
+            </View>
+            <Text className="block text-lg font-bold text-amber-600">{merchantStats.todayRefundAmount}</Text>
+            <Text className="block text-xs text-amber-400 mt-1">元</Text>
+          </View>
+          <View className="flex-1 bg-orange-50 rounded-xl p-3">
+            <View className="flex flex-row items-center gap-2 mb-1">
+              <UtensilsCrossed size={14} color="#f97316" />
+              <Text className="block text-xs text-orange-600">霸王餐中奖</Text>
+            </View>
+            <Text className="block text-lg font-bold text-orange-600">{merchantStats.todayFreeMealWinners}</Text>
+            <Text className="block text-xs text-orange-300 mt-1">人</Text>
           </View>
         </View>
       </View>
