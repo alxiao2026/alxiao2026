@@ -381,7 +381,8 @@
 
 /* 吉祥物盒子 */
 .win-popup-mascot {
-  width: 84%;
+  width: 68%;
+  height: auto;
   margin-top: 8rpx;
   animation: winPopupMascotIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
 }
