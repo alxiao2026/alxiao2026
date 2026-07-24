@@ -768,6 +768,83 @@ export class LotteryService {
     });
   }
 
+  /** 获取门店全部抽奖记录（商家看自己门店，管理员看全平台） */
+  async getMerchantLotteryRecords(userId: string): Promise<any[]> {
+    // 确认用户身份
+    const { data: user } = await this.client
+      .from('users')
+      .select('role, merchant_id')
+      .eq('user_id', userId)
+      .single();
+    if (!user || (user.role !== 'merchant' && user.role !== 'admin')) {
+      throw new Error('无权限查看门店抽奖记录');
+    }
+
+    // 商家用户：先拿到本门店订单 id 集合，用于过滤抽奖记录
+    let merchantOrderIds: Set<string> | null = null;
+    if (user.role === 'merchant' && user.merchant_id) {
+      const { data: packages } = await this.client
+        .from('packages')
+        .select('id')
+        .eq('merchant_id', user.merchant_id);
+      const packageIds = (packages || []).map((p: any) => p.id);
+      merchantOrderIds = new Set<string>();
+      if (packageIds.length > 0) {
+        const { data: orders } = await this.client
+          .from('orders')
+          .select('id')
+          .in('package_id', packageIds);
+        (orders || []).forEach((o: any) => merchantOrderIds!.add(o.id));
+      }
+    }
+
+    // 查询抽奖记录（联查奖品类型），限制返回条数防止数据过大
+    const { data: rows, error } = await this.client
+      .from('lottery_records')
+      .select('*, prizes(prize_type)')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    if (error) throw new Error(`查询门店抽奖记录失败: ${error.message}`);
+
+    let records = (rows as any[]) || [];
+    if (merchantOrderIds) {
+      records = records.filter(r => r.order_id && merchantOrderIds.has(r.order_id));
+    }
+    if (records.length === 0) return [];
+
+    // 补充中奖用户信息（昵称、手机号）
+    const recordUserIds = [...new Set(records.map(r => r.user_id).filter(Boolean))];
+    const userMap = new Map<string, any>();
+    if (recordUserIds.length > 0) {
+      const { data: users } = await this.client
+        .from('users')
+        .select('user_id, nick_name, phone')
+        .in('user_id', recordUserIds);
+      (users || []).forEach((u: any) => userMap.set(u.user_id, u));
+    }
+
+    const expiryHours = await this.getRedemptionExpiryHours();
+
+    return records.map(r => {
+      const prizeType = Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type;
+      const u = userMap.get(r.user_id);
+      const result: any = {
+        ...r,
+        prizes: undefined,
+        prize_type: prizeType || '',
+        user_nick_name: u?.nick_name || '',
+        user_phone: u?.phone || '',
+      };
+      if (r.redemption_code) {
+        const createdAt = new Date(r.created_at).getTime();
+        const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
+        result.expired = Date.now() > expiresAt.getTime();
+        result.expiry_date = expiresAt.toISOString();
+      }
+      return result;
+    });
+  }
+
   /** 获取往期中奖名单（中奖记录 + 用户昵称，按时间倒序，最多50条） */
   async getWinners(): Promise<Array<{
     id: string;

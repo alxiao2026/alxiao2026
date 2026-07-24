@@ -33,6 +33,13 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 门店全部抽奖记录（商家看本门店，管理员看全平台） */
+  @Get('merchant-records/:userId')
+  async getMerchantLotteryRecords(@Param('userId') userId: string) {
+    const data = await this.lotteryService.getMerchantLotteryRecords(userId);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('winners')
   async getWinners() {
     const data = await this.lotteryService.getWinners();

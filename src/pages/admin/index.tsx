@@ -2,7 +2,7 @@ import { View, Text, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -150,6 +150,7 @@ const AdminPage = () => {
             { icon: 'scan', label: '验券及退款', color: '#FF4757', bg: '#fef2f2', page: '/pages/verification/index', adminOnly: false },
             { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index', adminOnly: false },
             { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index', adminOnly: false },
+            { icon: 'trophy', label: '抽奖记录', color: '#06b6d4', bg: '#ecfeff', page: '/pages/admin-lottery-records/index', adminOnly: false },
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
           ].filter(item => !item.adminOnly || roleCode === 2).map((item, _, arr) => (
@@ -163,6 +164,7 @@ const AdminPage = () => {
                 {item.icon === 'scan' && <ScanLine size={22} color={item.color} />}
                 {item.icon === 'package' && <Package size={22} color={item.color} />}
                 {item.icon === 'gift' && <Gift size={22} color={item.color} />}
+                {item.icon === 'trophy' && <Trophy size={22} color={item.color} />}
                 {item.icon === 'store' && <Store size={22} color={item.color} />}
                 {item.icon === 'settings' && <Settings size={22} color={item.color} />}
               </View>
