@@ -822,7 +822,7 @@ export default function Lottery() {
                 <View className="win-popup-card">
                   {/* 奖品名胶囊卡片（右移叠到吉祥物左手位置） */}
                   <View
-                    className="mt-7 mr-6 -mb-5 px-6 py-3 rounded-2xl self-end z-10"
+                    className="mt-4 mr-10 -mb-5 px-6 py-3 rounded-2xl self-end z-10"
                     style={{
                       position: 'relative',
                       background: '#FFF3CC',
