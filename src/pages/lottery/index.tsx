@@ -13,7 +13,6 @@ import {
   PartyPopper,
   ClipboardList,
   User,
-  Coins,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -80,7 +79,6 @@ export default function Lottery() {
   const [exploding, setExploding] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [prizePool, setPrizePool] = useState<PrizePoolItem[]>([])
-  const [nickName] = useState(() => Taro.getStorageSync('nick_name') || '玩家001')
 
   const stateRef = useRef({ sharePending, orderId, selectedBox, stage })
   stateRef.current = { sharePending, orderId, selectedBox, stage }
@@ -406,29 +404,6 @@ export default function Lottery() {
     }
     return null
   }
-
-  // ===== 顶栏：IP头像 + 玩家 + 膨胀团胶囊 | 我的奖品 =====
-  const renderTopBar = () => (
-    <View className="flex flex-row items-center justify-between px-4 pt-3" style={{ position: 'relative', zIndex: 5 }}>
-      <View className="flex flex-row items-center gap-2">
-        <View className="bg-white rounded-full p-1" style={{ boxShadow: '0 3px 8px rgba(200, 90, 20, 0.25)' }}>
-          <Image src={LOGO_URL} className="w-9 h-9 rounded-full" mode="aspectFill" />
-        </View>
-        <Text className="text-base font-black text-amber-900">{nickName}</Text>
-        <View className="clay-pill px-3 py-1">
-          <Text className="text-xs font-bold text-white">膨胀团</Text>
-        </View>
-      </View>
-      <View
-        className="flex flex-row items-center gap-1 bg-white rounded-full px-3 py-2"
-        style={{ boxShadow: '0 3px 8px rgba(200, 90, 20, 0.2)' }}
-        onClick={goRecords}
-      >
-        <Coins size={16} color="#F7B731" />
-        <Text className="text-sm font-bold text-amber-900">我的奖品</Text>
-      </View>
-    </View>
-  )
 
   // ===== 顶部标题区：白框圆角卡片 + 设计稿标题图 =====
   const renderTitleCard = () => (
@@ -854,7 +829,6 @@ export default function Lottery() {
         background: 'linear-gradient(180deg, #FF9A3D 0%, #FFC966 22%, #FFF0CC 48%, #FFE3A1 100%)',
       }}
     >
-      {renderTopBar()}
       {renderTitleCard()}
 
       {/* 选盒 / 开盒阶段 */}
