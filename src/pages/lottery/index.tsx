@@ -70,6 +70,10 @@ const BOX_IMAGES = [
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
 
+// 中奖弹窗吉祥物盒子图（设计稿切图，底色已羽化为奶油色，TOS 存储）
+const MASCOT_POPUP_URL =
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/popup_mascot_box_v3_7348436c.png?sign=1816447151-18db31b37c-0-9c4deb7f1db9de651dac418676b92f3b20ad560b1f14704e7a18ca7a2775ff7f'
+
 const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
 
 export default function Lottery() {
@@ -88,6 +92,7 @@ export default function Lottery() {
   const [drawing, setDrawing] = useState(false)
   const [prizePool, setPrizePool] = useState<PrizePoolItem[]>([])
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
+  const [showQrView, setShowQrView] = useState(false)
 
   const stateRef = useRef({ sharePending, orderId, selectedBox, stage })
   stateRef.current = { sharePending, orderId, selectedBox, stage }
@@ -149,6 +154,15 @@ export default function Lottery() {
     }
   }, [stage, drawResult, qrCodeUrl])
 
+  // 中奖弹窗展示期间隐藏 H5 顶部导航栏，保证弹窗完整覆盖
+  useEffect(() => {
+    if (Taro.getEnv() !== Taro.ENV_TYPE.WEB) return
+    if (stage === 'result' && drawResult?.is_winner) {
+      document.body.classList.add('lottery-win-popup-active')
+      return () => document.body.classList.remove('lottery-win-popup-active')
+    }
+  }, [stage, drawResult])
+
   const fetchOrder = async (uid: string) => {
     console.log('[Lottery] 请求订单信息', { url: `/api/orders/${orderId}`, method: 'GET' })
     const res = await Network.request({ url: `/api/orders/${orderId}`, method: 'GET' })
@@ -163,7 +177,7 @@ export default function Lottery() {
     return order
   }
 
-  const fetchRecord = async (): Promise<boolean> => {
+  const fetchRecord = async (autoStage = true): Promise<boolean> => {
     // If we have recordId, use the record-by-id endpoint; otherwise use orderId
     if (recordId) {
       console.log('[Lottery] 查询抽奖记录(by recordId)', { url: `/api/lottery/record-by-id/${recordId}`, method: 'GET' })
@@ -184,7 +198,7 @@ export default function Lottery() {
           expiry_hours: record.expiry_hours || 0,
           expiry_date: record.expiry_date || '',
         })
-        setStage('result')
+        if (autoStage) setStage('result')
         return true
       }
       return false
@@ -205,8 +219,11 @@ export default function Lottery() {
         refund_amount: record.refund_amount || '0',
         record_id: record.id || '',
         refund_status: record.refund_status || 'pending',
+        expired: !!record.expired,
+        expiry_hours: record.expiry_hours || 0,
+        expiry_date: record.expiry_date || '',
       })
-      setStage('result')
+      if (autoStage) setStage('result')
       return true
     }
     return false
@@ -335,22 +352,9 @@ export default function Lottery() {
       console.log('[Lottery] 抽奖响应', res.data)
       const envelope = res.data as any
       if (envelope?.code === 200 && envelope?.data) {
-        const data = envelope.data
-        const prize = data.prize
-        const record = data.record
-        setDrawResult({
-          is_winner: !!data.is_winner,
-          prize_name: prize?.name || record?.prize_name || '',
-          prize_type: prize?.prize_type,
-          image_url: prize?.image_url || '',
-          redemption_code: record?.redemption_code || '',
-          refund_amount: record?.refund_amount || '0',
-          coupon_amount: prize?.coupon_amount,
-          coupon_min_spend: prize?.coupon_min_spend,
-          product_name: prize?.product_name,
-          record_id: record?.id || '',
-          refund_status: record?.refund_status || 'pending',
-        })
+        // 统一走记录接口拉取富化数据（prize_type/有效期/核销状态），保证与再次进入时一致
+        // autoStage=false：结果页切换由下方爆开动画完成后统一执行
+        await fetchRecord(false)
       } else {
         throw new Error(envelope?.msg || '抽奖失败')
       }
@@ -361,6 +365,7 @@ export default function Lottery() {
       if (String(msg).includes('已抽过奖')) {
         try {
           await fetchRecord()
+          setDrawing(false)
           return
         } catch (e) {
           console.error('[Lottery] 拉取已有记录失败:', e)
@@ -776,105 +781,140 @@ export default function Lottery() {
   const renderResult = () => {
     if (!drawResult) return null
     const win = drawResult.is_winner
-    return (
-      <View className="flex-1 flex flex-col" style={{ position: 'relative', zIndex: 2 }}>
-        {/* 彩带 */}
-        {win &&
-          confetti.map((c) => (
-            <View
-              key={c.id}
-              className="clay-confetti"
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: c.left,
-                width: `${c.size}px`,
-                height: `${c.size}px`,
-                backgroundColor: c.color,
-                borderRadius: c.round ? '50%' : '2px',
-                animationDelay: c.delay,
-                zIndex: 3,
-              }}
-            />
-          ))}
 
-        <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
-          {win ? (
-            <>
-              {/* 奖品名胶囊卡片 */}
+    // 中奖：设计稿同款弹窗（90% 宽 / 600rpx 上限 / 透明背景 / 高度自适应）
+    if (win) {
+      const isCoupon = drawResult.prize_type === 'coupon'
+      return (
+        <View className="win-popup-overlay">
+          {/* 彩带层 */}
+          <View className="win-popup-confetti">
+            {confetti.map((c) => (
               <View
-                className="mt-5 px-6 py-3 rounded-2xl"
+                key={c.id}
+                className="clay-confetti"
                 style={{
-                  position: 'relative',
-                  background: '#FFF3CC',
-                  boxShadow: '0 4px 10px rgba(200, 120, 30, 0.2), inset 0 2px 0 rgba(255,255,255,0.8)',
+                  position: 'absolute',
+                  top: '-4%',
+                  left: c.left,
+                  width: `${c.size}px`,
+                  height: `${c.size}px`,
+                  backgroundColor: c.color,
+                  borderRadius: c.round ? '50%' : '2px',
+                  animationDelay: c.delay,
                 }}
-              >
-                <Text className="block text-xl font-black text-amber-800 text-center">{drawResult.prize_name}</Text>
-                <View
-                  className="rounded-full px-2 py-1"
-                  style={{
-                    position: 'absolute',
-                    top: '-12px',
-                    right: '-14px',
-                    background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
-                    transform: 'rotate(8deg)',
-                    boxShadow: '0 3px 6px rgba(247,78,22,0.35)',
-                  }}
-                >
-                  <Text className="font-bold text-white" style={{ fontSize: '10px' }}>
-                    限量惊喜
+              />
+            ))}
+          </View>
+
+          {/* 弹窗容器：90% 宽 / 600rpx 上限 / 居中 / 背景透明 */}
+          <View className="win-popup-wrap">
+            {!showQrView ? (
+              <>
+                {/* 标题组（透明背景上） */}
+                <View className="win-popup-header">
+                  <Text className="win-popup-title">恭喜中奖</Text>
+                  <Text className="block win-popup-subtitle">膨胀团为你送上惊喜福利</Text>
+                  <Text className="block win-popup-freemeal">— 抢免单 —</Text>
+                </View>
+
+                {/* 奶油卡片 */}
+                <View className="win-popup-card">
+                  <Text className="win-popup-card-title">恭喜中奖</Text>
+                  <View className="win-popup-pill">
+                    <Text className="win-popup-pill-text">盲盒玩法</Text>
+                  </View>
+                  <Text className="block win-popup-divider">— 膨胀团为你送上惊喜福利 —</Text>
+
+                  {/* 奖品名胶囊卡片 */}
+                  <View
+                    className="mt-5 px-6 py-3 rounded-2xl"
+                    style={{
+                      position: 'relative',
+                      background: '#FFF3CC',
+                      boxShadow: '0 4px 10px rgba(200, 120, 30, 0.2), inset 0 2px 0 rgba(255,255,255,0.8)',
+                    }}
+                  >
+                    <Text className="block text-xl font-black text-amber-800 text-center">{drawResult.prize_name}</Text>
+                    <View
+                      className="rounded-full px-2 py-1"
+                      style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '-14px',
+                        background: 'linear-gradient(180deg, #FF8A5C 0%, #F74E16 100%)',
+                        transform: 'rotate(8deg)',
+                        boxShadow: '0 3px 6px rgba(247,78,22,0.35)',
+                      }}
+                    >
+                      <Text className="font-bold text-white" style={{ fontSize: '10px' }}>
+                        限量惊喜
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 吉祥物破盒而出 */}
+                  <Image src={MASCOT_POPUP_URL} mode="widthFix" className="win-popup-mascot" />
+
+                  {/* 立即领取 → 跳转兑换二维码 */}
+                  <Button
+                    className="win-popup-cta border-none"
+                    onClick={() => {
+                      if (isCoupon) {
+                        goRecords()
+                      } else {
+                        setShowQrView(true)
+                      }
+                    }}
+                  >
+                    <Text className="win-popup-cta-text">立即领取</Text>
+                  </Button>
+                </View>
+
+                <Text className="block win-popup-back" onClick={goHome}>
+                  返回首页
+                </Text>
+              </>
+            ) : (
+              /* 兑换二维码视图 */
+              <View className="win-popup-card win-popup-qr">
+                <Text className="win-popup-qr-title">扫码核销领奖品</Text>
+                <Text className="block win-popup-qr-sub">到店出示二维码，商家扫一扫核销</Text>
+                {renderPrizeExtra()}
+                <View className="win-popup-qr-actions">
+                  <Button className="win-popup-qr-btn border-none" onClick={goRecords}>
+                    <Text className="win-popup-qr-btn-text">查看中奖记录</Text>
+                  </Button>
+                  <Text className="block win-popup-qr-back" onClick={() => setShowQrView(false)}>
+                    返回结果
                   </Text>
                 </View>
               </View>
-
-              {/* 打开的盲盒 */}
-              <View className="flex items-center justify-center mt-4" style={{ position: 'relative', width: '100%', height: '180px' }}>
-                <Image
-                  src={BOX_IMAGES[selectedBox ?? 0]}
-                  mode="aspectFit"
-                  className="clay-prize-pop"
-                  style={{ position: 'absolute', bottom: '0', width: '140px', height: '140px', zIndex: 2 }}
-                />
-              </View>
-
-              {renderPrizeExtra()}
-            </>
-          ) : (
-            <>
-              <View
-                className="w-20 h-20 rounded-full flex items-center justify-center mt-6"
-                style={{ background: 'linear-gradient(135deg, #FFF0D6 0%, #FFE1A8 100%)' }}
-              >
-                <PartyPopper size={40} color="#E8A33D" />
-              </View>
-              <Text className="block text-lg font-black text-amber-800 mt-4 text-center">
-                好运正在路上{'\n'}下次一定能中大奖
-              </Text>
-            </>
-          )}
+            )}
+          </View>
         </View>
+      )
+    }
 
-        {/* 操作按钮 */}
-        <View className="mx-6 mt-6 flex flex-col gap-3">
-          {win && (
-            <Button className="w-full h-14 border-none clay-btn" onClick={goRecords}>
-              <Text
-                className="text-xl font-black text-white"
-                style={{ textShadow: '0 2px 0 rgba(180, 60, 10, 0.4)', letterSpacing: '3px' }}
-              >
-                立即领取
-              </Text>
-            </Button>
-          )}
-          <Button
-            className={`w-full h-12 border-none ${win ? 'bg-white' : 'clay-btn'}`}
-            style={win ? { boxShadow: '0 4px 10px rgba(200, 120, 30, 0.2)' } : {}}
-            onClick={goHome}
+    // 未中奖：保留原有整页结果
+    return (
+      <View className="flex-1 flex flex-col" style={{ position: 'relative', zIndex: 2 }}>
+        <View className="clay-card mx-5 px-6 pt-6 pb-8 flex flex-col items-center" style={{ position: 'relative' }}>
+          <View
+            className="w-20 h-20 rounded-full flex items-center justify-center mt-6"
+            style={{ background: 'linear-gradient(135deg, #FFF0D6 0%, #FFE1A8 100%)' }}
           >
+            <PartyPopper size={40} color="#E8A33D" />
+          </View>
+          <Text className="block text-lg font-black text-amber-800 mt-4 text-center">
+            好运正在路上{'\n'}下次一定能中大奖
+          </Text>
+        </View>
+        <View className="mx-6 mt-6 flex flex-col gap-3">
+          <Button className="w-full h-12 border-none clay-btn" onClick={goHome}>
             <View className="flex flex-row items-center gap-2">
-              {!win && <House size={18} color="#fff" />}
-              <Text className={`text-base font-black ${win ? 'text-amber-800' : 'text-white'}`}>返回首页</Text>
+              <House size={18} color="#fff" />
+              <Text className="text-base font-black text-white">返回首页</Text>
             </View>
           </Button>
         </View>

@@ -672,14 +672,16 @@ export class LotteryService {
 
   // ========== 查询接口 ==========
 
-  async getRecordByOrderId(orderId: string): Promise<LotteryRecord | null> {
+  async getRecordByOrderId(orderId: string): Promise<any | null> {
     const { data, error } = await this.client
       .from('lottery_records')
       .select('*')
       .eq('order_id', orderId)
       .maybeSingle();
     if (error) throw new Error(`查询抽奖记录失败: ${error.message}`);
-    return (data as LotteryRecord) || null;
+    if (!data) return null;
+    // 复用 getRecordById 的联表补充（prize_type / 有效期 / 过期状态等）
+    return this.getRecordById((data as any).id);
   }
 
   async getRecordById(recordId: string): Promise<any> {
