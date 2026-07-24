@@ -202,54 +202,61 @@ export default function PrizeManagePage() {
           prizes.map((prize) => (
             <Card key={prize.id} className="mb-3">
               <CardContent className="p-4">
-                <View className="flex flex-row items-start justify-between">
-                  <View className="flex-1">
-                    <View className="flex flex-row items-center gap-2">
-                      <Text className="block text-base font-semibold text-gray-800">{prize.name}</Text>
-                      <Badge variant={prize.is_active ? 'default' : 'secondary'}>
-                        {prize.is_active ? '启用' : '停用'}
-                      </Badge>
-                      <Badge variant="outline">
-                        {prize.prize_type === 'coupon' ? '优惠券' : prize.prize_type === 'product' ? '商品' : '霸王餐'}
-                      </Badge>
-                      <Badge variant="secondary">{getMerchantName(prize.merchant_id)}</Badge>
-                    </View>
-                    {prize.description && (
-                      <Text className="block text-sm text-gray-500 mt-1">{prize.description}</Text>
-                    )}
-                    <View className="flex flex-row items-center gap-4 mt-2">
-                      <Text className="block text-xs text-gray-400">
-                        概率: <Text className="text-[#FF4757] font-semibold">{prize.probability}%</Text>
-                      </Text>
-                      <Text className="block text-xs text-gray-400">
-                        库存: <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
-                      </Text>
-                      {prize.prize_type === 'coupon' && (
-                        <Text className="block text-xs text-gray-400">
-                          金额: <Text className="text-[#FF4757] font-semibold">¥{prize.coupon_amount}</Text>
-                          {Number(prize.coupon_min_spend) > 0 && ` 满${prize.coupon_min_spend}可用`}
-                        </Text>
-                      )}
-                      {prize.prize_type === 'product' && (
-                        <Text className="block text-xs text-gray-400">
-                          价值: <Text className="text-[#FF4757] font-semibold">¥{prize.product_value}</Text>
-                        </Text>
-                      )}
-                    </View>
+                {/* 第一行：奖品名称 + 操作按钮 */}
+                <View className="flex flex-row items-center justify-between gap-2">
+                  <View className="flex-1 min-w-0">
+                    <Text className="block text-base font-semibold text-gray-800 truncate">{prize.name}</Text>
                   </View>
-                  <View className="flex flex-row items-center gap-2">
+                  <View className="flex flex-row items-center gap-1 shrink-0">
                     <Button variant="ghost" size="sm" onClick={() => openEditPrize(prize)}>
-                      <Pencil size={16} color="#6b7280" />
+                      <Pencil size={15} color="#6b7280" />
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleTogglePrize(prize)}>
-                      <Badge variant={prize.is_active ? 'secondary' : 'default'}>
+                      <Text className={`text-xs ${prize.is_active ? 'text-gray-500' : 'text-[#FF4757] font-semibold'}`}>
                         {prize.is_active ? '停用' : '启用'}
-                      </Badge>
+                      </Text>
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDeletePrize(prize.id)}>
-                      <Trash2 size={16} color="#ef4444" />
+                      <Trash2 size={15} color="#ef4444" />
                     </Button>
                   </View>
+                </View>
+
+                {/* 第二行：状态 / 类型 / 可用门店徽标（可整体换行） */}
+                <View className="flex flex-row flex-wrap items-center gap-1 mt-2">
+                  <Badge variant={prize.is_active ? 'default' : 'secondary'}>
+                    {prize.is_active ? '启用' : '停用'}
+                  </Badge>
+                  <Badge variant="outline">
+                    {prize.prize_type === 'coupon' ? '优惠券' : prize.prize_type === 'product' ? '商品' : '霸王餐'}
+                  </Badge>
+                  <Badge variant="secondary">{getMerchantName(prize.merchant_id)}</Badge>
+                </View>
+
+                {/* 奖品描述 */}
+                {prize.description && (
+                  <Text className="block text-sm text-gray-500 mt-2">{prize.description}</Text>
+                )}
+
+                {/* 统计信息 */}
+                <View className="flex flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                  <Text className="block text-xs text-gray-400">
+                    概率 <Text className="text-[#FF4757] font-semibold">{prize.probability}%</Text>
+                  </Text>
+                  <Text className="block text-xs text-gray-400">
+                    库存 <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
+                  </Text>
+                  {prize.prize_type === 'coupon' && (
+                    <Text className="block text-xs text-gray-400">
+                      金额 <Text className="text-[#FF4757] font-semibold">¥{prize.coupon_amount}</Text>
+                      {Number(prize.coupon_min_spend) > 0 && `（满${prize.coupon_min_spend}可用）`}
+                    </Text>
+                  )}
+                  {prize.prize_type === 'product' && (
+                    <Text className="block text-xs text-gray-400">
+                      价值 <Text className="text-[#FF4757] font-semibold">¥{prize.product_value}</Text>
+                    </Text>
+                  )}
                 </View>
               </CardContent>
             </Card>
