@@ -51,14 +51,14 @@ const LOGO_URL =
 const TITLE_CARD_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/title_card_f19ec67b.jpg?sign=1787462487-e5e95baf36-0-60f38917a60395dd4a8b20ba47fcf8f70c600030174c3dcd403e4dde7828161c'
 
-// 6 个盲盒图片（3D 黏土风，已裁剪透明画布，TOS 存储）
+// 6 个盲盒图片（用户提供的 3D 黏土风，TOS 存储）
 const BOX_IMAGES = [
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_01_tight_34a68dde_fcf8d726.png?sign=1787453593-55a9fffdd7-0-7c7939b3797a7aafc93dfb0b12b695145445267670ca27fcd232a28212c6a1c9',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_02_tight_dc981843_b2c49880.png?sign=1787453594-de5b018c45-0-93e367261ee70071a22419135c485209be30006b13dfdfc86647d5318e2fcc51',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_03_tight_97e0cf23_566392e5.png?sign=1787453594-5dee2c8f88-0-7defb0a0513c8cdacd2fb49d79d4b23bd99addeafcef2b9b79af8e5f63bcb5b7',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_04_tight_7261b570_d8b60eb8.png?sign=1787453594-4ce909398c-0-cf1c5db2a9da725ec6531043e8a68aab23156ecb9398361a0e8eb2edf0f25961',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_05_tight_bd3b69e6_80b50953.png?sign=1787453594-5b01baa0bb-0-82f5819de2d670389249b0b4c3fafdd9f14d175c58d7a9eb0b86cd1abb7f8039',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/box_06_tight_38fa21a0_87805941.png?sign=1787453594-82ef6f1a91-0-a5b1fc1ce43efdbee8abacd4bcebd79711303a1161313914db3c050a4c69b7a1',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_01_89ea36f8.jpg?sign=1787470674-7f5652a507-0-c58b08ff67de39d32ab9105fa960586f70c73551015c642fda13dcb32e048c3e',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_02_ce781b91.jpg?sign=1787470675-b93733c715-0-59c84377d6d9bfd34f89843c3d82904126fef2817c01cf105d8951c14dc3c00b',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_03_617334d7.jpg?sign=1787470675-a956a9209e-0-acf56ce106c6ca54c1b7e00d40e611763c69453e8e8e8d19284432d5f8339d73',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_04_0c3d94f9.jpg?sign=1787470676-e5cb404787-0-06e04dd0e98b0812328ea80a58f41f0df758c2d393e291542e629b4418370737',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_05_8e1b4a34.jpg?sign=1787470707-03848712ef-0-b929ad10c3e32c9e952f53264b3e841322faaf24fe709430ff50175280f983ca',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/new_box_06_a179e18e.jpg?sign=1787470676-d6a2ee7e44-0-ea6648b5b6a6db42c525e3afc17a36263e5c416a2ffbf9cd31b2aa01c21019b1',
 ]
 
 const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', '#FF8A5C', '#2ED573', '#FFFFFF']
@@ -439,7 +439,7 @@ export default function Lottery() {
 
   // ===== 盲盒玩法区：白卡 + 顶部胶囊标签 =====
   const renderBoxes = () => (
-    <View className="clay-card mx-4 mt-8 px-3 pt-6 pb-4" style={{ position: 'relative', zIndex: 2 }}>
+    <View className="clay-card mx-4 mt-6 px-3 pt-5 pb-3" style={{ position: 'relative', zIndex: 2 }}>
       {/* 玩法标签胶囊（压在卡片上边缘） */}
       <View
         style={{
@@ -464,7 +464,7 @@ export default function Lottery() {
           <Text className="block text-white text-sm font-black">盲盒玩法</Text>
         </View>
       </View>
-      <View className="grid grid-cols-3 gap-x-2 gap-y-3">
+      <View className="grid grid-cols-3 gap-x-1 gap-y-2">
         {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
