@@ -446,8 +446,8 @@ export default function Lottery() {
 
   // ===== 6宫格盲盒 =====
   const renderBoxes = () => (
-    <View className="clay-card mx-5 px-4 pt-5 pb-5" style={{ position: 'relative', zIndex: 2 }}>
-      <View className="grid grid-cols-2 gap-4">
+    <View className="clay-card mx-5 px-3 pt-4 pb-4" style={{ position: 'relative', zIndex: 2 }}>
+      <View className="grid grid-cols-3 gap-x-2 gap-y-3">
         {BOX_IMAGES.map((img, index) => {
           const isSelected = selectedBox === index
           const isOpening = stage === 'opening'
@@ -466,7 +466,7 @@ export default function Lottery() {
                 style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
                 {/* 盲盒图片 */}
-                <Image src={img} className="w-full" mode="widthFix" />
+                <Image src={img} className="w-full max-w-24 mx-auto" style={{ display: 'block' }} mode="widthFix" />
                 {/* 开盒金光粒子 */}
                 {openingThis && exploding &&
                   sparkles.map((s) => (
