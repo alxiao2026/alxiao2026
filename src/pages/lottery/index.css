@@ -272,7 +272,7 @@
   display: flex;
   background: rgba(74, 36, 0, 0.55);
   animation: winPopupScrimIn 0.32s ease-out forwards;
-  padding: 48rpx 0 calc(200rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 0 calc(120rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -361,7 +361,7 @@
   box-shadow:
     0 18rpx 48rpx rgba(140, 70, 0, 0.35),
     inset 0 4rpx 10rpx rgba(255, 255, 255, 0.9);
-  padding: 44rpx 32rpx 44rpx;
+  padding: 44rpx 32rpx 80rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -399,7 +399,7 @@
 
 /* 立即领取按钮 */
 .win-popup-cta {
-  margin-top: 12rpx;
+  margin-top: 56rpx;
   width: 88%;
   height: 96rpx;
   line-height: 96rpx;
