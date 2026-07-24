@@ -1186,7 +1186,9 @@ export default function PackageAdmin() {
         // 提交成功后清除草稿
         Taro.removeStorageSync('package_draft')
         setTimeout(() => {
-          Taro.navigateBack()
+          // 编辑页是通过 redirectTo 进入的，navigateBack 无法回到商品管理页；
+          // 直接 redirectTo 重新挂载商品管理页，保证返回后列表自动刷新出最新数据
+          Taro.redirectTo({ url: '/pages/product-manage/index' })
         }, 1500)
       } else {
         Taro.showToast({ title: res.data?.message || '提交失败', icon: 'error' })
