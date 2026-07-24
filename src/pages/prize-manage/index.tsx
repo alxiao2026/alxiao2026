@@ -23,6 +23,7 @@ interface Prize {
   product_name: string;
   product_value: string;
   merchant_id: number | null;
+  validity_hours: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -43,7 +44,7 @@ export default function PrizeManagePage() {
     name: '', description: '', probability: '0', stock: '0',
     prize_type: 'coupon' as 'coupon' | 'product' | 'free_meal',
     coupon_amount: '', coupon_min_spend: '',
-    product_name: '', product_value: '',
+    product_name: '', product_value: '', validity_hours: '',
   });
   // 可用门店：null 表示全部门店通用；商家账号固定为本店
   const [merchants, setMerchants] = useState<{ id: number; name: string }[]>([]);
@@ -107,7 +108,7 @@ export default function PrizeManagePage() {
 
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '' });
+    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '', validity_hours: '' });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -119,6 +120,7 @@ export default function PrizeManagePage() {
       stock: String(prize.stock), prize_type: prize.prize_type || 'coupon',
       coupon_amount: prize.coupon_amount || '', coupon_min_spend: prize.coupon_min_spend || '',
       product_name: prize.product_name || '', product_value: prize.product_value || '',
+      validity_hours: prize.validity_hours ? String(prize.validity_hours) : '',
     });
     setFormMerchantId(prize.merchant_id ?? null);
     setShowDialog(true);
@@ -133,6 +135,10 @@ export default function PrizeManagePage() {
         coupon_amount: Number(prizeForm.coupon_amount) || 0, coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
       };
+      // 商品/霸王餐：有效期（小时），留空表示使用全局默认
+      if (prizeForm.prize_type === 'product' || prizeForm.prize_type === 'free_meal') {
+        payload.validity_hours = prizeForm.validity_hours ? Number(prizeForm.validity_hours) : null;
+      }
       // 可用门店：null 表示全部门店通用；商家账号固定为本店
       payload.merchant_id = merchantId ?? formMerchantId;
       if (editingPrize) {
@@ -257,6 +263,11 @@ export default function PrizeManagePage() {
                       价值 <Text className="text-[#FF4757] font-semibold">¥{prize.product_value}</Text>
                     </Text>
                   )}
+                  {(prize.prize_type === 'product' || prize.prize_type === 'free_meal') && prize.validity_hours && (
+                    <Text className="block text-xs text-gray-400">
+                      有效期 <Text className="text-gray-600 font-semibold">{prize.validity_hours}小时</Text>
+                    </Text>
+                  )}
                 </View>
               </CardContent>
             </Card>
@@ -301,6 +312,16 @@ export default function PrizeManagePage() {
                     ))}
                   </View>
                 </View>
+                {/* 商品/霸王餐：奖品有效期（小时），留空使用全局默认 */}
+                {(prizeForm.prize_type === 'product' || prizeForm.prize_type === 'free_meal') && (
+                  <View>
+                    <Text className="block text-sm text-black mb-1">奖品有效期（小时）</Text>
+                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                      <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.validity_hours} placeholder="如 72，留空使用全局默认有效期" onInput={(e) => setPrizeForm({ ...prizeForm, validity_hours: e.detail.value })} />
+                    </View>
+                    <Text className="block text-xs text-gray-400 mt-1">中奖后需在有效期内核销，过期无法兑奖；留空则使用抽奖设置中的全局有效期</Text>
+                  </View>
+                )}
                 {/* 可用门店 */}
                 <View>
                   <Text className="block text-sm text-black mb-1">可用门店</Text>

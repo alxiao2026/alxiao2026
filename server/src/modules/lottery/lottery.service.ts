@@ -499,8 +499,9 @@ export class LotteryService {
       throw new BadRequestException('该商品已兑换过');
     }
 
-    // 检查兑奖有效期
-    const expiryHours = await this.getRedemptionExpiryHours();
+    // 检查兑奖有效期（优先奖品单品有效期，其次全局设置）
+    const prizeValidity = await this.getPrizeValidityHours(recordData.prize_id);
+    const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
     const createdAt = new Date(recordData.created_at).getTime();
     const expiresAt = createdAt + expiryHours * 3600 * 1000;
     if (Date.now() > expiresAt) {
@@ -553,22 +554,26 @@ export class LotteryService {
     if (error) throw new Error(`查询兑换码失败: ${error.message}`);
     if (!record) throw new NotFoundException('兑换码无效');
 
-    // 补充奖品商品信息
+    // 补充奖品商品信息（含单品有效期）
     let productName = '';
     let productValue: number | null = null;
+    let prizeValidity: number | null = null;
     const r = record as any;
     if (r.prize_name) {
       const { data: prize } = await this.client
         .from('prizes')
-        .select('product_name, product_value')
+        .select('product_name, product_value, validity_hours')
         .eq('name', r.prize_name)
         .maybeSingle();
       if (prize) {
         productName = (prize as any).product_name || '';
         productValue = (prize as any).product_value ?? null;
+        const vh = (prize as any).validity_hours;
+        prizeValidity = typeof vh === 'number' && vh > 0 ? vh : null;
       }
     }
 
+    const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
     return {
       record_id: r.id,
       prize_name: r.prize_name || '',
@@ -579,17 +584,29 @@ export class LotteryService {
       refund_status: r.refund_status || '',
       created_at: r.created_at,
       redeemed: r.refund_status === 'redeemed',
-      expired: this.isRedemptionExpired(r.created_at),
-      redemption_expiry_hours: await this.getRedemptionExpiryHours(),
+      expired: this.isRedemptionExpired(r.created_at, expiryHours),
+      redemption_expiry_hours: expiryHours,
     };
   }
 
-  /** 检查核销是否已过期 */
-  private isRedemptionExpired(createdAt: string): boolean {
-    const expiryHours = (this.settingsCache as any)?.redemption_expiry_hours ?? 72;
+  /** 检查核销是否已过期（优先使用奖品单品有效期） */
+  private isRedemptionExpired(createdAt: string, expiryHoursOverride?: number | null): boolean {
+    const expiryHours = expiryHoursOverride ?? (this.settingsCache as any)?.redemption_expiry_hours ?? 72;
     const created = new Date(createdAt).getTime();
     const expiresAt = created + expiryHours * 3600 * 1000;
     return Date.now() > expiresAt;
+  }
+
+  /** 通过 prize_id 获取奖品单品有效期（小时），未设置返回 null */
+  private async getPrizeValidityHours(prizeId?: string | null): Promise<number | null> {
+    if (!prizeId) return null;
+    const { data } = await this.client
+      .from('prizes')
+      .select('validity_hours')
+      .eq('id', prizeId)
+      .maybeSingle();
+    const hours = (data as any)?.validity_hours;
+    return typeof hours === 'number' && hours > 0 ? hours : null;
   }
 
   /** 获取兑奖有效期（小时） */
@@ -606,7 +623,7 @@ export class LotteryService {
   async generateRedemptionQRCode(recordId: string): Promise<{ qrcode: string; redemption_code: string; prize_name: string; expired: boolean; redemption_expiry_hours: number; expiry_date: string; expiry_hours: number; created_at: string }> {
     const { data: record, error } = await this.client
       .from('lottery_records')
-      .select('id, redemption_code, prize_name, is_winner, refund_status, created_at')
+      .select('id, redemption_code, prize_name, prize_id, is_winner, refund_status, created_at')
       .eq('id', recordId)
       .maybeSingle();
     if (error) throw new Error(`查询记录失败: ${error.message}`);
@@ -636,7 +653,8 @@ export class LotteryService {
       expireTime: 2592000, // 30 天
     });
 
-    const expiryHours = await this.getRedemptionExpiryHours();
+    const prizeValidity = await this.getPrizeValidityHours(r.prize_id);
+    const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
     const createdAt = new Date(r.created_at).getTime();
     const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
 
@@ -644,7 +662,7 @@ export class LotteryService {
       qrcode: qrcodeUrl,
       redemption_code: r.redemption_code,
       prize_name: r.prize_name || '',
-      expired: this.isRedemptionExpired(r.created_at),
+      expired: this.isRedemptionExpired(r.created_at, expiryHours),
       redemption_expiry_hours: expiryHours,
       expiry_date: expiresAt.toISOString(),
       expiry_hours: expiryHours,
@@ -675,11 +693,12 @@ export class LotteryService {
 
     const record = data as any;
 
-    // 联表补充奖品详情
+    // 联表补充奖品详情（含单品有效期）
+    let prizeValidity: number | null = null;
     if (record.prize_id) {
       const { data: prize } = await this.client
         .from('prizes')
-        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend')
+        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend, validity_hours')
         .eq('id', record.prize_id)
         .maybeSingle();
       if (prize) {
@@ -688,18 +707,21 @@ export class LotteryService {
         record.product_value = (prize as any).product_value;
         record.coupon_amount = (prize as any).coupon_amount;
         record.coupon_min_spend = (prize as any).coupon_min_spend;
+        const vh = (prize as any).validity_hours;
+        prizeValidity = typeof vh === 'number' && vh > 0 ? vh : null;
       }
     }
 
-    // 补充过期信息
+    // 补充过期信息（优先奖品单品有效期）
     if (record.redemption_code) {
-      record.expired = this.isRedemptionExpired(record.created_at);
-      record.redemption_expiry_hours = await this.getRedemptionExpiryHours();
+      const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
+      record.expired = this.isRedemptionExpired(record.created_at, expiryHours);
+      record.redemption_expiry_hours = expiryHours;
       // 计算过期时间
       const createdAt = new Date(record.created_at).getTime();
-      const expiresAt = new Date(createdAt + record.redemption_expiry_hours * 3600 * 1000);
+      const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
       record.expiry_date = expiresAt.toISOString();
-      record.expiry_hours = record.redemption_expiry_hours;
+      record.expiry_hours = expiryHours;
     }
 
     return record;
@@ -715,13 +737,13 @@ export class LotteryService {
     const records = (data as LotteryRecord[]) || [];
     if (records.length === 0) return [];
 
-    // 联表补充奖品详情（类型、优惠券金额、商品信息等）
+    // 联表补充奖品详情（类型、优惠券金额、商品信息、单品有效期等）
     const prizeIds = [...new Set(records.map(r => r.prize_id).filter(Boolean))];
     const prizeMap = new Map<string, any>();
     if (prizeIds.length > 0) {
       const { data: prizes } = await this.client
         .from('prizes')
-        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url, validity_hours')
         .in('id', prizeIds);
       (prizes || []).forEach((p: any) => prizeMap.set(p.id, p));
     }
@@ -738,12 +760,12 @@ export class LotteryService {
     if (unmatchedNames.length > 0) {
       const { data: namePrizes } = await this.client
         .from('prizes')
-        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url, validity_hours')
         .in('name', unmatchedNames);
       (namePrizes || []).forEach((p: any) => prizeNameMap.set(p.name, p));
     }
 
-    const expiryHours = await this.getRedemptionExpiryHours();
+    const globalExpiryHours = await this.getRedemptionExpiryHours();
 
     return records.map(r => {
       const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
@@ -756,8 +778,10 @@ export class LotteryService {
         product_value: prize?.product_value ?? null,
         prize_image: prize?.image_url || '',
       };
-      // 补充过期信息
+      // 补充过期信息（优先奖品单品有效期）
       if (r.redemption_code) {
+        const prizeVh = prize?.validity_hours;
+        const expiryHours = (typeof prizeVh === 'number' && prizeVh > 0 ? prizeVh : null) ?? globalExpiryHours;
         const createdAt = new Date(r.created_at).getTime();
         const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
         result.expired = Date.now() > expiresAt.getTime();
@@ -798,10 +822,10 @@ export class LotteryService {
       }
     }
 
-    // 查询抽奖记录（联查奖品类型），限制返回条数防止数据过大
+    // 查询抽奖记录（联查奖品类型与单品有效期），限制返回条数防止数据过大
     const { data: rows, error } = await this.client
       .from('lottery_records')
-      .select('*, prizes(prize_type)')
+      .select('*, prizes(prize_type, validity_hours)')
       .order('created_at', { ascending: false })
       .limit(300);
     if (error) throw new Error(`查询门店抽奖记录失败: ${error.message}`);
@@ -823,10 +847,13 @@ export class LotteryService {
       (users || []).forEach((u: any) => userMap.set(u.user_id, u));
     }
 
-    const expiryHours = await this.getRedemptionExpiryHours();
+    const globalExpiryHours = await this.getRedemptionExpiryHours();
 
     return records.map(r => {
-      const prizeType = Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type;
+      const prizeInfo = Array.isArray(r.prizes) ? r.prizes[0] : r.prizes;
+      const prizeType = prizeInfo?.prize_type;
+      const prizeVh = prizeInfo?.validity_hours;
+      const expiryHours = (typeof prizeVh === 'number' && prizeVh > 0 ? prizeVh : null) ?? globalExpiryHours;
       const u = userMap.get(r.user_id);
       const result: any = {
         ...r,
@@ -840,6 +867,7 @@ export class LotteryService {
         const expiresAt = new Date(createdAt + expiryHours * 3600 * 1000);
         result.expired = Date.now() > expiresAt.getTime();
         result.expiry_date = expiresAt.toISOString();
+        result.expiry_hours = expiryHours;
       }
       return result;
     });

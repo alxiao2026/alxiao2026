@@ -17,6 +17,7 @@ export interface Prize {
   product_name: string;
   product_value: string;
   merchant_id: number | null;
+  validity_hours: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -71,6 +72,7 @@ export class PrizeService {
     product_name?: string;
     product_value?: number;
     merchant_id?: number | null;
+    validity_hours?: number | null;
   }): Promise<Prize> {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
 
@@ -88,6 +90,7 @@ export class PrizeService {
         coupon_min_spend: body.coupon_min_spend ?? 0,
         product_name: body.product_name || '',
         product_value: body.product_value ?? 0,
+        validity_hours: body.validity_hours ?? null,
       })
       .select()
       .single();
@@ -108,6 +111,7 @@ export class PrizeService {
     product_name: string;
     product_value: number;
     merchant_id: number | null;
+    validity_hours: number | null;
   }>): Promise<Prize> {
     const existing = await this.findOne(id);
 
@@ -124,6 +128,7 @@ export class PrizeService {
     if (body.product_name !== undefined) updateData.product_name = body.product_name;
     if (body.product_value !== undefined) updateData.product_value = body.product_value;
     if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
+    if (body.validity_hours !== undefined) updateData.validity_hours = body.validity_hours;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client
