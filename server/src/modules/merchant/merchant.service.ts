@@ -69,6 +69,24 @@ export class MerchantService {
     return data as Merchant | null;
   }
 
+  /**
+   * 商家详情 + 该商家上架奖品（商家首页用）
+   */
+  async getDetailWithPrizes(id: number) {
+    const merchant = await this.findById(id);
+    if (!merchant) return null;
+
+    const { data: prizes, error: prizeError } = await this.client
+      .from('prizes')
+      .select('id, name, prize_type, image_url, coupon_amount, product_name, validity_hours, stock')
+      .eq('merchant_id', id)
+      .eq('is_active', true)
+      .order('probability', { ascending: false });
+
+    if (prizeError) throw new Error(`查询商家奖品失败：${prizeError.message}`);
+    return { merchant, prizes: prizes || [] };
+  }
+
   async create(body: CreateMerchantDto): Promise<Merchant> {
     if (!body.name) throw new BadRequestException('商家名称不能为空');
     if (!body.admin_phone) throw new BadRequestException('管理员手机号不能为空');

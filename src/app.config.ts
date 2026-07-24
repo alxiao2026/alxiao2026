@@ -13,6 +13,7 @@ export default defineAppConfig({
     'pages/verification/index',
     'pages/product-manage/index',
     'pages/prize-manage/index',
+    'pages/merchant/index',
     'pages/lottery-settings/index',
     'pages/order-details/index',
     'pages/lottery-records/index',

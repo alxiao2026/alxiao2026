@@ -22,6 +22,17 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 商家首页：商家详情 + 上架奖品 */
+  @Get(':id/detail')
+  @HttpCode(HttpStatus.OK)
+  async getDetail(@Param('id') id: string) {
+    const data = await this.merchantService.getDetailWithPrizes(Number(id));
+    if (!data) {
+      return { code: 404, msg: '商家不存在', data: null };
+    }
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   async findById(@Param('id') id: string) {
