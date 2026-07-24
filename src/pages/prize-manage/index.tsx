@@ -382,13 +382,13 @@ export default function PrizeManagePage() {
 
       {/* 可用门店选择弹窗 */}
       {showMerchantPicker && (
-        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }} onClick={() => setShowMerchantPicker(false)}>
-          <View className="bg-white w-full rounded-t-2xl" style={{ maxHeight: '60vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowMerchantPicker(false)}>
+          <View className="bg-white rounded-2xl w-4/5 max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <View className="px-5 pt-5 pb-3 border-b border-gray-100">
               <Text className="block text-base font-bold text-black">选择可用门店</Text>
               <Text className="block text-xs text-gray-400 mt-1">中奖用户仅可在所选门店核销该奖品</Text>
             </View>
-            <ScrollView scrollY style={{ flex: 1 }} className="px-5 py-2">
+            <ScrollView scrollY style={{ maxHeight: 300 }} className="px-5 pt-2 pb-4">
               <View className="flex flex-row items-center justify-between py-3 border-b border-gray-50" onClick={() => { setFormMerchantId(null); setShowMerchantPicker(false); }}>
                 <Text className={`block text-sm ${formMerchantId === null ? 'text-[#FF4757] font-semibold' : 'text-gray-800'}`}>全部门店通用</Text>
                 {formMerchantId === null && <Check size={18} color="#FF4757" />}
