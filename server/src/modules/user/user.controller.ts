@@ -116,9 +116,9 @@ export class UserController {
     return { code: 200, msg: 'success', data: stats };
   }
 
-  /** 获取综合统计数据（支持时间筛选） */
+  /** 获取综合统计数据（支持时间筛选，仅系统管理员可见） */
   @Get('stats/overview')
-  async getOverviewStats(@Query() query: { start_date?: string; end_date?: string }) {
+  async getOverviewStats(@Query() query: { start_date?: string; end_date?: string; user_id?: string }) {
     const data = await this.userService.getOverviewStats(query);
     return { code: 200, msg: 'success', data };
   }

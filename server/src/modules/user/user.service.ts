@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 角色编码：0=普通消费者，1=商家用户，2=系统管理员
@@ -563,7 +563,7 @@ export class UserService {
   /**
    * 获取综合统计数据（支持时间筛选）
    */
-  async getOverviewStats(query: { start_date?: string; end_date?: string }): Promise<{
+  async getOverviewStats(query: { start_date?: string; end_date?: string; user_id?: string }): Promise<{
     total_users: number;
     consumers: number;
     merchants: number;
@@ -571,7 +571,18 @@ export class UserService {
     prizes_count: number;
     merchants_count: number;
   }> {
-    const { start_date, end_date } = query;
+    const { start_date, end_date, user_id } = query;
+
+    // 平台统计数据仅系统管理员可见
+    if (!user_id) throw new ForbiddenException('请先登录');
+    const { data: requester } = await getSupabaseClient()
+      .from('users')
+      .select('role')
+      .eq('user_id', user_id)
+      .single();
+    if (!requester || requester.role !== 'admin') {
+      throw new ForbiddenException('仅系统管理员可查看平台统计数据');
+    }
 
     // 构建时间筛选条件
     let dateFilter: any = {};

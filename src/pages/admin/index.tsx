@@ -54,8 +54,10 @@ const AdminPage = () => {
 
   const fetchOverviewStats = async () => {
     try {
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
       let url = '/api/users/stats/overview';
       const params: string[] = [];
+      if (userId) params.push(`user_id=${encodeURIComponent(userId)}`);
 
       if (timeFilter === 'today') {
         const today = new Date().toISOString().split('T')[0];
@@ -103,14 +105,15 @@ const AdminPage = () => {
   useEffect(() => {
     if (hasAccess) {
       fetchMerchantInfo();
-      fetchOverviewStats();
+      // 平台统计数据仅系统管理员可见，商家账号不请求
+      if (roleCode === 2) fetchOverviewStats();
     }
-  }, [hasAccess, timeFilter, customStartDate, customEndDate]);
+  }, [hasAccess, roleCode, timeFilter, customStartDate, customEndDate]);
 
   useDidShow(() => {
     if (hasAccess) {
       fetchMerchantInfo();
-      fetchOverviewStats();
+      if (roleCode === 2) fetchOverviewStats();
     }
   });
 
@@ -221,11 +224,14 @@ const AdminPage = () => {
         <View className="flex flex-row items-center justify-between mb-3">
           <Text className="block text-base font-semibold text-gray-800">经营概况</Text>
           <Text className="block text-xs text-gray-400">
-            {timeFilter === 'today' ? '今日' : timeFilter === 'week' ? '近7天' : timeFilter === 'month' ? '近30天' : '自定义'}
+            {roleCode === 2
+              ? (timeFilter === 'today' ? '今日' : timeFilter === 'week' ? '近7天' : timeFilter === 'month' ? '近30天' : '自定义')
+              : '今日'}
           </Text>
         </View>
 
-        {/* 时间筛选器 */}
+        {/* 时间筛选器（仅系统管理员可见，用于筛选平台统计数据） */}
+        {roleCode === 2 && (
         <View className="flex flex-row gap-2 mb-3">
           <View className="flex-1">
             <View
@@ -260,9 +266,10 @@ const AdminPage = () => {
             </View>
           </View>
         </View>
+        )}
 
-        {/* 自定义时间选择（日历选择器） */}
-        {timeFilter === 'custom' && (
+        {/* 自定义时间选择（日历选择器，仅系统管理员可见） */}
+        {roleCode === 2 && timeFilter === 'custom' && (
           <View className="flex flex-row gap-2 mb-3">
             <View className="flex-1">
               <Picker
@@ -351,7 +358,8 @@ const AdminPage = () => {
           </View>
         </View>
 
-        {/* 第三行：平台统计数据 */}
+        {/* 第三行：平台统计数据（仅系统管理员可见） */}
+        {roleCode === 2 && (
         <View className="flex flex-row gap-3 mt-3">
           <View className="flex-1 bg-blue-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
@@ -378,8 +386,10 @@ const AdminPage = () => {
             <Text className="block text-xs text-amber-300 mt-1">人</Text>
           </View>
         </View>
+        )}
 
-        {/* 第四行：新建统计 */}
+        {/* 第四行：新建统计（仅系统管理员可见） */}
+        {roleCode === 2 && (
         <View className="flex flex-row gap-3 mt-3">
           <View className="flex-1 bg-purple-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
@@ -406,6 +416,12 @@ const AdminPage = () => {
             <Text className="block text-xs text-indigo-300 mt-1">个</Text>
           </View>
         </View>
+        )}
+      </View>
+
+      {/* 底部留白与标语 */}
+      <View className="flex flex-col items-center justify-center py-10">
+        <Text className="block text-xs text-gray-300 tracking-widest">- 给生活来点小惊喜 -</Text>
       </View>
     </View>
   );
