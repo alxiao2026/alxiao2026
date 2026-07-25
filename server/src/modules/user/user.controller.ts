@@ -115,4 +115,11 @@ export class UserController {
     const stats = await this.userService.getMerchantStats(userId);
     return { code: 200, msg: 'success', data: stats };
   }
+
+  /** 获取综合统计数据（支持时间筛选） */
+  @Get('stats/overview')
+  async getOverviewStats(@Query() query: { start_date?: string; end_date?: string }) {
+    const data = await this.userService.getOverviewStats(query);
+    return { code: 200, msg: 'success', data };
+  }
 }

@@ -549,4 +549,73 @@ export class UserService {
       total_saved: totalSaved.toFixed(2)
     };
   }
+
+  /**
+   * 获取综合统计数据（支持时间筛选）
+   */
+  async getOverviewStats(query: { start_date?: string; end_date?: string }): Promise<{
+    total_users: number;
+    consumers: number;
+    merchants: number;
+    packages_count: number;
+    prizes_count: number;
+    merchants_count: number;
+  }> {
+    const { start_date, end_date } = query;
+
+    // 构建时间筛选条件
+    let dateFilter: any = {};
+    if (start_date) {
+      dateFilter.created_at = { $gte: new Date(start_date).toISOString() };
+    }
+    if (end_date) {
+      const endDate = new Date(end_date);
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter.created_at = { ...dateFilter.created_at, $lte: endDate.toISOString() };
+    }
+
+    // 统计用户
+    let usersQuery = getSupabaseClient().from('users').select('id, role');
+    if (start_date || end_date) {
+      usersQuery = usersQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+    }
+    const { data: users } = await usersQuery;
+    const userList = users || [];
+    const total_users = userList.length;
+    const consumers = userList.filter((u: any) => u.role === 'consumer').length;
+    const merchants = userList.filter((u: any) => u.role === 'merchant').length;
+
+    // 统计套餐
+    let packagesQuery = getSupabaseClient().from('packages').select('id');
+    if (start_date || end_date) {
+      packagesQuery = packagesQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+    }
+    const { data: packages } = await packagesQuery;
+    const packages_count = (packages || []).length;
+
+    // 统计奖品
+    let prizesQuery = getSupabaseClient().from('prizes').select('id');
+    if (start_date || end_date) {
+      prizesQuery = prizesQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+    }
+    const { data: prizes } = await prizesQuery;
+    const prizes_count = (prizes || []).length;
+
+    // 统计门店
+    let merchantsQuery = getSupabaseClient().from('merchants').select('id');
+    if (start_date || end_date) {
+      merchantsQuery = merchantsQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+    }
+    const { data: merchantsList } = await merchantsQuery;
+    const merchants_count = (merchantsList || []).length;
+
+    return {
+      total_users,
+      consumers,
+      merchants,
+      packages_count,
+      prizes_count,
+      merchants_count,
+    };
+  }
 }
