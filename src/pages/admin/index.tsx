@@ -1,9 +1,8 @@
-import { View, Text, Image } from '@tarojs/components'
-import { Input } from '@/components/ui/input';
+import { View, Text, Image, Picker } from '@tarojs/components'
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -262,26 +261,38 @@ const AdminPage = () => {
           </View>
         </View>
 
-        {/* 自定义时间选择 */}
+        {/* 自定义时间选择（日历选择器） */}
         {timeFilter === 'custom' && (
           <View className="flex flex-row gap-2 mb-3">
             <View className="flex-1">
-              <Input
-                type="text"
-                className="bg-gray-50 rounded-xl px-3 py-2 text-xs w-full"
-                placeholder="YYYY-MM-DD"
+              <Picker
+                mode="date"
                 value={customStartDate}
-                onInput={(e) => setCustomStartDate(e.detail.value)}
-              />
+                end={customEndDate || undefined}
+                onChange={(e) => setCustomStartDate(e.detail.value)}
+              >
+                <View className="bg-gray-50 rounded-xl px-3 py-2 flex flex-row items-center gap-2">
+                  <CalendarDays size={14} color="#6b7280" />
+                  <Text className={`text-xs ${customStartDate ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {customStartDate || '开始日期'}
+                  </Text>
+                </View>
+              </Picker>
             </View>
             <View className="flex-1">
-              <Input
-                type="text"
-                className="bg-gray-50 rounded-xl px-3 py-2 text-xs w-full"
-                placeholder="YYYY-MM-DD"
+              <Picker
+                mode="date"
                 value={customEndDate}
-                onInput={(e) => setCustomEndDate(e.detail.value)}
-              />
+                start={customStartDate || undefined}
+                onChange={(e) => setCustomEndDate(e.detail.value)}
+              >
+                <View className="bg-gray-50 rounded-xl px-3 py-2 flex flex-row items-center gap-2">
+                  <CalendarDays size={14} color="#6b7280" />
+                  <Text className={`text-xs ${customEndDate ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {customEndDate || '结束日期'}
+                  </Text>
+                </View>
+              </Picker>
             </View>
           </View>
         )}
