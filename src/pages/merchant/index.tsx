@@ -226,16 +226,18 @@ export default function MerchantPage() {
           {/* 商家信息卡 */}
           <View className="px-4 -mt-6 relative z-10">
             <View className="bg-white rounded-2xl p-4 shadow-sm">
-              <View className="flex flex-row items-start justify-between gap-3">
-                <Text className="flex-1 text-xl font-bold text-gray-900 leading-7">{merchant.name}</Text>
-                <Button
-                  openType="share"
-                  onClick={handleH5Share}
-                  className="shrink-0 flex flex-row items-center gap-2 bg-[#FF4757] text-white rounded-full px-4 h-9"
-                >
-                  <Share2 size={14} color="#ffffff" />
-                  <Text className="text-white text-sm font-medium">分享</Text>
-                </Button>
+              <View className="relative">
+                <Text className="block text-xl font-bold text-gray-900 leading-7 pr-24">{merchant.name}</Text>
+                <View className="absolute top-0 right-0 w-20">
+                  <Button
+                    openType="share"
+                    onClick={handleH5Share}
+                    className="w-full flex flex-row items-center justify-center gap-1 bg-[#FF4757] text-white rounded-full h-8"
+                  >
+                    <Share2 size={13} color="#ffffff" />
+                    <Text className="text-white text-xs font-medium">分享</Text>
+                  </Button>
+                </View>
               </View>
 
               <View className="flex flex-row flex-wrap items-center gap-2 mt-3">
