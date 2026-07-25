@@ -98,7 +98,14 @@ export default function VerificationPage() {
     setVerifyFailReason(null);
     try {
       const res = await Network.request({ url: `/api/orders/verify/${code}`, method: 'GET' });
-      const order = (res.data as any)?.data || res.data;
+      const body = res.data as any;
+      // Taro.request 对 HTTP 4xx/5xx 不会 reject，必须手动检查状态码
+      if (res.statusCode !== 200) {
+        const msg = Array.isArray(body?.message) ? body.message.join('；') : (body?.message || body?.msg || '查询订单失败');
+        setVerifyFailReason(msg);
+        return;
+      }
+      const order = body?.data || body;
       if (!order || !order.id) {
         setVerifyFailReason('未找到对应订单，请检查核销码是否正确');
         return;
@@ -148,7 +155,14 @@ export default function VerificationPage() {
         method: 'POST',
         data: { verify_count: count, ...(currentUserId && { merchant_user_id: currentUserId }) },
       });
-      const data = (res.data as any)?.data || res.data;
+      const body = res.data as any;
+      // Taro.request 对 HTTP 4xx/5xx 不会 reject，必须手动检查状态码
+      if (res.statusCode !== 200) {
+        const msg = Array.isArray(body?.message) ? body.message.join('；') : (body?.message || body?.msg || '核销失败');
+        setVerifyFailReason(msg);
+        return;
+      }
+      const data = body?.data || body;
       setVerifyResult({ success: true, message: `成功核销 ${count} 份！`, order: data });
       fetchOrders();
     } catch (err: any) {

@@ -395,7 +395,7 @@ export class OrderService {
         .maybeSingle();
 
       if (!pkgError && pkg) {
-        // 商家身份和门店关联验证
+        // 商家身份和门店关联验证（超级管理员可核销所有门店订单）
         if (merchantUserId) {
           const { data: merchantUser } = await this.client
             .from('users')
@@ -403,18 +403,23 @@ export class OrderService {
             .eq('user_id', merchantUserId)
             .maybeSingle();
 
-          if (!merchantUser || merchantUser.role !== 'merchant' || !merchantUser.merchant_id) {
+          if (!merchantUser || (merchantUser.role !== 'merchant' && merchantUser.role !== 'admin')) {
             throw new BadRequestException('您不是商家用户，无权核销');
           }
 
-          if (Number(pkg.merchant_id) !== Number(merchantUser.merchant_id)) {
-            const { data: merchant } = await this.client
-              .from('merchants')
-              .select('name')
-              .eq('id', merchantUser.merchant_id)
-              .maybeSingle();
-            const merchantName = merchant?.name || `门店${merchantUser.merchant_id}`;
-            throw new BadRequestException(`该订单属于其他门店，您只能核销「${merchantName}」的订单`);
+          if (merchantUser.role === 'merchant') {
+            if (!merchantUser.merchant_id) {
+              throw new BadRequestException('您的账号未绑定门店，无法核销');
+            }
+            if (Number(pkg.merchant_id) !== Number(merchantUser.merchant_id)) {
+              const { data: merchant } = await this.client
+                .from('merchants')
+                .select('name')
+                .eq('id', merchantUser.merchant_id)
+                .maybeSingle();
+              const merchantName = merchant?.name || `门店${merchantUser.merchant_id}`;
+              throw new BadRequestException(`该订单属于其他门店，您只能核销「${merchantName}」的订单`);
+            }
           }
         }
 
