@@ -228,14 +228,19 @@ export default function MerchantPage() {
             <View className="bg-white rounded-2xl p-4 shadow-sm">
               <View className="relative">
                 <Text className="block text-xl font-bold text-gray-900 leading-7 pr-24">{merchant.name}</Text>
-                <View className="absolute top-0 right-0 w-20">
+                <View className="absolute top-0 right-0 w-20 h-8">
+                  {/* 视觉层：红色分享胶囊 */}
+                  <View className="w-full h-8 bg-[#FF4757] rounded-full flex flex-row items-center justify-center gap-1">
+                    <Share2 size={13} color="#ffffff" />
+                    <Text className="text-white text-xs font-medium">分享</Text>
+                  </View>
+                  {/* 透明原生按钮覆盖层：小程序触发分享面板，H5 触发复制链接 */}
                   <Button
                     openType="share"
                     onClick={handleH5Share}
-                    className="w-full flex flex-row items-center justify-center gap-1 bg-[#FF4757] text-white rounded-full h-8"
+                    className="absolute top-0 left-0 w-full h-8 opacity-0"
                   >
-                    <Share2 size={13} color="#ffffff" />
-                    <Text className="text-white text-xs font-medium">分享</Text>
+                    <Text className="text-xs">分享</Text>
                   </Button>
                 </View>
               </View>
@@ -444,14 +449,19 @@ export default function MerchantPage() {
 
           {/* 底部分享引导 */}
           <View className="px-4 mt-3">
-            <Button
-              openType="share"
-              onClick={handleH5Share}
-              className="w-full bg-white border border-[#FF4757] rounded-full h-11 flex flex-row items-center justify-center gap-2"
-            >
-              <Share2 size={15} color="#FF4757" />
-              <Text className="text-[#FF4757] text-sm font-medium">分享本页给好友，一起抽霸王餐</Text>
-            </Button>
+            <View className="relative w-full h-11">
+              <View className="w-full h-11 bg-white border border-[#FF4757] rounded-full flex flex-row items-center justify-center gap-2">
+                <Share2 size={15} color="#FF4757" />
+                <Text className="text-[#FF4757] text-sm font-medium">分享本页给好友，一起抽霸王餐</Text>
+              </View>
+              <Button
+                openType="share"
+                onClick={handleH5Share}
+                className="absolute top-0 left-0 w-full h-11 opacity-0"
+              >
+                <Text className="text-xs">分享</Text>
+              </Button>
+            </View>
           </View>
         </View>
       )}
