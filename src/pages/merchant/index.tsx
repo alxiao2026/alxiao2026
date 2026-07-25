@@ -433,17 +433,6 @@ export default function MerchantPage() {
                 </ScrollView>
               )}
 
-              {prizes.length > 0 && packages.length > 0 && (
-                <View className="px-4 mt-3">
-                  <Button
-                    onClick={() => handleGoPackage(packages[0].id)}
-                    className="w-full bg-[#FF4757] text-white rounded-full h-11 flex flex-row items-center justify-center gap-2"
-                  >
-                    <Sparkles size={15} color="#ffffff" />
-                    <Text className="text-white text-sm font-medium">去下单，抽霸王餐</Text>
-                  </Button>
-                </View>
-              )}
             </View>
           </View>
 
