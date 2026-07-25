@@ -31,7 +31,7 @@ export default function VerificationPage() {
   const [activeSection, setActiveSection] = useState('verify');
   const [verifyCode, setVerifyCode] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any } | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any; prize?: any } | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<any>(null);
   const [verifyCount, setVerifyCount] = useState(1);
   const [verifyFailReason, setVerifyFailReason] = useState<string | null>(null);
@@ -90,6 +90,7 @@ export default function VerificationPage() {
     }
   };
 
+  // 统一核销查询：自动识别团购订单码或抽奖奖品兑换码
   const lookupOrder = async (code: string) => {
     if (!code || verifying) return;
     setVerifying(true);
@@ -97,61 +98,78 @@ export default function VerificationPage() {
     setVerifyTarget(null);
     setVerifyFailReason(null);
     try {
-      const res = await Network.request({ url: `/api/orders/verify/${code}`, method: 'GET' });
+      const res = await Network.request({ url: `/api/orders/unified-verify/${code}`, method: 'GET' });
       const body = res.data as any;
       // Taro.request 对 HTTP 4xx/5xx 不会 reject，必须手动检查状态码
       if (res.statusCode !== 200) {
-        const msg = Array.isArray(body?.message) ? body.message.join('；') : (body?.message || body?.msg || '查询订单失败');
+        const msg = Array.isArray(body?.message) ? body.message.join('；') : (body?.message || body?.msg || '未找到该核销码对应的订单或奖品');
         setVerifyFailReason(msg);
         return;
       }
-      const order = body?.data || body;
-      if (!order || !order.id) {
-        setVerifyFailReason('未找到对应订单，请检查核销码是否正确');
+      const result = body?.data || body;
+      // 团购订单
+      if (result?.type === 'order' && result.order?.id) {
+        const order = result.order;
+        if (order.status === 'used') {
+          setVerifyFailReason('该订单已全部核销，无法重复核销');
+          return;
+        }
+        if (order.status === 'refunded') {
+          setVerifyFailReason('该订单已退款，无法核销');
+          return;
+        }
+        if (order.status === 'expired') {
+          setVerifyFailReason('该订单已过期，无法核销');
+          return;
+        }
+        const remaining = (order.quantity || 1) - (order.verified_count || 0);
+        if (remaining <= 0) {
+          setVerifyFailReason('该订单已全部核销，无法重复核销');
+          return;
+        }
+        if (order.verify_warning) {
+          setVerifyFailReason(`不可核销：${order.verify_warning}`);
+          return;
+        }
+        if (remaining > 1) {
+          setVerifyTarget(order);
+          setVerifyCount(1);
+        } else {
+          await doVerify(code, 1);
+        }
         return;
       }
-      if (order.status === 'used') {
-        setVerifyFailReason('该订单已全部核销，无法重复核销');
-        return;
-      }
-      if (order.status === 'refunded') {
-        setVerifyFailReason('该订单已退款，无法核销');
-        return;
-      }
-      if (order.status === 'expired') {
-        setVerifyFailReason('该订单已过期，无法核销');
-        return;
-      }
-      const remaining = (order.quantity || 1) - (order.verified_count || 0);
-      if (remaining <= 0) {
-        setVerifyFailReason('该订单已全部核销，无法重复核销');
-        return;
-      }
-      if (order.verify_warning) {
-        setVerifyFailReason(`不可核销：${order.verify_warning}`);
-        return;
-      }
-      if (remaining > 1) {
-        setVerifyTarget(order);
-        setVerifyCount(1);
-      } else {
+      // 抽奖奖品
+      if (result?.type === 'prize' && result.prize) {
+        const prize = result.prize;
+        if (prize.redeemed) {
+          setVerifyFailReason('该奖品已核销过，无法重复核销');
+          return;
+        }
+        if (prize.expired) {
+          setVerifyFailReason('该奖品兑换已过期，无法核销');
+          return;
+        }
         await doVerify(code, 1);
+        return;
       }
+      setVerifyFailReason('未找到对应订单或奖品，请检查核销码是否正确');
     } catch (err: any) {
-      const msg = err?.data?.message || err?.message || '查询订单失败';
+      const msg = err?.data?.message || err?.message || '查询失败';
       setVerifyFailReason(msg);
     } finally {
       setVerifying(false);
     }
   };
 
+  // 统一核销提交：自动识别团购订单码或抽奖奖品兑换码
   const doVerify = async (code: string, count: number) => {
     if (!code || verifying) return;
     setVerifying(true);
     setVerifyResult(null);
     try {
       const res = await Network.request({
-        url: `/api/orders/verify/${code}`,
+        url: `/api/orders/unified-verify/${code}`,
         method: 'POST',
         data: { verify_count: count, ...(currentUserId && { merchant_user_id: currentUserId }) },
       });
@@ -162,8 +180,14 @@ export default function VerificationPage() {
         setVerifyFailReason(msg);
         return;
       }
-      const data = body?.data || body;
-      setVerifyResult({ success: true, message: `成功核销 ${count} 份！`, order: data });
+      const result = body?.data || body;
+      if (result?.type === 'order') {
+        setVerifyResult({ success: true, message: `成功核销 ${count} 份！`, order: result.data });
+      } else if (result?.type === 'prize') {
+        setVerifyResult({ success: true, message: '奖品核销成功！', prize: result.data });
+      } else {
+        setVerifyResult({ success: true, message: '核销成功！', order: result });
+      }
       fetchOrders();
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || '核销失败';
@@ -270,7 +294,7 @@ export default function VerificationPage() {
                     className="w-full"
                     style={{ backgroundColor: 'transparent' }}
                     value={verifyCode}
-                    placeholder="请输入12位核销码"
+                    placeholder="请输入团购核销码或奖品兑换码"
                     onInput={(e) => setVerifyCode(e.detail.value)}
                   />
                 </View>
@@ -301,6 +325,16 @@ export default function VerificationPage() {
                   <Text className="block text-xs text-gray-500">
                     金额：¥{verifyResult.order.price} · 共{verifyResult.order.quantity || 1}份 · 已核销{verifyResult.order.verified_count || 0}份
                   </Text>
+                </View>
+              )}
+              {verifyResult.prize && (
+                <View className="mt-2 bg-gray-50 rounded-lg p-3">
+                  <Text className="block text-sm text-gray-800 font-semibold">奖品：{verifyResult.prize.prize_name}</Text>
+                  {verifyResult.prize.product_name ? (
+                    <Text className="block text-xs text-gray-500 mt-1">商品：{verifyResult.prize.product_name}</Text>
+                  ) : null}
+                  <Text className="block text-xs text-gray-500 mt-1">用户：{verifyResult.prize.nick_name || '匿名用户'}</Text>
+                  <Text className="block text-xs text-gray-500">兑换码：{verifyResult.prize.redemption_code}</Text>
                 </View>
               )}
             </CardContent>

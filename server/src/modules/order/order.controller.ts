@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, HttpCode, NotFoundException } from '@nestjs/common';
 import { OrderService, Order } from './order.service';
 
 @Controller('orders')
@@ -43,6 +43,22 @@ export class OrderController {
   async findByCode(@Param('code') code: string): Promise<{ code: number; data: Order }> {
     const data = await this.orderService.findByVerificationCode(code);
     return { code: 200, data };
+  }
+
+  /** 统一核销查询（自动识别团购订单码/奖品兑换码） */
+  @Get('unified-verify/:code')
+  async unifiedLookup(@Param('code') code: string) {
+    const result = await this.orderService.unifiedLookup(code);
+    if (!result) throw new NotFoundException('未找到该核销码对应的订单或奖品');
+    return { code: 200, data: result, msg: 'success' };
+  }
+
+  /** 统一核销（自动识别团购订单码/奖品兑换码） */
+  @Post('unified-verify/:code')
+  @HttpCode(200)
+  async unifiedVerify(@Param('code') code: string, @Body() body: { verify_count?: number; merchant_user_id?: string }) {
+    const result = await this.orderService.unifiedVerify(code, body.verify_count || 1, body.merchant_user_id);
+    return { code: 200, data: result, msg: result.type === 'order' ? '核销成功' : '奖品核销成功' };
   }
 
   @Post()

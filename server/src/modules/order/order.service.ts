@@ -523,6 +523,169 @@ export class OrderService {
     return data as Order;
   }
 
+  /** 根据奖品兑换码查询中奖记录及奖品信息 */
+  private async findPrizeByRedemptionCode(code: string): Promise<{
+    record_id: string;
+    prize_id: string | null;
+    prize_name: string;
+    product_name: string;
+    product_value: number | null;
+    nick_name: string;
+    redemption_code: string;
+    refund_status: string;
+    redeemed: boolean;
+    expired: boolean;
+    created_at: string;
+  } | null> {
+    const { data: record, error } = await this.client
+      .from('lottery_records')
+      .select('id, prize_id, prize_name, user_id, redemption_code, refund_status, created_at')
+      .eq('redemption_code', code)
+      .eq('is_winner', true)
+      .maybeSingle();
+    if (error) throw new Error(`查询奖品兑换码失败: ${error.message}`);
+    if (!record) return null;
+
+    const r = record as any;
+
+    // 补充奖品商品信息与单品有效期
+    let productName = '';
+    let productValue: number | null = null;
+    let validityHours: number | null = null;
+    if (r.prize_id) {
+      const { data: prize } = await this.client
+        .from('prizes')
+        .select('product_name, product_value, validity_hours')
+        .eq('id', r.prize_id)
+        .maybeSingle();
+      if (prize) {
+        productName = (prize as any).product_name || '';
+        productValue = (prize as any).product_value ?? null;
+        const vh = (prize as any).validity_hours;
+        validityHours = typeof vh === 'number' && vh > 0 ? vh : null;
+      }
+    }
+
+    // 中奖用户昵称
+    let nickName = '';
+    if (r.user_id) {
+      const { data: user } = await this.client
+        .from('users')
+        .select('nick_name')
+        .eq('user_id', r.user_id)
+        .maybeSingle();
+      nickName = (user as any)?.nick_name || '';
+    }
+
+    // 有效期：优先奖品单品有效期，其次全局设置，默认 72 小时
+    let expiryHours = validityHours;
+    if (!expiryHours) {
+      const { data: settings } = await this.client
+        .from('lottery_settings')
+        .select('redemption_expiry_hours')
+        .limit(1)
+        .maybeSingle();
+      expiryHours = (settings as any)?.redemption_expiry_hours ?? 72;
+    }
+    const expiresAt = new Date(r.created_at).getTime() + (expiryHours || 72) * 3600 * 1000;
+
+    return {
+      record_id: r.id,
+      prize_id: r.prize_id || null,
+      prize_name: r.prize_name || '',
+      product_name: productName,
+      product_value: productValue,
+      nick_name: nickName,
+      redemption_code: r.redemption_code,
+      refund_status: r.refund_status || '',
+      redeemed: r.refund_status === 'redeemed',
+      expired: Date.now() > expiresAt,
+      created_at: r.created_at,
+    };
+  }
+
+  /** 统一核销查询：自动识别团购订单码或奖品兑换码 */
+  async unifiedLookup(code: string): Promise<
+    | { type: 'order'; order: Order }
+    | { type: 'prize'; prize: NonNullable<Awaited<ReturnType<OrderService['findPrizeByRedemptionCode']>>> }
+    | null
+  > {
+    let order: Order | null = null;
+    try {
+      order = await this.findByVerificationCode(code);
+    } catch {
+      order = null;
+    }
+    if (order) return { type: 'order', order };
+
+    const prize = await this.findPrizeByRedemptionCode(code);
+    if (prize) return { type: 'prize', prize };
+
+    return null;
+  }
+
+  /** 统一核销：自动识别团购订单码或奖品兑换码并执行核销 */
+  async unifiedVerify(code: string, verifyCount: number = 1, merchantUserId?: string): Promise<{ type: 'order' | 'prize'; data: any }> {
+    // 1. 优先按团购订单码核销
+    let order: Order | null = null;
+    try {
+      order = await this.findByVerificationCode(code);
+    } catch {
+      order = null;
+    }
+    if (order) {
+      const verified = await this.verify(code, verifyCount, merchantUserId);
+      return { type: 'order', data: verified };
+    }
+
+    // 2. 按抽奖奖品兑换码核销
+    const prize = await this.findPrizeByRedemptionCode(code);
+    if (!prize) throw new NotFoundException('未找到该核销码对应的订单或奖品');
+
+    // 商家权限校验：admin 可核销所有；商家只能核销本店奖品
+    if (merchantUserId) {
+      const { data: merchantUser } = await this.client
+        .from('users')
+        .select('role, merchant_id')
+        .eq('user_id', merchantUserId)
+        .maybeSingle();
+      const isAdmin = (merchantUser as any)?.role === 'admin';
+      if (!isAdmin) {
+        if (!merchantUser || (merchantUser as any).role !== 'merchant' || !(merchantUser as any).merchant_id) {
+          throw new BadRequestException('您不是商家用户，无权核销');
+        }
+        if (prize.prize_id) {
+          const { data: prizeRow } = await this.client
+            .from('prizes')
+            .select('merchant_id')
+            .eq('id', prize.prize_id)
+            .maybeSingle();
+          const prizeMerchantId = (prizeRow as any)?.merchant_id;
+          if (prizeMerchantId && prizeMerchantId !== (merchantUser as any).merchant_id) {
+            throw new BadRequestException('该奖品属于其他门店，您只能核销本店奖品');
+          }
+        }
+      }
+    }
+
+    if (prize.redeemed) throw new BadRequestException('该奖品已核销过');
+    if (prize.expired) throw new BadRequestException('该奖品兑换已过期');
+
+    const { data: updated, error } = await this.client
+      .from('lottery_records')
+      .update({
+        refund_status: 'redeemed',
+        redeemed_at: new Date().toISOString(),
+        redeemed_by: merchantUserId || null,
+      })
+      .eq('id', prize.record_id)
+      .select()
+      .single();
+    if (error) throw new Error(`奖品核销失败: ${error.message}`);
+
+    return { type: 'prize', data: { ...prize, redeemed: true, redeemed_at: (updated as any).redeemed_at } };
+  }
+
   // 节假日日期映射表
   private getHolidayDates(): Record<string, { name: string; start: string; end: string }> {
     return {

@@ -170,6 +170,8 @@ export const lotteryRecords = pgTable("lottery_records", {
 	redemption_code: varchar("redemption_code", { length: 32 }),
 	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }),
 	refund_status: varchar("refund_status", { length: 32 }),
+	redeemed_at: timestamp("redeemed_at", { withTimezone: true }),
+	redeemed_by: varchar("redeemed_by", { length: 128 }),
 	user_weight: numeric("user_weight", { precision: 6, scale: 2 }).notNull().default("1"), // 用户权重倍数
 	ip_address: varchar("ip_address", { length: 64 }),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
