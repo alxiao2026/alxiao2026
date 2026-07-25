@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
-import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,8 @@ import {
   Gift,
   Images,
   Sparkles,
+  Ticket,
+  ChevronRight,
 } from 'lucide-react-taro'
 
 interface Merchant {
@@ -39,6 +41,17 @@ interface Prize {
   product_name?: string
   stock?: number
   validity_hours?: number
+}
+
+interface Package {
+  id: string
+  name: string
+  price: string
+  original_price?: string
+  cover_image?: string
+  badge?: string
+  category?: string
+  package_type?: string
 }
 
 const PRIZE_TYPE_MAP: Record<string, { label: string; cls: string }> = {
@@ -68,6 +81,7 @@ export default function MerchantPage() {
   const merchantId = Number(router.params.id || 2)
   const [merchant, setMerchant] = useState<Merchant | null>(null)
   const [prizes, setPrizes] = useState<Prize[]>([])
+  const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [swiperIndex, setSwiperIndex] = useState(0)
@@ -89,6 +103,7 @@ export default function MerchantPage() {
       }
       setMerchant(data.merchant)
       setPrizes(Array.isArray(data.prizes) ? data.prizes : [])
+      setPackages(Array.isArray(data.packages) ? data.packages : [])
     } catch (e) {
       console.error('[Merchant] 商家详情请求失败', e)
       setError('加载失败，请稍后重试')
@@ -150,11 +165,9 @@ export default function MerchantPage() {
     Taro.makePhoneCall({ phoneNumber: String(merchant.phone) }).catch((e) => console.error('[Merchant] 拨打电话失败', e))
   }
 
-  const handleGoDraw = () => {
-    console.log('[Merchant] 跳转团购首页参与抽奖')
-    Taro.navigateTo({ url: '/pages/index/index' }).catch(() => {
-      Taro.redirectTo({ url: '/pages/index/index' }).catch((e) => console.error('[Merchant] 跳转首页失败', e))
-    })
+  const handleGoPackage = (pkgId: string) => {
+    console.log('[Merchant] 跳转套餐详情', pkgId)
+    Taro.navigateTo({ url: `/pages/package-detail/index?id=${pkgId}` }).catch((e) => console.error('[Merchant] 跳转套餐详情失败', e))
   }
 
   const status = getBusinessStatus(merchant?.business_hours)
@@ -235,7 +248,7 @@ export default function MerchantPage() {
                   <Badge className="bg-amber-50 text-amber-600 border-amber-200 rounded-md">
                     <View className="flex flex-row items-center gap-1">
                       <Sparkles size={11} color="#d97706" />
-                      <Text className="text-xs">抽奖活动进行中</Text>
+                      <Text className="text-xs">下单即可抽霸王餐</Text>
                     </View>
                   </Badge>
                 )}
@@ -280,15 +293,80 @@ export default function MerchantPage() {
             </View>
           )}
 
-          {/* 奖品展示栏 */}
+          {/* 团购套餐 */}
           <View className="px-4 mt-3">
             <View className="bg-white rounded-2xl p-4 shadow-sm">
               <View className="flex flex-row items-center justify-between">
                 <View className="flex flex-row items-center gap-2">
-                  <Gift size={17} color="#FF4757" />
-                  <Text className="text-base font-bold text-gray-900">商家奖品</Text>
+                  <Ticket size={17} color="#FF4757" />
+                  <Text className="text-base font-bold text-gray-900">团购套餐</Text>
                 </View>
-                <Text className="text-xs text-gray-400">下单参与团购即可抽奖</Text>
+                <Text className="text-xs text-gray-400">下单即可参与抽奖</Text>
+              </View>
+
+              {packages.length === 0 ? (
+                <View className="flex flex-col items-center py-10">
+                  <Ticket size={40} color="#e5e7eb" />
+                  <Text className="block text-sm text-gray-400 mt-3">暂无团购套餐，敬请期待</Text>
+                </View>
+              ) : (
+                <View className="flex flex-col gap-3 mt-3">
+                  {packages.map((pkg) => (
+                    <View
+                      key={pkg.id}
+                      className="flex flex-row bg-gray-50 rounded-xl overflow-hidden"
+                      onClick={() => handleGoPackage(pkg.id)}
+                    >
+                      {pkg.cover_image ? (
+                        <Image src={pkg.cover_image} className="w-28 h-28 shrink-0 bg-white" mode="aspectFill" />
+                      ) : (
+                        <View className="w-28 h-28 shrink-0 bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center">
+                          <Ticket size={30} color="#FF4757" />
+                        </View>
+                      )}
+                      <View className="flex-1 flex flex-col justify-between px-3 py-2 min-w-0">
+                        <View>
+                          <Text className="block text-base font-semibold text-gray-900 leading-6 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{pkg.name}</Text>
+                          <View className="flex flex-row flex-wrap items-center gap-2 mt-1">
+                            {!!pkg.badge && (
+                              <Badge className="bg-red-50 text-[#FF4757] border-red-200 rounded-md border">
+                                <Text className="text-xs">{pkg.badge}</Text>
+                              </Badge>
+                            )}
+                            {!!pkg.category && (
+                              <Text className="text-xs text-gray-400">{pkg.category}</Text>
+                            )}
+                          </View>
+                        </View>
+                        <View className="flex flex-row items-end justify-between mt-2">
+                          <View className="flex flex-row items-baseline gap-2">
+                            <Text className="text-lg font-bold text-[#FF4757]">¥{parseFloat(pkg.price)}</Text>
+                            {!!pkg.original_price && parseFloat(pkg.original_price) > parseFloat(pkg.price) && (
+                              <Text className="text-xs text-gray-400 line-through">¥{parseFloat(pkg.original_price)}</Text>
+                            )}
+                          </View>
+                          <View className="flex flex-row items-center gap-1">
+                            <Text className="text-xs text-[#FF4757] font-medium">去购买</Text>
+                            <ChevronRight size={14} color="#FF4757" />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* 商家奖品：横向滑动卡片 */}
+          <View className="mt-3">
+            <View className="bg-white rounded-2xl mx-4 pt-4 pb-4 shadow-sm">
+              <View className="px-4 flex flex-row items-center justify-between">
+                <View className="flex flex-row items-center gap-2">
+                  <Gift size={17} color="#FF4757" />
+                  <Text className="text-base font-bold text-gray-900">下单抽奖 · 100%有礼</Text>
+                </View>
+                <Text className="text-xs text-gray-400">共 {prizes.length} 款奖品</Text>
               </View>
 
               {prizes.length === 0 ? (
@@ -297,25 +375,32 @@ export default function MerchantPage() {
                   <Text className="block text-sm text-gray-400 mt-3">商家正在筹备奖品，敬请期待</Text>
                 </View>
               ) : (
-                <View className="flex flex-col gap-3 mt-3">
-                  {prizes.map((prize) => {
-                    const typeInfo = PRIZE_TYPE_MAP[prize.prize_type] || { label: '奖品', cls: 'bg-gray-100 text-gray-500 border-gray-200' }
-                    return (
-                      <View key={prize.id} className="flex flex-row bg-gray-50 rounded-xl p-3">
-                        {prize.image_url ? (
-                          <Image src={prize.image_url} className="w-24 h-24 rounded-lg shrink-0 bg-white" mode="aspectFill" />
-                        ) : (
-                          <View className="w-24 h-24 rounded-lg shrink-0 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
-                            <Gift size={30} color="#f59e0b" />
-                          </View>
-                        )}
-                        <View className="flex-1 flex flex-col justify-between pl-3 py-1 min-h-[6rem]">
-                          <View>
-                            <Text className="block text-base font-semibold text-gray-900 leading-6">{prize.name}</Text>
-                            <View className="flex flex-row flex-wrap items-center gap-2 mt-2">
+                <ScrollView scrollX className="mt-3 whitespace-nowrap" showScrollbar={false}>
+                  <View className="flex flex-row gap-3 px-4">
+                    {prizes.map((prize) => {
+                      const typeInfo = PRIZE_TYPE_MAP[prize.prize_type] || { label: '奖品', cls: 'bg-gray-100 text-gray-500 border-gray-200' }
+                      return (
+                        <View
+                          key={prize.id}
+                          className="w-40 shrink-0 bg-gradient-to-b from-amber-50 to-white rounded-xl overflow-hidden border border-amber-100"
+                        >
+                          <View className="relative w-40 h-40 bg-white">
+                            {prize.image_url ? (
+                              <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
+                            ) : (
+                              <View className="w-full h-full bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                                <Gift size={36} color="#f59e0b" />
+                              </View>
+                            )}
+                            <View className="absolute top-2 left-2">
                               <Badge className={`${typeInfo.cls} rounded-md border`}>
                                 <Text className="text-xs">{typeInfo.label}</Text>
                               </Badge>
+                            </View>
+                          </View>
+                          <View className="p-3">
+                            <Text className="block text-sm font-semibold text-gray-900 leading-5 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
+                            <View className="flex flex-row flex-wrap items-center gap-2 mt-1">
                               {prize.prize_type === 'coupon' && !!prize.coupon_amount && (
                                 <Text className="text-xs text-[#FF4757] font-medium">面额 ¥{parseFloat(prize.coupon_amount)}</Text>
                               )}
@@ -323,23 +408,33 @@ export default function MerchantPage() {
                                 <Text className="text-xs text-gray-500">{prize.product_name}</Text>
                               )}
                               {!!prize.validity_hours && (
-                                <Text className="text-xs text-gray-400">有效期{prize.validity_hours}小时</Text>
+                                <Text className="text-xs text-gray-400">{prize.validity_hours}小时有效</Text>
                               )}
                             </View>
-                          </View>
-                          <View className="flex flex-row items-end justify-between mt-2">
-                            <Text className="text-xs text-gray-400">{typeof prize.stock === 'number' ? `限量 ${prize.stock} 份` : ''}</Text>
-                            <Button
-                              onClick={handleGoDraw}
-                              className="bg-[#FF4757] text-white rounded-full px-5 h-8 flex items-center justify-center"
-                            >
-                              <Text className="text-white text-sm font-medium">去抽奖</Text>
-                            </Button>
+                            <View className="flex flex-row items-center justify-between mt-2">
+                              <Text className="text-xs text-amber-600 font-medium">{typeof prize.stock === 'number' ? `限量${prize.stock}份` : ''}</Text>
+                              <View className="flex flex-row items-center gap-1">
+                                <Text className="text-xs text-[#FF4757] font-medium">去抽奖</Text>
+                                <ChevronRight size={12} color="#FF4757" />
+                              </View>
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    )
-                  })}
+                      )
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              {prizes.length > 0 && packages.length > 0 && (
+                <View className="px-4 mt-3">
+                  <Button
+                    onClick={() => handleGoPackage(packages[0].id)}
+                    className="w-full bg-[#FF4757] text-white rounded-full h-11 flex flex-row items-center justify-center gap-2"
+                  >
+                    <Sparkles size={15} color="#ffffff" />
+                    <Text className="text-white text-sm font-medium">去下单，抽霸王餐</Text>
+                  </Button>
                 </View>
               )}
             </View>

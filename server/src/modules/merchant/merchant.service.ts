@@ -70,7 +70,7 @@ export class MerchantService {
   }
 
   /**
-   * 商家详情 + 该商家上架奖品（商家首页用）
+   * 商家详情 + 该商家上架奖品 + 团购套餐（商家首页用）
    */
   async getDetailWithPrizes(id: number) {
     const merchant = await this.findById(id);
@@ -84,7 +84,16 @@ export class MerchantService {
       .order('probability', { ascending: false });
 
     if (prizeError) throw new Error(`查询商家奖品失败：${prizeError.message}`);
-    return { merchant, prizes: prizes || [] };
+
+    const { data: packages, error: packageError } = await this.client
+      .from('packages')
+      .select('id, name, price, original_price, cover_image, badge, category, package_type')
+      .eq('merchant_id', String(id))
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (packageError) throw new Error(`查询商家套餐失败：${packageError.message}`);
+    return { merchant, prizes: prizes || [], packages: packages || [] };
   }
 
   async create(body: CreateMerchantDto): Promise<Merchant> {
