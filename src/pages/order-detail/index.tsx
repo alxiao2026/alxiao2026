@@ -38,7 +38,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgGradient: 
   pending: {
     label: '待使用',
     color: '#FFFFFF',
-    bgGradient: 'linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%)',
+    bgGradient: 'linear-gradient(135deg, #FF6B7A 0%, #FF4757 100%)',
     icon: 'clock',
   },
   used: {
