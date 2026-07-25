@@ -81,14 +81,11 @@ export class UserService {
       .single();
 
     if (existing) {
-      // 更新最后登录时间
+      // 已存在用户仅更新最后登录时间；昵称/头像以数据库为准，
+      // 避免前端 storage 旧缓存通过登录接口回写覆盖最新资料
       const { data: updated, error } = await supabase
         .from('users')
-        .update({
-          last_login_at: new Date().toISOString(),
-          ...(nickName && { nick_name: nickName }),
-          ...(avatarUrl && { avatar_url: avatarUrl })
-        })
+        .update({ last_login_at: new Date().toISOString() })
         .eq('user_id', userId)
         .select()
         .single();

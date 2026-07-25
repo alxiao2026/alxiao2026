@@ -55,6 +55,15 @@ const UserCenterPage = () => {
       console.log('[UserCenter] profile:', res.data);
       if (res.data?.code === 200 && res.data?.data) {
         setProfile(res.data.data);
+        // 同步后端最新昵称/头像到本地，避免展示 storage 中的旧缓存
+        if (res.data.data.nick_name) {
+          setNickName(res.data.data.nick_name);
+          Taro.setStorageSync('nick_name', res.data.data.nick_name);
+        }
+        if (res.data.data.avatar_url) {
+          setAvatarUrl(res.data.data.avatar_url);
+          Taro.setStorageSync('avatar_url', res.data.data.avatar_url);
+        }
       }
     } catch (e) {
       console.error('获取用户信息失败:', e);
@@ -113,7 +122,8 @@ const UserCenterPage = () => {
       Network.request({
         url: '/api/users/login',
         method: 'POST',
-        data: { user_id: savedUserId, nick_name: savedNickName || '', avatar_url: savedAvatar || '' }
+        // 不传 nick_name/avatar_url，避免本地旧缓存覆盖数据库最新资料
+        data: { user_id: savedUserId }
       }).then((res) => {
         console.log('[UserCenter] login:', res.data);
         if (res.data?.code === 200 && res.data?.data) {
