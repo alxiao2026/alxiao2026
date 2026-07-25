@@ -733,7 +733,12 @@ export default function PackageDetail() {
         {merchant && (
           <View className="bg-white mt-2 px-4 py-4 mb-4">
             <Text className="block text-base font-bold text-gray-800 mb-4">适用门店</Text>
-            <View className="flex flex-row items-start gap-3">
+            <View
+              className="flex flex-row items-start gap-3"
+              onClick={() => {
+                Taro.navigateTo({ url: `/pages/merchant/index?id=${merchant.id}` })
+              }}
+            >
               <View className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                 <Image src={merchant.location || ''} className="w-full h-full" mode="aspectFill" />
               </View>
@@ -745,7 +750,15 @@ export default function PackageDetail() {
                   <Text className="block text-xs text-gray-500">{merchant.has_private_room ? '有包厢' : ''}</Text>
                 </View>
               </View>
-              <View className="flex flex-col items-center gap-1">
+              <View
+                className="flex flex-col items-center gap-1"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (merchant.phone) {
+                    Taro.makePhoneCall({ phoneNumber: merchant.phone })
+                  }
+                }}
+              >
                 <Phone size={16} color="#666" />
                 <Text className="block text-xs text-gray-500">联系商家</Text>
               </View>
