@@ -119,37 +119,56 @@ export class MerchantService {
     if (error) throw new Error(`创建商家失败：${error.message}`);
     const merchant = data as Merchant;
 
-    // 创建商家管理员账号
+    // 创建商家管理员账号（该手机号已有账号则直接关联升级为商家身份，不再新建）
     try {
-      const { data: userData, error: userError } = await this.client
+      const { data: existingUsers } = await this.client
         .from('users')
-        .insert({
-          user_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          nick_name: `${body.name}管理员`,
-          avatar_url: null,
-          phone: body.admin_phone,
-          password: body.admin_password,
-          role: 'merchant',
-          merchant_id: merchant.id,
-        })
-        .select()
-        .single();
+        .select('user_id, role')
+        .eq('phone', body.admin_phone);
 
-      if (userError) {
-        console.error('[Merchant] 创建管理员账号失败:', userError.message);
-        // 如果手机号已存在，尝试更新该用户
-        if (userError.message.includes('unique') || userError.message.includes('duplicate')) {
+      if (existingUsers && existingUsers.length > 0) {
+        // 已有账号：统一关联为商家管理员身份，确保该手机号登录后即为商家账号
+        // （超级管理员账号只同步密码，不降级角色）
+        const { error: updateError } = await this.client
+          .from('users')
+          .update({
+            password: body.admin_password,
+            role: 'merchant',
+            merchant_id: merchant.id,
+          })
+          .eq('phone', body.admin_phone)
+          .neq('role', 'admin');
+        if (updateError) {
+          console.error('[Merchant] 关联已有账号为商家管理员失败:', updateError.message);
+        } else {
+          console.log(`[Merchant] 已将已有账号关联为商家管理员: ${body.admin_phone} -> merchant_id=${merchant.id}（共 ${existingUsers.length} 个账号）`);
+        }
+        // 若其中有超级管理员账号，仅同步密码
+        if (existingUsers.some(u => u.role === 'admin')) {
           await this.client
             .from('users')
-            .update({
-              password: body.admin_password,
-              role: 'merchant',
-              merchant_id: merchant.id,
-            })
-            .eq('phone', body.admin_phone);
+            .update({ password: body.admin_password })
+            .eq('phone', body.admin_phone)
+            .eq('role', 'admin');
         }
       } else {
-        console.log(`[Merchant] 商家管理员账号创建成功: ${body.admin_phone} -> merchant_id=${merchant.id}`);
+        // 无账号：新建商家管理员账号
+        const { error: userError } = await this.client
+          .from('users')
+          .insert({
+            user_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            nick_name: `${body.name}管理员`,
+            avatar_url: null,
+            phone: body.admin_phone,
+            password: body.admin_password,
+            role: 'merchant',
+            merchant_id: merchant.id,
+          });
+        if (userError) {
+          console.error('[Merchant] 创建管理员账号失败:', userError.message);
+        } else {
+          console.log(`[Merchant] 商家管理员账号创建成功: ${body.admin_phone} -> merchant_id=${merchant.id}`);
+        }
       }
     } catch (e: any) {
       console.error('[Merchant] 创建管理员账号异常:', e.message);

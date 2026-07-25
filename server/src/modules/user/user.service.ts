@@ -111,13 +111,23 @@ export class UserService {
   }
 
   /** 手机号+密码登录（有记录直接登录，无记录自动注册） */
+  /** 同一手机号存在多个账号时，按角色优先级选择：admin > merchant > consumer，同级取最近登录 */
+  private pickAccountByPriority(users: User[]): User | undefined {
+    const priority = (u: User) => (u.role === 'admin' ? 0 : u.role === 'merchant' ? 1 : 2);
+    return [...users].sort((a, b) => {
+      const diff = priority(a) - priority(b);
+      if (diff !== 0) return diff;
+      return new Date(b.last_login_at || 0).getTime() - new Date(a.last_login_at || 0).getTime();
+    })[0];
+  }
+
   async loginByPassword(phone: string, password: string, nickName?: string): Promise<User> {
     const supabase = getSupabaseClient();
-    const { data: existing } = await supabase
+    const { data: existingList } = await supabase
       .from('users')
       .select('*')
-      .eq('phone', phone)
-      .single();
+      .eq('phone', phone);
+    const existing = this.pickAccountByPriority((existingList || []) as User[]);
 
     if (existing) {
       if (existing.password && existing.password !== password) {
@@ -166,11 +176,11 @@ export class UserService {
     }
 
     const supabase = getSupabaseClient();
-    const { data: existing } = await supabase
+    const { data: existingList } = await supabase
       .from('users')
       .select('*')
-      .eq('phone', phone)
-      .single();
+      .eq('phone', phone);
+    const existing = this.pickAccountByPriority((existingList || []) as User[]);
 
     if (existing) {
       const updateData: Record<string, unknown> = {
