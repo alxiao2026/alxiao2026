@@ -144,14 +144,13 @@ const UserCenterPage = () => {
     Taro.navigateTo({ url: '/pages/profile-edit/index' });
   };
 
-  const memberLevelMap: Record<string, { label: string; color: string }> = {
-    normal: { label: '普通会员', color: 'bg-gray-100 text-gray-600' },
-    silver: { label: '白银会员', color: 'bg-slate-100 text-slate-600' },
-    gold: { label: '黄金会员', color: 'bg-amber-100 text-amber-700' },
-    diamond: { label: '钻石会员', color: 'bg-cyan-100 text-cyan-700' }
+  const roleLabelMap: Record<string, { label: string; color: string }> = {
+    consumer: { label: '普通', color: 'bg-gray-100 text-gray-600' },
+    merchant: { label: '商家', color: 'bg-amber-100 text-amber-700' },
+    admin: { label: '系统', color: 'bg-red-100 text-red-600' }
   };
 
-  const level = memberLevelMap[profile?.member_level || 'normal'] || memberLevelMap.normal;
+  const level = roleLabelMap[permissions?.role || 'consumer'] || roleLabelMap.consumer;
 
   const goToAdmin = () => {
     Taro.navigateTo({ url: '/pages/admin/index' });
@@ -379,9 +378,10 @@ const UserCenterPage = () => {
         </View>
       </View>
 
-      {/* 版本信息 */}
-      <View className="pb-8 flex items-center justify-center">
-        <Text className="text-xs text-gray-300">膨胀团 v1.0.0</Text>
+      {/* 底部标语与版本信息 */}
+      <View className="py-8 flex flex-col items-center justify-center">
+        <Text className="block text-sm text-gray-400" style={{ letterSpacing: '2px' }}>- 给生活来点小惊喜 -</Text>
+        <Text className="block text-xs text-gray-300 mt-3">膨胀团 v1.0.0</Text>
       </View>
     </ScrollView>
   );

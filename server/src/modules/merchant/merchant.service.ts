@@ -157,7 +157,7 @@ export class MerchantService {
           .from('users')
           .insert({
             user_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            nick_name: `${body.name}管理员`,
+            nick_name: body.name,
             avatar_url: null,
             phone: body.admin_phone,
             password: body.admin_password,
