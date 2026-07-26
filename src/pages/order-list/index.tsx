@@ -147,11 +147,11 @@ export default function OrderList() {
                     </View>
                     <View className="flex flex-col items-end">
                       <Text className="block text-lg font-bold text-[#FF4757]">
-                        ¥{parseFloat(String(order.price)).toFixed(2)}
+                        ¥{parseFloat(String(order.price)).toFixed(1)}
                       </Text>
                       {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
                         <Text className="block text-xs text-gray-400 line-through">
-                          ¥{parseFloat(String(order.original_price)).toFixed(2)}
+                          ¥{parseFloat(String(order.original_price)).toFixed(1)}
                         </Text>
                       )}
                     </View>

@@ -206,7 +206,7 @@ const IndexPage = () => {
 
   const formatPrice = (price: string): string => {
     const num = parseFloat(price);
-    return Number.isNaN(num) ? price : num.toFixed(2);
+    return Number.isNaN(num) ? price : num.toFixed(1);
   };
 
   const getFilteredPackages = () => {
