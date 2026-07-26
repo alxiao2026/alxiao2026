@@ -26,14 +26,14 @@ export class PrizeController {
   }
 
   @Post()
-  create(@Body() body: { name: string; description?: string; probability?: string; image_url?: string; stock?: number; prize_type?: 'coupon' | 'product' | 'free_meal'; coupon_amount?: number; coupon_min_spend?: number; product_name?: string; product_value?: number; merchant_id?: number | null }) {
+  create(@Body() body: { name: string; description?: string; probability?: string; image_url?: string; stock?: number; prize_type?: 'coupon' | 'product' | 'free_meal'; coupon_amount?: number; coupon_min_spend?: number; product_name?: string; product_value?: number; merchant_id?: number | null; validity_hours?: number | null; daily_quota?: number | null; is_fallback?: boolean }) {
     return this.prizeService.create(body);
   }
 
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() body: Partial<{ name: string; description: string; probability: string; image_url: string; stock: number; is_active: boolean }>
+    @Body() body: Partial<{ name: string; description: string; probability: string; image_url: string; stock: number; is_active: boolean; prize_type: 'coupon' | 'product' | 'free_meal'; coupon_amount: number; coupon_min_spend: number; product_name: string; product_value: number; merchant_id: number | null; validity_hours: number | null; daily_quota: number | null; is_fallback: boolean }>
   ) {
     return this.prizeService.update(id, body);
   }

@@ -19,6 +19,8 @@ export interface Prize {
   coupon_min_spend: string;
   product_name: string;
   product_value: string;
+  daily_quota: number | null; // 每日最多中出份数（null/0 表示不限）
+  is_fallback: boolean; // 兜底奖标记：永远有货，承接兜底区间
 }
 
 export interface LotteryRecord {
@@ -273,40 +275,46 @@ export class LotteryService {
   // ========== 加权抽奖算法 ==========
 
   /**
-   * 加权奖池抽奖算法 + CSPRNG
-   * 每个奖品的有效概率 = 基础概率 × 用户权重
-   * 使用 crypto 安全随机源，防止结果被预测
+   * 固定概率轮盘 + 兜底吸收（四层保护模型）+ CSPRNG
+   *
+   * 规则：
+   * 1. 每个奖品的真实中奖率 = 后台设置的 probability（百分比），不随其他奖品库存减少而改变
+   * 2. 兜底区间 = 100% − Σ可用奖品概率，承接分享加成的放大部分与库存/配额耗尽奖品的份额
+   * 3. 分享加成仅放大霸王餐（free_meal），多出部分从兜底区扣减，其他奖品概率不变
+   * 4. 返回 null 表示摇中兜底区间（由调用方决定发兜底奖或"再接再厉"）
+   *
+   * 注意：库存可用性由调用方判定，本函数只按传入奖品的固定概率摇奖
    */
-  private calculateWeightedLottery(prizes: Prize[], freeMealBoost: number): { is_winner: boolean; prize: Prize | null } {
-    const availablePrizes = prizes.filter(p => p.stock > 0);
-    if (availablePrizes.length === 0) {
-      return { is_winner: false, prize: null };
+  private calculateWeightedLottery(prizes: Prize[], freeMealBoost: number): Prize | null {
+    const segments: { prize: Prize; prob: number }[] = [];
+    let usedProb = 0;
+    for (const p of prizes) {
+      const base = parseFloat(p.probability || '0');
+      if (base <= 0) continue;
+      const prob = p.prize_type === 'free_meal' ? base * freeMealBoost : base;
+      segments.push({ prize: p, prob });
+      usedProb += prob;
     }
 
-    // 计算每个奖品的加权概率：分享加成仅放大霸王餐份额，其余奖品保持原始概率
-    const weightedPrizes = availablePrizes.map(p => ({
-      prize: p,
-      weight: parseFloat(p.probability || '0') * (p.prize_type === 'free_meal' ? freeMealBoost : 1),
-    }));
+    if (segments.length === 0) return null;
 
-    const totalWeight = weightedPrizes.reduce((sum, wp) => sum + wp.weight, 0);
-    if (totalWeight <= 0) {
-      return { is_winner: false, prize: null };
-    }
+    // 兜底段：补足到 100%；若奖品概率总和超过 100%（配置超出或加成放大），兜底为 0
+    const fallbackProb = Math.max(0, 100 - usedProb);
+    const totalProb = usedProb + fallbackProb;
 
-    // CSPRNG 生成 [0, totalWeight) 的随机数
-    const random = this.secureRandomFloat() * totalWeight;
+    // CSPRNG 生成 [0, totalProb) 的随机数
+    const random = this.secureRandomFloat() * totalProb;
 
-    // 区间匹配
+    // 区间匹配（未命中任何奖品段即落入兜底段）
     let cumulative = 0;
-    for (const wp of weightedPrizes) {
-      cumulative += wp.weight;
+    for (const seg of segments) {
+      cumulative += seg.prob;
       if (random < cumulative) {
-        return { is_winner: true, prize: wp.prize };
+        return seg.prize;
       }
     }
 
-    return { is_winner: true, prize: weightedPrizes[weightedPrizes.length - 1].prize };
+    return null; // 兜底区间
   }
 
   // ========== 库存锁（原子扣减） ==========
@@ -400,7 +408,6 @@ export class LotteryService {
       .from('prizes')
       .select('*')
       .eq('is_active', true)
-      .gt('stock', 0)
       .order('created_at', { ascending: true });
     if (poolMerchantId !== null && poolMerchantId !== undefined && `${poolMerchantId}` !== '') {
       prizesQuery = prizesQuery.eq('merchant_id', poolMerchantId);
@@ -410,50 +417,81 @@ export class LotteryService {
 
     const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
 
-    // 5a. 预过滤：排除不满足条件的奖品（如消费券未达最低消费额），确保百分百中奖
-    const eligiblePrizes = ((prizes as Prize[]) || []).filter(p => {
+    // 5a. 奖池分类：兜底奖（永远有货，承接兜底区间）与常规奖
+    const pool = (prizes as Prize[]) || [];
+    let fallbackPrize: Prize | null = pool.find(p => p.is_fallback) || null;
+
+    // 5b. 每日配额检查：今日已中数量达到 daily_quota 的奖品视为不可用（份额归兜底）
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const isQuotaExhausted = async (prizeId: string, quota: number | null): Promise<boolean> => {
+      if (!quota || quota <= 0) return false;
+      const { count } = await this.client
+        .from('lottery_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('prize_id', prizeId)
+        .eq('is_winner', true)
+        .gte('created_at', todayStart.toISOString());
+      return (count || 0) >= quota;
+    };
+
+    // 5c. 常规奖可用性过滤：库存、每日配额、消费券门槛
+    //     不可用奖品的概率份额自动归入兜底区间，其他奖品中奖率保持不变
+    const eligiblePrizes: Prize[] = [];
+    for (const p of pool.filter(x => !x.is_fallback)) {
+      if (p.stock <= 0) continue; // 库存耗尽 → 份额归兜底
+      if (await isQuotaExhausted(p.id, p.daily_quota)) continue; // 今日配额用尽 → 份额归兜底
       if (p.prize_type === 'coupon') {
         const minSpend = parseFloat(p.coupon_min_spend || '0');
         const couponAmt = parseFloat(p.coupon_amount || '0');
-        return orderTotal >= minSpend && couponAmt > 0;
+        if (orderTotal < minSpend || couponAmt <= 0) continue; // 不满足门槛 → 份额归兜底
       }
-      return true; // product 和 free_meal 始终可抽
-    });
+      eligiblePrizes.push(p);
+    }
 
-    if (eligiblePrizes.length === 0) {
+    // 兜底奖本身也受每日配额限制（每日安慰奖数量可控）
+    if (fallbackPrize && (await isQuotaExhausted(fallbackPrize.id, fallbackPrize.daily_quota))) {
+      fallbackPrize = null;
+    }
+
+    if (eligiblePrizes.length === 0 && !fallbackPrize) {
       throw new BadRequestException('该商家当前没有可抽取的奖品');
     }
 
-    // 6. 加权抽奖（CSPRNG）— 分享加成仅作用于霸王餐，其余奖品保持原始概率
-    let result = this.calculateWeightedLottery(eligiblePrizes, shareBoost);
+    // 6. 固定概率轮盘（CSPRNG）— 分享加成仅作用于霸王餐，放大部分从兜底区扣减
+    //    并发扣减失败时，该奖品移出轮盘（份额归兜底），重新摇奖
+    const remaining = [...eligiblePrizes];
+    let selectedPrize: Prize | null = null;
+    while (remaining.length > 0) {
+      const picked = this.calculateWeightedLottery(remaining, shareBoost);
+      if (!picked) break; // 摇中兜底区间
+      const newStock = await this.atomicDecrementStock(picked.id);
+      if (newStock >= 0) {
+        picked.stock = newStock;
+        selectedPrize = picked;
+        break; // 扣减成功
+      }
+      // 并发下库存被抢光 → 移出轮盘（份额归兜底），重摇
+      remaining.splice(remaining.findIndex(p => p.id === picked.id), 1);
+    }
 
-    // 7. 处理中奖模式逻辑
+    // 7. 兜底区间命中：发放兜底奖（永远有货，不扣库存）；未配置兜底奖则"再接再厉"
+    let isWinner = false;
+    let resultPrize: Prize | null = null;
+    if (selectedPrize) {
+      isWinner = true;
+      resultPrize = selectedPrize;
+    } else if (fallbackPrize) {
+      isWinner = true;
+      resultPrize = fallbackPrize;
+    }
+
+    // 8. 中奖模式逻辑
     let redemptionCode = '';
     let refundAmount = 0;
     let refundStatus = '';
-
-    // 8. 中奖则原子扣减库存（防并发超发）；失败则从剩余奖品中重新抽取
-    const triedPrizeIds = new Set<string>();
-    while (result.is_winner && result.prize) {
-      triedPrizeIds.add(result.prize.id);
-      const newStock = await this.atomicDecrementStock(result.prize.id);
-      if (newStock >= 0) {
-        result.prize.stock = newStock;
-        break; // 扣减成功
-      }
-      // 库存扣减失败，从剩余可抽奖品中重新抽取
-      const remainingPrizes = eligiblePrizes.filter(p => !triedPrizeIds.has(p.id));
-      if (remainingPrizes.length === 0) {
-        // 所有奖品库存都已耗尽，无法继续
-        result = { is_winner: false, prize: null };
-        break;
-      }
-      result = this.calculateWeightedLottery(remainingPrizes, userWeight);
-    }
-
-    // 9. 处理中奖模式逻辑
-    if (result.is_winner && result.prize) {
-      const prize = result.prize;
+    if (isWinner && resultPrize) {
+      const prize = resultPrize;
       if (prize.prize_type === 'coupon') {
         refundAmount = parseFloat(prize.coupon_amount || '0');
         refundStatus = 'pending';
@@ -471,9 +509,9 @@ export class LotteryService {
     const recordData: Record<string, any> = {
       order_id: orderId,
       user_id: userId,
-      is_winner: result.is_winner,
-      prize_name: result.prize?.name || null,
-      prize_id: result.prize?.id || null,
+      is_winner: isWinner,
+      prize_name: resultPrize?.name || null,
+      prize_id: resultPrize?.id || null,
       redemption_code: redemptionCode,
       refund_amount: refundAmount,
       refund_status: refundStatus,
@@ -494,22 +532,22 @@ export class LotteryService {
       order_id: orderId,
       action: 'draw',
       user_weight: userWeight,
-      prize_id: result.prize?.id,
-      prize_name: result.prize?.name,
-      is_winner: result.is_winner,
+      prize_id: resultPrize?.id,
+      prize_name: resultPrize?.name,
+      is_winner: isWinner,
       ip_address: ipAddress,
       user_agent: userAgent,
       detail: {
         order_total: parseFloat(orderData.price || '0') * (orderData.quantity || 1),
-        prize_type: result.prize?.prize_type,
+        prize_type: resultPrize?.prize_type,
         redemption_code: redemptionCode || undefined,
         refund_amount: refundAmount || undefined,
       },
     });
 
     return {
-      is_winner: result.is_winner,
-      prize: result.prize,
+      is_winner: isWinner,
+      prize: resultPrize,
       record: record as LotteryRecord,
     };
   }

@@ -18,6 +18,8 @@ export interface Prize {
   product_value: string;
   merchant_id: number | null;
   validity_hours: number | null;
+  daily_quota: number | null;
+  is_fallback: boolean;
   created_at: string;
   updated_at: string | null;
 }
@@ -39,11 +41,12 @@ export class PrizeService {
   }
 
   async findActive(merchantId?: string | number | null): Promise<Prize[]> {
+    // 兜底奖永远有货，不受库存过滤；常规奖需有库存才展示
     let query = this.client
       .from('prizes')
       .select('*')
       .eq('is_active', true)
-      .gt('stock', 0);
+      .or('stock.gt.0,is_fallback.eq.true');
     if (merchantId !== undefined && merchantId !== null && `${merchantId}` !== '') {
       query = query.eq('merchant_id', Number(merchantId));
     }
@@ -93,6 +96,8 @@ export class PrizeService {
     product_value?: number;
     merchant_id?: number | null;
     validity_hours?: number | null;
+    daily_quota?: number | null;
+    is_fallback?: boolean;
   }): Promise<Prize> {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
 
@@ -111,6 +116,8 @@ export class PrizeService {
         product_name: body.product_name || '',
         product_value: body.product_value ?? 0,
         validity_hours: body.validity_hours ?? null,
+        daily_quota: body.daily_quota ?? null,
+        is_fallback: body.is_fallback ?? false,
       })
       .select()
       .single();
@@ -132,6 +139,8 @@ export class PrizeService {
     product_value: number;
     merchant_id: number | null;
     validity_hours: number | null;
+    daily_quota: number | null;
+    is_fallback: boolean;
   }>): Promise<Prize> {
     const existing = await this.findOne(id);
 
@@ -149,6 +158,8 @@ export class PrizeService {
     if (body.product_value !== undefined) updateData.product_value = body.product_value;
     if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
     if (body.validity_hours !== undefined) updateData.validity_hours = body.validity_hours;
+    if (body.daily_quota !== undefined) updateData.daily_quota = body.daily_quota;
+    if (body.is_fallback !== undefined) updateData.is_fallback = body.is_fallback;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await this.client

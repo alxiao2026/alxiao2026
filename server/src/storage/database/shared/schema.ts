@@ -68,6 +68,9 @@ export const prizes = pgTable("prizes", {
 	product_name: varchar("product_name", { length: 128 }).notNull().default(""), // 实物奖品名称
 	product_value: numeric("product_value", { precision: 10, scale: 2 }).notNull().default("0"), // 实物奖品价值
 	merchant_id: integer("merchant_id"), // 所属商家（空为平台奖品）
+	validity_hours: integer("validity_hours"), // 奖品兑换有效期（小时），空则跟随全局设置
+	daily_quota: integer("daily_quota"), // 每日最多中出份数（空/0 表示不限）
+	is_fallback: boolean("is_fallback").notNull().default(false), // 兜底奖：永远有货，承接兜底区间
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
 }, (table) => [

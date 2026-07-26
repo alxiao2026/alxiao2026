@@ -20,6 +20,8 @@ interface Prize {
   product_value?: number
   merchant_id?: number | null
   validity_hours?: number | null
+  daily_quota?: number | null
+  is_fallback?: boolean
   is_active?: boolean
 }
 
@@ -39,6 +41,8 @@ interface PrizeForm {
   coupon_amount: string
   coupon_min_spend: string
   validity_hours: string
+  daily_quota: string
+  is_fallback: boolean
   description: string
   image_url: string
 }
@@ -54,6 +58,8 @@ const emptyForm: PrizeForm = {
   coupon_amount: '',
   coupon_min_spend: '',
   validity_hours: '72',
+  daily_quota: '',
+  is_fallback: false,
   description: '',
   image_url: '',
 }
@@ -117,6 +123,8 @@ export default function PrizesPage() {
       coupon_amount: p.coupon_amount != null && p.coupon_amount > 0 ? String(p.coupon_amount) : '',
       coupon_min_spend: p.coupon_min_spend != null && p.coupon_min_spend > 0 ? String(p.coupon_min_spend) : '',
       validity_hours: p.validity_hours != null ? String(p.validity_hours) : '72',
+      daily_quota: p.daily_quota != null && p.daily_quota > 0 ? String(p.daily_quota) : '',
+      is_fallback: p.is_fallback ?? false,
       description: p.description || '',
       image_url: p.image_url || '',
     })
@@ -134,10 +142,12 @@ export default function PrizesPage() {
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
         prize_type: form.prize_type,
-        probability: form.probability || '0',
+        probability: form.is_fallback ? '0' : form.probability || '0',
         stock: Number(form.stock) || 0,
         merchant_id: form.merchant_id ? Number(form.merchant_id) : null,
         validity_hours: form.validity_hours ? Number(form.validity_hours) : null,
+        daily_quota: form.daily_quota ? Number(form.daily_quota) : null,
+        is_fallback: form.is_fallback,
         description: form.description.trim(),
         image_url: form.image_url || undefined,
       }
@@ -227,6 +237,7 @@ export default function PrizesPage() {
                   <th className="px-5 py-3 font-medium">内容</th>
                   <th className="px-5 py-3 font-medium">中奖概率</th>
                   <th className="px-5 py-3 font-medium">库存</th>
+                  <th className="px-5 py-3 font-medium">每日限量</th>
                   <th className="px-5 py-3 font-medium">有效期</th>
                   <th className="px-5 py-3 font-medium">所属商家</th>
                   <th className="px-5 py-3 font-medium">状态</th>
@@ -250,10 +261,16 @@ export default function PrizesPage() {
                           <span className="font-medium text-gray-800">{p.name}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3"><Badge variant={t.badge}>{t.label}</Badge></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={t.badge}>{t.label}</Badge>
+                          {p.is_fallback && <Badge variant="green">兜底</Badge>}
+                        </div>
+                      </td>
                       <td className="px-5 py-3 text-gray-500 max-w-44 truncate">{prizeDetail(p)}</td>
-                      <td className="px-5 py-3 text-gray-500">{p.probability || 0}%</td>
-                      <td className="px-5 py-3 text-gray-500">{p.stock ?? '—'}</td>
+                      <td className="px-5 py-3 text-gray-500">{p.is_fallback ? '自动（兜底）' : `${p.probability || 0}%`}</td>
+                      <td className="px-5 py-3 text-gray-500">{p.is_fallback ? '∞' : (p.stock ?? '—')}</td>
+                      <td className="px-5 py-3 text-gray-500">{p.daily_quota ? `${p.daily_quota} 份` : '不限'}</td>
                       <td className="px-5 py-3 text-gray-500">{p.validity_hours ? `${p.validity_hours} 小时` : '默认 72 小时'}</td>
                       <td className="px-5 py-3 text-gray-500 max-w-36 truncate">{merchantName(p.merchant_id)}</td>
                       <td className="px-5 py-3">
@@ -304,11 +321,16 @@ export default function PrizesPage() {
                 <option value="free_meal">霸王餐</option>
               </Select>
             </Field>
-            <Field label="中奖概率（%）" required hint="所有上架奖品概率之和应为 100">
-              <Input type="number" min="0" max="100" step="0.1" value={form.probability} onChange={set('probability')} />
-            </Field>
-            <Field label="库存">
+            {!form.is_fallback && (
+              <Field label="中奖概率（%）" required hint="该奖品的真实中奖率，不随库存减少而改变；各奖品概率之和不超过 100%，剩余部分进入兜底区">
+                <Input type="number" min="0" max="100" step="0.1" value={form.probability} onChange={set('probability')} />
+              </Field>
+            )}
+            <Field label="库存" hint={form.is_fallback ? '兜底奖永远有货，不消耗库存，此处仅作记录' : '抽完即止，耗尽后该奖品概率份额进入兜底区'}>
               <Input type="number" min="0" value={form.stock} onChange={set('stock')} />
+            </Field>
+            <Field label="每日限量" hint="每天最多中出几份，留空为不限；当日用完后概率份额进入兜底区">
+              <Input type="number" min="1" value={form.daily_quota} onChange={set('daily_quota')} placeholder="不限" />
             </Field>
             {(form.prize_type === 'product' || form.prize_type === 'free_meal') && (
               <>
@@ -341,6 +363,21 @@ export default function PrizesPage() {
                 ))}
               </Select>
             </Field>
+            <div className="col-span-2">
+              <label className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.is_fallback}
+                  onChange={(e) => setForm((f) => ({ ...f, is_fallback: e.target.checked }))}
+                  className="mt-0.5 h-4 w-4 accent-amber-500"
+                />
+                <span className="text-xs leading-relaxed text-amber-800">
+                  <span className="font-semibold">设为兜底奖（阳光普照）</span>
+                  <br />
+                  其他奖品未命中、库存耗尽或每日限量用完时，用户将中得兜底奖，保证「必中」体验。兜底奖中奖率 = 100% − 其他奖品概率之和，永远有货、不消耗库存。未设置兜底奖时，落入兜底区的用户将看到「再接再厉」。
+                </span>
+              </label>
+            </div>
             <div className="col-span-2">
               <Field label="奖品图片">
                 <ImageUpload value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} />
