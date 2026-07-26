@@ -310,7 +310,7 @@ const AdminPage = () => {
           <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <TrendingUp size={14} color="#f97316" />
-              <Text className="block text-xs text-[#FF4757]">今日售额</Text>
+              <Text className="block text-xs text-[#FF4757]">销售额金额</Text>
             </View>
             <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todayRevenue}</Text>
             <Text className="block text-xs text-red-300 mt-1">{merchantStats.todayOrders}笔订单</Text>
@@ -318,7 +318,7 @@ const AdminPage = () => {
           <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <ShoppingBag size={14} color="#FF4757" />
-              <Text className="block text-xs text-[#FF4757]">今日销量</Text>
+              <Text className="block text-xs text-[#FF4757]">销售份数</Text>
             </View>
             <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todaySales}</Text>
             <Text className="block text-xs text-red-300 mt-1">份</Text>
@@ -326,7 +326,7 @@ const AdminPage = () => {
           <View className="flex-1 bg-green-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <CircleCheck size={14} color="#22c55e" />
-              <Text className="block text-xs text-green-600">今日核销</Text>
+              <Text className="block text-xs text-green-600">核销金额</Text>
             </View>
             <Text className="block text-lg font-bold text-green-600">{merchantStats.todayVerifiedAmount}</Text>
             <Text className="block text-xs text-green-400 mt-1">{merchantStats.todayVerifiedCount}份</Text>

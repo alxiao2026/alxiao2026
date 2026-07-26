@@ -461,7 +461,7 @@ export class UserService {
       if (packageIds.length > 0) {
         const { data: allOrders } = await supabase
           .from('orders')
-          .select('id, status, price, quantity, verified_count, created_at')
+          .select('id, status, price, quantity, verified_count, verified_at, created_at')
           .in('package_id', packageIds);
         orders = allOrders || [];
         merchantOrderIds = new Set(orders.map(o => o.id));
@@ -472,24 +472,26 @@ export class UserService {
       // 系统管理员：返回全平台统计数据
       const { data: allOrders } = await supabase
         .from('orders')
-        .select('status, price, quantity, verified_count, created_at');
+        .select('status, price, quantity, verified_count, verified_at, created_at');
       orders = allOrders || [];
     } else {
       // 普通消费者：无权限查看商家统计，返回空数据
       orders = [];
     }
 
-    // 总售卖数据
+    // 总售卖数据（金额 = 单价 × 份数）
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+    const totalRevenue = orders
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .toFixed(2);
 
-    // 核销数据
-    const verifiedOrders = orders.filter(o => o.status === 'used' || o.status === 'refunded');
+    // 核销数据（核销金额 = 单价 × 实际核销份数，仅统计已核销未退款的订单）
     const verifiedCount = orders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
-    const verifiedAmount = verifiedOrders
+    const verifiedAmount = orders
       .filter(o => o.status === 'used')
-      .reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .toFixed(2);
 
     // 奖品发放数量（从 orders 中统计 shared=true 的）
     const prizeOrders = orders.filter(o => (o as any).shared === true);
@@ -505,12 +507,23 @@ export class UserService {
     });
     const todayOrders = todayOrdersList.length;
     const todaySales = todayOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
-    const todayRevenue = todayOrdersList.reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
-    const todayVerified = todayOrdersList.filter(o => o.status === 'used' || o.status === 'refunded');
-    const todayVerifiedCount = todayOrdersList.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
-    const todayVerifiedAmount = todayVerified
+    const todayRevenue = todayOrdersList
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .toFixed(2);
+    // 今日核销：按「核销发生时间」统计（而非下单时间），昨天买今天核销的也计入今日
+    const toLocalDateStr = (iso?: string | null) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const todayVerifiedOrders = orders.filter(
+      o => (Number(o.verified_count) || 0) > 0 && toLocalDateStr(o.verified_at || o.created_at) === todayStr,
+    );
+    const todayVerifiedCount = todayVerifiedOrders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
+    const todayVerifiedAmount = todayVerifiedOrders
       .filter(o => o.status === 'used')
-      .reduce((sum, o) => sum + Number(o.price || 0), 0).toFixed(2);
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .toFixed(2);
 
     // 今日抽奖统计（抽奖人数 / 返还金额 / 霸王餐中奖人数）
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
