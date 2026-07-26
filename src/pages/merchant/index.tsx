@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
+import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -347,9 +348,9 @@ export default function MerchantPage() {
                         </View>
                         <View className="flex flex-row items-end justify-between mt-2">
                           <View className="flex flex-row items-baseline gap-2">
-                            <Text className="text-lg font-bold text-[#FF4757]">¥{parseFloat(pkg.price).toFixed(1)}</Text>
+                            <Text className="text-lg font-bold text-[#FF4757]">¥{formatPrice(pkg.price)}</Text>
                             {!!pkg.original_price && parseFloat(pkg.original_price) > parseFloat(pkg.price) && (
-                              <Text className="text-xs text-gray-400 line-through">¥{parseFloat(pkg.original_price).toFixed(1)}</Text>
+                              <Text className="text-xs text-gray-400 line-through">¥{formatPrice(pkg.original_price)}</Text>
                             )}
                           </View>
                           <View className="flex flex-row items-center gap-1">

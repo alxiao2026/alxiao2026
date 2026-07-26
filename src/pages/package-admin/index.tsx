@@ -2,6 +2,7 @@ import { View, Text, Image, Picker } from '@tarojs/components'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Taro, { useDidShow, useDidHide } from '@tarojs/taro'
 import { Network } from '@/network'
+import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1653,7 +1654,7 @@ export default function PackageAdmin() {
                     <View className="bg-gray-50 rounded-lg p-4 mt-3 flex items-center justify-between">
                       <Text className="block text-base text-gray-900">合计</Text>
                       <Text className="block text-base text-gray-900">
-                        ¥{combinations.reduce((total, combo) => {
+                        ¥{formatPrice(combinations.reduce((total, combo) => {
                           // 如果全选，直接累加所有商品价格
                           if (combo.select_count === combo.items.length) {
                             return total + combo.items.reduce((sum, item) => {
@@ -1672,7 +1673,7 @@ export default function PackageAdmin() {
                             return sum + price * item.quantity
                           }, 0)
                           return total + maxPrice
-                        }, 0).toFixed(2)}
+                        }, 0))}
                       </Text>
                     </View>
                   )}

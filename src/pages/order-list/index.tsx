@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
+import { formatPrice } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Package, Clock, CircleCheck, CircleX, ChevronRight } from 'lucide-react-taro'
 
@@ -147,11 +148,11 @@ export default function OrderList() {
                     </View>
                     <View className="flex flex-col items-end">
                       <Text className="block text-lg font-bold text-[#FF4757]">
-                        ¥{parseFloat(String(order.price)).toFixed(1)}
+                        ¥{formatPrice(order.price)}
                       </Text>
                       {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
                         <Text className="block text-xs text-gray-400 line-through">
-                          ¥{parseFloat(String(order.original_price)).toFixed(1)}
+                          ¥{formatPrice(order.original_price)}
                         </Text>
                       )}
                     </View>

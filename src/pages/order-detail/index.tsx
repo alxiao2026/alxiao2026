@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
+import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw } from 'lucide-react-taro'
 
@@ -305,11 +306,11 @@ export default function OrderDetail() {
               </Text>
               <View className="flex flex-row items-baseline gap-2 mt-1">
                 <Text className="block text-lg font-bold text-[#FF4757]">
-                  ¥{parseFloat(String(order.price)).toFixed(1)}
+                  ¥{formatPrice(order.price)}
                 </Text>
                 {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
                   <Text className="block text-xs text-gray-400 line-through">
-                    ¥{parseFloat(String(order.original_price)).toFixed(1)}
+                    ¥{formatPrice(order.original_price)}
                   </Text>
                 )}
               </View>

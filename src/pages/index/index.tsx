@@ -2,6 +2,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
+import { formatPrice } from '@/lib/utils';
 import {
   Gift, LogIn,
   MapPin, ChevronRight, Clock, Flame, Award
@@ -202,11 +203,6 @@ const IndexPage = () => {
     } catch {
       return features.split('\n').filter(Boolean);
     }
-  };
-
-  const formatPrice = (price: string): string => {
-    const num = parseFloat(price);
-    return Number.isNaN(num) ? price : num.toFixed(1);
   };
 
   const getFilteredPackages = () => {

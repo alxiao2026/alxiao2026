@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
+import { formatPrice } from '@/lib/utils'
 import {
   Phone,
   Clock,
@@ -775,10 +776,10 @@ export default function PackageDetail() {
         <View className="flex flex-row items-end gap-3">
           <View className="flex flex-col">
             <Text className="block text-xs text-gray-500">到手价</Text>
-            <Text className="block text-xl font-bold text-[#FF4757]">¥{currentPrice.toFixed(1)}</Text>
+            <Text className="block text-xl font-bold text-[#FF4757]">¥{formatPrice(currentPrice)}</Text>
           </View>
           {originalPrice > currentPrice && (
-            <Text className="block text-sm text-gray-400 line-through pb-1">¥{originalPrice.toFixed(1)}</Text>
+            <Text className="block text-sm text-gray-400 line-through pb-1">¥{formatPrice(originalPrice)}</Text>
           )}
         </View>
         <View
@@ -877,7 +878,7 @@ export default function PackageDetail() {
             <View className="flex flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100">
               <View>
                 <Text className="block text-xs text-gray-500">合计</Text>
-                <Text className="block text-xl font-bold text-[#FF4757]">¥{(parseFloat(String(pkg.price)) * quantity).toFixed(1)}</Text>
+                <Text className="block text-xl font-bold text-[#FF4757]">¥{formatPrice(parseFloat(String(pkg.price)) * quantity)}</Text>
               </View>
               <View
                 onClick={handleConfirmBuy}
