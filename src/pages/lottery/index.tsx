@@ -36,13 +36,6 @@ interface DrawResultData {
   expiry_date?: string
 }
 
-interface OrderInfo {
-  id: string
-  shared: boolean
-  package_name?: string
-  shop_name?: string
-}
-
 interface PrizePoolItem {
   id: string
   name: string
@@ -83,7 +76,6 @@ export default function Lottery() {
 
   const [stage, setStage] = useState<Stage>('loading')
   const [userId, setUserId] = useState('')
-  const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
   const [selectedBox, setSelectedBox] = useState<number | null>(null)
   const [needShare, setNeedShare] = useState(false)
   const [sharePending, setSharePending] = useState(false)
@@ -173,7 +165,6 @@ export default function Lottery() {
     if (order.user_id && uid && order.user_id !== uid) {
       Taro.showToast({ title: '订单与当前用户不匹配', icon: 'none' })
     }
-    setOrderInfo({ id: order.id, shared: !!order.shared, package_name: order.package_name, shop_name: order.shop_name })
     return order
   }
 
@@ -292,20 +283,30 @@ export default function Lottery() {
 
   const markOrderShared = async () => {
     console.log('[Lottery] 标记订单已分享', { url: `/api/orders/${orderId}/share`, method: 'POST' })
+    let firstShared = false
     try {
       const res = await Network.request({ url: `/api/orders/${orderId}/share`, method: 'POST' })
-      console.log('[Lottery] 标记分享响应', res.data)
+      console.log('[Lottery] 标记分享响应', res.statusCode, res.data)
+      firstShared = res.statusCode === 200
     } catch (err: any) {
-      // 已分享过会报 400，视为成功继续
+      // 已分享过会报 400，不重复累计分享次数
       console.log('[Lottery] 标记分享异常（可能已分享过）:', err?.message)
     }
-    setOrderInfo((prev) => (prev ? { ...prev, shared: true } : prev))
+    // 首次分享成功 → 分享次数+1（每位霸王餐权重+0.5，最多计入10位）
+    if (firstShared && userId) {
+      try {
+        const shareRes = await Network.request({ url: `/api/lottery/share/${userId}`, method: 'POST' })
+        console.log('[Lottery] 分享次数+1 响应', shareRes.statusCode, shareRes.data)
+      } catch (err: any) {
+        console.log('[Lottery] 分享次数累加失败:', err?.message)
+      }
+    }
   }
 
   const handleShareDone = async () => {
     setNeedShare(false)
     await markOrderShared()
-    await startDraw()
+    Taro.showToast({ title: '分享成功，霸王餐概率提升', icon: 'none' })
   }
 
   // H5 端：点击按钮直接完成"分享"
@@ -314,16 +315,13 @@ export default function Lottery() {
     await markOrderShared()
     Taro.hideLoading()
     setNeedShare(false)
-    await startDraw()
+    Taro.showToast({ title: '分享成功，霸王餐概率提升', icon: 'none' })
   }
 
+  // 点击盲盒直接开奖（分享仅用于提升霸王餐概率，不再强制）
   const handleBoxClick = (index: number) => {
     if (drawing || stage !== 'select') return
     setSelectedBox(index)
-    if (!orderInfo?.shared) {
-      setNeedShare(true)
-      return
-    }
     void startDraw(index)
   }
 
@@ -930,6 +928,17 @@ export default function Lottery() {
       {(stage === 'select' || stage === 'opening') && (
         <>
           {renderBoxes()}
+          {stage === 'select' && (
+            <View className="clay-card mx-4 mb-3 px-4 py-3 flex flex-row items-center gap-3">
+              <View style={{ flex: 1 }}>
+                <Text className="block text-sm font-black text-amber-900">分享提升霸王餐中奖概率</Text>
+                <Text className="block text-xs text-amber-700 mt-1">分享一位好友，霸王餐权重 +0.5，最高可分享 10 位</Text>
+              </View>
+              <Button className="border-none clay-btn h-10 px-5" onClick={() => setNeedShare(true)}>
+                <Text className="text-sm font-black text-white">去分享</Text>
+              </Button>
+            </View>
+          )}
           {stage === 'select' && renderPrizePool()}
           <View style={{ height: '120px' }} />
           {renderTabBar()}
@@ -969,10 +978,13 @@ export default function Lottery() {
             <View className="bg-white rounded-full p-2" style={{ boxShadow: '0 6px 14px rgba(200, 100, 30, 0.25)' }}>
               <Image src={LOGO_URL} className="w-16 h-16 rounded-full" mode="aspectFill" />
             </View>
-            <Text className="block text-xl font-black text-amber-900 mt-4">分享给好友开奖</Text>
+            <Text className="block text-xl font-black text-amber-900 mt-4">分享提升霸王餐中奖概率</Text>
             <Text className="block text-sm text-amber-700 mt-2 text-center">
-              把好运分享出去{'\n'}即可立即开启你选的盲盒
+              不分享也可以直接点击盲盒开奖{'\n'}分享给好友可提升霸王餐的中奖概率
             </Text>
+            <View className="bg-amber-50 rounded-xl px-4 py-3 mt-3 w-full">
+              <Text className="block text-xs text-amber-700 text-center">规则：分享一位好友，霸王餐权重 +0.5{'\n'}最高可分享 10 位（+5.0）</Text>
+            </View>
             <View className="flex flex-col gap-3 w-full mt-6">
               {isMiniApp ? (
                 <Button
@@ -995,12 +1007,9 @@ export default function Lottery() {
               )}
               <Button
                 className="w-full rounded-full bg-amber-50 h-12 border-none"
-                onClick={() => {
-                  setNeedShare(false)
-                  setSelectedBox(null)
-                }}
+                onClick={() => setNeedShare(false)}
               >
-                <Text className="text-base font-bold text-amber-700">再想想</Text>
+                <Text className="text-base font-bold text-amber-700">暂不分享，直接开奖</Text>
               </Button>
             </View>
           </View>

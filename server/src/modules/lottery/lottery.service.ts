@@ -44,6 +44,8 @@ export interface LotterySettings {
   weight_share_increment: number;
   weight_social_post: number;
   weight_cap: number;
+  share_boost_per_count: number; // 每分享1位好友对霸王餐的权重加成（默认0.5）
+  share_boost_max_count: number; // 分享加成最多计入的好友数（默认10）
   rate_limit_enabled: boolean;
   rate_limit_max: number;
   captcha_enabled: boolean;
@@ -58,6 +60,8 @@ const DEFAULT_SETTINGS: LotterySettings = {
   weight_share_increment: 0.5,
   weight_social_post: 1,
   weight_cap: 20,
+  share_boost_per_count: 0.5,
+  share_boost_max_count: 10,
   rate_limit_enabled: true,
   rate_limit_max: 10,
   captcha_enabled: false,
@@ -99,6 +103,8 @@ export class LotteryService {
       weight_share_increment: parseFloat(map.get('weight_share_increment') || '0.5'),
       weight_social_post: parseFloat(map.get('weight_social_post') || '1'),
       weight_cap: parseFloat(map.get('weight_cap') || '20'),
+      share_boost_per_count: parseFloat(map.get('share_boost_per_count') || '0.5'),
+      share_boost_max_count: parseInt(map.get('share_boost_max_count') || '10', 10),
       rate_limit_enabled: (map.get('rate_limit_enabled') || 'true') === 'true',
       rate_limit_max: parseInt(map.get('rate_limit_max') || '10', 10),
       captcha_enabled: (map.get('captcha_enabled') || 'false') === 'true',
@@ -161,16 +167,32 @@ export class LotteryService {
     // 基础权重
     let weight = hasOrdered ? settings.weight_ordered : settings.weight_visitor;
 
-    // 分享权重
-    if (shareCount >= 1) {
-      weight = settings.weight_share_base + (shareCount - 1) * settings.weight_share_increment;
-    }
+    // 分享加成：每分享 1 位好友 +0.5，最多计入 10 位（叠加在基础权重上）
+    const effectiveShares = Math.min(Math.max(0, shareCount), settings.share_boost_max_count);
+    weight += effectiveShares * settings.share_boost_per_count;
 
     // 社交媒体发布权重
     weight += socialPostCount * settings.weight_social_post;
 
     // 封顶
     return Math.min(weight, settings.weight_cap);
+  }
+
+  /**
+   * 霸王餐分享加成系数：1 + min(分享次数, 上限) × 每位加成
+   * 仅作用于霸王餐类奖品，分享越多霸王餐中奖概率越高，其余奖品不受影响
+   */
+  async getShareBoost(userId: string): Promise<number> {
+    const settings = await this.getSettings();
+    if (!settings.weight_enabled) return 1;
+    const { data: user } = await this.client
+      .from('users')
+      .select('share_count')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const shareCount = Math.max(0, (user as any)?.share_count || 0);
+    const effectiveShares = Math.min(shareCount, settings.share_boost_max_count);
+    return 1 + effectiveShares * settings.share_boost_per_count;
   }
 
   // ========== IP 限流 ==========
@@ -255,16 +277,16 @@ export class LotteryService {
    * 每个奖品的有效概率 = 基础概率 × 用户权重
    * 使用 crypto 安全随机源，防止结果被预测
    */
-  private calculateWeightedLottery(prizes: Prize[], userWeight: number): { is_winner: boolean; prize: Prize | null } {
+  private calculateWeightedLottery(prizes: Prize[], freeMealBoost: number): { is_winner: boolean; prize: Prize | null } {
     const availablePrizes = prizes.filter(p => p.stock > 0);
     if (availablePrizes.length === 0) {
       return { is_winner: false, prize: null };
     }
 
-    // 计算每个奖品的加权概率
+    // 计算每个奖品的加权概率：分享加成仅放大霸王餐份额，其余奖品保持原始概率
     const weightedPrizes = availablePrizes.map(p => ({
       prize: p,
-      weight: parseFloat(p.probability || '0') * userWeight,
+      weight: parseFloat(p.probability || '0') * (p.prize_type === 'free_meal' ? freeMealBoost : 1),
     }));
 
     const totalWeight = weightedPrizes.reduce((sum, wp) => sum + wp.weight, 0);
@@ -349,11 +371,6 @@ export class LotteryService {
       throw new BadRequestException('无权操作该订单');
     }
 
-    // 2. 验证已分享
-    if (!orderData.shared) {
-      throw new BadRequestException('请先分享给好友再开奖');
-    }
-
     // 3. 验证未重复抽奖
     const { data: existingRecord } = await this.client
       .from('lottery_records')
@@ -364,8 +381,9 @@ export class LotteryService {
       throw new BadRequestException('该订单已抽过奖，不能重复抽奖');
     }
 
-    // 4. 计算用户权重
+    // 4. 计算用户权重（留痕）与霸王餐分享加成系数
     const userWeight = await this.calculateUserWeight(userId);
+    const shareBoost = await this.getShareBoost(userId);
 
     // 5. 获取活动奖品列表（库存>0，按订单所属商家隔离奖池：订单 → 套餐 → 商家）
     let poolMerchantId: string | number | null = null;
@@ -406,8 +424,8 @@ export class LotteryService {
       throw new BadRequestException('该商家当前没有可抽取的奖品');
     }
 
-    // 6. 加权抽奖（CSPRNG）— 仅从符合条件的奖品中抽取
-    let result = this.calculateWeightedLottery(eligiblePrizes, userWeight);
+    // 6. 加权抽奖（CSPRNG）— 分享加成仅作用于霸王餐，其余奖品保持原始概率
+    let result = this.calculateWeightedLottery(eligiblePrizes, shareBoost);
 
     // 7. 处理中奖模式逻辑
     let redemptionCode = '';

@@ -15,6 +15,8 @@ interface LotterySettings {
   max_daily_draws_per_user?: number
   lottery_cost_amount?: number
   cost_per_draw?: number
+  share_boost_per_count?: number
+  share_boost_max_count?: number
   updated_at?: string
 }
 
@@ -54,6 +56,8 @@ export default function SettingsPage() {
         lottery_cost_type: settings.lottery_cost_type || 'free',
         lottery_cost_amount: Number(settings.lottery_cost_amount) || 0,
         cost_per_draw: Number(settings.cost_per_draw) || 0,
+        share_boost_per_count: Number(settings.share_boost_per_count ?? 0.5) || 0.5,
+        share_boost_max_count: Number(settings.share_boost_max_count ?? 10) || 10,
       })
       toast('抽奖设置已保存')
       fetchSettings()
@@ -145,6 +149,17 @@ export default function SettingsPage() {
           </Field>
           <Field label="每次抽奖消耗积分">
             <Input type="number" min="0" value={settings.cost_per_draw ?? 0} onChange={numField('cost_per_draw')} />
+          </Field>
+        </div>
+      </Card>
+
+      <Card title="分享加成（霸王餐）" description="分享不再作为抽奖门槛，仅用于提升霸王餐中奖概率">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="每位分享权重加成" hint="默认 0.5，即分享一位好友霸王餐权重 +0.5">
+            <Input type="number" min="0" step="0.1" value={settings.share_boost_per_count ?? 0.5} onChange={numField('share_boost_per_count')} />
+          </Field>
+          <Field label="最多计入分享人数" hint="默认 10，即最高可分享 10 位获得加成">
+            <Input type="number" min="0" value={settings.share_boost_max_count ?? 10} onChange={numField('share_boost_max_count')} />
           </Field>
         </div>
       </Card>
