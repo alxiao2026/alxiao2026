@@ -389,9 +389,9 @@ const UserCenterPage = () => {
       </View>
 
       {/* 底部标语与版本信息 */}
-      <View className="py-8 flex flex-col items-center justify-center">
-        <Text className="block text-sm text-gray-400" style={{ letterSpacing: '2px' }}>- 给生活来点小惊喜 -</Text>
-        <Text className="block text-xs text-gray-300 mt-3">膨胀团 v1.0.0</Text>
+      <View className="py-4 flex flex-col items-center justify-center">
+        <Text className="block text-xs text-gray-400" style={{ letterSpacing: '2px' }}>- 给生活来点小惊喜 -</Text>
+        <Text className="block text-xs text-gray-300 mt-1">膨胀团 v1.0.0</Text>
       </View>
     </ScrollView>
   );
