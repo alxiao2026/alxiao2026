@@ -75,18 +75,21 @@ export default function AdminOrders() {
   })
 
   const initPage = async () => {
-    const localUser = Taro.getStorageSync('userInfo')
-    if (!localUser?.user_id) {
+    const userId =
+      Taro.getStorageSync('user_id') ||
+      Taro.getStorageSync('userInfo')?.user_id ||
+      ''
+    if (!userId) {
       Taro.showToast({ title: '请先登录', icon: 'none' })
       setAuthorized(false)
       return
     }
     try {
       const res = await Network.request({
-        url: `/api/users/${localUser.user_id}/permissions`,
+        url: `/api/users/${encodeURIComponent(userId)}/permissions`,
       })
       const body: any = res.data
-      const roleCode = body?.data?.roleCode ?? body?.roleCode
+      const roleCode = body?.data?.role_code ?? body?.role_code ?? body?.data?.roleCode ?? body?.roleCode
       if (roleCode !== 2) {
         Taro.showToast({ title: '仅超级管理员可查看', icon: 'none' })
         setAuthorized(false)
