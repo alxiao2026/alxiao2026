@@ -836,8 +836,11 @@ export default function PackageAdmin() {
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = 'image/*'
+      input.style.display = 'none'
+      document.body.appendChild(input)
       input.onchange = async (e: any) => {
         const file = e.target.files[0]
+        input.remove()
         if (!file) return
         if (!checkImageSize(file.size)) return
         setUploadingCover(true)
@@ -969,8 +972,11 @@ export default function PackageAdmin() {
       input.type = 'file'
       input.accept = 'image/*'
       input.multiple = true
+      input.style.display = 'none'
+      document.body.appendChild(input)
       input.onchange = async (e: any) => {
         const files = Array.from(e.target.files).slice(0, remaining) as File[]
+        input.remove()
         if (files.length === 0) return
         // 校验每个文件大小
         for (const file of files) {

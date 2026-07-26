@@ -195,8 +195,11 @@ export default function MerchantAdmin() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
+        input.style.display = 'none';
+        document.body.appendChild(input);
         input.onchange = async (e: any) => {
           const file = e.target.files[0];
+          input.remove();
           if (!file) return;
           
           if (file.size > 5 * 1024 * 1024) {
@@ -308,8 +311,11 @@ export default function MerchantAdmin() {
         input.type = 'file';
         input.accept = 'image/*';
         input.multiple = true;
+        input.style.display = 'none';
+        document.body.appendChild(input);
         input.onchange = async (e: any) => {
           const files = Array.from(e.target.files) as File[];
+          input.remove();
           const newImages: string[] = [];
           let successCount = 0;
           let failCount = 0;

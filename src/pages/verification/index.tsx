@@ -146,10 +146,6 @@ export default function VerificationPage() {
           setVerifyFailReason('该奖品已核销过，无法重复核销');
           return;
         }
-        if (prize.expired) {
-          setVerifyFailReason('该奖品兑换已过期，无法核销');
-          return;
-        }
         await doVerify(code, 1);
         return;
       }
