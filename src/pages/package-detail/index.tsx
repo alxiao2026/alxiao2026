@@ -775,10 +775,10 @@ export default function PackageDetail() {
         <View className="flex flex-row items-end gap-3">
           <View className="flex flex-col">
             <Text className="block text-xs text-gray-500">到手价</Text>
-            <Text className="block text-xl font-bold text-[#FF4757]">¥{currentPrice.toFixed(0)}</Text>
+            <Text className="block text-xl font-bold text-[#FF4757]">¥{currentPrice.toFixed(2)}</Text>
           </View>
           {originalPrice > currentPrice && (
-            <Text className="block text-sm text-gray-400 line-through pb-1">¥{originalPrice.toFixed(0)}</Text>
+            <Text className="block text-sm text-gray-400 line-through pb-1">¥{originalPrice.toFixed(2)}</Text>
           )}
         </View>
         <View

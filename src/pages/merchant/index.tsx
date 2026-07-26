@@ -347,9 +347,9 @@ export default function MerchantPage() {
                         </View>
                         <View className="flex flex-row items-end justify-between mt-2">
                           <View className="flex flex-row items-baseline gap-2">
-                            <Text className="text-lg font-bold text-[#FF4757]">¥{parseFloat(pkg.price)}</Text>
+                            <Text className="text-lg font-bold text-[#FF4757]">¥{parseFloat(pkg.price).toFixed(2)}</Text>
                             {!!pkg.original_price && parseFloat(pkg.original_price) > parseFloat(pkg.price) && (
-                              <Text className="text-xs text-gray-400 line-through">¥{parseFloat(pkg.original_price)}</Text>
+                              <Text className="text-xs text-gray-400 line-through">¥{parseFloat(pkg.original_price).toFixed(2)}</Text>
                             )}
                           </View>
                           <View className="flex flex-row items-center gap-1">

@@ -305,11 +305,11 @@ export default function OrderDetail() {
               </Text>
               <View className="flex flex-row items-baseline gap-2 mt-1">
                 <Text className="block text-lg font-bold text-[#FF4757]">
-                  ¥{parseFloat(String(order.price)).toFixed(0)}
+                  ¥{parseFloat(String(order.price)).toFixed(2)}
                 </Text>
                 {order.original_price && parseFloat(String(order.original_price)) > parseFloat(String(order.price)) && (
                   <Text className="block text-xs text-gray-400 line-through">
-                    ¥{parseFloat(String(order.original_price)).toFixed(0)}
+                    ¥{parseFloat(String(order.original_price)).toFixed(2)}
                   </Text>
                 )}
               </View>
