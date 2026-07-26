@@ -2,7 +2,7 @@ import { View, Text, Image, Picker } from '@tarojs/components'
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -192,13 +192,14 @@ const AdminPage = () => {
       <View className="bg-white rounded-2xl mx-4 -mt-4 p-4 shadow-sm relative z-10">
         <View className="flex flex-row flex-wrap">
           {[
-            { icon: 'scan', label: '验券及退款', color: '#FF4757', bg: '#fef2f2', page: '/pages/verification/index', adminOnly: false },
+            { icon: 'clipboard', label: '订单明细', color: '#3b82f6', bg: '#eff6ff', page: '/pages/admin-orders/index', adminOnly: true },
+            { icon: 'scan', label: '验券及退款', color: '#FF4757', bg: '#fef2f2', page: '/pages/verification/index', adminOnly: false, merchantOnly: true },
             { icon: 'package', label: '商品管理', color: '#8b5cf6', bg: '#f5f3ff', page: '/pages/product-manage/index', adminOnly: false },
             { icon: 'gift', label: '奖品管理', color: '#f59e0b', bg: '#fffbeb', page: '/pages/prize-manage/index', adminOnly: false },
             { icon: 'trophy', label: '抽奖记录', color: '#06b6d4', bg: '#ecfeff', page: '/pages/admin-lottery-records/index', adminOnly: false },
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
-          ].filter(item => !item.adminOnly || roleCode === 2).map((item, _, arr) => (
+          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item, _, arr) => (
             <View
               key={item.label}
               className="flex flex-col items-center py-2"
@@ -207,6 +208,7 @@ const AdminPage = () => {
             >
               <View className="w-12 h-12 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
                 {item.icon === 'scan' && <ScanLine size={22} color={item.color} />}
+                {item.icon === 'clipboard' && <ClipboardList size={22} color={item.color} />}
                 {item.icon === 'package' && <Package size={22} color={item.color} />}
                 {item.icon === 'gift' && <Gift size={22} color={item.color} />}
                 {item.icon === 'trophy' && <Trophy size={22} color={item.color} />}

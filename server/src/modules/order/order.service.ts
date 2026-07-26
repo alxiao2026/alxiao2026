@@ -22,6 +22,12 @@ export interface Order {
   order_no: string | null;
   created_at: string;
   updated_at: string | null;
+  coupon_record_id?: string | null;
+  coupon_discount?: string | null;
+  verified_by?: string | null;
+  // 组装字段（非数据库列）：门店名称、核销人显示名
+  merchant_name?: string | null;
+  verifier_name?: string | null;
 }
 
 function generateVerificationCode(): string {
@@ -52,7 +58,7 @@ function localTimeStr(d: Date): string {
 export class OrderService {
   private client = getSupabaseClient();
 
-  async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string): Promise<Order[]> {
+  async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string): Promise<Order[]> {
     // 先查该商家的所有套餐ID
     const { data: packages, error: pkgError } = await this.client
       .from('packages')
@@ -77,23 +83,105 @@ export class OrderService {
     if (endDate) {
       query = query.lte('created_at', `${endDate}T23:59:59`);
     }
+    if (verifiedBy) {
+      query = query.eq('verified_by', verifiedBy);
+    }
 
     const { data, error } = await query;
     if (error) throw new Error(`查询商家订单失败: ${error.message}`);
     const orders = (data as Order[]) || [];
     await this.refundExpiredOrders(orders);
+    await this.decorateOrders(orders);
     return orders;
   }
 
-  async findAll(): Promise<Order[]> {
-    const { data, error } = await this.client
+  async findAll(filters?: { status?: string; startDate?: string; endDate?: string; verifiedBy?: string }): Promise<Order[]> {
+    let query = this.client
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
+    if (filters?.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.startDate) {
+      query = query.gte('created_at', `${filters.startDate}T00:00:00`);
+    }
+    if (filters?.endDate) {
+      query = query.lte('created_at', `${filters.endDate}T23:59:59`);
+    }
+    if (filters?.verifiedBy) {
+      query = query.eq('verified_by', filters.verifiedBy);
+    }
+    const { data, error } = await query;
     if (error) throw new Error(`查询订单列表失败: ${error.message}`);
     const orders = (data as Order[]) || [];
     await this.refundExpiredOrders(orders);
+    await this.decorateOrders(orders);
     return orders;
+  }
+
+  // 批量组装门店名称与核销人显示名（避免 N+1 查询）
+  private async decorateOrders(orders: Order[]): Promise<void> {
+    if (orders.length === 0) return;
+    const packageIds = [...new Set(orders.map((o) => o.package_id).filter(Boolean))] as string[];
+    const verifierIds = [...new Set(orders.map((o) => o.verified_by).filter(Boolean))] as string[];
+
+    const merchantNameByPackage = new Map<string, string>();
+    if (packageIds.length > 0) {
+      const { data: packages } = await this.client
+        .from('packages')
+        .select('id, merchant_id')
+        .in('id', packageIds);
+      // packages.merchant_id 为 varchar，merchants.id 为 integer，Map 键统一转 String 比较
+      const merchantIds = [...new Set((packages || []).map((p: any) => Number(p.merchant_id)).filter((v: number) => !Number.isNaN(v)))];
+      const merchantNameById = new Map<string, string>();
+      if (merchantIds.length > 0) {
+        const { data: merchants } = await this.client
+          .from('merchants')
+          .select('id, name')
+          .in('id', merchantIds);
+        (merchants || []).forEach((m: any) => merchantNameById.set(String(m.id), m.name));
+      }
+      (packages || []).forEach((p: any) => {
+        const name = merchantNameById.get(String(p.merchant_id));
+        if (name) merchantNameByPackage.set(p.id, name);
+      });
+    }
+
+    const verifierNameById = new Map<string, string>();
+    if (verifierIds.length > 0) {
+      const { data: users } = await this.client
+        .from('users')
+        .select('user_id, nick_name, phone')
+        .in('user_id', verifierIds);
+      (users || []).forEach((u: any) => {
+        verifierNameById.set(u.user_id, u.nick_name || u.phone || u.user_id);
+      });
+    }
+
+    orders.forEach((o) => {
+      o.merchant_name = (o.package_id && merchantNameByPackage.get(o.package_id)) || null;
+      o.verifier_name = (o.verified_by && verifierNameById.get(o.verified_by)) || null;
+    });
+  }
+
+  // 核销账号列表（供筛选器下拉）：所有产生过核销行为的账号
+  async findVerifiers(): Promise<Array<{ user_id: string; name: string }>> {
+    const { data, error } = await this.client
+      .from('orders')
+      .select('verified_by')
+      .not('verified_by', 'is', null);
+    if (error) throw new Error(`查询核销账号失败: ${error.message}`);
+    const ids = [...new Set((data || []).map((r: any) => r.verified_by).filter(Boolean))] as string[];
+    if (ids.length === 0) return [];
+    const { data: users } = await this.client
+      .from('users')
+      .select('user_id, nick_name, phone')
+      .in('user_id', ids);
+    return (users || []).map((u: any) => ({
+      user_id: u.user_id,
+      name: u.nick_name || u.phone || u.user_id,
+    }));
   }
 
   async findByUserId(userId: string): Promise<Order[]> {
@@ -514,6 +602,8 @@ export class OrderService {
         status: isAllVerified ? 'used' : 'pending',
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        // 记录本次核销操作账号（未传时保留原值）
+        ...(merchantUserId ? { verified_by: merchantUserId } : {}),
       })
       .eq('id', order.id)
       .select()

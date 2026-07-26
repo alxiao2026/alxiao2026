@@ -18,6 +18,7 @@ export default defineAppConfig({
     'pages/order-details/index',
     'pages/lottery-records/index',
     'pages/admin-lottery-records/index',
+    'pages/admin-orders/index',
     'pages/lottery/index'
   ],
   window: {

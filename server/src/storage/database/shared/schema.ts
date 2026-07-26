@@ -97,6 +97,7 @@ export const orders = pgTable("orders", {
 	order_no: varchar("order_no", { length: 64 }), // 订单编号
 	status: varchar("status", { length: 20 }).notNull().default("pending"), // pending/paid/completed/expired/refunded
 	shared: boolean("shared").notNull().default(false),
+	verified_by: varchar("verified_by", { length: 128 }), // 最近核销人账号ID
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
 }, (table) => [
