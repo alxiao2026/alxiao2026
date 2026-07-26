@@ -41,12 +41,13 @@ export class PrizeService {
   }
 
   async findActive(merchantId?: string | number | null): Promise<Prize[]> {
-    // 兜底奖永远有货，不受库存过滤；常规奖需有库存才展示
+    // C 端展示接口：兜底奖不在前端展示（仅后台参与候补抽奖），常规奖需有库存才展示
     let query = this.client
       .from('prizes')
       .select('*')
       .eq('is_active', true)
-      .or('stock.gt.0,is_fallback.eq.true');
+      .eq('is_fallback', false)
+      .gt('stock', 0);
     if (merchantId !== undefined && merchantId !== null && `${merchantId}` !== '') {
       query = query.eq('merchant_id', Number(merchantId));
     }

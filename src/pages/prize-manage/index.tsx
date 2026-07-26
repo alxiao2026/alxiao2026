@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store, ShieldCheck } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -24,6 +24,7 @@ interface Prize {
   product_value: string;
   merchant_id: number | null;
   validity_hours: number | null;
+  is_fallback?: boolean | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -45,6 +46,7 @@ export default function PrizeManagePage() {
     prize_type: 'coupon' as 'coupon' | 'product' | 'free_meal',
     coupon_amount: '', coupon_min_spend: '',
     product_name: '', product_value: '', validity_hours: '',
+    is_fallback: false,
   });
   // 可用门店：null 表示全部门店通用；商家账号固定为本店
   const [merchants, setMerchants] = useState<{ id: number; name: string }[]>([]);
@@ -108,7 +110,7 @@ export default function PrizeManagePage() {
 
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '', validity_hours: '' });
+    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '', validity_hours: '', is_fallback: false });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -121,6 +123,7 @@ export default function PrizeManagePage() {
       coupon_amount: prize.coupon_amount || '', coupon_min_spend: prize.coupon_min_spend || '',
       product_name: prize.product_name || '', product_value: prize.product_value || '',
       validity_hours: prize.validity_hours ? String(prize.validity_hours) : '',
+      is_fallback: !!prize.is_fallback,
     });
     setFormMerchantId(prize.merchant_id ?? null);
     setShowDialog(true);
@@ -130,8 +133,11 @@ export default function PrizeManagePage() {
     if (!prizeForm.name) { Taro.showToast({ title: '请输入奖品名称', icon: 'none' }); return; }
     try {
       const payload: Record<string, any> = {
-        name: prizeForm.name, description: prizeForm.description, probability: prizeForm.probability,
-        stock: Number(prizeForm.stock), prize_type: prizeForm.prize_type,
+        name: prizeForm.name, description: prizeForm.description,
+        // 兜底奖：不设概率与库存，仅作为候补（未中其他奖品时必中）
+        probability: prizeForm.is_fallback ? '0' : prizeForm.probability,
+        stock: prizeForm.is_fallback ? 0 : Number(prizeForm.stock),
+        prize_type: prizeForm.prize_type, is_fallback: prizeForm.is_fallback,
         coupon_amount: Number(prizeForm.coupon_amount) || 0, coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
       };
@@ -187,8 +193,8 @@ export default function PrizeManagePage() {
       <View className="px-4 mt-3">
         <View className="bg-red-50 border border-red-200 rounded-xl p-3">
           <Text className="block text-xs text-[#FF4757]">
-            总概率: <Text className="font-bold">{prizes.filter(p => p.is_active).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
-            （建议总概率保持 100%，确保100%中奖）
+            总概率: <Text className="font-bold">{prizes.filter(p => p.is_active && !p.is_fallback).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
+            （低于 100% 的差额由兜底奖候补；未设兜底奖则可能出现未中奖）
           </Text>
         </View>
       </View>
@@ -236,6 +242,9 @@ export default function PrizeManagePage() {
                   <Badge variant="outline">
                     {prize.prize_type === 'coupon' ? '优惠券' : prize.prize_type === 'product' ? '商品' : '霸王餐'}
                   </Badge>
+                  {prize.is_fallback && (
+                    <Badge variant="secondary">兜底奖</Badge>
+                  )}
                   <Badge variant="secondary">{getMerchantName(prize.merchant_id)}</Badge>
                 </View>
 
@@ -246,12 +255,20 @@ export default function PrizeManagePage() {
 
                 {/* 统计信息 */}
                 <View className="flex flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-                  <Text className="block text-xs text-gray-400">
-                    概率 <Text className="text-[#FF4757] font-semibold">{prize.probability}%</Text>
-                  </Text>
-                  <Text className="block text-xs text-gray-400">
-                    库存 <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
-                  </Text>
+                  {prize.is_fallback ? (
+                    <Text className="block text-xs text-gray-400">
+                      兜底奖 <Text className="text-amber-600 font-semibold">候补必中 · 不限量</Text>
+                    </Text>
+                  ) : (
+                    <>
+                      <Text className="block text-xs text-gray-400">
+                        概率 <Text className="text-[#FF4757] font-semibold">{prize.probability}%</Text>
+                      </Text>
+                      <Text className="block text-xs text-gray-400">
+                        库存 <Text className="text-gray-600 font-semibold">{prize.stock}</Text>
+                      </Text>
+                    </>
+                  )}
                   {prize.prize_type === 'coupon' && (
                     <Text className="block text-xs text-gray-400">
                       金额 <Text className="text-[#FF4757] font-semibold">¥{prize.coupon_amount}</Text>
@@ -310,6 +327,20 @@ export default function PrizeManagePage() {
                         <Text className={`block text-sm ${prizeForm.prize_type === opt.value ? 'text-red-600 font-medium' : 'text-gray-600'}`}>{opt.label}</Text>
                       </View>
                     ))}
+                  </View>
+                </View>
+                {/* 兜底奖标签：不设概率与库存，未中其他奖品时必中此奖；不在用户端奖池展示 */}
+                <View
+                  className={`rounded-xl px-3 py-3 border flex flex-row items-center gap-2 ${prizeForm.is_fallback ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white'}`}
+                  onClick={() => setPrizeForm({ ...prizeForm, is_fallback: !prizeForm.is_fallback })}
+                >
+                  <ShieldCheck size={18} color={prizeForm.is_fallback ? '#d97706' : '#9ca3af'} />
+                  <View className="flex-1 min-w-0">
+                    <Text className={`block text-sm ${prizeForm.is_fallback ? 'text-amber-700 font-semibold' : 'text-gray-700'}`}>兜底奖</Text>
+                    <Text className="block text-xs text-gray-400">不设概率只管候补，未中其他奖品时必中此奖</Text>
+                  </View>
+                  <View className={`w-5 h-5 rounded-full border flex items-center justify-center ${prizeForm.is_fallback ? 'bg-amber-500 border-amber-500' : 'border-gray-300'}`}>
+                    {prizeForm.is_fallback && <Check size={12} color="#ffffff" />}
                   </View>
                 </View>
                 {/* 商品/霸王餐：奖品有效期（小时），留空使用全局默认 */}
@@ -374,20 +405,26 @@ export default function PrizeManagePage() {
                     </View>
                   </>
                 )}
-                <View className="flex flex-row gap-3">
-                  <View className="flex-1">
-                    <Text className="block text-sm text-black mb-1">中奖概率（%）</Text>
-                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
-                      <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.probability} placeholder="如 10" onInput={(e) => setPrizeForm({ ...prizeForm, probability: e.detail.value })} />
+                {prizeForm.is_fallback ? (
+                  <View className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    <Text className="block text-xs text-amber-700">兜底奖无需设置概率与库存：永远有货，其他奖品未中时自动候补发放，且不在用户端奖池展示</Text>
+                  </View>
+                ) : (
+                  <View className="flex flex-row gap-3">
+                    <View className="flex-1">
+                      <Text className="block text-sm text-black mb-1">中奖概率（%）</Text>
+                      <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                        <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.probability} placeholder="如 10" onInput={(e) => setPrizeForm({ ...prizeForm, probability: e.detail.value })} />
+                      </View>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="block text-sm text-black mb-1">库存数量</Text>
+                      <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
+                        <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.stock} placeholder="如 100" onInput={(e) => setPrizeForm({ ...prizeForm, stock: e.detail.value })} />
+                      </View>
                     </View>
                   </View>
-                  <View className="flex-1">
-                    <Text className="block text-sm text-black mb-1">库存数量</Text>
-                    <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
-                      <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.stock} placeholder="如 100" onInput={(e) => setPrizeForm({ ...prizeForm, stock: e.detail.value })} />
-                    </View>
-                  </View>
-                </View>
+                )}
                 <View>
                   <Text className="block text-sm text-black mb-1">奖品描述</Text>
                   <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
