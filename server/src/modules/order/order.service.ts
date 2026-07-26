@@ -669,6 +669,7 @@ export class OrderService {
     }
 
     if (prize.redeemed) throw new BadRequestException('该奖品已核销过');
+    if (prize.expired) throw new BadRequestException('该奖品兑换已过期，无法核销');
 
     const { data: updated, error } = await this.client
       .from('lottery_records')
