@@ -367,13 +367,27 @@ export class LotteryService {
     // 4. 计算用户权重
     const userWeight = await this.calculateUserWeight(userId);
 
-    // 5. 获取活动奖品列表（库存>0）
-    const { data: prizes, error: prizesError } = await this.client
+    // 5. 获取活动奖品列表（库存>0，按订单所属商家隔离奖池：订单 → 套餐 → 商家）
+    let poolMerchantId: string | number | null = null;
+    if (orderData.package_id) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('merchant_id')
+        .eq('id', orderData.package_id)
+        .maybeSingle();
+      poolMerchantId = (pkg as any)?.merchant_id ?? null;
+    }
+
+    let prizesQuery = this.client
       .from('prizes')
       .select('*')
       .eq('is_active', true)
       .gt('stock', 0)
       .order('created_at', { ascending: true });
+    if (poolMerchantId !== null && poolMerchantId !== undefined && `${poolMerchantId}` !== '') {
+      prizesQuery = prizesQuery.eq('merchant_id', poolMerchantId);
+    }
+    const { data: prizes, error: prizesError } = await prizesQuery;
     if (prizesError) throw new Error(`查询奖品失败: ${prizesError.message}`);
 
     const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
@@ -389,7 +403,7 @@ export class LotteryService {
     });
 
     if (eligiblePrizes.length === 0) {
-      throw new BadRequestException('当前没有可抽取的奖品');
+      throw new BadRequestException('该商家当前没有可抽取的奖品');
     }
 
     // 6. 加权抽奖（CSPRNG）— 仅从符合条件的奖品中抽取

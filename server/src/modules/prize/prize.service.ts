@@ -38,15 +38,35 @@ export class PrizeService {
     return (data as Prize[]) || [];
   }
 
-  async findActive(): Promise<Prize[]> {
-    const { data, error } = await this.client
+  async findActive(merchantId?: string | number | null): Promise<Prize[]> {
+    let query = this.client
       .from('prizes')
       .select('*')
       .eq('is_active', true)
-      .gt('stock', 0)
-      .order('created_at', { ascending: true });
+      .gt('stock', 0);
+    if (merchantId !== undefined && merchantId !== null && `${merchantId}` !== '') {
+      query = query.eq('merchant_id', Number(merchantId));
+    }
+    const { data, error } = await query.order('created_at', { ascending: true });
     if (error) throw new Error(`查询活动奖品失败: ${error.message}`);
     return (data as Prize[]) || [];
+  }
+
+  /** 通过订单解析所属商家（订单 → 套餐 → 商家），用于按商家隔离奖池 */
+  async resolveMerchantIdByOrderId(orderId: string): Promise<string | number | null> {
+    const { data: order } = await this.client
+      .from('orders')
+      .select('package_id')
+      .eq('id', orderId)
+      .maybeSingle();
+    const packageId = (order as any)?.package_id;
+    if (!packageId) return null;
+    const { data: pkg } = await this.client
+      .from('packages')
+      .select('merchant_id')
+      .eq('id', packageId)
+      .maybeSingle();
+    return (pkg as any)?.merchant_id ?? null;
   }
 
   async findOne(id: string): Promise<Prize> {

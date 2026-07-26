@@ -11,8 +11,13 @@ export class PrizeController {
   }
 
   @Get('active')
-  findActive() {
-    return this.prizeService.findActive();
+  async findActive(@Query('merchant_id') merchantId?: string, @Query('order_id') orderId?: string) {
+    // 传订单号时按订单所属商家隔离奖池
+    if (orderId) {
+      const mid = await this.prizeService.resolveMerchantIdByOrderId(orderId);
+      return this.prizeService.findActive(mid);
+    }
+    return this.prizeService.findActive(merchantId);
   }
 
   @Get(':id')

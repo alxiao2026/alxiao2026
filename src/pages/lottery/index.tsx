@@ -232,8 +232,9 @@ export default function Lottery() {
   // 今日奖池
   const fetchPrizePool = async () => {
     try {
-      console.log('[Lottery] 请求奖池', { url: '/api/prizes/active', method: 'GET' })
-      const res = await Network.request({ url: '/api/prizes/active', method: 'GET' })
+      const url = orderId ? `/api/prizes/active?order_id=${orderId}` : '/api/prizes/active'
+      console.log('[Lottery] 请求奖池', { url, method: 'GET' })
+      const res = await Network.request({ url, method: 'GET' })
       // 接口直接返回数组（无信封结构），兼容两种返回格式
       const raw = res.data as any
       const list = Array.isArray(raw) ? raw : (raw?.data || [])
