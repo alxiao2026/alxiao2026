@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 角色编码：0=普通消费者，1=商家用户，2=系统管理员
@@ -71,6 +71,44 @@ export interface UpdateUserBody {
 
 @Injectable()
 export class UserService {
+  /** 用户列表（管理后台用，分页 + 关键词搜索） */
+  async listUsers(page = 1, pageSize = 20, keyword?: string) {
+    const supabase = getSupabaseClient();
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from('users')
+      .select('user_id, nick_name, phone, avatar_url, role, merchant_id, created_at, last_login_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (keyword) {
+      // 清洗 ilike 通配符与 or 语法分隔符，防止查询语法被破坏
+      const kw = keyword.replace(/[%_,]/g, '');
+      if (kw) {
+        query = query.or(`nick_name.ilike.%${kw}%,phone.ilike.%${kw}%`);
+      }
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('获取用户列表失败:', error);
+      throw new InternalServerErrorException('获取用户列表失败');
+    }
+
+    return {
+      code: 200,
+      msg: 'success',
+      data: {
+        list: data || [],
+        total: count || 0,
+        page,
+        page_size: pageSize,
+      },
+    };
+  }
+
   /** 获取或创建用户 */
   async getOrCreate(userId: string, nickName?: string, avatarUrl?: string): Promise<User> {
     const supabase = getSupabaseClient();

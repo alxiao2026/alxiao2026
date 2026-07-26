@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app.module';
 import * as express from 'express';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { HttpStatusInterceptor } from '@/interceptors/http-status.interceptor';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
@@ -34,6 +36,21 @@ async function bootstrap() {
   app.useGlobalInterceptors(new HttpStatusInterceptor());
   // 1. 开启优雅关闭 Hooks (关键!)
   app.enableShutdownHooks();
+
+  // 托管 PC 管理后台静态资源（admin 构建产物），访问路径 /admin
+  // dev 环境 cwd=server；生产 deploy_run.sh 中 cwd=server/dist
+  const adminCandidates = [
+    join(process.cwd(), 'public', 'admin'),
+    join(process.cwd(), '..', 'public', 'admin'),
+    join(__dirname, '..', 'public', 'admin'),
+  ];
+  const adminDir = adminCandidates.find((d) => existsSync(join(d, 'index.html')));
+  if (adminDir) {
+    app.useStaticAssets(adminDir, { prefix: '/admin' });
+    console.log(`[Admin] PC 管理后台已托管: /admin -> ${adminDir}`);
+  } else {
+    console.log('[Admin] 未找到管理后台构建产物，跳过静态托管');
+  }
 
   // 2. 解析端口
   const port = parsePort();

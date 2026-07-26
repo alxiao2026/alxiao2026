@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  /* 品牌色：延续移动端"膨胀团"的红橙促销色 */
+  --color-brand: #ff4757;
+  --color-brand-dark: #e84150;
+  --color-brand-light: #fff1f2;
+  --color-gold: #ffa502;
+  --color-ink: #2f3542;
+  --color-ink-sub: #747d8c;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f1f2f6;
+  color: #2f3542;
+}

@@ -48,3 +48,4 @@ pnpm-debug.log*
 .codegraph
 node-compile-cache/
 .codegraph/
+server/public/admin/

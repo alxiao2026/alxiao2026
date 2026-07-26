@@ -41,6 +41,18 @@ export class UserController {
     return { code: 200, msg: 'success', data: user };
   }
 
+  /** 用户列表（管理后台，分页 + 关键词搜索） */
+  @Get()
+  async listUsers(
+    @Query('page') page?: string,
+    @Query('page_size') pageSize?: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    const p = Math.max(1, parseInt(page || '1', 10) || 1);
+    const ps = Math.min(100, Math.max(1, parseInt(pageSize || '20', 10) || 20));
+    return this.userService.listUsers(p, ps, keyword?.trim());
+  }
+
   /** 获取用户信息 */
   @Get(':userId')
   async getProfile(@Param('userId') userId: string) {
