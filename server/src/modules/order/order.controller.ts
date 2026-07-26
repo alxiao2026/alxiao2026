@@ -6,12 +6,12 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get()
-  async findAll(@Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string, @Query('verified_by') verifiedBy?: string): Promise<{ code: number; data: Order[] }> {
+  async findAll(@Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string, @Query('verified_by') verifiedBy?: string, @Query('keyword') keyword?: string): Promise<{ code: number; data: Order[] }> {
     if (merchantId) {
-      const data = await this.orderService.findByMerchant(merchantId, status, startDate, endDate, verifiedBy);
+      const data = await this.orderService.findByMerchant(merchantId, status, startDate, endDate, verifiedBy, keyword);
       return { code: 200, data };
     }
-    const data = await this.orderService.findAll({ status, startDate, endDate, verifiedBy });
+    const data = await this.orderService.findAll({ status, startDate, endDate, verifiedBy, keyword });
     return { code: 200, data };
   }
 

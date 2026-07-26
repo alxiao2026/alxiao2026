@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Picker } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Store, UserCheck, ChevronDown, Calendar, ClipboardList } from 'lucide-react-taro'
+import { Input } from '@/components/ui/input'
+import { Store, UserCheck, ChevronDown, Calendar, ClipboardList, Search, X } from 'lucide-react-taro'
 import { formatPrice } from '@/lib/utils'
 
 interface OrderItem {
@@ -14,6 +15,7 @@ interface OrderItem {
   package_name: string
   merchant_name?: string | null
   nick_name?: string | null
+  buyer_phone?: string | null
   price: string
   quantity: number
   status: string
@@ -69,6 +71,9 @@ export default function AdminOrders() {
   const [customEnd, setCustomEnd] = useState('')
   const [merchantIndex, setMerchantIndex] = useState(0) // 0 = 全部门店
   const [verifierIndex, setVerifierIndex] = useState(0) // 0 = 全部账号
+  const [searchInput, setSearchInput] = useState('') // 搜索框受控值
+  const [keyword, setKeyword] = useState('') // 实际生效的搜索关键词
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useDidShow(() => {
     void initPage()
@@ -167,12 +172,14 @@ export default function AdminOrders() {
     verifierIndex?: number
     customStart?: string
     customEnd?: string
+    keyword?: string
   }) => {
     const tr = override?.timeRange ?? timeRange
     const mi = override?.merchantIndex ?? merchantIndex
     const vi = override?.verifierIndex ?? verifierIndex
     const cs = override?.customStart ?? customStart
     const ce = override?.customEnd ?? customEnd
+    const kw = override?.keyword ?? keyword
 
     const today = new Date()
     let start: string | undefined
@@ -205,6 +212,7 @@ export default function AdminOrders() {
     if (vi > 0 && verifiers[vi - 1]) params.push(`verified_by=${encodeURIComponent(verifiers[vi - 1].user_id)}`)
     if (start) params.push(`start_date=${start}`)
     if (end) params.push(`end_date=${end}`)
+    if (kw.trim()) params.push(`keyword=${encodeURIComponent(kw.trim())}`)
     const query = params.length ? `?${params.join('&')}` : ''
 
     setLoading(true)
@@ -228,6 +236,23 @@ export default function AdminOrders() {
     if (key !== 'custom') {
       void fetchOrders({ timeRange: key })
     }
+  }
+
+  // 搜索输入防抖：500ms 后生效并重新查询
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setKeyword(value)
+      void fetchOrders({ keyword: value })
+    }, 500)
+  }
+
+  const clearSearch = () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    setSearchInput('')
+    setKeyword('')
+    void fetchOrders({ keyword: '' })
   }
 
   const getStatusBadge = (status: string): { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
@@ -267,6 +292,24 @@ export default function AdminOrders() {
     <View className="min-h-screen bg-gray-50 pb-8">
       {/* 筛选区 */}
       <View className="bg-white px-4 pt-3 pb-4 shadow-sm">
+        {/* 搜索栏：订单号/店名/套餐名/核销人/买家手机号 */}
+        <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2 mb-3">
+          <Search size={15} color="#9ca3af" />
+          <View className="flex-1">
+            <Input
+              className="w-full bg-transparent text-sm"
+              placeholder="搜索订单号 / 店名 / 核销人 / 手机号"
+              value={searchInput}
+              onInput={(e) => handleSearchChange(String(e.detail.value))}
+            />
+          </View>
+          {searchInput.length > 0 && (
+            <View onClick={clearSearch}>
+              <X size={15} color="#9ca3af" />
+            </View>
+          )}
+        </View>
+
         {/* 时间段快捷选择 */}
         <View className="flex flex-row flex-wrap gap-2">
           {TIME_OPTIONS.map((t) => (
@@ -356,6 +399,7 @@ export default function AdminOrders() {
           {merchantNames[merchantIndex]}
           {verifierIndex > 0 ? ` · ${verifierNames[verifierIndex]}` : ''}
           {dateRange.start ? ` · ${dateRange.start} ~ ${dateRange.end || dateRange.start}` : ' · 全部时间'}
+          {keyword.trim() ? ` · 搜索"${keyword.trim()}"` : ''}
           {` · 共${orders.length}单`}
         </Text>
       </View>
@@ -384,6 +428,7 @@ export default function AdminOrders() {
                   <Text className="block text-base font-semibold text-gray-800">{order.package_name}</Text>
                   <Text className="block text-xs text-gray-500 mt-1">
                     {order.merchant_name || '未知门店'} · {order.nick_name || '匿名用户'}
+                    {order.buyer_phone ? ` · ${order.buyer_phone}` : ''}
                   </Text>
                   <View className="flex flex-row items-center justify-between mt-2">
                     <Text className="block text-xs text-gray-400">订单号 {order.order_no}</Text>

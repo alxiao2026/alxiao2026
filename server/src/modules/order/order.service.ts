@@ -28,6 +28,7 @@ export interface Order {
   // 组装字段（非数据库列）：门店名称、核销人显示名
   merchant_name?: string | null;
   verifier_name?: string | null;
+  buyer_phone?: string | null;
 }
 
 function generateVerificationCode(): string {
@@ -58,7 +59,7 @@ function localTimeStr(d: Date): string {
 export class OrderService {
   private client = getSupabaseClient();
 
-  async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string): Promise<Order[]> {
+  async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string, keyword?: string): Promise<Order[]> {
     // 先查该商家的所有套餐ID
     const { data: packages, error: pkgError } = await this.client
       .from('packages')
@@ -92,10 +93,10 @@ export class OrderService {
     const orders = (data as Order[]) || [];
     await this.refundExpiredOrders(orders);
     await this.decorateOrders(orders);
-    return orders;
+    return this.matchKeyword(orders, keyword);
   }
 
-  async findAll(filters?: { status?: string; startDate?: string; endDate?: string; verifiedBy?: string }): Promise<Order[]> {
+  async findAll(filters?: { status?: string; startDate?: string; endDate?: string; verifiedBy?: string; keyword?: string }): Promise<Order[]> {
     let query = this.client
       .from('orders')
       .select('*')
@@ -117,7 +118,7 @@ export class OrderService {
     const orders = (data as Order[]) || [];
     await this.refundExpiredOrders(orders);
     await this.decorateOrders(orders);
-    return orders;
+    return this.matchKeyword(orders, filters?.keyword);
   }
 
   // 批量组装门店名称与核销人显示名（避免 N+1 查询）
@@ -149,20 +150,36 @@ export class OrderService {
     }
 
     const verifierNameById = new Map<string, string>();
-    if (verifierIds.length > 0) {
+    const buyerPhoneById = new Map<string, string>();
+    const buyerIds = [...new Set(orders.map((o) => o.user_id).filter(Boolean))] as string[];
+    const allUserIds = [...new Set([...verifierIds, ...buyerIds])];
+    if (allUserIds.length > 0) {
       const { data: users } = await this.client
         .from('users')
         .select('user_id, nick_name, phone')
-        .in('user_id', verifierIds);
+        .in('user_id', allUserIds);
       (users || []).forEach((u: any) => {
         verifierNameById.set(u.user_id, u.nick_name || u.phone || u.user_id);
+        if (u.phone) buyerPhoneById.set(u.user_id, u.phone);
       });
     }
 
     orders.forEach((o) => {
       o.merchant_name = (o.package_id && merchantNameByPackage.get(o.package_id)) || null;
       o.verifier_name = (o.verified_by && verifierNameById.get(o.verified_by)) || null;
+      o.buyer_phone = (o.user_id && buyerPhoneById.get(o.user_id)) || null;
     });
+  }
+
+  // 关键词模糊匹配：订单号/套餐名/门店名/核销人/买家手机号/买家昵称
+  private matchKeyword(orders: Order[], keyword?: string): Order[] {
+    const kw = (keyword || '').trim().toLowerCase();
+    if (!kw) return orders;
+    return orders.filter((o) =>
+      [o.order_no, o.package_name, o.merchant_name, o.verifier_name, o.buyer_phone, o.nick_name]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(kw)),
+    );
   }
 
   // 核销账号列表（供筛选器下拉）：所有产生过核销行为的账号
