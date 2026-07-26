@@ -310,7 +310,7 @@ const AdminPage = () => {
           <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <TrendingUp size={14} color="#f97316" />
-              <Text className="block text-xs text-[#FF4757]">销售额金额</Text>
+              <Text className="block text-xs text-[#FF4757]">销售金额</Text>
             </View>
             <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todayRevenue}</Text>
             <Text className="block text-xs text-red-300 mt-1">{merchantStats.todayOrders}笔订单</Text>
