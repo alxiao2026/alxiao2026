@@ -4,6 +4,7 @@ import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
 import AppTabBar from '@/components/app-tab-bar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
 } from 'lucide-react-taro';
@@ -67,6 +68,7 @@ interface WinnerRecord {
   prize_name: string;
   user_id: string;
   nick_name: string;
+  avatar_url: string | null;
   created_at: string;
 }
 
@@ -474,7 +476,12 @@ const IndexPage = () => {
                   <SwiperItem key={gi}>
                     {group.map((w) => (
                       <View key={w.id} className="flex flex-row items-center px-4 h-10">
-                        <Text className="block text-sm">🎉</Text>
+                        <Avatar className="h-7 w-7">
+                          {w.avatar_url ? <AvatarImage src={w.avatar_url} /> : null}
+                          <AvatarFallback className="bg-red-50 flex items-center justify-center">
+                            <Text className="block text-xs font-semibold text-[#FF4757]">{(w.nick_name || '客').charAt(0)}</Text>
+                          </AvatarFallback>
+                        </Avatar>
                         <Text className="block text-sm text-gray-700 ml-2 flex-1" numberOfLines={1}>
                           恭喜 {w.nick_name} 抽中
                         </Text>

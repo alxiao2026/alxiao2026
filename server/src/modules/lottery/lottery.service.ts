@@ -982,6 +982,7 @@ export class LotteryService {
     prize_name: string;
     user_id: string;
     nick_name: string;
+    avatar_url: string | null;
     created_at: string;
   }>> {
     const { data: records, error } = await this.client
@@ -998,16 +999,20 @@ export class LotteryService {
     const userIds = [...new Set(list.map(r => r.user_id))];
     const { data: users } = await this.client
       .from('users')
-      .select('user_id, nick_name')
+      .select('user_id, nick_name, avatar_url')
       .in('user_id', userIds);
-    const userMap = new Map<string, string>();
-    (users || []).forEach((u: any) => userMap.set(u.user_id, u.nick_name || u.user_id));
+    const userMap = new Map<string, { nick_name: string; avatar_url: string | null }>();
+    (users || []).forEach((u: any) => userMap.set(u.user_id, {
+      nick_name: u.nick_name || u.user_id,
+      avatar_url: u.avatar_url || null,
+    }));
 
     return list.map(r => ({
       id: r.id,
       prize_name: r.prize_name || '未领取',
       user_id: r.user_id,
-      nick_name: userMap.get(r.user_id) || r.user_id,
+      nick_name: userMap.get(r.user_id)?.nick_name || r.user_id,
+      avatar_url: userMap.get(r.user_id)?.avatar_url || null,
       created_at: r.created_at,
     }));
   }
