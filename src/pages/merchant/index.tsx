@@ -18,6 +18,8 @@ import {
   Sparkles,
   Ticket,
   ChevronRight,
+  Trophy,
+  PartyPopper,
 } from 'lucide-react-taro'
 
 interface Merchant {
@@ -81,6 +83,7 @@ export default function MerchantPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [swiperIndex, setSwiperIndex] = useState(0)
+  const [winStats, setWinStats] = useState<{ totalWins: number; freeMealWins: number }>({ totalWins: 0, freeMealWins: 0 })
 
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
@@ -100,6 +103,10 @@ export default function MerchantPage() {
       setMerchant(data.merchant)
       setPrizes(Array.isArray(data.prizes) ? data.prizes : [])
       setPackages(Array.isArray(data.packages) ? data.packages : [])
+      setWinStats({
+        totalWins: Number(data.winStats?.totalWins) || 0,
+        freeMealWins: Number(data.winStats?.freeMealWins) || 0,
+      })
     } catch (e) {
       console.error('[Merchant] 商家详情请求失败', e)
       setError('加载失败，请稍后重试')
@@ -257,44 +264,53 @@ export default function MerchantPage() {
                 )}
               </View>
 
-              <View className="flex flex-row items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+              {/* 中奖榜单标签（黄色榜单位） */}
+              <View className="flex flex-row flex-wrap items-center gap-2 mt-3">
+                <View className="flex flex-row items-center gap-1 bg-amber-50 rounded-md px-2 py-1">
+                  <PartyPopper size={12} color="#d97706" />
+                  <Text className="text-xs text-amber-600 font-medium">累计中奖 {winStats.totalWins} 次</Text>
+                </View>
+                <View className="flex flex-row items-center gap-1 bg-amber-50 rounded-md px-2 py-1">
+                  <Trophy size={12} color="#d97706" />
+                  <Text className="text-xs text-amber-600 font-medium">中霸王餐 {winStats.freeMealWins} 次</Text>
+                </View>
+              </View>
+
+              {/* 营业状态 */}
+              <View className="flex flex-row items-center gap-2 mt-3">
                 <Clock size={14} color="#9ca3af" />
                 <Text className={`text-sm ${status.open ? 'text-green-600' : 'text-gray-500'}`}>{status.text}</Text>
               </View>
-            </View>
-          </View>
 
-          {/* 地址与联系 */}
-          {merchant.address && (
-            <View className="px-4 mt-3">
-              <View className="bg-white rounded-2xl p-4 shadow-sm flex flex-row items-center">
-                <View className="flex-1 flex flex-row items-start gap-2 pr-3">
-                  <MapPin size={16} color="#FF4757" className="mt-1 shrink-0" />
-                  <View className="flex-1">
-                    <Text className="block text-sm text-gray-900 leading-5">{merchant.address}</Text>
+              {/* 分隔线 + 地址行（右侧导航/联系圆形按钮） */}
+              {merchant.address && (
+                <View className="flex flex-row items-center mt-3 pt-3 border-t border-gray-100">
+                  <View className="flex-1 flex flex-row items-start gap-2 pr-3">
+                    <MapPin size={16} color="#FF4757" className="mt-1 shrink-0" />
+                    <Text className="flex-1 text-sm text-gray-900 leading-5">{merchant.address}</Text>
+                  </View>
+                  <View className="flex flex-row gap-4 shrink-0">
+                    {!!merchant.latitude && !!merchant.longitude && (
+                      <View className="flex flex-col items-center gap-1" onClick={handleNavigate}>
+                        <View className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Navigation size={16} color="#374151" />
+                        </View>
+                        <Text className="text-xs text-gray-500">导航</Text>
+                      </View>
+                    )}
+                    {!!merchant.phone && (
+                      <View className="flex flex-col items-center gap-1" onClick={handleCall}>
+                        <View className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Phone size={16} color="#374151" />
+                        </View>
+                        <Text className="text-xs text-gray-500">联系商家</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
-                <View className="flex flex-row gap-4 shrink-0 border-l border-gray-100 pl-4">
-                  {!!merchant.latitude && !!merchant.longitude && (
-                    <View className="flex flex-col items-center gap-1" onClick={handleNavigate}>
-                      <View className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
-                        <Navigation size={16} color="#FF4757" />
-                      </View>
-                      <Text className="text-xs text-gray-500">导航</Text>
-                    </View>
-                  )}
-                  {!!merchant.phone && (
-                    <View className="flex flex-col items-center gap-1" onClick={handleCall}>
-                      <View className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
-                        <Phone size={16} color="#FF4757" />
-                      </View>
-                      <Text className="text-xs text-gray-500">联系商家</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+              )}
             </View>
-          )}
+          </View>
 
           {/* 商家奖品：横向滑动卡片（下单抽奖，置于团购套餐上方） */}
           <View className="mt-3">

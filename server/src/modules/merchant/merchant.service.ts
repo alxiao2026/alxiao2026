@@ -94,7 +94,40 @@ export class MerchantService {
       .order('created_at', { ascending: false });
 
     if (packageError) throw new Error(`查询商家套餐失败：${packageError.message}`);
-    return { merchant, prizes: prizes || [], packages: packages || [] };
+
+    // 中奖统计：该商家全部奖品（含已下架）关联的中奖记录
+    const { data: allPrizes } = await this.client
+      .from('prizes')
+      .select('id, prize_type')
+      .eq('merchant_id', id);
+
+    const prizeIds = (allPrizes || []).map((p: { id: string }) => p.id);
+    let totalWins = 0;
+    let freeMealWins = 0;
+    if (prizeIds.length > 0) {
+      const { data: winRecords, error: winError } = await this.client
+        .from('lottery_records')
+        .select('prize_id')
+        .in('prize_id', prizeIds)
+        .eq('is_winner', true);
+      if (winError) throw new Error(`查询中奖记录失败：${winError.message}`);
+      const freeMealIds = new Set(
+        (allPrizes || [])
+          .filter((p: { prize_type: string }) => p.prize_type === 'free_meal')
+          .map((p: { id: string }) => p.id),
+      );
+      totalWins = (winRecords || []).length;
+      freeMealWins = (winRecords || []).filter((r: { prize_id: string }) =>
+        freeMealIds.has(r.prize_id),
+      ).length;
+    }
+
+    return {
+      merchant,
+      prizes: prizes || [],
+      packages: packages || [],
+      winStats: { totalWins, freeMealWins },
+    };
   }
 
   async create(body: CreateMerchantDto): Promise<Merchant> {
