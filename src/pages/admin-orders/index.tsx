@@ -125,9 +125,12 @@ export default function AdminOrders() {
     }
   }
 
-  const fetchVerifiers = async () => {
+  const fetchVerifiers = async (merchantIdx?: number) => {
+    const mi = merchantIdx ?? merchantIndex
     try {
-      const res = await Network.request({ url: '/api/orders/verifiers' })
+      // 选中具体门店时，只拉取该门店的核销账号，避免混入其他门店
+      const query = mi > 0 && merchants[mi - 1] ? `?merchant_id=${merchants[mi - 1].id}` : ''
+      const res = await Network.request({ url: `/api/orders/verifiers${query}` })
       console.log('[AdminOrders] 核销账号响应:', res.data)
       const body: any = res.data
       const list = Array.isArray(body) ? body : (body?.data ?? [])
@@ -367,7 +370,10 @@ export default function AdminOrders() {
             onChange={(e) => {
               const idx = Number(e.detail.value)
               setMerchantIndex(idx)
-              void fetchOrders({ merchantIndex: idx })
+              // 门店变化后核销账号列表联动刷新，且重置为"全部核销账号"
+              setVerifierIndex(0)
+              void fetchVerifiers(idx)
+              void fetchOrders({ merchantIndex: idx, verifierIndex: 0 })
             }}
           >
             <View className="flex-1 bg-gray-50 rounded-lg px-3 py-2 flex flex-row items-center gap-2">

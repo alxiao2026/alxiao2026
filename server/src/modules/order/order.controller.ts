@@ -16,8 +16,8 @@ export class OrderController {
   }
 
   @Get('verifiers')
-  async findVerifiers(): Promise<{ code: number; data: Array<{ user_id: string; name: string }> }> {
-    const data = await this.orderService.findVerifiers();
+  async findVerifiers(@Query('merchant_id') merchantId?: string): Promise<{ code: number; data: Array<{ user_id: string; name: string }> }> {
+    const data = await this.orderService.findVerifiers(merchantId);
     return { code: 200, data };
   }
 

@@ -184,11 +184,23 @@ export class OrderService {
   }
 
   // 核销账号列表（供筛选器下拉）：所有产生过核销行为的账号
-  async findVerifiers(): Promise<Array<{ user_id: string; name: string }>> {
-    const { data, error } = await this.client
+  async findVerifiers(merchantId?: string): Promise<Array<{ user_id: string; name: string }>> {
+    let query = this.client
       .from('orders')
       .select('verified_by')
       .not('verified_by', 'is', null);
+    // 指定门店时，只统计该门店订单中出现过的核销账号（订单经套餐关联门店）
+    if (merchantId) {
+      const { data: packages, error: pkgError } = await this.client
+        .from('packages')
+        .select('id')
+        .eq('merchant_id', merchantId);
+      if (pkgError) throw new Error(`查询商家套餐失败: ${pkgError.message}`);
+      const packageIds = (packages || []).map((p: any) => p.id);
+      if (packageIds.length === 0) return [];
+      query = query.in('package_id', packageIds);
+    }
+    const { data, error } = await query;
     if (error) throw new Error(`查询核销账号失败: ${error.message}`);
     const ids = [...new Set((data || []).map((r: any) => r.verified_by).filter(Boolean))] as string[];
     if (ids.length === 0) return [];
