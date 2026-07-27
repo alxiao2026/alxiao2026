@@ -269,24 +269,39 @@ const IndexPage = () => {
                 <View className="flex flex-row items-center gap-2">
                   <Gift size={18} color="#fff" />
                   <Text className="block text-sm font-bold text-white">本期奖品</Text>
-                  <Text className="block text-xs text-white ml-auto" style={{ opacity: 0.8 }}>下单即可参与抽奖</Text>
+                  <Text className="block text-xs text-white ml-auto" style={{ opacity: 0.85 }}>共{prizes.length}款奖品</Text>
                 </View>
               </View>
               <View className="flex flex-row overflow-x-auto px-3 py-3 gap-3">
-                {prizes.map((prize) => (
-                  <View key={prize.id} className="flex-shrink-0 flex flex-col items-center w-20">
-                    <View className="w-12 h-12 rounded-full flex items-center justify-center mb-1 bg-red-50">
-                      {prize.image_url ? (
-                        <Image src={prize.image_url} className="w-10 h-10 rounded-full" mode="aspectFill" />
-                      ) : (
-                        <Award size={22} color="#FF4757" />
-                      )}
+                {prizes.map((prize, index) => {
+                  const bgColors = ['#FFE9E9', '#FFF3D6', '#FFF9F0', '#EDF4FF', '#F0EBFF'];
+                  const bgColor = bgColors[index % bgColors.length];
+                  return (
+                    <View key={prize.id} className="flex-shrink-0 w-28 bg-white rounded-xl overflow-hidden shadow-md">
+                      {/* 上半：名称 + 中奖概率 + 奖品图（浅色底） */}
+                      <View className="flex flex-col items-center pt-2 px-1 pb-2" style={{ backgroundColor: bgColor }}>
+                        <Text className="block text-sm font-bold text-gray-800 text-center" numberOfLines={1}>{prize.name}</Text>
+                        <Text className="block text-xs text-[#FF4757] font-semibold mt-1">中奖率{prize.probability}%</Text>
+                        <View className="w-14 h-14 mt-2 flex items-center justify-center">
+                          {prize.image_url ? (
+                            <Image src={prize.image_url} className="w-14 h-14" mode="aspectFit" />
+                          ) : (
+                            <Award size={40} color="#FF4757" />
+                          )}
+                        </View>
+                      </View>
+                      {/* 下半：去开奖按钮 */}
+                      <View className="bg-white py-2 flex items-center justify-center">
+                        <View
+                          className="bg-[#FF4757] rounded-full px-5 py-1"
+                          onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
+                        >
+                          <Text className="block text-xs font-semibold text-white">去开奖</Text>
+                        </View>
+                      </View>
                     </View>
-                    <Text className="block text-xs text-gray-700 text-center" numberOfLines={1}>{prize.name}</Text>
-                    <Text className="block text-xs text-[#FF4757] mt-1">中奖率{prize.probability}%</Text>
-                    <Text className="block text-xs text-[#FF4757] font-semibold">剩余{prize.stock}份</Text>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </View>
           </View>
