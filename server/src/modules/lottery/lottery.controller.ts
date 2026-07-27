@@ -69,10 +69,10 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
-  /** 获取抽奖设置 */
+  /** 获取抽奖设置（字符串键值对，供设置页直接回显） */
   @Get('settings')
   async getSettings() {
-    const data = await this.lotteryService.getSettings();
+    const data = await this.lotteryService.getSettingsMap();
     return { code: 200, msg: 'success', data };
   }
 

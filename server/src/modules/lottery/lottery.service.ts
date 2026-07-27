@@ -117,7 +117,35 @@ export class LotteryService {
     return settings;
   }
 
-  async updateSettings(updates: Record<string, string>): Promise<LotterySettings> {
+  /** 以字符串键值对形式返回全部设置（供设置页回显，保证开关/数值均为字符串契约） */
+  async getSettingsMap(): Promise<Record<string, string>> {
+    const { data, error } = await this.client
+      .from('lottery_settings')
+      .select('setting_key, setting_value');
+    if (error) throw new Error(`查询抽奖设置失败: ${error.message}`);
+
+    const map: Record<string, string> = {
+      weight_enabled: 'true',
+      weight_visitor: '1',
+      weight_ordered: '2',
+      weight_share_base: '3',
+      weight_share_increment: '0.5',
+      weight_social_post: '1',
+      weight_cap: '20',
+      share_boost_per_count: '0.5',
+      share_boost_max_count: '10',
+      rate_limit_enabled: 'true',
+      rate_limit_max: '10',
+      captcha_enabled: 'false',
+      redemption_expiry_hours: '72',
+    };
+    (data || []).forEach((row: any) => {
+      if (row.setting_key) map[row.setting_key] = String(row.setting_value);
+    });
+    return map;
+  }
+
+  async updateSettings(updates: Record<string, string>): Promise<Record<string, string>> {
     for (const [key, value] of Object.entries(updates)) {
       const { error } = await this.client
         .from('lottery_settings')
@@ -125,7 +153,7 @@ export class LotteryService {
       if (error) throw new Error(`更新设置失败 [${key}]: ${error.message}`);
     }
     this.settingsCache = null; // 清除缓存
-    return this.getSettings();
+    return this.getSettingsMap();
   }
 
   // ========== CSPRNG 安全随机源 ==========
@@ -275,23 +303,26 @@ export class LotteryService {
   // ========== 加权抽奖算法 ==========
 
   /**
-   * 固定概率轮盘 + 兜底吸收（四层保护模型）+ CSPRNG
+   * 固定概率轮盘 + 用户权重放大 + 兜底吸收（四层保护模型）+ CSPRNG
    *
    * 规则：
-   * 1. 每个奖品的真实中奖率 = 后台设置的 probability（百分比），不随其他奖品库存减少而改变
-   * 2. 兜底区间 = 100% − Σ可用奖品概率，承接分享加成的放大部分与库存/配额耗尽奖品的份额
-   * 3. 分享加成仅放大霸王餐（free_meal），多出部分从兜底区扣减，其他奖品概率不变
-   * 4. 返回 null 表示摇中兜底区间（由调用方决定发兜底奖或"再接再厉"）
+   * 1. 每个奖品的基础中奖率 = 后台设置的 probability（百分比），不随其他奖品库存减少而改变
+   * 2. 用户权重 userWeight 实打实放大全部奖品的中奖概率（权重 2 = 中奖率 ×2），由 weight_enabled 开关控制
+   * 3. 兜底区间 = 100% − Σ可用奖品概率，承接权重/分享加成的放大部分与库存/配额耗尽奖品的份额
+   * 4. 分享加成仅额外放大霸王餐（free_meal），多出部分同样从兜底区扣减
+   * 5. 返回 null 表示摇中兜底区间（由调用方决定发兜底奖或"再接再厉"）
    *
    * 注意：库存可用性由调用方判定，本函数只按传入奖品的固定概率摇奖
    */
-  private calculateWeightedLottery(prizes: Prize[], freeMealBoost: number): Prize | null {
+  private calculateWeightedLottery(prizes: Prize[], freeMealBoost: number, userWeight: number = 1): Prize | null {
+    const weight = Math.max(0, userWeight);
     const segments: { prize: Prize; prob: number }[] = [];
     let usedProb = 0;
     for (const p of prizes) {
       const base = parseFloat(p.probability || '0');
       if (base <= 0) continue;
-      const prob = p.prize_type === 'free_meal' ? base * freeMealBoost : base;
+      const boosted = base * weight;
+      const prob = p.prize_type === 'free_meal' ? boosted * freeMealBoost : boosted;
       segments.push({ prize: p, prob });
       usedProb += prob;
     }
@@ -458,12 +489,12 @@ export class LotteryService {
       throw new BadRequestException('该商家当前没有可抽取的奖品');
     }
 
-    // 6. 固定概率轮盘（CSPRNG）— 分享加成仅作用于霸王餐，放大部分从兜底区扣减
-    //    并发扣减失败时，该奖品移出轮盘（份额归兜底），重新摇奖
+    // 6. 固定概率轮盘（CSPRNG）— 用户权重放大全品类中奖率，分享加成仅额外作用于霸王餐，
+    //    放大部分均从兜底区扣减；并发扣减失败时，该奖品移出轮盘（份额归兜底），重新摇奖
     const remaining = [...eligiblePrizes];
     let selectedPrize: Prize | null = null;
     while (remaining.length > 0) {
-      const picked = this.calculateWeightedLottery(remaining, shareBoost);
+      const picked = this.calculateWeightedLottery(remaining, shareBoost, userWeight);
       if (!picked) break; // 摇中兜底区间
       const newStock = await this.atomicDecrementStock(picked.id);
       if (newStock >= 0) {

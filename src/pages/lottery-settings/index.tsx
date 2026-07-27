@@ -18,7 +18,12 @@ export default function LotterySettingsPage() {
     try {
       const res = await Network.request({ url: '/api/lottery/settings' });
       const data = (res.data as any)?.data || res.data;
-      if (data && typeof data === 'object') setLotterySettings(data);
+      if (data && typeof data === 'object') {
+        // 统一规范化为字符串键值对，保证开关比较（'true'）与受控输入（string value）行为一致
+        const normalized: Record<string, string> = {};
+        Object.entries(data).forEach(([k, v]) => { normalized[k] = String(v); });
+        setLotterySettings(normalized);
+      }
     } catch (e) {
       console.error('获取抽奖设置失败:', e);
     }
@@ -27,10 +32,13 @@ export default function LotterySettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 保存前统一转字符串，避免 number/boolean 混入后端
+      const payload: Record<string, string> = {};
+      Object.entries(lotterySettings).forEach(([k, v]) => { payload[k] = String(v); });
       await Network.request({
         url: '/api/lottery/settings',
         method: 'POST',
-        data: lotterySettings as unknown as Record<string, string>,
+        data: payload,
       });
       Taro.showToast({ title: '保存成功', icon: 'success' });
     } catch {
@@ -71,13 +79,13 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3 mb-3">
               <Text className="text-xs text-gray-500 w-20">普通访客</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_visitor || '1'} onInput={(e) => updateSetting('weight_visitor', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_visitor || '1'} onInput={(e) => updateSetting('weight_visitor', e.detail.value)} />
               </View>
             </View>
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-20">已下单客户</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_ordered || '2'} onInput={(e) => updateSetting('weight_ordered', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_ordered || '2'} onInput={(e) => updateSetting('weight_ordered', e.detail.value)} />
               </View>
             </View>
           </CardContent>
@@ -90,13 +98,13 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3 mb-3">
               <Text className="text-xs text-gray-500 w-20">分享1位</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_share_base || '3'} onInput={(e) => updateSetting('weight_share_base', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_share_base || '3'} onInput={(e) => updateSetting('weight_share_base', e.detail.value)} />
               </View>
             </View>
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-20">每多1位递增</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_share_increment || '0.5'} onInput={(e) => updateSetting('weight_share_increment', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_share_increment || '0.5'} onInput={(e) => updateSetting('weight_share_increment', e.detail.value)} />
               </View>
             </View>
           </CardContent>
@@ -108,7 +116,7 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-24">每条社媒发布</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_social_post || '1'} onInput={(e) => updateSetting('weight_social_post', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_social_post || '1'} onInput={(e) => updateSetting('weight_social_post', e.detail.value)} />
               </View>
             </View>
             <Text className="block text-xs text-gray-400 mt-2">抖音/小红书/微视频，每项+1</Text>
@@ -121,7 +129,7 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-20">权重封顶值</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_cap || '20'} onInput={(e) => updateSetting('weight_cap', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.weight_cap || '20'} onInput={(e) => updateSetting('weight_cap', e.detail.value)} />
               </View>
             </View>
           </CardContent>
@@ -140,7 +148,7 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-24">每分钟最大请求</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.rate_limit_max || '10'} onInput={(e) => updateSetting('rate_limit_max', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.rate_limit_max || '10'} onInput={(e) => updateSetting('rate_limit_max', e.detail.value)} />
               </View>
             </View>
           </CardContent>
@@ -152,7 +160,7 @@ export default function LotterySettingsPage() {
             <View className="flex flex-row items-center gap-3">
               <Text className="text-xs text-gray-500 w-24">兑奖有效期</Text>
               <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.redemption_expiry_hours || '72'} onInput={(e) => updateSetting('redemption_expiry_hours', e.detail.value)} />
+                <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={lotterySettings.redemption_expiry_hours || '72'} onInput={(e) => updateSetting('redemption_expiry_hours', e.detail.value)} />
               </View>
               <Text className="text-xs text-gray-400">小时</Text>
             </View>
