@@ -70,7 +70,6 @@ interface WinnerRecord {
   created_at: string;
 }
 
-const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
 const DEFAULT_COVER = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
 
@@ -224,30 +223,10 @@ const IndexPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部平台形象广告位（活泼气泡风） ===== */}
-        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-5 pt-10 pb-16 overflow-hidden">
-          {/* 装饰气泡 */}
-          <View className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" style={{ opacity: 0.08 }} />
-          <View className="absolute top-12 right-20 w-10 h-10 rounded-full bg-white" style={{ opacity: 0.12 }} />
-          <View className="absolute -bottom-8 -left-6 w-24 h-24 rounded-full bg-[#FFE27A]" style={{ opacity: 0.15 }} />
-          <View className="absolute top-20 left-10 w-8 h-8 rounded-full bg-white" style={{ opacity: 0.1 }} />
-
-          <View className="flex flex-row items-center gap-4">
-            {/* 品牌形象圆标 */}
-            <View className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg" style={{ transform: 'rotate(-6deg)' }}>
-              <Image src={LOGO_URL} className="w-12 h-12" mode="aspectFit" />
-            </View>
-            <View className="flex-1">
-              <View className="flex flex-row items-center gap-2">
-                <Text className="block text-lg font-bold text-white">膨胀团</Text>
-                <View className="bg-white rounded-full px-2 py-1" style={{ opacity: 0.92 }}>
-                  <Text className="block text-xs font-semibold text-[#FF4757]">🎈 本地生活</Text>
-                </View>
-              </View>
-              <Text className="block text-2xl font-bold text-white mt-1">下单抽霸王餐</Text>
-              <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 · 每单都有好运 ✨</Text>
-            </View>
-          </View>
+        {/* ===== 顶部平台形象广告位（极简） ===== */}
+        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-5 pt-8 pb-12 overflow-hidden">
+          <Text className="block text-2xl font-bold text-white">膨胀团</Text>
+          <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 · 每单都有好运 ✨</Text>
         </View>
 
         {/* ===== 霸王餐人气榜（悬浮卡片） ===== */}
