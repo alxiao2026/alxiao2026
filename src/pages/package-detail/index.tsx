@@ -702,6 +702,277 @@ export default function PackageDetail() {
             <Text className="block text-base font-bold text-gray-800">使用方式</Text>
             <Text className="block text-xs text-gray-400">4 步解锁快乐</Text>
           </View>
+          <View className="flex flex-row items-start">
+            <View className="flex-1 flex flex-col items-center gap-1">
+              <View className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center relative">
+                <Text className="block text-xl">🛒</Text>
+                <View className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FF6B6B] to-[#FF8E53] flex items-center justify-center">
+                  <Text className="block text-xs font-bold text-white">1</Text>
+                </View>
+              </View>
+              <Text className="block text-xs font-bold text-gray-800 mt-1">点击购买</Text>
+              <Text className="block text-xs text-gray-400">一键拿下</Text>
+            </View>
+            <View className="flex items-center justify-center pt-3 px-1">
+              <Text className="block text-gray-300">▸</Text>
+            </View>
+            <View className="flex-1 flex flex-col items-center gap-1">
+              <View className="w-11 h-11 rounded-2xl bg-orange-50 flex items-center justify-center relative">
+                <Text className="block text-xl">💳</Text>
+                <View className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FFA502] to-[#FFC312] flex items-center justify-center">
+                  <Text className="block text-xs font-bold text-white">2</Text>
+                </View>
+              </View>
+              <Text className="block text-xs font-bold text-gray-800 mt-1">支付订单</Text>
+              <Text className="block text-xs text-gray-400">秒速搞定</Text>
+            </View>
+            <View className="flex items-center justify-center pt-3 px-1">
+              <Text className="block text-gray-300">▸</Text>
+            </View>
+            <View className="flex-1 flex flex-col items-center gap-1">
+              <View className="w-11 h-11 rounded-2xl bg-pink-50 flex items-center justify-center relative">
+                <Text className="block text-xl">🎁</Text>
+                <View className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FF6B81] to-[#FF9FF3] flex items-center justify-center">
+                  <Text className="block text-xs font-bold text-white">3</Text>
+                </View>
+              </View>
+              <Text className="block text-xs font-bold text-gray-800 mt-1">抽奖领奖品</Text>
+              <Text className="block text-xs text-[#FF4757]">100%有礼</Text>
+            </View>
+            <View className="flex items-center justify-center pt-3 px-1">
+              <Text className="block text-gray-300">▸</Text>
+            </View>
+            <View className="flex-1 flex flex-col items-center gap-1">
+              <View className="w-11 h-11 rounded-2xl bg-green-50 flex items-center justify-center relative">
+                <Text className="block text-xl">🏪</Text>
+                <View className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#2ED573] to-[#7BED9F] flex items-center justify-center">
+                  <Text className="block text-xs font-bold text-white">4</Text>
+                </View>
+              </View>
+              <Text className="block text-xs font-bold text-gray-800 mt-1">到店使用</Text>
+              <Text className="block text-xs text-gray-400">开心享用</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 购买须知 */}
+        <View className="bg-white mt-2 px-4 py-4">
+          <Text className="block text-base font-bold text-gray-800 mb-4">购买须知</Text>
+          
+          {/* 可用日期 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <Calendar size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">可用日期</Text>
+            </View>
+            <View className="ml-6">
+              <Text className="block text-sm text-gray-600">
+                {pkg.valid_date_type === 'date_range' && pkg.valid_date_start && pkg.valid_date_end
+                  ? `${pkg.valid_date_start} 至 ${pkg.valid_date_end}`
+                  : `自购买次日起${pkg.valid_days || 60}天${pkg.valid_from_purchase ? ', 购买当天默认可用' : ''}`}
+              </Text>
+            </View>
+          </View>
+
+          {/* 不可用日期 */}
+          {pkg.unavailable_date_type === 'partial' && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Calendar size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">不可用日期</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {pkg.unavailable_weekdays && Array.isArray(pkg.unavailable_weekdays) && pkg.unavailable_weekdays.length > 0 && (() => {
+                  const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+                  const names = pkg.unavailable_weekdays.map((d: number) => weekdayNames[d] || `周${d}`)
+                  return <Text className="block text-sm text-gray-600">· 每周：{names.join('、')}不可用</Text>
+                })()}
+                {pkg.unavailable_holidays && Array.isArray(pkg.unavailable_holidays) && pkg.unavailable_holidays.length > 0 && (() => {
+                  const holidayMap: Record<string, { name: string; date: string }> = {
+                    'qixi': { name: '七夕节', date: '2026.08.19' },
+                    'zhongqiu': { name: '中秋节', date: '2026.09.25 ~ 2026.09.27' },
+                    'guoqing': { name: '国庆节', date: '2026.10.01 ~ 2026.10.07' },
+                    'shengdan': { name: '圣诞节', date: '2026.12.25' },
+                    'yuandan': { name: '元旦', date: '2027.01.01' },
+                    'chunjie': { name: '春节', date: '2027.01.28 ~ 2027.02.03' }
+                  }
+                  const names = pkg.unavailable_holidays.map((h: string) => {
+                    const holiday = holidayMap[h]
+                    return holiday ? `${holiday.name}(${holiday.date})` : h
+                  })
+                  return (
+                    <View className="flex gap-1">
+                      <Text className="block text-sm text-gray-600">· 节假日：</Text>
+                      <Text className="block text-sm text-gray-600 flex-1">{names.join('、')}不可用</Text>
+                    </View>
+                  )
+                })()}
+                {pkg.unavailable_dates && Array.isArray(pkg.unavailable_dates) && pkg.unavailable_dates.length > 0 && (() => {
+                  const formatDate = (dateStr: string) => {
+                    const date = new Date(dateStr)
+                    return `${date.getMonth() + 1}月${date.getDate()}日`
+                  }
+                  const dates = pkg.unavailable_dates.map((d: string) => formatDate(d))
+                  return <Text className="block text-sm text-gray-600">· 指定日期：{dates.join('、')}不可用</Text>
+                })()}
+              </View>
+            </View>
+          )}
+
+          {/* 可用时间 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <Clock size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">可用时间</Text>
+            </View>
+            <View className="ml-6">
+              <Text className="block text-sm text-gray-600">
+                {pkg.available_time_type === 'custom' && pkg.available_time_start && pkg.available_time_end
+                  ? `每日${pkg.available_time_start}至${pkg.available_time_end}可用`
+                  : merchant?.business_hours || '商家营业时间可用'}
+              </Text>
+            </View>
+          </View>
+
+          {/* 限购规则 */}
+          {pkg.purchase_limit_type === 'limited' && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">限购规则</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {(pkg.purchase_limit || 0) > 0 && (
+                  <Text className="block text-sm text-gray-600">· 每人最多购买{pkg.purchase_limit}份</Text>
+                )}
+                {(pkg.purchase_limit_per_day || 0) > 0 && (
+                  <Text className="block text-sm text-gray-600">· 每人每天最多购买{pkg.purchase_limit_per_day}份</Text>
+                )}
+                {(pkg.purchase_limit_per_month || 0) > 0 && (
+                  <Text className="block text-sm text-gray-600">· 每人每月最多购买{pkg.purchase_limit_per_month}份</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* 限制使用张数 */}
+          {pkg.limit_usage_count && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <FileText size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">限制使用张数</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600">每单限用{pkg.usage_count_limit || 1}张券</Text>
+              </View>
+            </View>
+          )}
+
+          {/* 预约规则 */}
+          {pkg.need_reservation && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">预约规则</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600">
+                  到店消费: {pkg.reservation_hours ? `需至少提前${pkg.reservation_hours}小时预约` : '需提前预约'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* 使用方式 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <Check size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">使用方式</Text>
+            </View>
+            <View className="ml-6 flex flex-col gap-1">
+              <Text className="block text-sm text-gray-600">
+                {pkg.dine_in_type === 'dine_in' ? '仅限堂食' : 
+                 pkg.dine_in_type === 'take_out' ? '仅限外带' : 
+                 pkg.dine_in_type === 'all' ? '堂食外带都可以' : '堂食外带都可以'}
+              </Text>
+            </View>
+          </View>
+
+          {/* 使用规则 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <FileText size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">使用规则</Text>
+            </View>
+            <View className="ml-6 flex flex-col gap-1">
+              {pkg.other_discount && (
+                <Text className="block text-sm text-gray-600">· {pkg.other_discount}</Text>
+              )}
+              {pkg.private_room && (
+                <Text className="block text-sm text-gray-600">· {pkg.private_room}</Text>
+              )}
+            </View>
+          </View>
+
+          {/* 额外费用 */}
+          {pkg.has_extra_fee && pkg.extra_fees && Array.isArray(pkg.extra_fees) && pkg.extra_fees.length > 0 && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Info size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">额外费用</Text>
+              </View>
+              <View className="ml-6 flex flex-col gap-1">
+                {pkg.extra_fees.map((fee: any, idx: number) => (
+                  <Text key={idx} className="block text-sm text-gray-600">
+                    · {fee.condition}: {fee.amount}元/{fee.unit}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 可赠送好友 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <Gift size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">可赠送好友</Text>
+            </View>
+            <View className="ml-6">
+              <Text className="block text-sm text-gray-600">购买后支持赠送给好友使用</Text>
+            </View>
+          </View>
+
+          {/* 退款规则 */}
+          <View className="mb-4">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <RefreshCw size={16} color="#666" />
+              <Text className="block text-sm font-medium text-gray-800">退款规则</Text>
+            </View>
+            <View className="ml-6">
+              <Text className="block text-sm text-gray-600">到店核销: 随时可退, 过期未核销自动退</Text>
+            </View>
+          </View>
+
+          {/* 其他说明 */}
+          {pkg.other_notes && (
+            <View className="mb-4">
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <FileText size={16} color="#666" />
+                <Text className="block text-sm font-medium text-gray-800">其他说明</Text>
+              </View>
+              <View className="ml-6">
+                <Text className="block text-sm text-gray-600 whitespace-pre-wrap">{pkg.other_notes}</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* 使用方式步骤 */}
+        <View className="bg-white mt-2 px-4 py-4">
+          <View className="flex flex-row items-baseline gap-2 mb-4">
+            <Text className="block text-base font-bold text-gray-800">使用方式</Text>
+            <Text className="block text-xs text-gray-400">4 步解锁快乐</Text>
+          </View>
           <View className="flex flex-col gap-2">
             <View className="flex flex-row items-center gap-3 bg-red-50 rounded-2xl px-3 py-3">
               <View className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B6B] to-[#FF8E53] flex items-center justify-center flex-shrink-0">
