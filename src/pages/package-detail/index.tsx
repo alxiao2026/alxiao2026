@@ -723,19 +723,17 @@ export default function PackageDetail() {
                 <Text className="block text-xs text-gray-500 mt-1">微信支付，秒速搞定</Text>
               </View>
             </View>
-            <View className="rounded-2xl px-3 py-3 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] relative overflow-hidden">
-              <View className="absolute top-2 right-2 bg-white rounded-full px-2 py-1">
-                <Text className="block text-xs font-bold text-[#FF4757]">100%有礼</Text>
+            <View className="flex flex-row items-center gap-3 bg-pink-50 rounded-2xl px-3 py-3 relative overflow-hidden">
+              <View className="absolute top-2 right-2 bg-[#FF4757] rounded-full px-2 py-1">
+                <Text className="block text-xs font-bold text-white">100%有礼</Text>
               </View>
-              <View className="flex flex-row items-center gap-3">
-                <View className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                  <Text className="block text-sm font-bold text-[#FF4757]">3</Text>
-                </View>
-                <Text className="block text-xl">🎁</Text>
-                <View className="flex-1">
-                  <Text className="block text-sm font-bold text-white">抽奖领奖品</Text>
-                  <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>下单自动抽奖，好运挡不住</Text>
-                </View>
+              <View className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B81] to-[#FF9FF3] flex items-center justify-center flex-shrink-0">
+                <Text className="block text-sm font-bold text-white">3</Text>
+              </View>
+              <Text className="block text-xl">🎁</Text>
+              <View className="flex-1">
+                <Text className="block text-sm font-bold text-gray-800">抽奖领奖品</Text>
+                <Text className="block text-xs text-gray-500 mt-1">下单自动抽奖，好运挡不住</Text>
               </View>
             </View>
             <View className="flex flex-row items-center gap-3 bg-green-50 rounded-2xl px-3 py-3">
