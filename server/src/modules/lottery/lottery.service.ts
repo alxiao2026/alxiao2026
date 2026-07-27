@@ -17,6 +17,8 @@ export interface Prize {
   prize_type: PrizeType;
   coupon_amount: string;
   coupon_min_spend: string;
+  discount_rate: string; // 折扣券折扣（如 8.5 表示 8.5 折），coupon 类型使用
+  discount_cap: string; // 单笔最高优惠金额（0 表示不封顶），coupon 类型使用
   product_name: string;
   product_value: string;
   daily_quota: number | null; // 每日最多中出份数（null/0 表示不限）
@@ -36,6 +38,11 @@ export interface LotteryRecord {
   user_weight: string;
   ip_address: string;
   created_at: string;
+  // 折扣券附加信息（draw 响应时注入，非数据库字段）
+  discount_capped?: boolean;
+  discount_rate?: number;
+  discount_cap?: number;
+  order_total?: number;
 }
 
 export interface LotterySettings {
@@ -473,9 +480,9 @@ export class LotteryService {
       if (p.stock <= 0) continue; // 库存耗尽 → 份额归兜底
       if (await isQuotaExhausted(p.id, p.daily_quota)) continue; // 今日配额用尽 → 份额归兜底
       if (p.prize_type === 'coupon') {
-        const minSpend = parseFloat(p.coupon_min_spend || '0');
-        const couponAmt = parseFloat(p.coupon_amount || '0');
-        if (orderTotal < minSpend || couponAmt <= 0) continue; // 不满足门槛 → 份额归兜底
+        // 折扣券：折扣必须在 (0, 10) 区间（如 8.5 表示 8.5 折），无消费门槛
+        const rate = parseFloat(p.discount_rate || '0');
+        if (!(rate > 0 && rate < 10)) continue; // 折扣配置无效 → 份额归兜底
       }
       eligiblePrizes.push(p);
     }
@@ -521,11 +528,17 @@ export class LotteryService {
     let redemptionCode = '';
     let refundAmount = 0;
     let refundStatus = '';
+    let discountCapped = false;
     if (isWinner && resultPrize) {
       const prize = resultPrize;
       if (prize.prize_type === 'coupon') {
-        refundAmount = parseFloat(prize.coupon_amount || '0');
-        refundStatus = 'pending';
+        // 折扣券：返还金额 = 订单金额 × (10 - 折扣) / 10，受【单笔最高优惠金额】封顶
+        const rate = parseFloat(prize.discount_rate || '0');
+        const cap = parseFloat(prize.discount_cap || '0');
+        const raw = Math.round((orderTotal * (10 - rate) / 10) * 100) / 100;
+        discountCapped = cap > 0 && raw > cap;
+        refundAmount = discountCapped ? cap : raw;
+        refundStatus = 'redeemed'; // 返还即时到账，折扣券直接核销
       } else if (prize.prize_type === 'product') {
         redemptionCode = `PRD-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
         refundStatus = 'pending';
@@ -546,6 +559,7 @@ export class LotteryService {
       redemption_code: redemptionCode,
       refund_amount: refundAmount,
       refund_status: refundStatus,
+      redeemed_at: refundStatus === 'redeemed' ? new Date().toISOString() : null,
       user_weight: userWeight,
       ip_address: ipAddress,
     };
@@ -579,7 +593,14 @@ export class LotteryService {
     return {
       is_winner: isWinner,
       prize: resultPrize,
-      record: record as LotteryRecord,
+      record: {
+        ...(record as LotteryRecord),
+        // 折扣券附加信息：供中奖页面展示返还金额与封顶提示
+        discount_capped: discountCapped,
+        discount_rate: resultPrize?.prize_type === 'coupon' ? parseFloat(resultPrize.discount_rate || '0') : undefined,
+        discount_cap: resultPrize?.prize_type === 'coupon' ? parseFloat(resultPrize.discount_cap || '0') : undefined,
+        order_total: orderTotal,
+      },
     };
   }
 
@@ -801,7 +822,7 @@ export class LotteryService {
     if (record.prize_id) {
       const { data: prize } = await this.client
         .from('prizes')
-        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend, validity_hours')
+        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend, discount_rate, discount_cap, validity_hours')
         .eq('id', record.prize_id)
         .maybeSingle();
       if (prize) {
@@ -810,6 +831,22 @@ export class LotteryService {
         record.product_value = (prize as any).product_value;
         record.coupon_amount = (prize as any).coupon_amount;
         record.coupon_min_spend = (prize as any).coupon_min_spend;
+        record.discount_rate = parseFloat((prize as any).discount_rate || '0');
+        record.discount_cap = parseFloat((prize as any).discount_cap || '0');
+        // 折扣券：重算是否触发封顶（理论优惠 > 实际返还）
+        if ((prize as any).prize_type === 'coupon') {
+          const { data: order } = await this.client
+            .from('orders')
+            .select('price, quantity')
+            .eq('id', record.order_id)
+            .maybeSingle();
+          if (order) {
+            const orderTotal = parseFloat((order as any).price || '0') * ((order as any).quantity || 1);
+            const raw = Math.round((orderTotal * (10 - record.discount_rate) / 10) * 100) / 100;
+            record.order_total = orderTotal;
+            record.discount_capped = record.discount_cap > 0 && raw > parseFloat(record.refund_amount || '0');
+          }
+        }
         const vh = (prize as any).validity_hours;
         prizeValidity = typeof vh === 'number' && vh > 0 ? vh : null;
       }
@@ -846,7 +883,7 @@ export class LotteryService {
     if (prizeIds.length > 0) {
       const { data: prizes } = await this.client
         .from('prizes')
-        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url, validity_hours')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, discount_rate, discount_cap, product_name, product_value, image_url, validity_hours')
         .in('id', prizeIds);
       (prizes || []).forEach((p: any) => prizeMap.set(p.id, p));
     }
@@ -863,7 +900,7 @@ export class LotteryService {
     if (unmatchedNames.length > 0) {
       const { data: namePrizes } = await this.client
         .from('prizes')
-        .select('id, name, prize_type, coupon_amount, coupon_min_spend, product_name, product_value, image_url, validity_hours')
+        .select('id, name, prize_type, coupon_amount, coupon_min_spend, discount_rate, discount_cap, product_name, product_value, image_url, validity_hours')
         .in('name', unmatchedNames);
       (namePrizes || []).forEach((p: any) => prizeNameMap.set(p.name, p));
     }
@@ -877,6 +914,8 @@ export class LotteryService {
         prize_type: prize?.prize_type || '',
         coupon_amount: prize?.coupon_amount ?? null,
         coupon_condition: prize?.coupon_min_spend ?? null,
+        discount_rate: parseFloat(prize?.discount_rate || '0'),
+        discount_cap: parseFloat(prize?.discount_cap || '0'),
         product_name: prize?.product_name || '',
         product_value: prize?.product_value ?? null,
         prize_image: prize?.image_url || '',

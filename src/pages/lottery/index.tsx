@@ -28,6 +28,9 @@ interface DrawResultData {
   refund_amount?: string
   coupon_amount?: string
   coupon_min_spend?: string
+  discount_rate?: number
+  discount_cap?: number
+  discount_capped?: boolean
   product_name?: string
   record_id?: string
   refund_status?: string
@@ -185,6 +188,9 @@ export default function Lottery() {
           refund_amount: record.refund_amount || '0',
           record_id: record.id || '',
           refund_status: record.refund_status || 'pending',
+          discount_rate: record.discount_rate || 0,
+          discount_cap: record.discount_cap || 0,
+          discount_capped: !!record.discount_capped,
           expired: !!record.expired,
           expiry_hours: record.expiry_hours || 0,
           expiry_date: record.expiry_date || '',
@@ -210,6 +216,9 @@ export default function Lottery() {
         refund_amount: record.refund_amount || '0',
         record_id: record.id || '',
         refund_status: record.refund_status || 'pending',
+        discount_rate: record.discount_rate || 0,
+        discount_cap: record.discount_cap || 0,
+        discount_capped: !!record.discount_capped,
         expired: !!record.expired,
         expiry_hours: record.expiry_hours || 0,
         expiry_date: record.expiry_date || '',
@@ -407,6 +416,7 @@ export default function Lottery() {
   const renderPoolIcon = (item: PrizePoolItem, index: number) => {
     const color = POOL_ICON_COLORS[index % POOL_ICON_COLORS.length]
     const name = item.name || ''
+    if (item.prize_type === 'coupon') return <Ticket size={22} color={color} />
     if (name.includes('霸王餐') || name.includes('免单')) return <UtensilsCrossed size={22} color={color} />
     if (name.includes('饮') || name.includes('茶') || name.includes('咖啡')) return <Coffee size={22} color={color} />
     if (name.includes('券')) return <Ticket size={22} color={color} />
@@ -416,12 +426,18 @@ export default function Lottery() {
   const renderPrizeExtra = () => {
     if (!drawResult?.is_winner) return null
     const type = drawResult.prize_type
-    if (type === 'coupon' && drawResult.coupon_amount) {
-      const minSpend = parseFloat(drawResult.coupon_min_spend || '0')
+    if (type === 'coupon' && drawResult.discount_rate) {
       return (
-        <Text className="block text-sm text-amber-700 mt-2 text-center">
-          {minSpend > 0 ? `满 ¥${minSpend} 可用 · ` : ''}立减 ¥{drawResult.coupon_amount}
-        </Text>
+        <View className="mt-2">
+          <Text className="block text-sm text-amber-700 text-center">
+            {drawResult.discount_rate}折 · 已返还 ¥{drawResult.refund_amount}
+          </Text>
+          {drawResult.discount_capped ? (
+            <Text className="block text-xs text-amber-500 mt-1 text-center">
+              单笔最高优惠 ¥{drawResult.discount_cap}，已按上限返还
+            </Text>
+          ) : null}
+        </View>
       )
     }
     if (type === 'product' || type === 'free_meal') {
@@ -699,7 +715,7 @@ export default function Lottery() {
                   )}
                 </View>
                 <Text className="block text-xs font-bold text-amber-900 mt-1 text-center" numberOfLines={1}>
-                  {item.name}
+                  {item.prize_type === 'coupon' ? '随机立减' : item.name}
                 </Text>
               </View>
             ) : (

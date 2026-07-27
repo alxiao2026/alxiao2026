@@ -20,6 +20,8 @@ interface Prize {
   prize_type: 'coupon' | 'product' | 'free_meal';
   coupon_amount: string;
   coupon_min_spend: string;
+  discount_rate: string;
+  discount_cap: string;
   product_name: string;
   product_value: string;
   merchant_id: number | null;
@@ -30,7 +32,7 @@ interface Prize {
 }
 
 const PRIZE_TYPE_OPTIONS = [
-  { value: 'coupon', label: '优惠券模式' },
+  { value: 'coupon', label: '折扣券模式' },
   { value: 'product', label: '商品模式' },
   { value: 'free_meal', label: '霸王餐模式' },
 ] as const;
@@ -44,7 +46,7 @@ export default function PrizeManagePage() {
   const [prizeForm, setPrizeForm] = useState({
     name: '', description: '', probability: '0', stock: '0',
     prize_type: 'coupon' as 'coupon' | 'product' | 'free_meal',
-    coupon_amount: '', coupon_min_spend: '',
+    discount_rate: '8.5', discount_cap: '',
     product_name: '', product_value: '', validity_hours: '',
     is_fallback: false,
   });
@@ -110,7 +112,7 @@ export default function PrizeManagePage() {
 
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', coupon_amount: '', coupon_min_spend: '', product_name: '', product_value: '', validity_hours: '', is_fallback: false });
+    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', is_fallback: false });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -120,7 +122,7 @@ export default function PrizeManagePage() {
     setPrizeForm({
       name: prize.name, description: prize.description || '', probability: prize.probability,
       stock: String(prize.stock), prize_type: prize.prize_type || 'coupon',
-      coupon_amount: prize.coupon_amount || '', coupon_min_spend: prize.coupon_min_spend || '',
+      discount_rate: prize.discount_rate || '8.5', discount_cap: prize.discount_cap || '',
       product_name: prize.product_name || '', product_value: prize.product_value || '',
       validity_hours: prize.validity_hours ? String(prize.validity_hours) : '',
       is_fallback: !!prize.is_fallback,
@@ -131,6 +133,12 @@ export default function PrizeManagePage() {
 
   const handleSavePrize = async () => {
     if (!prizeForm.name) { Taro.showToast({ title: '请输入奖品名称', icon: 'none' }); return; }
+    if (prizeForm.prize_type === 'coupon') {
+      const rate = Number(prizeForm.discount_rate);
+      if (!(rate >= 8 && rate <= 9.5)) {
+        Taro.showToast({ title: '折扣比例需在 8.0~9.5 折之间', icon: 'none' }); return;
+      }
+    }
     try {
       const payload: Record<string, any> = {
         name: prizeForm.name, description: prizeForm.description,
@@ -138,7 +146,7 @@ export default function PrizeManagePage() {
         probability: prizeForm.is_fallback ? '0' : prizeForm.probability,
         stock: prizeForm.is_fallback ? 0 : Number(prizeForm.stock),
         prize_type: prizeForm.prize_type, is_fallback: prizeForm.is_fallback,
-        coupon_amount: Number(prizeForm.coupon_amount) || 0, coupon_min_spend: Number(prizeForm.coupon_min_spend) || 0,
+        discount_rate: Number(prizeForm.discount_rate) || 0, discount_cap: Number(prizeForm.discount_cap) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
       };
       // 商品/霸王餐：有效期（小时），留空表示使用全局默认
@@ -271,8 +279,8 @@ export default function PrizeManagePage() {
                   )}
                   {prize.prize_type === 'coupon' && (
                     <Text className="block text-xs text-gray-400">
-                      金额 <Text className="text-[#FF4757] font-semibold">¥{prize.coupon_amount}</Text>
-                      {Number(prize.coupon_min_spend) > 0 && `（满${prize.coupon_min_spend}可用）`}
+                      折扣 <Text className="text-[#FF4757] font-semibold">{prize.discount_rate}折</Text>
+                      {Number(prize.discount_cap) > 0 && `（单笔最高优惠¥${prize.discount_cap}）`}
                     </Text>
                   )}
                   {prize.prize_type === 'product' && (
@@ -375,17 +383,20 @@ export default function PrizeManagePage() {
                   <>
                     <View className="flex flex-row gap-3">
                       <View className="flex-1">
-                        <Text className="block text-sm text-black mb-1">优惠券金额（元）</Text>
+                        <Text className="block text-sm text-black mb-1">折扣比例（8.0~9.5折）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
-                          <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.coupon_amount} placeholder="如 5" onInput={(e) => setPrizeForm({ ...prizeForm, coupon_amount: e.detail.value })} />
+                          <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_rate} placeholder="如 8.5" onInput={(e) => setPrizeForm({ ...prizeForm, discount_rate: e.detail.value })} />
                         </View>
                       </View>
                       <View className="flex-1">
-                        <Text className="block text-sm text-black mb-1">满多少可用（元）</Text>
+                        <Text className="block text-sm text-black mb-1">单笔最高优惠（元）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
-                          <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.coupon_min_spend} placeholder="如 50" onInput={(e) => setPrizeForm({ ...prizeForm, coupon_min_spend: e.detail.value })} />
+                          <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_cap} placeholder="如 5，0为不封顶" onInput={(e) => setPrizeForm({ ...prizeForm, discount_cap: e.detail.value })} />
                         </View>
                       </View>
+                    </View>
+                    <View className="bg-orange-50 rounded-xl px-3 py-2">
+                      <Text className="block text-xs text-orange-600">中奖后按订单金额自动返还折扣差额（如8.5折返还15%），超过单笔最高优惠按上限返还；返还即时到账并直接核销，订单退款时将从退款中扣除已返还金额。</Text>
                     </View>
                   </>
                 )}

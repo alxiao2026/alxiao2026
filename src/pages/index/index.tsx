@@ -56,6 +56,9 @@ interface LotteryResult {
     prize_type?: string;
     coupon_amount?: string;
     coupon_min_spend?: string;
+    discount_rate?: number;
+    discount_cap?: number;
+    discount_capped?: boolean;
     product_name?: string;
     product_value?: string;
     redemption_code?: string;
@@ -505,8 +508,9 @@ const IndexPage = () => {
         isWinner={lotteryResult?.is_winner ?? false}
         prizeName={lotteryResult?.record?.prize_name ?? null}
         prizeType={(lotteryResult?.record?.prize_type as 'coupon' | 'product' | 'free_meal') || 'coupon'}
-        couponAmount={lotteryResult?.record?.coupon_amount || '0'}
-        couponMinSpend={lotteryResult?.record?.coupon_min_spend || '0'}
+        discountRate={lotteryResult?.record?.discount_rate || 0}
+        discountCap={lotteryResult?.record?.discount_cap || 0}
+        discountCapped={lotteryResult?.record?.discount_capped || false}
         productName={lotteryResult?.record?.product_name || ''}
         productValue={lotteryResult?.record?.product_value || '0'}
         redemptionCode={lotteryResult?.record?.redemption_code || ''}

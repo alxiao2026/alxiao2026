@@ -14,6 +14,8 @@ export interface Prize {
   prize_type: PrizeType;
   coupon_amount: string;
   coupon_min_spend: string;
+  discount_rate: string;
+  discount_cap: string;
   product_name: string;
   product_value: string;
   merchant_id: number | null;
@@ -93,6 +95,8 @@ export class PrizeService {
     prize_type?: PrizeType;
     coupon_amount?: number;
     coupon_min_spend?: number;
+    discount_rate?: number;
+    discount_cap?: number;
     product_name?: string;
     product_value?: number;
     merchant_id?: number | null;
@@ -101,6 +105,12 @@ export class PrizeService {
     is_fallback?: boolean;
   }): Promise<Prize> {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
+    if ((body.prize_type || 'coupon') === 'coupon') {
+      const rate = body.discount_rate ?? 0;
+      if (!(rate >= 8 && rate <= 9.5)) {
+        throw new BadRequestException('折扣券的折扣比例必须在 8.0 ~ 9.5 折之间');
+      }
+    }
 
     const { data, error } = await this.client
       .from('prizes')
@@ -114,6 +124,8 @@ export class PrizeService {
         prize_type: body.prize_type || 'coupon',
         coupon_amount: body.coupon_amount ?? 0,
         coupon_min_spend: body.coupon_min_spend ?? 0,
+        discount_rate: body.discount_rate ?? 0,
+        discount_cap: body.discount_cap ?? 0,
         product_name: body.product_name || '',
         product_value: body.product_value ?? 0,
         validity_hours: body.validity_hours ?? null,
@@ -136,6 +148,8 @@ export class PrizeService {
     prize_type: PrizeType;
     coupon_amount: number;
     coupon_min_spend: number;
+    discount_rate: number;
+    discount_cap: number;
     product_name: string;
     product_value: number;
     merchant_id: number | null;
@@ -144,6 +158,13 @@ export class PrizeService {
     is_fallback: boolean;
   }>): Promise<Prize> {
     const existing = await this.findOne(id);
+
+    // 折扣券校验：折扣比例必须在 8.0 ~ 9.5 折之间
+    const targetType = body.prize_type ?? existing.prize_type;
+    const targetRate = body.discount_rate ?? parseFloat(String((existing as Prize & { discount_rate?: string }).discount_rate || '0'));
+    if (targetType === 'coupon' && !(targetRate >= 8 && targetRate <= 9.5)) {
+      throw new BadRequestException('折扣券的折扣比例必须在 8.0 ~ 9.5 折之间');
+    }
 
     const updateData: Record<string, any> = {};
     if (body.name !== undefined) updateData.name = body.name;
@@ -155,6 +176,8 @@ export class PrizeService {
     if (body.prize_type !== undefined) updateData.prize_type = body.prize_type;
     if (body.coupon_amount !== undefined) updateData.coupon_amount = body.coupon_amount;
     if (body.coupon_min_spend !== undefined) updateData.coupon_min_spend = body.coupon_min_spend;
+    if (body.discount_rate !== undefined) updateData.discount_rate = body.discount_rate;
+    if (body.discount_cap !== undefined) updateData.discount_cap = body.discount_cap;
     if (body.product_name !== undefined) updateData.product_name = body.product_name;
     if (body.product_value !== undefined) updateData.product_value = body.product_value;
     if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;

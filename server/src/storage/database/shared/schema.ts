@@ -63,8 +63,10 @@ export const prizes = pgTable("prizes", {
 	stock: integer("stock").notNull().default(0),
 	is_active: boolean("is_active").notNull().default(true),
 	prize_type: varchar("prize_type", { length: 20 }).notNull().default("coupon"), // coupon=优惠券 / product=实物
-	coupon_amount: numeric("coupon_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券面额
-	coupon_min_spend: numeric("coupon_min_spend", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券最低消费
+	coupon_amount: numeric("coupon_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券面额（旧字段，折扣券模式不再使用）
+	coupon_min_spend: numeric("coupon_min_spend", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券最低消费（旧字段，折扣券模式不再使用）
+	discount_rate: numeric("discount_rate", { precision: 4, scale: 1 }).notNull().default("0"), // 折扣券折扣（如 8.5 表示 8.5 折）
+	discount_cap: numeric("discount_cap", { precision: 10, scale: 2 }).notNull().default("0"), // 折扣券单笔最高优惠金额（0 表示不封顶）
 	product_name: varchar("product_name", { length: 128 }).notNull().default(""), // 实物奖品名称
 	product_value: numeric("product_value", { precision: 10, scale: 2 }).notNull().default("0"), // 实物奖品价值
 	merchant_id: integer("merchant_id"), // 所属商家（空为平台奖品）
@@ -96,6 +98,7 @@ export const orders = pgTable("orders", {
 	shop_name: varchar("shop_name", { length: 128 }), // 消费门店名称
 	order_no: varchar("order_no", { length: 64 }), // 订单编号
 	status: varchar("status", { length: 20 }).notNull().default("pending"), // pending/paid/completed/expired/refunded
+	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }), // 实际退款金额（退款时已扣除折扣券返还金额）
 	shared: boolean("shared").notNull().default(false),
 	verified_by: varchar("verified_by", { length: 128 }), // 最近核销人账号ID
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

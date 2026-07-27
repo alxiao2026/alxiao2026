@@ -19,6 +19,8 @@ interface LotteryRecord {
   is_winner: boolean
   coupon_amount?: string | number | null
   coupon_condition?: string | number | null
+  discount_rate?: number
+  discount_cap?: number
   product_name?: string
   product_value?: string | number | null
   prize_image?: string
@@ -127,7 +129,7 @@ export default function LotteryRecordsPage() {
 
   const getPrizeTypeLabel = (type: string) => {
     const map: Record<string, string> = {
-      coupon: '优惠券',
+      coupon: '折扣券',
       product: '商品',
       free_meal: '霸王餐',
     }
@@ -224,12 +226,12 @@ export default function LotteryRecordsPage() {
                                 </Badge>
                               ) : null}
                             </View>
-                            {record.prize_type === 'coupon' && record.coupon_amount && (
+                            {record.prize_type === 'coupon' && record.discount_rate ? (
                               <Text className="block text-sm text-[#FF4757] font-medium">
-                                优惠金额：¥{record.coupon_amount}
-                                {record.coupon_condition ? `（满¥${record.coupon_condition}可用）` : ''}
+                                {record.discount_rate}折 · 已返还 ¥{record.refund_amount}
+                                {record.discount_cap ? `（单笔最高优惠¥${record.discount_cap}）` : ''}
                               </Text>
-                            )}
+                            ) : null}
                             {record.prize_type === 'product' && record.product_name && (
                               <View>
                                 <Text className="block text-sm text-gray-600">商品：{record.product_name}</Text>

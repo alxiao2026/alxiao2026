@@ -818,16 +818,39 @@ export class OrderService {
     };
   }
 
-  // 过期订单自动退款
+  // 过期订单自动退款（折扣券规则：退款金额 = 支付金额 - 折扣券已返还金额，折扣权益作废）
   private async autoRefundOrder(order: Order): Promise<void> {
     if (order.status === 'refunded' || order.status === 'expired') return;
+
+    const orderTotal = parseFloat(String(order.price || '0')) * (order.quantity || 1);
+    const { data: lotteryRecords } = await this.client
+      .from('lottery_records')
+      .select('id, refund_amount')
+      .eq('order_id', order.id)
+      .in('refund_status', ['redeemed', 'pending'])
+      .gt('refund_amount', 0);
+    const discountReturned = (lotteryRecords || []).reduce(
+      (sum: number, r: { refund_amount: string | null }) => sum + parseFloat(r.refund_amount || '0'),
+      0
+    );
+    const actualRefund = Math.max(0, Math.round((orderTotal - discountReturned) * 100) / 100);
+
     await this.client
       .from('orders')
       .update({
         status: 'refunded',
+        refund_amount: actualRefund,
         updated_at: new Date().toISOString(),
       })
       .eq('id', order.id);
+
+    // 折扣权益作废，不再返还
+    if (lotteryRecords && lotteryRecords.length > 0) {
+      await this.client
+        .from('lottery_records')
+        .update({ refund_status: 'voided' })
+        .in('id', lotteryRecords.map((r: { id: string }) => r.id));
+    }
   }
 
   // 批量检测过期订单并自动退款
@@ -865,10 +888,7 @@ export class OrderService {
       }
 
       if (expired) {
-        await this.client
-          .from('orders')
-          .update({ status: 'refunded', updated_at: new Date().toISOString() })
-          .eq('id', order.id);
+        await this.autoRefundOrder(order);
         order.status = 'refunded';
       }
     }

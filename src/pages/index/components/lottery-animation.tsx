@@ -9,8 +9,9 @@ interface LotteryAnimationProps {
   isWinner: boolean;
   prizeName: string | null;
   prizeType?: 'coupon' | 'product' | 'free_meal';
-  couponAmount?: string;
-  couponMinSpend?: string;
+  discountRate?: number;
+  discountCap?: number;
+  discountCapped?: boolean;
   productName?: string;
   productValue?: string;
   redemptionCode?: string;
@@ -20,7 +21,7 @@ interface LotteryAnimationProps {
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
 
-const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, couponAmount, couponMinSpend, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
+const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountRate, discountCap, discountCapped, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
   const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealing' | 'result'>('idle');
 
   useEffect(() => {
@@ -126,22 +127,24 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, couponAmoun
               </View>
             )}
 
-            {/* 优惠券模式：显示金额和条件 */}
+            {/* 折扣券模式：显示折扣返还金额与封顶提示 */}
             {isWinner && prizeType === 'coupon' && (
               <View className="mt-3 flex flex-col items-center">
                 <Text className="block text-sm lottery-text-white opacity-80">
-                  优惠券金额 ¥{couponAmount}
+                  {discountRate}折 · 本次中奖返还 <Text className="font-bold text-base">¥{refundAmount}</Text>
                 </Text>
-                {Number(couponMinSpend) > 0 && (
-                  <Text className="block text-xs lottery-text-white opacity-60 mt-1">
-                    满 ¥{couponMinSpend} 可用，金额将退回原支付账户
+                {discountCapped ? (
+                  <Text className="block text-xs lottery-text-white opacity-60 mt-1 text-center">
+                    单笔最高优惠 ¥{discountCap}，已按上限返还
+                  </Text>
+                ) : (
+                  <Text className="block text-xs lottery-text-white opacity-60 mt-1 text-center">
+                    返还金额已退回原支付账户，折扣券已核销
                   </Text>
                 )}
-                {Number(couponMinSpend) <= 0 && (
-                  <Text className="block text-xs lottery-text-white opacity-60 mt-1">
-                    无门槛使用，金额将退回原支付账户
-                  </Text>
-                )}
+                <Text className="block text-xs lottery-text-white opacity-50 mt-1 text-center">
+                  若本订单退款，将从退款中扣除该返还金额
+                </Text>
               </View>
             )}
 
