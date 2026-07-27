@@ -5,8 +5,7 @@ import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
 import AppTabBar from '@/components/app-tab-bar';
 import {
-  LogIn,
-  MapPin, ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
+  ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
@@ -43,6 +42,7 @@ interface Package {
   auto_renew: boolean;
   cover_image: string | null;
   sales_count: number;
+  category: string | null;
 }
 
 interface LotteryResult {
@@ -84,13 +84,10 @@ const IndexPage = () => {
   const [rankShops, setRankShops] = useState<RankShop[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [userId, setUserId] = useState<string>('');
-  const [nickName, setNickName] = useState<string>('游客');
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [winners, setWinners] = useState<WinnerRecord[]>([]);
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
   const [showLottery, setShowLottery] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'hot' | 'new'>('all');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeIndustry, setActiveIndustry] = useState('全部');
 
   // 中奖名单按 3 条一屏分组，滚动时整屏翻页
   const winnerGroups: WinnerRecord[][] = [];
@@ -106,11 +103,9 @@ const IndexPage = () => {
       const user = (res.data as { code?: number; data?: { nick_name?: string; avatar_url?: string } })?.data;
       if (user) {
         if (user.nick_name) {
-          setNickName(user.nick_name);
           Taro.setStorageSync('nick_name', user.nick_name);
         }
         if (user.avatar_url) {
-          setAvatarUrl(user.avatar_url);
           Taro.setStorageSync('avatar_url', user.avatar_url);
         }
       }
@@ -122,14 +117,9 @@ const IndexPage = () => {
   // 读取缓存用户ID
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
-    const savedNickName = Taro.getStorageSync('nick_name');
-    const savedAvatar = Taro.getStorageSync('avatar_url');
     const loggedIn = readLoggedIn();
-    setIsLoggedIn(loggedIn);
     if (savedUserId) {
       setUserId(savedUserId);
-      if (savedNickName) setNickName(savedNickName);
-      if (savedAvatar) setAvatarUrl(savedAvatar);
       if (loggedIn) refreshUserInfo(savedUserId);
     } else {
       const newId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -148,15 +138,9 @@ const IndexPage = () => {
 
   // 页面每次显示时刷新数据（下单后返回自动更新销量）
   useDidShow(() => {
-    // 同步最新登录状态（登录页返回后更新头部显示）
+    // 已登录时主动从后端刷新头像/昵称缓存，供个人中心等页面使用
     const loggedIn = readLoggedIn();
-    setIsLoggedIn(loggedIn);
     const savedUserId = Taro.getStorageSync('user_id');
-    const savedNickName = Taro.getStorageSync('nick_name');
-    const savedAvatar = Taro.getStorageSync('avatar_url');
-    if (savedNickName) setNickName(savedNickName);
-    if (savedAvatar) setAvatarUrl(savedAvatar);
-    // 已登录时主动从后端刷新头像/昵称，避免状态缓存不一致
     if (loggedIn && savedUserId) refreshUserInfo(savedUserId);
     fetchRankShops();
     if (!userId) return;
@@ -195,15 +179,6 @@ const IndexPage = () => {
     }
   };
 
-  // 用户区域点击：已登录进个人中心，未登录跳登录页
-  const handleUserBarClick = () => {
-    if (isLoggedIn) {
-      Taro.reLaunch({ url: '/pages/user-center/index' });
-    } else {
-      Taro.navigateTo({ url: '/pages/login/index' });
-    }
-  };
-
   // 设置分享
   useShareAppMessage(() => {
     return {
@@ -221,67 +196,57 @@ const IndexPage = () => {
     }
   };
 
-  const getFilteredPackages = () => {
-    if (activeTab === 'hot') return packages.filter(p => (p.sales_count || 0) > 0);
-    if (activeTab === 'new') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return packages.filter(p => {
-        if (!p.sale_start_date) return false;
-        const start = new Date(p.sale_start_date);
-        return start >= today;
-      });
-    }
-    return packages;
+  // ===== 行业分类导航：按套餐大类聚合（category 形如"餐饮美食 · 火锅烧烤"） =====
+  const industryEmoji = (name: string): string => {
+    if (/餐饮|美食|火锅|烧烤|饮品|小吃/.test(name)) return '🍜';
+    if (/购物|超市|便利|百货/.test(name)) return '🛒';
+    if (/休闲|娱乐|KTV|电影|游戏/.test(name)) return '🎮';
+    if (/丽人|美容|美发|美甲/.test(name)) return '💅';
+    if (/酒店|住宿|旅游/.test(name)) return '🏨';
+    if (/运动|健身|瑜伽/.test(name)) return '💪';
+    if (/教育|亲子|培训/.test(name)) return '🎨';
+    if (/宠物/.test(name)) return '🐾';
+    return '🎈';
   };
 
-  const filteredPackages = getFilteredPackages();
+  const industries: string[] = [];
+  packages.forEach(p => {
+    const major = p.category?.split('·')[0]?.trim();
+    if (major && !industries.includes(major)) industries.push(major);
+  });
+
+  const industryTabs = [{ name: '全部', emoji: '🎈' }, ...industries.map(n => ({ name: n, emoji: industryEmoji(n) }))];
+
+  const filteredPackages = activeIndustry === '全部'
+    ? packages
+    : packages.filter(p => p.category?.startsWith(activeIndustry));
 
   return (
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部渐变头部（活泼气泡风） ===== */}
-        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-4 pt-10 pb-16 overflow-hidden">
+        {/* ===== 顶部平台形象广告位（活泼气泡风） ===== */}
+        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-5 pt-10 pb-16 overflow-hidden">
           {/* 装饰气泡 */}
           <View className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" style={{ opacity: 0.08 }} />
           <View className="absolute top-12 right-20 w-10 h-10 rounded-full bg-white" style={{ opacity: 0.12 }} />
           <View className="absolute -bottom-8 -left-6 w-24 h-24 rounded-full bg-[#FFE27A]" style={{ opacity: 0.15 }} />
+          <View className="absolute top-20 left-10 w-8 h-8 rounded-full bg-white" style={{ opacity: 0.1 }} />
 
-          {/* 品牌 + 用户入口 */}
-          <View className="flex flex-row items-center justify-between">
-            <View className="flex flex-row items-center gap-2">
-              <View className="bg-white rounded-2xl p-1 shadow-md" style={{ transform: 'rotate(-4deg)' }}>
-                <Image src={LOGO_URL} className="w-9 h-9 rounded-xl" mode="aspectFit" />
-              </View>
-              <View>
-                <Text className="block text-xl font-bold text-white">膨胀团</Text>
-                <View className="flex flex-row items-center gap-1 bg-white rounded-full px-2 py-1 mt-1" style={{ opacity: 0.92 }}>
-                  <MapPin size={10} color="#FF4757" />
-                  <Text className="block text-xs font-semibold text-[#FF4757]">本地生活 · 优惠团购</Text>
+          <View className="flex flex-row items-center gap-4">
+            {/* 品牌形象圆标 */}
+            <View className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg" style={{ transform: 'rotate(-6deg)' }}>
+              <Image src={LOGO_URL} className="w-12 h-12" mode="aspectFit" />
+            </View>
+            <View className="flex-1">
+              <View className="flex flex-row items-center gap-2">
+                <Text className="block text-lg font-bold text-white">膨胀团</Text>
+                <View className="bg-white rounded-full px-2 py-1" style={{ opacity: 0.92 }}>
+                  <Text className="block text-xs font-semibold text-[#FF4757]">🎈 本地生活</Text>
                 </View>
               </View>
+              <Text className="block text-2xl font-bold text-white mt-1">下单抽霸王餐</Text>
+              <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 · 每单都有好运 ✨</Text>
             </View>
-            <View
-              className="flex flex-row items-center gap-2 bg-white rounded-full pl-1 pr-2 py-1 shadow-md"
-              style={{ opacity: 0.95 }}
-              onClick={handleUserBarClick}
-            >
-              {isLoggedIn && avatarUrl ? (
-                <Image src={avatarUrl} className="w-7 h-7 rounded-full" mode="aspectFill" />
-              ) : (
-                <View className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center">
-                  <LogIn size={14} color="#FF4757" />
-                </View>
-              )}
-              <Text className="block text-xs font-semibold text-gray-700">{isLoggedIn ? nickName : '去登录'}</Text>
-              <ChevronRight size={12} color="#9CA3AF" />
-            </View>
-          </View>
-
-          {/* 打招呼 */}
-          <View className="mt-5">
-            <Text className="block text-lg font-bold text-white">{isLoggedIn ? `嗨，${nickName} 👋` : '嗨，朋友 👋'}</Text>
-            <Text className="block text-sm text-white mt-1" style={{ opacity: 0.85 }}>今天想吃什么霸王餐呀？好运正在路上 🎈</Text>
           </View>
         </View>
 
@@ -375,32 +340,31 @@ const IndexPage = () => {
           </View>
         )}
 
-        {/* ===== 分类标签栏 ===== */}
-        <View className="px-4 mt-5">
-          <View className="flex flex-row gap-4">
-            {([
-              { key: 'all', label: '全部' },
-              { key: 'hot', label: '热销' },
-              { key: 'new', label: '新品' },
-            ] as const).map((tab) => (
-              <View
-                key={tab.key}
-                className={`px-4 py-2 rounded-full ${
-                  activeTab === tab.key
-                    ? 'bg-[#FF4757]'
-                    : 'bg-white'
-                }`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                <Text
-                  className={`block text-sm font-medium ${
-                    activeTab === tab.key ? 'text-white' : 'text-gray-600'
-                  }`}
-                >
-                  {tab.label}
-                </Text>
+        {/* ===== 行业分类导航 ===== */}
+        <View className="px-4 mt-5 mb-4">
+          <View className="bg-white rounded-2xl shadow-lg px-3 py-3">
+            <View className="flex flex-row items-center gap-1 px-1 mb-2">
+              <Text className="block text-sm">🧭</Text>
+              <Text className="block text-sm font-bold text-gray-800">逛一逛</Text>
+              <Text className="block text-xs text-gray-400 ml-1">按行业找好店</Text>
+            </View>
+            <ScrollView scrollX className="whitespace-nowrap" showScrollbar={false}>
+              <View className="flex flex-row gap-2">
+                {industryTabs.map((item) => {
+                  const active = activeIndustry === item.name;
+                  return (
+                    <View
+                      key={item.name}
+                      className={`flex flex-row items-center gap-1 px-3 py-2 rounded-full ${active ? 'bg-[#FF4757]' : 'bg-gray-50'}`}
+                      onClick={() => setActiveIndustry(item.name)}
+                    >
+                      <Text className="block text-sm">{item.emoji}</Text>
+                      <Text className={`block text-xs font-semibold ${active ? 'text-white' : 'text-gray-600'}`}>{item.name}</Text>
+                    </View>
+                  );
+                })}
               </View>
-            ))}
+            </ScrollView>
           </View>
         </View>
 
