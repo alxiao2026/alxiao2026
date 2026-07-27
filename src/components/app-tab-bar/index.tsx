@@ -40,7 +40,7 @@ export default function AppTabBar({ current }: AppTabBarProps) {
         flexDirection: 'row',
         paddingLeft: '16px',
         paddingRight: '16px',
-        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+        paddingBottom: 'calc(26px + env(safe-area-inset-bottom))',
       }}
     >
       <View
