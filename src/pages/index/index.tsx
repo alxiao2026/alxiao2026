@@ -240,40 +240,48 @@ const IndexPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部渐变头部 ===== */}
-        <View className="bg-gradient-to-b from-[#FF4757] via-[#ff5c6e] to-[#ff8a94] px-4 pt-10 pb-16">
-          {/* 第一行：Logo */}
-          <View className="flex flex-row items-center justify-between mb-5">
+        {/* ===== 顶部渐变头部（活泼气泡风） ===== */}
+        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-4 pt-10 pb-16 overflow-hidden">
+          {/* 装饰气泡 */}
+          <View className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" style={{ opacity: 0.08 }} />
+          <View className="absolute top-12 right-20 w-10 h-10 rounded-full bg-white" style={{ opacity: 0.12 }} />
+          <View className="absolute -bottom-8 -left-6 w-24 h-24 rounded-full bg-[#FFE27A]" style={{ opacity: 0.15 }} />
+
+          {/* 品牌 + 用户入口 */}
+          <View className="flex flex-row items-center justify-between">
             <View className="flex flex-row items-center gap-2">
-              <Image src={LOGO_URL} className="w-9 h-9 rounded-lg" mode="aspectFit" />
-              <Text className="block text-lg font-bold text-white">膨胀团</Text>
+              <View className="bg-white rounded-2xl p-1 shadow-md" style={{ transform: 'rotate(-4deg)' }}>
+                <Image src={LOGO_URL} className="w-9 h-9 rounded-xl" mode="aspectFit" />
+              </View>
+              <View>
+                <Text className="block text-xl font-bold text-white">膨胀团</Text>
+                <View className="flex flex-row items-center gap-1 bg-white rounded-full px-2 py-1 mt-1" style={{ opacity: 0.92 }}>
+                  <MapPin size={10} color="#FF4757" />
+                  <Text className="block text-xs font-semibold text-[#FF4757]">本地生活 · 优惠团购</Text>
+                </View>
+              </View>
+            </View>
+            <View
+              className="flex flex-row items-center gap-2 bg-white rounded-full pl-1 pr-2 py-1 shadow-md"
+              style={{ opacity: 0.95 }}
+              onClick={handleUserBarClick}
+            >
+              {isLoggedIn && avatarUrl ? (
+                <Image src={avatarUrl} className="w-7 h-7 rounded-full" mode="aspectFill" />
+              ) : (
+                <View className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center">
+                  <LogIn size={14} color="#FF4757" />
+                </View>
+              )}
+              <Text className="block text-xs font-semibold text-gray-700">{isLoggedIn ? nickName : '去登录'}</Text>
+              <ChevronRight size={12} color="#9CA3AF" />
             </View>
           </View>
 
-          {/* 第二行：用户信息 */}
-          <View
-            className="flex flex-row items-center gap-3"
-            onClick={handleUserBarClick}
-          >
-            {isLoggedIn && avatarUrl ? (
-              <Image src={avatarUrl} className="w-12 h-12 rounded-full border-2 border-white" mode="aspectFill" />
-            ) : (
-              <View className="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center border-2 border-white border-opacity-40">
-                <LogIn size={20} color="#fff" />
-              </View>
-            )}
-            <View className="flex-1">
-              <Text className="block text-base font-semibold text-white">{isLoggedIn ? nickName : '游客'}</Text>
-              {!isLoggedIn ? (
-                <Text className="block text-xs text-white" style={{ opacity: 0.7 }}>点击登录，享受更多优惠</Text>
-              ) : (
-                <View className="flex flex-row items-center gap-1 mt-1">
-                  <MapPin size={11} color="#fff" />
-                  <Text className="block text-xs text-white" style={{ opacity: 0.8 }}>本地生活 · 优惠团购</Text>
-                </View>
-              )}
-            </View>
-            <ChevronRight size={18} color="#fff" />
+          {/* 打招呼 */}
+          <View className="mt-5">
+            <Text className="block text-lg font-bold text-white">{isLoggedIn ? `嗨，${nickName} 👋` : '嗨，朋友 👋'}</Text>
+            <Text className="block text-sm text-white mt-1" style={{ opacity: 0.85 }}>今天想吃什么霸王餐呀？好运正在路上 🎈</Text>
           </View>
         </View>
 
