@@ -78,9 +78,10 @@ export class MerchantService {
 
     const { data: prizes, error: prizeError } = await this.client
       .from('prizes')
-      .select('id, name, prize_type, image_url, coupon_amount, product_name, validity_hours, stock')
+      .select('id, name, prize_type, image_url, coupon_amount, product_name, validity_hours, stock, probability')
       .eq('merchant_id', id)
       .eq('is_active', true)
+      .eq('is_fallback', false)
       .order('probability', { ascending: false });
 
     if (prizeError) throw new Error(`查询商家奖品失败：${prizeError.message}`);

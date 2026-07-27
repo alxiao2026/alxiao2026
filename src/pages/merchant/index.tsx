@@ -42,6 +42,7 @@ interface Prize {
   product_name?: string
   stock?: number
   validity_hours?: number
+  probability: number
 }
 
 interface Package {
@@ -53,12 +54,6 @@ interface Package {
   badge?: string
   category?: string
   package_type?: string
-}
-
-const PRIZE_TYPE_MAP: Record<string, { label: string; cls: string }> = {
-  free_meal: { label: '霸王餐', cls: 'bg-amber-50 text-amber-600 border-amber-200' },
-  product: { label: '实物奖品', cls: 'bg-red-50 text-[#FF4757] border-red-200' },
-  coupon: { label: '消费券', cls: 'bg-orange-50 text-orange-500 border-orange-200' },
 }
 
 /** 根据营业时间（如 06:00-13:00）计算当前营业状态 */
@@ -345,6 +340,12 @@ export default function MerchantPage() {
                               <Text className="text-xs text-gray-400">{pkg.category}</Text>
                             )}
                           </View>
+                          {/* 抽奖提示（红色背景） */}
+                          <View className="flex flex-row mt-1">
+                            <View className="bg-[#FF4757] rounded-full px-3 py-1">
+                              <Text className="block text-xs text-white font-semibold">下单抽霸王餐</Text>
+                            </View>
+                          </View>
                         </View>
                         <View className="flex flex-row items-end justify-between mt-2">
                           <View className="flex flex-row items-baseline gap-2">
@@ -385,47 +386,35 @@ export default function MerchantPage() {
               ) : (
                 <ScrollView scrollX className="mt-3 whitespace-nowrap" showScrollbar={false}>
                   <View className="flex flex-row gap-3 px-4">
-                    {prizes.map((prize) => {
-                      const typeInfo = PRIZE_TYPE_MAP[prize.prize_type] || { label: '奖品', cls: 'bg-gray-100 text-gray-500 border-gray-200' }
+                    {prizes.map((prize, idx) => {
+                      const bgColors = ['#FFE9E9', '#FFF4D9', '#FFF9F0', '#EDF4FF', '#F0EBFF']
+                      const bg = bgColors[idx % bgColors.length]
                       return (
                         <View
                           key={prize.id}
-                          className="w-40 shrink-0 bg-gradient-to-b from-amber-50 to-white rounded-xl overflow-hidden border border-amber-100"
+                          className="w-28 shrink-0 bg-white rounded-xl overflow-hidden shadow-md"
                         >
-                          <View className="relative w-40 h-40 bg-white">
-                            {prize.image_url ? (
-                              <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
-                            ) : (
-                              <View className="w-full h-full bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
-                                <Gift size={36} color="#f59e0b" />
-                              </View>
-                            )}
-                            <View className="absolute top-2 left-2">
-                              <Badge className={`${typeInfo.cls} rounded-md border`}>
-                                <Text className="text-xs">{typeInfo.label}</Text>
-                              </Badge>
+                          {/* 上半：名称 + 中奖率 + 图片（浅色背景） */}
+                          <View className="flex flex-col items-center pt-2 pb-2" style={{ backgroundColor: bg }}>
+                            <Text className="block text-sm font-bold text-gray-800 text-center px-1 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
+                            <Text className="block text-xs text-[#FF4757] font-semibold mt-1">中奖率{prize.probability}%</Text>
+                            <View className="w-14 h-14 mt-2 flex items-center justify-center">
+                              {prize.image_url ? (
+                                <Image src={prize.image_url} className="w-14 h-14 rounded-lg" mode="aspectFit" />
+                              ) : (
+                                <Gift size={40} color="#FF4757" />
+                              )}
                             </View>
                           </View>
-                          <View className="p-3">
-                            <Text className="block text-sm font-semibold text-gray-900 leading-5 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
-                            <View className="flex flex-row flex-wrap items-center gap-2 mt-1">
-                              {prize.prize_type === 'coupon' && !!prize.coupon_amount && (
-                                <Text className="text-xs text-[#FF4757] font-medium">面额 ¥{parseFloat(prize.coupon_amount)}</Text>
-                              )}
-                              {prize.prize_type === 'product' && !!prize.product_name && (
-                                <Text className="text-xs text-gray-500">{prize.product_name}</Text>
-                              )}
-                              {!!prize.validity_hours && (
-                                <Text className="text-xs text-gray-400">{prize.validity_hours}小时有效</Text>
-                              )}
-                            </View>
-                            <View className="flex flex-row items-center justify-between mt-2">
-                              <Text className="text-xs text-amber-600 font-medium">{typeof prize.stock === 'number' ? `限量${prize.stock}份` : ''}</Text>
-                              <View className="flex flex-row items-center gap-1">
-                                <Text className="text-xs text-[#FF4757] font-medium">去抽奖</Text>
-                                <ChevronRight size={12} color="#FF4757" />
-                              </View>
-                            </View>
+                          {/* 下半：去开奖按钮 */}
+                          <View className="bg-white py-2 flex items-center justify-center">
+                            <Button
+                              size="sm"
+                              className="rounded-full bg-[#FF4757] text-white h-7 px-4"
+                              onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
+                            >
+                              <Text className="text-xs font-semibold text-white">去开奖</Text>
+                            </Button>
                           </View>
                         </View>
                       )
