@@ -197,7 +197,7 @@ const IndexPage = () => {
   // 用户区域点击：已登录进个人中心，未登录跳登录页
   const handleUserBarClick = () => {
     if (isLoggedIn) {
-      Taro.navigateTo({ url: '/pages/user-center/index' });
+      Taro.switchTab({ url: '/pages/user-center/index' });
     } else {
       Taro.navigateTo({ url: '/pages/login/index' });
     }
