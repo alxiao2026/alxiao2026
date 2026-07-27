@@ -79,10 +79,11 @@ export class OrderService {
       query = query.eq('status', status);
     }
     if (startDate) {
-      query = query.gte('created_at', `${startDate}T00:00:00`);
+      // 业务日期按 UTC+8 分界，避免服务器时区导致早晚 8 小时订单错位
+      query = query.gte('created_at', `${startDate}T00:00:00+08:00`);
     }
     if (endDate) {
-      query = query.lte('created_at', `${endDate}T23:59:59`);
+      query = query.lte('created_at', `${endDate}T23:59:59.999+08:00`);
     }
     if (verifiedBy) {
       query = query.eq('verified_by', verifiedBy);
@@ -105,10 +106,10 @@ export class OrderService {
       query = query.eq('status', filters.status);
     }
     if (filters?.startDate) {
-      query = query.gte('created_at', `${filters.startDate}T00:00:00`);
+      query = query.gte('created_at', `${filters.startDate}T00:00:00+08:00`);
     }
     if (filters?.endDate) {
-      query = query.lte('created_at', `${filters.endDate}T23:59:59`);
+      query = query.lte('created_at', `${filters.endDate}T23:59:59.999+08:00`);
     }
     if (filters?.verifiedBy) {
       query = query.eq('verified_by', filters.verifiedBy);

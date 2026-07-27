@@ -10,7 +10,10 @@ const AdminPage = () => {
     verifiedAmount: '0.00', verifiedCount: 0, prizeCount: 0,
     todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
     todayVerifiedAmount: '0.00', todayVerifiedCount: 0,
-    todayLotteryUsers: 0, todayRefundAmount: '0.00', todayFreeMealWinners: 0
+    todayLotteryUsers: 0, todayRefundAmount: '0.00', todayFreeMealWinners: 0,
+    rangeSales: 0, rangeOrders: 0, rangeRevenue: '0.00',
+    rangeVerifiedCount: 0, rangeVerifiedAmount: '0.00',
+    rangeLotteryUsers: 0, rangeRefundAmount: '0.00', rangeFreeMealWinners: 0
   });
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
@@ -87,7 +90,24 @@ const AdminPage = () => {
     try {
       const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
       if (!userId) return;
-      const statsRes = await Network.request({ url: `/api/users/${userId}/merchant-stats` });
+      // 经营概况数据随时间筛选维度展示（与平台统计一致的参数逻辑；商家固定为今日）
+      const end = new Date();
+      const start = new Date();
+      if (timeFilter === 'week') {
+        start.setDate(start.getDate() - 7);
+      } else if (timeFilter === 'month') {
+        start.setDate(start.getDate() - 30);
+      }
+      const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      let statsUrl = `/api/users/${userId}/merchant-stats`;
+      if (timeFilter === 'custom' && customStartDate && customEndDate) {
+        statsUrl += `?start_date=${customStartDate}&end_date=${customEndDate}`;
+      } else if (timeFilter === 'today') {
+        statsUrl += `?start_date=${formatDate(end)}&end_date=${formatDate(end)}`;
+      } else {
+        statsUrl += `?start_date=${formatDate(start)}&end_date=${formatDate(end)}`;
+      }
+      const statsRes = await Network.request({ url: statsUrl });
       const envelope = (statsRes as any)?.data || statsRes;
       const statsData = envelope?.data || envelope;
       if (statsData && typeof statsData === 'object' && 'totalSales' in statsData) {
@@ -312,15 +332,15 @@ const AdminPage = () => {
               <TrendingUp size={14} color="#f97316" />
               <Text className="block text-xs text-[#FF4757]">销售金额</Text>
             </View>
-            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todayRevenue}</Text>
-            <Text className="block text-xs text-red-300 mt-1">{merchantStats.todayOrders}笔订单</Text>
+            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.rangeRevenue}</Text>
+            <Text className="block text-xs text-red-300 mt-1">{merchantStats.rangeOrders}笔订单</Text>
           </View>
           <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <ShoppingBag size={14} color="#FF4757" />
               <Text className="block text-xs text-[#FF4757]">销售份数</Text>
             </View>
-            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.todaySales}</Text>
+            <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.rangeSales}</Text>
             <Text className="block text-xs text-red-300 mt-1">份</Text>
           </View>
           <View className="flex-1 bg-green-50 rounded-xl p-3">
@@ -328,8 +348,8 @@ const AdminPage = () => {
               <CircleCheck size={14} color="#22c55e" />
               <Text className="block text-xs text-green-600">核销金额</Text>
             </View>
-            <Text className="block text-lg font-bold text-green-600">{merchantStats.todayVerifiedAmount}</Text>
-            <Text className="block text-xs text-green-400 mt-1">{merchantStats.todayVerifiedCount}份</Text>
+            <Text className="block text-lg font-bold text-green-600">{merchantStats.rangeVerifiedAmount}</Text>
+            <Text className="block text-xs text-green-400 mt-1">{merchantStats.rangeVerifiedCount}份</Text>
           </View>
         </View>
         {/* 第二行：抽奖数据 */}
@@ -337,17 +357,17 @@ const AdminPage = () => {
           <View className="flex-1 bg-purple-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <Users size={14} color="#8b5cf6" />
-              <Text className="block text-xs text-purple-600">今日抽奖人数</Text>
+              <Text className="block text-xs text-purple-600">抽奖人数</Text>
             </View>
-            <Text className="block text-lg font-bold text-purple-600">{merchantStats.todayLotteryUsers}</Text>
+            <Text className="block text-lg font-bold text-purple-600">{merchantStats.rangeLotteryUsers}</Text>
             <Text className="block text-xs text-purple-300 mt-1">人</Text>
           </View>
           <View className="flex-1 bg-amber-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <Coins size={14} color="#f59e0b" />
-              <Text className="block text-xs text-amber-600">今日返还金额</Text>
+              <Text className="block text-xs text-amber-600">返还金额</Text>
             </View>
-            <Text className="block text-lg font-bold text-amber-600">{merchantStats.todayRefundAmount}</Text>
+            <Text className="block text-lg font-bold text-amber-600">{merchantStats.rangeRefundAmount}</Text>
             <Text className="block text-xs text-amber-400 mt-1">元</Text>
           </View>
           <View className="flex-1 bg-orange-50 rounded-xl p-3">
@@ -355,7 +375,7 @@ const AdminPage = () => {
               <UtensilsCrossed size={14} color="#f97316" />
               <Text className="block text-xs text-orange-600">霸王餐中奖</Text>
             </View>
-            <Text className="block text-lg font-bold text-orange-600">{merchantStats.todayFreeMealWinners}</Text>
+            <Text className="block text-lg font-bold text-orange-600">{merchantStats.rangeFreeMealWinners}</Text>
             <Text className="block text-xs text-orange-300 mt-1">人</Text>
           </View>
         </View>

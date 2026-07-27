@@ -120,11 +120,11 @@ export class UserController {
     return { code: 200, msg: 'success', data: permissions };
   }
 
-  /** 获取商家统计数据 */
+  /** 获取商家统计数据（支持 start_date/end_date 时间范围，供经营概况按筛选维度展示） */
   @Get(':userId/merchant-stats')
-  async getMerchantStats(@Param('userId') userId: string) {
-    console.log('[UserController] getMerchantStats:', userId);
-    const stats = await this.userService.getMerchantStats(userId);
+  async getMerchantStats(@Param('userId') userId: string, @Query() query: { start_date?: string; end_date?: string }) {
+    console.log('[UserController] getMerchantStats:', userId, query);
+    const stats = await this.userService.getMerchantStats(userId, query);
     return { code: 200, msg: 'success', data: stats };
   }
 

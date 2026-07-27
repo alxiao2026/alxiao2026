@@ -421,7 +421,7 @@ export class UserService {
   }
 
   /** 获取商家统计数据 */
-  async getMerchantStats(userId: string): Promise<{
+  async getMerchantStats(userId: string, rangeQuery?: { start_date?: string; end_date?: string }): Promise<{
     totalSales: number;
     totalOrders: number;
     totalRevenue: string;
@@ -436,6 +436,14 @@ export class UserService {
     todayLotteryUsers: number;
     todayRefundAmount: string;
     todayFreeMealWinners: number;
+    rangeSales: number;
+    rangeOrders: number;
+    rangeRevenue: string;
+    rangeVerifiedCount: number;
+    rangeVerifiedAmount: string;
+    rangeLotteryUsers: number;
+    rangeRefundAmount: string;
+    rangeFreeMealWinners: number;
   }> {
     const supabase = getSupabaseClient();
 
@@ -497,27 +505,25 @@ export class UserService {
     const prizeOrders = orders.filter(o => (o as any).shared === true);
     const prizeCount = prizeOrders.length;
 
-    // 今日数据（使用本地时区）
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const todayOrdersList = orders.filter(o => {
-      const d = new Date(o.created_at);
-      const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return orderDate === todayStr;
-    });
+    // 业务日期统一按 UTC+8（中国时区）分界，与服务器部署时区无关
+    const CN_OFFSET_MS = 8 * 60 * 60 * 1000;
+    // 今日数据（UTC+8 口径）
+    const todayStr = new Date(Date.now() + CN_OFFSET_MS).toISOString().split('T')[0];
+    const toCnDateStr = (iso?: string | null) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return new Date(d.getTime() + CN_OFFSET_MS).toISOString().split('T')[0];
+    };
+    const todayOrdersList = orders.filter(o => toCnDateStr(o.created_at) === todayStr);
     const todayOrders = todayOrdersList.length;
     const todaySales = todayOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
     const todayRevenue = todayOrdersList
       .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
       .toFixed(2);
     // 今日核销：按「核销发生时间」统计（而非下单时间），昨天买今天核销的也计入今日
-    const toLocalDateStr = (iso?: string | null) => {
-      if (!iso) return '';
-      const d = new Date(iso);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
     const todayVerifiedOrders = orders.filter(
-      o => (Number(o.verified_count) || 0) > 0 && toLocalDateStr(o.verified_at || o.created_at) === todayStr,
+      o => (Number(o.verified_count) || 0) > 0 && toCnDateStr(o.verified_at || o.created_at) === todayStr,
     );
     const todayVerifiedCount = todayVerifiedOrders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
     const todayVerifiedAmount = todayVerifiedOrders
@@ -525,20 +531,47 @@ export class UserService {
       .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
       .toFixed(2);
 
-    // 今日抽奖统计（抽奖人数 / 返还金额 / 霸王餐中奖人数）
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // 经营概况时间范围（默认今日；单传 start_date 时结束日期默认为今天，兼容"近7天/近30天"只传起点的场景）
+    const rangeStart = rangeQuery?.start_date || todayStr;
+    const rangeEnd = rangeQuery?.end_date || (rangeQuery?.start_date ? todayStr : rangeStart);
+    const inRange = (iso?: string | null) => {
+      const ds = toCnDateStr(iso);
+      return !!ds && ds >= rangeStart && ds <= rangeEnd;
+    };
+    // 范围销售数据（按下单时间）
+    const rangeOrdersList = orders.filter(o => inRange(o.created_at));
+    const rangeOrders = rangeOrdersList.length;
+    const rangeSales = rangeOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+    const rangeRevenue = rangeOrdersList
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .toFixed(2);
+    // 范围核销数据（按核销发生时间）
+    const rangeVerifiedOrders = orders.filter(
+      o => (Number(o.verified_count) || 0) > 0 && inRange(o.verified_at || o.created_at),
+    );
+    const rangeVerifiedCount = rangeVerifiedOrders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
+    const rangeVerifiedAmount = rangeVerifiedOrders
+      .filter(o => o.status === 'used')
+      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .toFixed(2);
+
+    // 抽奖统计（查询窗口取今日起点与范围起点中较早者，同时支撑今日与范围口径；日期边界显式按 UTC+8）
+    const todayStart = new Date(`${todayStr}T00:00:00+08:00`);
+    const rangeStartDate = new Date(`${rangeStart}T00:00:00+08:00`);
+    const rangeEndDate = new Date(`${rangeEnd}T23:59:59.999+08:00`);
+    const windowStart = new Date(Math.min(todayStart.getTime(), rangeStartDate.getTime()));
     const { data: todayLotteryRows } = await supabase
       .from('lottery_records')
       .select('order_id, user_id, refund_amount, is_winner, created_at, prizes(prize_type)')
-      .gte('created_at', todayStart.toISOString());
-    const todayLotteryRecords = (todayLotteryRows || []).filter((r: any) => {
-      const d = new Date(r.created_at);
-      const recordDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (recordDate !== todayStr) return false;
+      .gte('created_at', windowStart.toISOString())
+      .lte('created_at', rangeEndDate.toISOString());
+    const scopeLotteryRecords = (todayLotteryRows || []).filter((r: any) => {
       // 商家用户只统计自己门店订单产生的抽奖记录
       if (merchantOrderIds && !merchantOrderIds.has(r.order_id)) return false;
       return true;
     });
+    const todayLotteryRecords = scopeLotteryRecords.filter((r: any) => toCnDateStr(r.created_at) === todayStr);
+    const rangeLotteryRecords = scopeLotteryRecords.filter((r: any) => inRange(r.created_at));
     const todayLotteryUsers = new Set(todayLotteryRecords.map((r: any) => r.user_id)).size;
     const isFreeMeal = (r: any) => {
       const prizeType = Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type;
@@ -548,6 +581,13 @@ export class UserService {
     // 中奖人数按去重用户统计（同一用户多次中奖只算 1 人）
     const todayFreeMealWinners = new Set(todayFreeMealRecords.map((r: any) => r.user_id)).size;
     const todayRefundAmount = todayFreeMealRecords
+      .reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
+      .toFixed(2);
+    // 范围抽奖统计（与今日口径相同的计算逻辑）
+    const rangeLotteryUsers = new Set(rangeLotteryRecords.map((r: any) => r.user_id)).size;
+    const rangeFreeMealRecords = rangeLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
+    const rangeFreeMealWinners = new Set(rangeFreeMealRecords.map((r: any) => r.user_id)).size;
+    const rangeRefundAmount = rangeFreeMealRecords
       .reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
       .toFixed(2);
 
@@ -565,7 +605,15 @@ export class UserService {
       todayVerifiedCount,
       todayLotteryUsers,
       todayRefundAmount,
-      todayFreeMealWinners
+      todayFreeMealWinners,
+      rangeSales,
+      rangeOrders,
+      rangeRevenue,
+      rangeVerifiedCount,
+      rangeVerifiedAmount,
+      rangeLotteryUsers,
+      rangeRefundAmount,
+      rangeFreeMealWinners
     };
   }
 
@@ -632,21 +680,14 @@ export class UserService {
       throw new ForbiddenException('仅系统管理员可查看平台统计数据');
     }
 
-    // 构建时间筛选条件
-    let dateFilter: any = {};
-    if (start_date) {
-      dateFilter.created_at = { $gte: new Date(start_date).toISOString() };
-    }
-    if (end_date) {
-      const endDate = new Date(end_date);
-      endDate.setHours(23, 59, 59, 999);
-      dateFilter.created_at = { ...dateFilter.created_at, $lte: endDate.toISOString() };
-    }
+    // 业务日期统一按 UTC+8（中国时区）分界
+    const rangeStartIso = start_date ? `${start_date}T00:00:00+08:00` : '1970-01-01T00:00:00+08:00';
+    const rangeEndIso = end_date ? `${end_date}T23:59:59.999+08:00` : '2099-12-31T23:59:59+08:00';
 
     // 统计用户
     let usersQuery = getSupabaseClient().from('users').select('id, role');
     if (start_date || end_date) {
-      usersQuery = usersQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+      usersQuery = usersQuery.gte('created_at', rangeStartIso).lte('created_at', rangeEndIso);
     }
     const { data: users } = await usersQuery;
     const userList = users || [];
@@ -657,7 +698,7 @@ export class UserService {
     // 统计套餐
     let packagesQuery = getSupabaseClient().from('packages').select('id');
     if (start_date || end_date) {
-      packagesQuery = packagesQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+      packagesQuery = packagesQuery.gte('created_at', rangeStartIso).lte('created_at', rangeEndIso);
     }
     const { data: packages } = await packagesQuery;
     const packages_count = (packages || []).length;
@@ -665,7 +706,7 @@ export class UserService {
     // 统计奖品
     let prizesQuery = getSupabaseClient().from('prizes').select('id');
     if (start_date || end_date) {
-      prizesQuery = prizesQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+      prizesQuery = prizesQuery.gte('created_at', rangeStartIso).lte('created_at', rangeEndIso);
     }
     const { data: prizes } = await prizesQuery;
     const prizes_count = (prizes || []).length;
@@ -673,7 +714,7 @@ export class UserService {
     // 统计门店
     let merchantsQuery = getSupabaseClient().from('merchants').select('id');
     if (start_date || end_date) {
-      merchantsQuery = merchantsQuery.gte('created_at', start_date || '1970-01-01').lte('created_at', end_date || '2099-12-31');
+      merchantsQuery = merchantsQuery.gte('created_at', rangeStartIso).lte('created_at', rangeEndIso);
     }
     const { data: merchantsList } = await merchantsQuery;
     const merchants_count = (merchantsList || []).length;
