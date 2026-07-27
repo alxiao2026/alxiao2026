@@ -91,6 +91,12 @@ const IndexPage = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'hot' | 'new'>('all');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // 中奖名单按 3 条一屏分组，滚动时整屏翻页
+  const winnerGroups: WinnerRecord[][] = [];
+  for (let i = 0; i < winners.length; i += 3) {
+    winnerGroups.push(winners.slice(i, i + 3));
+  }
+
   // 从后端拉取最新用户信息，保证昵称/头像/登录态实时同步
   const refreshUserInfo = async (uid: string) => {
     try {
@@ -504,22 +510,24 @@ const IndexPage = () => {
             </View>
             <View className="bg-white rounded-2xl overflow-hidden">
               <Swiper
-                className="h-10"
+                className="h-30"
                 vertical
                 autoplay
                 circular
                 interval={2200}
                 duration={450}
               >
-                {winners.map((w) => (
-                  <SwiperItem key={w.id}>
-                    <View className="flex flex-row items-center px-4 h-10">
-                      <Text className="block text-sm">🎉</Text>
-                      <Text className="block text-sm text-gray-700 ml-2 flex-1" numberOfLines={1}>
-                        恭喜 {w.nick_name} 抽中
-                      </Text>
-                      <Text className="block text-sm font-semibold text-[#FF4757] ml-2" numberOfLines={1}>{w.prize_name}</Text>
-                    </View>
+                {winnerGroups.map((group, gi) => (
+                  <SwiperItem key={gi}>
+                    {group.map((w) => (
+                      <View key={w.id} className="flex flex-row items-center px-4 h-10">
+                        <Text className="block text-sm">🎉</Text>
+                        <Text className="block text-sm text-gray-700 ml-2 flex-1" numberOfLines={1}>
+                          恭喜 {w.nick_name} 抽中
+                        </Text>
+                        <Text className="block text-sm font-semibold text-[#FF4757] ml-2" numberOfLines={1}>{w.prize_name}</Text>
+                      </View>
+                    ))}
                   </SwiperItem>
                 ))}
               </Swiper>
