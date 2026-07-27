@@ -130,6 +130,72 @@ export class MerchantService {
     };
   }
 
+  /** 霸王餐人气榜：按门店统计 free_meal 中奖次数，取前 N 名 */
+  async getFreeMealRank(limit = 5) {
+    // 1. 全部霸王餐奖品 → merchant_id 映射
+    const { data: freeMealPrizes, error: prizeError } = await this.client
+      .from('prizes')
+      .select('id, merchant_id')
+      .eq('prize_type', 'free_meal');
+    if (prizeError) throw new Error(`查询霸王餐奖品失败：${prizeError.message}`);
+    if (!freeMealPrizes || freeMealPrizes.length === 0) return [];
+
+    const prizeMerchantMap = new Map<string, string>();
+    freeMealPrizes.forEach((p: { id: string; merchant_id: string }) => {
+      prizeMerchantMap.set(String(p.id), String(p.merchant_id));
+    });
+
+    // 2. 中奖记录（仅霸王餐奖品）
+    const { data: records, error: recordError } = await this.client
+      .from('lottery_records')
+      .select('prize_id')
+      .in('prize_id', freeMealPrizes.map((p: { id: string }) => p.id))
+      .eq('is_winner', true);
+    if (recordError) throw new Error(`查询中奖记录失败：${recordError.message}`);
+    if (!records || records.length === 0) return [];
+
+    // 3. 按门店聚合计数
+    const countMap = new Map<string, number>();
+    records.forEach((r: { prize_id: string }) => {
+      const merchantId = prizeMerchantMap.get(String(r.prize_id));
+      if (merchantId) {
+        countMap.set(merchantId, (countMap.get(merchantId) || 0) + 1);
+      }
+    });
+
+    // 4. 取前 N 名商家信息
+    const topMerchantIds = [...countMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([merchantId]) => merchantId);
+    if (topMerchantIds.length === 0) return [];
+
+    const { data: merchants, error: merchantError } = await this.client
+      .from('merchants')
+      .select('id, name, logo, address')
+      .in('id', topMerchantIds);
+    if (merchantError) throw new Error(`查询商家信息失败：${merchantError.message}`);
+
+    const merchantMap = new Map<string, { id: number; name: string; logo: string | null; address: string | null }>();
+    (merchants || []).forEach((m: { id: number; name: string; logo: string | null; address: string | null }) => {
+      merchantMap.set(String(m.id), m);
+    });
+
+    return topMerchantIds
+      .map((merchantId) => {
+        const merchant = merchantMap.get(merchantId);
+        if (!merchant) return null;
+        return {
+          id: merchant.id,
+          name: merchant.name,
+          logo: merchant.logo,
+          address: merchant.address,
+          freeMealWins: countMap.get(merchantId) || 0,
+        };
+      })
+      .filter(Boolean);
+  }
+
   async create(body: CreateMerchantDto): Promise<Merchant> {
     if (!body.name) throw new BadRequestException('商家名称不能为空');
     if (!body.admin_phone) throw new BadRequestException('管理员手机号不能为空');

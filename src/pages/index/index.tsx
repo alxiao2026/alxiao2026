@@ -4,8 +4,8 @@ import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
 import {
-  Gift, LogIn,
-  MapPin, ChevronRight, Clock, Flame, Award
+  LogIn,
+  MapPin, ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
@@ -18,6 +18,14 @@ interface Prize {
   image_url: string | null;
   stock: number;
   is_active: boolean;
+}
+
+interface RankShop {
+  id: number;
+  name: string;
+  logo: string | null;
+  address: string | null;
+  freeMealWins: number;
 }
 
 interface Package {
@@ -72,7 +80,7 @@ const readLoggedIn = (): boolean => {
 };
 
 const IndexPage = () => {
-  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [rankShops, setRankShops] = useState<RankShop[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [userId, setUserId] = useState<string>('');
   const [nickName, setNickName] = useState<string>('游客');
@@ -125,8 +133,8 @@ const IndexPage = () => {
 
   // 获取数据
   useEffect(() => {
+    fetchRankShops();
     if (!userId) return;
-    fetchPrizes();
     fetchPackages();
     fetchWinners();
   }, [userId]);
@@ -143,19 +151,20 @@ const IndexPage = () => {
     if (savedAvatar) setAvatarUrl(savedAvatar);
     // 已登录时主动从后端刷新头像/昵称，避免状态缓存不一致
     if (loggedIn && savedUserId) refreshUserInfo(savedUserId);
+    fetchRankShops();
     if (!userId) return;
-    fetchPrizes();
     fetchPackages();
     fetchWinners();
   });
 
-  const fetchPrizes = async () => {
+  const fetchRankShops = async () => {
     try {
-      const res = await Network.request({ url: '/api/prizes/active' });
-      const data = (res.data as any)?.data || (res.data as Prize[]) || [];
-      setPrizes(data);
+      const res = await Network.request({ url: '/api/merchants/free-meal-rank' });
+      console.log('[首页] 霸王餐人气榜:', res.data);
+      const data = (res.data as any)?.data || [];
+      setRankShops(data);
     } catch (err) {
-      console.error('获取奖品失败:', err);
+      console.error('获取霸王餐人气榜失败:', err);
     }
   };
 
@@ -261,47 +270,91 @@ const IndexPage = () => {
           </View>
         </View>
 
-        {/* ===== 奖品横幅（悬浮卡片） ===== */}
-        {prizes.length > 0 && (
+        {/* ===== 霸王餐人气榜（悬浮卡片） ===== */}
+        {rankShops.length > 0 && (
           <View className="px-4 -mt-8">
             <View className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <View className="bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] px-4 py-3">
                 <View className="flex flex-row items-center gap-2">
-                  <Gift size={18} color="#fff" />
-                  <Text className="block text-sm font-bold text-white">本期奖品</Text>
-                  <Text className="block text-xs text-white ml-auto" style={{ opacity: 0.85 }}>共{prizes.length}款奖品</Text>
+                  <Trophy size={18} color="#FFE27A" />
+                  <Text className="block text-sm font-bold text-white">霸王餐人气榜</Text>
+                  <Text className="block text-xs text-white ml-auto" style={{ opacity: 0.85 }}>好运正在派送中</Text>
                 </View>
               </View>
-              <View className="flex flex-row overflow-x-auto px-3 py-3 gap-3">
-                {prizes.map((prize, index) => {
-                  const bgColors = ['#FFE9E9', '#FFF3D6', '#FFF9F0', '#EDF4FF', '#F0EBFF'];
-                  const bgColor = bgColors[index % bgColors.length];
-                  return (
-                    <View key={prize.id} className="flex-shrink-0 w-28 bg-white rounded-xl overflow-hidden shadow-md">
-                      {/* 上半：名称 + 中奖概率 + 奖品图（浅色底） */}
-                      <View className="flex flex-col items-center pt-2 px-1 pb-2" style={{ backgroundColor: bgColor }}>
-                        <Text className="block text-sm font-bold text-gray-800 text-center" numberOfLines={1}>{prize.name}</Text>
-                        <Text className="block text-xs text-[#FF4757] font-semibold mt-1">中奖率{prize.probability}%</Text>
-                        <View className="w-14 h-14 mt-2 flex items-center justify-center">
-                          {prize.image_url ? (
-                            <Image src={prize.image_url} className="w-14 h-14" mode="aspectFit" />
-                          ) : (
-                            <Award size={40} color="#FF4757" />
-                          )}
-                        </View>
+              <View className="px-3 py-3">
+                {/* 冠军卡 */}
+                <View
+                  className="rounded-2xl bg-gradient-to-r from-[#FFF3D6] to-[#FFE9B8] px-3 py-3 flex flex-row items-center gap-3 relative overflow-hidden"
+                  onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${rankShops[0].id}` })}
+                >
+                  <View className="absolute top-1 right-2 flex flex-row items-center gap-1">
+                    <Crown size={14} color="#D97706" />
+                    <Text className="block text-xs font-bold text-[#D97706]">人气王</Text>
+                  </View>
+                  <View className="relative flex-shrink-0">
+                    {rankShops[0].logo ? (
+                      <Image src={rankShops[0].logo} className="w-14 h-14 rounded-2xl" mode="aspectFill" />
+                    ) : (
+                      <View className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center">
+                        <Store size={28} color="#D97706" />
                       </View>
-                      {/* 下半：去开奖按钮 */}
-                      <View className="bg-white py-2 flex items-center justify-center">
-                        <View
-                          className="bg-[#FF4757] rounded-full px-5 py-1"
-                          onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
-                        >
-                          <Text className="block text-xs font-semibold text-white">去开奖</Text>
-                        </View>
-                      </View>
+                    )}
+                    <View className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA502] flex items-center justify-center">
+                      <Text className="block text-xs font-bold text-white">1</Text>
                     </View>
-                  );
-                })}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="block text-sm font-bold text-gray-900" numberOfLines={1}>{rankShops[0].name}</Text>
+                    <View className="flex flex-row items-baseline gap-1 mt-1">
+                      <Text className="block text-xs text-[#B7791F]">已送出</Text>
+                      <Text className="block text-lg font-bold text-[#D97706]">{rankShops[0].freeMealWins}</Text>
+                      <Text className="block text-xs text-[#B7791F]">份霸王餐 🎉</Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={16} color="#D97706" />
+                </View>
+                {/* 2-5 名：双列卡片 */}
+                {[
+                  rankShops.slice(1, 3),
+                  rankShops.slice(3, 5),
+                ].map((row, rowIdx) => (
+                  row.length > 0 && (
+                    <View key={rowIdx} className="flex flex-row gap-2 mt-2">
+                      {row.map((shop) => {
+                        const rank = rankShops.indexOf(shop) + 1;
+                        const medal = rank === 2
+                          ? 'bg-gradient-to-br from-[#E5E7EB] to-[#9CA3AF]'
+                          : rank === 3
+                            ? 'bg-gradient-to-br from-[#F0B27A] to-[#CD7F32]'
+                            : 'bg-gradient-to-br from-[#CBD5E0] to-[#A0AEC0]';
+                        return (
+                          <View
+                            key={shop.id}
+                            className="flex-1 bg-gray-50 rounded-2xl px-2 py-2 flex flex-row items-center gap-2"
+                            onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${shop.id}` })}
+                          >
+                            <View className="relative flex-shrink-0">
+                              {shop.logo ? (
+                                <Image src={shop.logo} className="w-10 h-10 rounded-xl" mode="aspectFill" />
+                              ) : (
+                                <View className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                                  <Store size={20} color="#FF4757" />
+                                </View>
+                              )}
+                              <View className={`absolute -top-1 -left-1 w-5 h-5 rounded-full ${medal} flex items-center justify-center`}>
+                                <Text className="block text-xs font-bold text-white">{rank}</Text>
+                              </View>
+                            </View>
+                            <View className="flex-1 overflow-hidden">
+                              <Text className="block text-xs font-bold text-gray-800" numberOfLines={1}>{shop.name}</Text>
+                              <Text className="block text-xs text-[#FF4757] font-semibold mt-1">{shop.freeMealWins} 份霸王餐</Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )
+                ))}
               </View>
             </View>
           </View>

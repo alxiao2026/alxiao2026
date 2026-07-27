@@ -22,6 +22,14 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 霸王餐人气榜：中霸王餐次数最多的门店 TOP5 */
+  @Get('free-meal-rank')
+  @HttpCode(HttpStatus.OK)
+  async getFreeMealRank() {
+    const data = await this.merchantService.getFreeMealRank(5);
+    return { code: 200, msg: 'success', data };
+  }
+
   /** 商家首页：商家详情 + 上架奖品 */
   @Get(':id/detail')
   @HttpCode(HttpStatus.OK)
