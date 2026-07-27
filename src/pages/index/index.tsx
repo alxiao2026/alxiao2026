@@ -223,15 +223,15 @@ const IndexPage = () => {
   return (
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部平台形象广告位（极简） ===== */}
-        <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] px-5 pt-8 pb-12 overflow-hidden">
-          <Text className="block text-2xl font-bold text-white">膨胀团</Text>
-          <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 · 每单都有好运 ✨</Text>
+        {/* ===== 顶部品牌区（居中极简） ===== */}
+        <View className="px-5 pt-6 pb-4 flex flex-col items-center">
+          <Text className="block text-2xl font-bold text-[#FF4757]">膨胀团</Text>
+          <Text className="block text-xs text-gray-400 mt-1">给生活来点小惊喜 · 每单都有好运 ✨</Text>
         </View>
 
         {/* ===== 霸王餐人气榜（悬浮卡片） ===== */}
         {rankShops.length > 0 && (
-          <View className="px-4 -mt-8">
+          <View className="px-4 mt-2">
             <View className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <View className="bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] px-4 py-3">
                 <View className="flex flex-row items-center gap-2">
@@ -319,13 +319,13 @@ const IndexPage = () => {
           </View>
         )}
 
-        {/* ===== 行业分类导航 ===== */}
+        {/* ===== 行业分类导航（红色氛围区） ===== */}
         <View className="px-4 mt-5 mb-4">
-          <View className="bg-white rounded-2xl shadow-lg px-3 py-3">
+          <View className="bg-gradient-to-br from-[#FF4757] via-[#FF5C6C] to-[#FF8FA3] rounded-2xl shadow-lg px-3 py-3">
             <View className="flex flex-row items-center gap-1 px-1 mb-2">
               <Text className="block text-sm">🧭</Text>
-              <Text className="block text-sm font-bold text-gray-800">逛一逛</Text>
-              <Text className="block text-xs text-gray-400 ml-1">按行业找好店</Text>
+              <Text className="block text-sm font-bold text-white">逛一逛</Text>
+              <Text className="block text-xs text-white ml-1" style={{ opacity: 0.8 }}>按行业找好店</Text>
             </View>
             <ScrollView scrollX className="whitespace-nowrap" showScrollbar={false}>
               <View className="flex flex-row gap-2">
@@ -334,11 +334,12 @@ const IndexPage = () => {
                   return (
                     <View
                       key={item.name}
-                      className={`flex flex-row items-center gap-1 px-3 py-2 rounded-full ${active ? 'bg-[#FF4757]' : 'bg-gray-50'}`}
+                      className={`flex flex-row items-center gap-1 px-3 py-2 rounded-full ${active ? 'bg-white' : 'bg-white'}`}
+                      style={active ? undefined : { opacity: 0.9, backgroundColor: 'rgba(255,255,255,0.22)' }}
                       onClick={() => setActiveIndustry(item.name)}
                     >
                       <Text className="block text-sm">{item.emoji}</Text>
-                      <Text className={`block text-xs font-semibold ${active ? 'text-white' : 'text-gray-600'}`}>{item.name}</Text>
+                      <Text className={`block text-xs font-semibold ${active ? 'text-[#FF4757]' : 'text-white'}`}>{item.name}</Text>
                     </View>
                   );
                 })}
