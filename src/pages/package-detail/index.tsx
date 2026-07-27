@@ -698,34 +698,55 @@ export default function PackageDetail() {
 
         {/* 使用方式步骤 */}
         <View className="bg-white mt-2 px-4 py-4">
-          <Text className="block text-base font-bold text-gray-800 mb-4">使用方式</Text>
-          <View className="flex flex-row items-center justify-between">
-            <View className="flex flex-col items-center gap-2">
-              <View className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                <Text className="block text-lg">🛒</Text>
+          <View className="flex flex-row items-baseline gap-2 mb-4">
+            <Text className="block text-base font-bold text-gray-800">使用方式</Text>
+            <Text className="block text-xs text-gray-400">4 步解锁快乐</Text>
+          </View>
+          <View className="flex flex-col gap-2">
+            <View className="flex flex-row items-center gap-3 bg-red-50 rounded-2xl px-3 py-3">
+              <View className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B6B] to-[#FF8E53] flex items-center justify-center flex-shrink-0">
+                <Text className="block text-sm font-bold text-white">1</Text>
               </View>
-              <Text className="block text-xs text-gray-600">点击购买</Text>
+              <Text className="block text-xl">🛒</Text>
+              <View className="flex-1">
+                <Text className="block text-sm font-bold text-gray-800">点击购买</Text>
+                <Text className="block text-xs text-gray-500 mt-1">心动套餐，一键拿下</Text>
+              </View>
             </View>
-            <View className="flex-1 h-1 bg-gray-200 mx-2" />
-            <View className="flex flex-col items-center gap-2">
-              <View className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                <Text className="block text-lg">💳</Text>
+            <View className="flex flex-row items-center gap-3 bg-orange-50 rounded-2xl px-3 py-3">
+              <View className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FFA502] to-[#FFC312] flex items-center justify-center flex-shrink-0">
+                <Text className="block text-sm font-bold text-white">2</Text>
               </View>
-              <Text className="block text-xs text-gray-600">支付订单</Text>
+              <Text className="block text-xl">💳</Text>
+              <View className="flex-1">
+                <Text className="block text-sm font-bold text-gray-800">支付订单</Text>
+                <Text className="block text-xs text-gray-500 mt-1">微信支付，秒速搞定</Text>
+              </View>
             </View>
-            <View className="flex-1 h-1 bg-gray-200 mx-2" />
-            <View className="flex flex-col items-center gap-2">
-              <View className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                <Text className="block text-lg"></Text>
+            <View className="rounded-2xl px-3 py-3 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] relative overflow-hidden">
+              <View className="absolute top-2 right-2 bg-white rounded-full px-2 py-1">
+                <Text className="block text-xs font-bold text-[#FF4757]">100%有礼</Text>
               </View>
-              <Text className="block text-xs text-gray-600">电话预约</Text>
+              <View className="flex flex-row items-center gap-3">
+                <View className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                  <Text className="block text-sm font-bold text-[#FF4757]">3</Text>
+                </View>
+                <Text className="block text-xl">🎁</Text>
+                <View className="flex-1">
+                  <Text className="block text-sm font-bold text-white">抽奖领奖品</Text>
+                  <Text className="block text-xs text-white mt-1" style={{ opacity: 0.85 }}>下单自动抽奖，好运挡不住</Text>
+                </View>
+              </View>
             </View>
-            <View className="flex-1 h-1 bg-gray-200 mx-2" />
-            <View className="flex flex-col items-center gap-2">
-              <View className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                <Text className="block text-lg">🏪</Text>
+            <View className="flex flex-row items-center gap-3 bg-green-50 rounded-2xl px-3 py-3">
+              <View className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2ED573] to-[#7BED9F] flex items-center justify-center flex-shrink-0">
+                <Text className="block text-sm font-bold text-white">4</Text>
               </View>
-              <Text className="block text-xs text-gray-600">到店使用</Text>
+              <Text className="block text-xl">🏪</Text>
+              <View className="flex-1">
+                <Text className="block text-sm font-bold text-gray-800">到店使用</Text>
+                <Text className="block text-xs text-gray-500 mt-1">出示核销码，开心享用</Text>
+              </View>
             </View>
           </View>
         </View>
