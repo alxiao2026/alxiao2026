@@ -40,11 +40,11 @@ export default function AppTabBar({ current }: AppTabBarProps) {
         flexDirection: 'row',
         paddingLeft: '16px',
         paddingRight: '16px',
-        paddingBottom: 'calc(26px + env(safe-area-inset-bottom))',
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
       <View
-        className="bg-white rounded-full shadow-lg"
+        className="bg-white rounded-2xl shadow-lg"
         style={{
           flex: 1,
           display: 'flex',
