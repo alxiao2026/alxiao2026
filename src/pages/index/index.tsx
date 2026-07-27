@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
@@ -492,34 +492,37 @@ const IndexPage = () => {
           )}
         </View>
 
-        {/* ===== 往期中奖名单 ===== */}
+        {/* ===== 往期中奖名单（滚动播报） ===== */}
         {winners.length > 0 && (
           <View className="px-4 mt-5 mb-6">
-            <View className="flex flex-row items-center justify-between mb-3">
-              <View className="flex flex-row items-center gap-2">
-                <Award size={18} color="#FF4757" />
-                <Text className="block text-base font-bold text-gray-800">往期中奖名单</Text>
+            <View className="flex flex-row items-center gap-2 mb-3">
+              <Award size={18} color="#FF4757" />
+              <Text className="block text-base font-bold text-gray-800">往期中奖名单</Text>
+              <View className="ml-auto bg-red-50 rounded-full px-2 py-1">
+                <Text className="block text-xs text-[#FF4757]">好运接力中</Text>
               </View>
             </View>
             <View className="bg-white rounded-2xl overflow-hidden">
-              <ScrollView
-                scrollY
-                className="h-48"
-                enhanced
-                showScrollbar={false}
+              <Swiper
+                className="h-10"
+                vertical
+                autoplay
+                circular
+                interval={2200}
+                duration={450}
               >
                 {winners.map((w) => (
-                  <View key={w.id} className="flex flex-row items-center px-4 py-3 border-b border-gray-50">
-                    <View className="flex-1">
-                      <Text className="block text-sm font-semibold text-gray-800" numberOfLines={1}>{w.prize_name}</Text>
-                      <Text className="block text-xs text-gray-400 mt-1">{w.nick_name} · {new Date(w.created_at).toLocaleDateString()}</Text>
+                  <SwiperItem key={w.id}>
+                    <View className="flex flex-row items-center px-4 h-10">
+                      <Text className="block text-sm">🎉</Text>
+                      <Text className="block text-sm text-gray-700 ml-2 flex-1" numberOfLines={1}>
+                        恭喜 {w.nick_name} 抽中
+                      </Text>
+                      <Text className="block text-sm font-semibold text-[#FF4757] ml-2" numberOfLines={1}>{w.prize_name}</Text>
                     </View>
-                    <View className="bg-red-50 rounded-full px-3 py-1 ml-2">
-                      <Text className="block text-xs text-[#FF4757]">已中奖</Text>
-                    </View>
-                  </View>
+                  </SwiperItem>
                 ))}
-              </ScrollView>
+              </Swiper>
             </View>
           </View>
         )}
