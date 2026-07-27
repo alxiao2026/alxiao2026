@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw } from 'lucide-react-taro'
+import { Button } from '@/components/ui/button'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Sparkles, Wallet } from 'lucide-react-taro'
 
 interface Order {
   id: string
@@ -22,6 +23,11 @@ interface Order {
   quantity: number
   verified_count: number
   created_at: string
+  pay_amount?: string | null
+  original_amount?: string | null
+  discount_amount?: string | null
+  paid_at?: string | null
+  pay_expire_at?: string | null
 }
 
 interface PackageInfo {
@@ -35,30 +41,40 @@ interface PackageInfo {
   original_price: string
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgGradient: string; icon: string }> = {
-  pending: {
-    label: '待使用',
-    color: '#FFFFFF',
+interface PrepayInfo {
+  prepay_id: string
+  channel: string
+  original_amount: number
+  discount_amount: number
+  pay_amount: number
+  discount_name: string | null
+  pay_expire_at: string | null
+}
+
+const STATUS_CONFIG: Record<string, { label: string; bgGradient: string }> = {
+  created: {
+    label: '待支付',
     bgGradient: 'linear-gradient(135deg, #FF6B7A 0%, #FF4757 100%)',
-    icon: 'clock',
+  },
+  paid: {
+    label: '待使用',
+    bgGradient: 'linear-gradient(135deg, #FF9F43 0%, #FF6B35 100%)',
   },
   used: {
     label: '已使用',
-    color: '#FFFFFF',
     bgGradient: 'linear-gradient(135deg, #52C41A 0%, #389E0D 100%)',
-    icon: 'check',
   },
   refunded: {
     label: '已退款',
-    color: '#FFFFFF',
     bgGradient: 'linear-gradient(135deg, #999999 0%, #666666 100%)',
-    icon: 'info',
   },
   expired: {
     label: '已过期',
-    color: '#FFFFFF',
     bgGradient: 'linear-gradient(135deg, #999999 0%, #666666 100%)',
-    icon: 'info',
+  },
+  closed: {
+    label: '已关闭',
+    bgGradient: 'linear-gradient(135deg, #999999 0%, #666666 100%)',
   },
 }
 
@@ -70,11 +86,18 @@ export default function OrderDetail() {
   const [qrcode, setQrcode] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [refreshingQR, setRefreshingQR] = useState(false)
+  const [prepayInfo, setPrepayInfo] = useState<PrepayInfo | null>(null)
+  const [paying, setPaying] = useState(false)
+  const [refunding, setRefunding] = useState(false)
+  const [countdownText, setCountdownText] = useState('')
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (id) {
       loadOrder()
-      loadQRCode()
+    }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current)
     }
   }, [id])
 
@@ -83,6 +106,21 @@ export default function OrderDetail() {
       loadPackageInfo(order.package_id)
     }
   }, [order?.package_id])
+
+  // 已支付后加载核销二维码
+  useEffect(() => {
+    if (order?.status === 'paid') {
+      loadQRCode()
+    }
+  }, [order?.status])
+
+  // 待支付：加载支付金额明细 + 启动倒计时
+  useEffect(() => {
+    if (order?.status === 'created') {
+      loadPrepay()
+      startCountdown(order.pay_expire_at)
+    }
+  }, [order?.status, order?.pay_expire_at])
 
   const loadOrder = async () => {
     try {
@@ -128,6 +166,136 @@ export default function OrderDetail() {
     }
   }
 
+  /** 预下单：后端金额引擎计算实付（含抽奖券抵扣），前端只展示 */
+  const loadPrepay = async (): Promise<PrepayInfo | null> => {
+    try {
+      const userId = Taro.getStorageSync('user_id')
+      if (!userId) return null
+      console.log('[OrderDetail] 请求预下单, order_id:', id)
+      const res = await Network.request({
+        url: '/api/payment/prepay',
+        method: 'POST',
+        data: { order_id: id, user_id: userId },
+      })
+      console.log('[OrderDetail] 预下单响应:', res.data)
+      const data = res.data?.data || res.data
+      if (data?.prepay_id) {
+        setPrepayInfo(data)
+        return data as PrepayInfo
+      }
+    } catch (err: any) {
+      console.error('[OrderDetail] 预下单失败:', err)
+      Taro.showToast({ title: err?.data?.message || '获取支付信息失败', icon: 'none' })
+    }
+    return null
+  }
+
+  const startCountdown = (expireAt?: string | null) => {
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    if (!expireAt) {
+      setCountdownText('')
+      return
+    }
+    const tick = () => {
+      const remain = new Date(expireAt).getTime() - Date.now()
+      if (remain <= 0) {
+        setCountdownText('已超时')
+        if (countdownRef.current) clearInterval(countdownRef.current)
+        // 超时后刷新订单（后端懒关单会置为 closed）
+        loadOrder()
+        return
+      }
+      const mm = Math.floor(remain / 60000)
+      const ss = Math.floor((remain % 60000) / 1000)
+      setCountdownText(`${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`)
+    }
+    tick()
+    countdownRef.current = setInterval(tick, 1000)
+  }
+
+  /** 立即支付（Mock 通道）：prepay → mock-notify（模拟微信异步回调）→ 刷新订单 */
+  const handlePay = async () => {
+    if (paying) return
+    setPaying(true)
+    try {
+      let prepay = prepayInfo
+      if (!prepay?.prepay_id) {
+        prepay = await loadPrepay()
+      }
+      if (!prepay?.prepay_id) {
+        setPaying(false)
+        return
+      }
+      console.log('[OrderDetail] 发起 Mock 支付回调, prepay_id:', prepay.prepay_id)
+      const res = await Network.request({
+        url: '/api/payment/mock-notify',
+        method: 'POST',
+        data: { prepay_id: prepay.prepay_id, result: 'success' },
+      })
+      console.log('[OrderDetail] 支付回调响应:', res.data)
+      const data = res.data?.data || res.data
+      if (data?.status === 'paid') {
+        if (countdownRef.current) clearInterval(countdownRef.current)
+        setPrepayInfo(null)
+        await loadOrder()
+        Taro.showModal({
+          title: '支付成功',
+          content: '支付成功，快去参与抽奖赢免单吧！',
+          confirmText: '去抽奖',
+          cancelText: '查看订单',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+            }
+          },
+        })
+      } else {
+        Taro.showToast({ title: '支付未完成，请重试', icon: 'none' })
+      }
+    } catch (err: any) {
+      console.error('[OrderDetail] 支付失败:', err)
+      Taro.showToast({ title: err?.data?.message || '支付失败，请重试', icon: 'none' })
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  /** 申请退款（未核销可退；退实付金额，已用折扣权益作废） */
+  const handleRefund = async () => {
+    if (refunding) return
+    Taro.showModal({
+      title: '申请退款',
+      content: '确认申请退款吗？退款将原路返回，本单已使用的抽奖折扣权益将作废',
+      confirmText: '确认退款',
+      confirmColor: '#FF4757',
+      success: async (modalRes) => {
+        if (!modalRes.confirm) return
+        setRefunding(true)
+        try {
+          const userId = Taro.getStorageSync('user_id')
+          console.log('[OrderDetail] 申请退款, order_id:', id)
+          const res = await Network.request({
+            url: '/api/payment/refund',
+            method: 'POST',
+            data: { order_id: id, user_id: userId, reason: '用户主动申请退款' },
+          })
+          console.log('[OrderDetail] 退款响应:', res.data)
+          Taro.showToast({ title: '退款成功', icon: 'success' })
+          await loadOrder()
+        } catch (err: any) {
+          console.error('[OrderDetail] 退款失败:', err)
+          Taro.showToast({ title: err?.data?.message || '退款失败，请联系客服', icon: 'none' })
+        } finally {
+          setRefunding(false)
+        }
+      },
+    })
+  }
+
+  const handleGoLottery = () => {
+    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+  }
+
   const handleRefreshQR = async () => {
     setRefreshingQR(true)
     await loadQRCode()
@@ -157,6 +325,8 @@ export default function OrderDetail() {
     return code
   }
 
+  const toAmount = (v: string | number | null | undefined) => parseFloat(String(v || '0')) || 0
+
   if (loading) {
     return (
       <View className="flex items-center justify-center h-screen bg-gray-100">
@@ -173,8 +343,19 @@ export default function OrderDetail() {
     )
   }
 
-  const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
-  const isPending = order.status === 'pending'
+  const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.paid
+  const isCreated = order.status === 'created'
+  const isPaid = order.status === 'paid'
+  const canRefund = isPaid && (order.verified_count || 0) === 0
+
+  // 金额明细：优先用 prepay 返回（含券抵扣），否则用订单字段兜底
+  const originalAmount = prepayInfo
+    ? prepayInfo.original_amount
+    : toAmount(order.original_amount) || toAmount(order.price) * (order.quantity || 1)
+  const discountAmount = prepayInfo ? prepayInfo.discount_amount : toAmount(order.discount_amount)
+  const payAmount = prepayInfo
+    ? prepayInfo.pay_amount
+    : Math.max(originalAmount - discountAmount, 0.01)
 
   return (
     <View className="flex flex-col h-screen bg-gray-100">
@@ -189,7 +370,14 @@ export default function OrderDetail() {
             )}
             <Text className="block text-2xl font-bold text-white">{statusCfg.label}</Text>
           </View>
-          {isPending && (
+          {isCreated && (
+            <Text className="block text-xs text-white opacity-80 mt-1">
+              {countdownText && countdownText !== '已超时'
+                ? `请在 ${countdownText} 内完成支付，超时订单将自动关闭`
+                : '订单已超时，请重新下单'}
+            </Text>
+          )}
+          {isPaid && (
             <Text className="block text-xs text-white opacity-80 mt-1">
               {order.quantity > 1
                 ? '共' + order.quantity + '份，已核销' + (order.verified_count || 0) + '份，剩余' + (order.quantity - (order.verified_count || 0)) + '份'
@@ -210,8 +398,71 @@ export default function OrderDetail() {
       </View>
 
       <ScrollView scrollY className="flex-1 -mt-3">
-        {/* 二维码卡片 */}
-        {isPending && (
+        {/* 待支付：支付金额卡片 */}
+        {isCreated && (
+          <View className="mx-4 rounded-2xl bg-white overflow-hidden">
+            <View className="flex flex-row items-center gap-2 px-4 pt-4 pb-1">
+              <Wallet size={16} color="#FF4757" />
+              <Text className="block text-sm font-semibold text-gray-900">支付金额</Text>
+            </View>
+            <View className="px-4 py-3">
+              <View className="flex flex-row justify-between items-center py-2">
+                <Text className="block text-sm text-gray-400">订单金额</Text>
+                <Text className="block text-sm text-gray-800">¥{originalAmount.toFixed(2)}</Text>
+              </View>
+              {discountAmount > 0 && (
+                <>
+                  <Separator />
+                  <View className="flex flex-row justify-between items-center py-2">
+                    <Text className="block text-sm text-gray-400">
+                      {prepayInfo?.discount_name || '抽奖优惠抵扣'}
+                    </Text>
+                    <Text className="block text-sm font-semibold text-[#52C41A]">
+                      -¥{discountAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                </>
+              )}
+              <Separator />
+              <View className="flex flex-row justify-between items-center py-2">
+                <Text className="block text-sm text-gray-400">实付金额</Text>
+                <Text className="block text-xl font-bold text-[#FF4757]">¥{payAmount.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* 去抽奖赢抵扣 */}
+            <View
+              className="mx-4 mb-3 rounded-xl flex flex-row items-center gap-2 px-3 py-3"
+              style={{ background: 'linear-gradient(135deg, #FFF7E6 0%, #FFF0DB 100%)' }}
+              onClick={handleGoLottery}
+            >
+              <Sparkles size={18} color="#FF9F43" />
+              <View className="flex-1">
+                <Text className="block text-xs font-semibold text-[#B88230]">支付前先抽奖，赢取折扣券/霸王餐抵扣本单</Text>
+                <Text className="block text-xs text-[#D6A95C] mt-1">中奖后实付金额自动减免</Text>
+              </View>
+              <ChevronRight size={16} color="#D6A95C" />
+            </View>
+
+            {/* 立即支付按钮 */}
+            <View className="px-4 pb-4">
+              <Button
+                className="w-full h-12 rounded-xl text-base font-semibold"
+                style={{ background: 'linear-gradient(135deg, #FF6B7A 0%, #FF4757 100%)', color: '#fff' }}
+                disabled={paying || countdownText === '已超时'}
+                onClick={handlePay}
+              >
+                <Text>{paying ? '支付中...' : `立即支付 ¥${payAmount.toFixed(2)}`}</Text>
+              </Button>
+              {countdownText === '已超时' && (
+                <Text className="block text-center text-xs text-gray-400 mt-2">订单已超时关闭，请重新下单</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* 已支付：二维码卡片 */}
+        {isPaid && (
           <View className="mx-4 rounded-2xl bg-white overflow-hidden">
             <View className="flex flex-col items-center px-6 pt-6 pb-2">
               {qrcode ? (
@@ -367,6 +618,33 @@ export default function OrderDetail() {
               <Text className="block text-sm text-gray-400">下单时间</Text>
               <Text className="block text-sm text-gray-800">{formatDate(order.created_at)}</Text>
             </View>
+            {order.paid_at && (
+              <>
+                <Separator />
+                <View className="flex flex-row justify-between items-center py-2">
+                  <Text className="block text-sm text-gray-400">支付时间</Text>
+                  <Text className="block text-sm text-gray-800">{formatDate(order.paid_at)}</Text>
+                </View>
+              </>
+            )}
+            {(order.status === 'paid' || order.status === 'used' || order.status === 'refunded') && toAmount(order.pay_amount) > 0 && (
+              <>
+                <Separator />
+                <View className="flex flex-row justify-between items-center py-2">
+                  <Text className="block text-sm text-gray-400">实付金额</Text>
+                  <Text className="block text-sm font-semibold text-[#FF4757]">¥{toAmount(order.pay_amount).toFixed(2)}</Text>
+                </View>
+                {toAmount(order.discount_amount) > 0 && (
+                  <>
+                    <Separator />
+                    <View className="flex flex-row justify-between items-center py-2">
+                      <Text className="block text-sm text-gray-400">抽奖优惠抵扣</Text>
+                      <Text className="block text-sm font-semibold text-[#52C41A]">-¥{toAmount(order.discount_amount).toFixed(2)}</Text>
+                    </View>
+                  </>
+                )}
+              </>
+            )}
             <Separator />
             <View className="flex flex-row justify-between items-center py-2">
               <Text className="block text-sm text-gray-400">购买日期</Text>
@@ -384,7 +662,7 @@ export default function OrderDetail() {
                 {order.verified_count || 0} / {order.quantity || 1} 已核销
               </Text>
             </View>
-            {order.verification_code && (
+            {order.verification_code && (order.status === 'paid' || order.status === 'used') && (
               <>
                 <Separator />
                 <View className="flex flex-row justify-between items-center py-2">
@@ -407,11 +685,11 @@ export default function OrderDetail() {
               <Text className="block text-sm text-gray-400">订单状态</Text>
               <View
                 className="px-3 py-1 rounded-full"
-                style={{ backgroundColor: isPending ? '#FFF3ED' : order.status === 'used' ? '#F6FFED' : '#F5F5F5' }}
+                style={{ backgroundColor: isCreated ? '#FFF0F0' : isPaid ? '#FFF3ED' : order.status === 'used' ? '#F6FFED' : '#F5F5F5' }}
               >
                 <Text
                   className="block text-xs font-medium"
-                  style={{ color: isPending ? '#FF6B35' : order.status === 'used' ? '#52C41A' : '#999' }}
+                  style={{ color: isCreated ? '#FF4757' : isPaid ? '#FF6B35' : order.status === 'used' ? '#52C41A' : '#999' }}
                 >
                   {statusCfg.label}
                 </Text>
@@ -419,6 +697,20 @@ export default function OrderDetail() {
             </View>
           </View>
         </View>
+
+        {/* 退款入口：已支付未核销 */}
+        {canRefund && (
+          <View className="mx-4 mt-3">
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-xl text-sm"
+              disabled={refunding}
+              onClick={handleRefund}
+            >
+              <Text>{refunding ? '退款处理中...' : '申请退款（未消费随时退）'}</Text>
+            </Button>
+          </View>
+        )}
 
         {/* 使用说明卡片 */}
         <View className="mx-4 mt-3 rounded-2xl bg-white overflow-hidden">

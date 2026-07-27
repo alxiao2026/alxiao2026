@@ -25,6 +25,12 @@ export interface Order {
   coupon_record_id?: string | null;
   coupon_discount?: string | null;
   verified_by?: string | null;
+  // 支付字段（Phase 0 支付骨架）
+  original_amount?: string | null;
+  discount_amount?: string | null;
+  pay_amount?: string | null;
+  paid_at?: string | null;
+  pay_expire_at?: string | null;
   // 组装字段（非数据库列）：门店名称、核销人显示名
   merchant_name?: string | null;
   verifier_name?: string | null;
@@ -92,12 +98,13 @@ export class OrderService {
     const { data, error } = await query;
     if (error) throw new Error(`查询商家订单失败: ${error.message}`);
     const orders = (data as Order[]) || [];
-    await this.refundExpiredOrders(orders);
+    await this.sweepExpiredPendingOrders(orders);
+    await this.refundExpiredOrders(orders, merchantId);
     await this.decorateOrders(orders);
     return this.matchKeyword(orders, keyword);
   }
 
-  async findAll(filters?: { status?: string; startDate?: string; endDate?: string; verifiedBy?: string; keyword?: string }): Promise<Order[]> {
+  async findAll(filters?: { status?: string; startDate?: string; endDate?: string; verifiedBy?: string; keyword?: string; merchantId?: string }): Promise<Order[]> {
     let query = this.client
       .from('orders')
       .select('*')
@@ -117,7 +124,8 @@ export class OrderService {
     const { data, error } = await query;
     if (error) throw new Error(`查询订单列表失败: ${error.message}`);
     const orders = (data as Order[]) || [];
-    await this.refundExpiredOrders(orders);
+    await this.sweepExpiredPendingOrders(orders);
+    await this.refundExpiredOrders(orders, filters?.merchantId);
     await this.decorateOrders(orders);
     return this.matchKeyword(orders, filters?.keyword);
   }
@@ -222,18 +230,19 @@ export class OrderService {
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户订单失败: ${error.message}`);
     const orders = (data as Order[]) || [];
+    await this.sweepExpiredPendingOrders(orders);
     await this.refundExpiredOrders(orders);
     return orders;
   }
 
   /** 获取用户未参与抽奖的订单（有效状态且无抽奖记录），补充套餐封面与订单总额 */
   async findUnparticipatedByUserId(userId: string): Promise<any[]> {
-    // 1. 获取用户有效状态的订单（pending 待使用 / completed 已完成）
+    // 1. 获取用户有效状态的订单（created 待支付 / paid 待使用 / used 已核销，均可参与抽奖）
     const { data: orders, error } = await this.client
       .from('orders')
       .select('*')
       .eq('user_id', userId)
-      .in('status', ['pending', 'completed'])
+      .in('status', ['created', 'paid', 'used'])
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户订单失败: ${error.message}`);
     const allOrders = (orders as Order[]) || [];
@@ -277,7 +286,18 @@ export class OrderService {
       .maybeSingle();
     if (error) throw new Error(`查询订单失败: ${error.message}`);
     if (!data) throw new NotFoundException('订单不存在');
-    return data as Order;
+    const order = data as Order;
+    // 懒触发：单条查询时也检查支付超时关单
+    await this.sweepExpiredPendingOrders([order]);
+    if (order.status === 'closed') {
+      const { data: fresh } = await this.client
+        .from('orders')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (fresh) return fresh as Order;
+    }
+    return order;
   }
 
   async create(body: {
@@ -295,6 +315,16 @@ export class OrderService {
 
     const quantity = Math.max(1, Math.floor(body.quantity || 1));
 
+    // 查询套餐：后端算价的唯一价格来源
+    const { data: pkg, error: pkgError } = await this.client
+      .from('packages')
+      .select('id, name, price, merchant_id')
+      .eq('id', body.package_id)
+      .maybeSingle();
+    if (pkgError || !pkg) {
+      throw new NotFoundException('套餐不存在');
+    }
+
     const verificationCode = generateVerificationCode();
 
     // 生成订单编号：6位随机数 + YYYYMMDD + 5位随机数，共19位
@@ -307,6 +337,14 @@ export class OrderService {
     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
     const orderNo = `${randDigits(6)}${dateStr}${randDigits(5)}`;
 
+    // 后端算价：金额一律以数据库套餐价为准，不信任前端传入价格
+    const pkgPrice = Number(pkg.price) || 0;
+    if (pkgPrice <= 0) {
+      throw new BadRequestException('套餐价格配置异常，无法下单');
+    }
+    const originalAmount = Math.round(pkgPrice * quantity * 100) / 100;
+    const payExpireAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
     const { data, error } = await this.client
       .from('orders')
       .insert({
@@ -314,14 +352,18 @@ export class OrderService {
         nick_name: body.nick_name || null,
         avatar_url: body.avatar_url || null,
         package_id: body.package_id || null,
-        package_name: body.package_name || '基础套餐',
-        price: body.price || '9.90',
-        original_price: body.original_price || null,
+        package_name: pkg.name || body.package_name || '基础套餐',
+        price: String(pkgPrice),
+        original_price: String(pkgPrice),
         quantity,
         verification_code: verificationCode,
         shop_name: body.shop_name || null,
         order_no: orderNo,
-        status: 'pending',
+        status: 'created',
+        original_amount: originalAmount.toFixed(2),
+        discount_amount: '0.00',
+        pay_amount: originalAmount.toFixed(2),
+        pay_expire_at: payExpireAt,
       })
       .select()
       .single();
@@ -396,7 +438,7 @@ export class OrderService {
       .select('quantity, created_at')
       .eq('user_id', body.user_id)
       .eq('package_id', body.package_id)
-      .in('status', ['pending', 'used']);
+      .in('status', ['created', 'paid', 'used']);
     if (orderError) throw new Error(`查询购买记录失败: ${orderError.message}`);
 
     const orders = existingOrders || [];
@@ -629,7 +671,7 @@ export class OrderService {
       .from('orders')
       .update({
         verified_count: newVerifiedCount,
-        status: isAllVerified ? 'used' : 'pending',
+        status: isAllVerified ? 'used' : 'paid',
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         // 记录本次核销操作账号（未传时保留原值）
@@ -827,7 +869,7 @@ export class OrderService {
       .from('lottery_records')
       .select('id, refund_amount')
       .eq('order_id', order.id)
-      .in('refund_status', ['redeemed', 'pending'])
+      .in('refund_status', ['redeemed', 'locked'])
       .gt('refund_amount', 0);
     const discountReturned = (lotteryRecords || []).reduce(
       (sum: number, r: { refund_amount: string | null }) => sum + parseFloat(r.refund_amount || '0'),
@@ -853,20 +895,86 @@ export class OrderService {
     }
   }
 
+  // 批量检测超时未支付订单并自动关单：回补库存 + 作废本单抽奖折扣券
+  private async sweepExpiredPendingOrders(orders: Order[]): Promise<void> {
+    const now = new Date();
+    const expiredCreated = orders.filter(
+      o =>
+        o.status === 'created' &&
+        o.pay_expire_at &&
+        now > new Date(o.pay_expire_at),
+    );
+    for (const order of expiredCreated) {
+      try {
+        await this.closeOrder(order);
+      } catch (e) {
+        console.error(`[sweepExpiredPendingOrders] 关单失败 order=${order.id}:`, e);
+      }
+    }
+  }
+
+  // 超时关单（可被懒触发或定时任务复用）
+  private async closeOrder(order: Order): Promise<void> {
+    await this.client
+      .from('orders')
+      .update({ status: 'closed', updated_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .eq('status', 'created');
+
+    // 回补套餐库存
+    if (order.package_id) {
+      const quantity = parseInt(String(order.quantity || '1'), 10) || 1;
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('stock')
+        .eq('id', order.package_id)
+        .single();
+      if (pkg) {
+        await this.client
+          .from('packages')
+          .update({ stock: (parseInt(pkg.stock, 10) || 0) + quantity })
+          .eq('id', order.package_id);
+      }
+    }
+
+    // 作废该订单锁定的抽奖折扣券（未支付不兑现）
+    // 注意：lottery_records 无 prize_type 列，locked 状态仅存在于折扣券/霸王餐
+    await this.client
+      .from('lottery_records')
+      .update({ refund_status: 'voided' })
+      .eq('order_id', order.id)
+      .eq('refund_status', 'locked');
+
+    // 作废未完成的支付单
+    await this.client
+      .from('payments')
+      .update({ status: 'failed', updated_at: new Date().toISOString() })
+      .eq('order_id', order.id)
+      .eq('status', 'prepay');
+  }
+
   // 批量检测过期订单并自动退款
-  private async refundExpiredOrders(orders: Order[]): Promise<void> {
-    const pendingOrders = orders.filter(o => o.status === 'pending' && o.package_id);
+  private async refundExpiredOrders(orders: Order[], merchantId?: string): Promise<void> {
+    let pendingOrders = orders.filter(o => o.status === 'paid' && o.package_id);
     if (pendingOrders.length === 0) return;
 
     // 获取所有相关套餐的可用日期配置
     const packageIds = [...new Set(pendingOrders.map(o => o.package_id!))];
-    const { data: packages } = await this.client
+    let packagesQuery = this.client
       .from('packages')
-      .select('id, valid_date_type, valid_days, valid_date_start, valid_date_end')
+      .select('id, merchant_id, valid_date_type, valid_days, valid_date_start, valid_date_end')
       .in('id', packageIds);
+    if (merchantId) {
+      packagesQuery = packagesQuery.eq('merchant_id', merchantId);
+    }
+    const { data: packages } = await packagesQuery;
 
     if (!packages) return;
     const pkgMap = new Map(packages.map(p => [p.id, p]));
+    if (merchantId) {
+      pendingOrders = pendingOrders.filter(o => pkgMap.has(o.package_id!));
+      if (pendingOrders.length === 0) return;
+    }
     const todayStr = localDateStr(new Date());
 
     for (const order of pendingOrders) {
@@ -905,8 +1013,8 @@ export class OrderService {
 
     const order = data as Order & { verify_warning?: string };
 
-    // 如果订单是 pending 状态，检查核销规则并返回提示信息
-    if (order.status === 'pending' && order.package_id) {
+    // 如果订单是已支付待核销状态，检查核销规则并返回提示信息
+    if (order.status === 'paid' && order.package_id) {
       const { data: pkg } = await this.client
         .from('packages')
         .select('*')

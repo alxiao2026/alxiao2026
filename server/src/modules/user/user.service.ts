@@ -54,6 +54,7 @@ export interface MerchantInfo {
 
 export interface UserStats {
   total_orders: number;
+  unpaid_orders: number;
   pending_orders: number;
   used_orders: number;
   refunded_orders: number;
@@ -622,32 +623,39 @@ export class UserService {
     const supabase = getSupabaseClient();
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('status, price, original_price')
+      .select('status, price, original_price, pay_amount')
       .eq('user_id', userId);
     if (error) throw error;
 
     const orderList = orders || [];
     let totalSpent = 0;
     let totalSaved = 0;
+    let unpaid = 0;
     let pending = 0;
     let used = 0;
     let refunded = 0;
 
     for (const order of orderList) {
-      const price = parseFloat(order.price) || 0;
-      const originalPrice = parseFloat(order.original_price || '0') || 0;
-      totalSpent += price;
-      totalSaved += Math.max(0, originalPrice - price);
-
       switch (order.status) {
-        case 'pending': pending++; break;
+        case 'created': unpaid++; break;
+        case 'pending':
+        case 'paid': pending++; break;
         case 'used': used++; break;
         case 'refunded': refunded++; break;
+      }
+
+      // 仅统计已支付订单（paid/used/refunded），未支付订单不计入消费额
+      if (['pending', 'paid', 'used', 'refunded'].includes(order.status)) {
+        const paidAmount = parseFloat(order.pay_amount || '0') || parseFloat(order.price) || 0;
+        const originalPrice = parseFloat(order.original_price || '0') || 0;
+        totalSpent += paidAmount;
+        totalSaved += Math.max(0, originalPrice - paidAmount);
       }
     }
 
     return {
       total_orders: orderList.length,
+      unpaid_orders: unpaid,
       pending_orders: pending,
       used_orders: used,
       refunded_orders: refunded,

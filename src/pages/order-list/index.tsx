@@ -23,10 +23,12 @@ interface Order {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
-  pending: { label: '待使用', color: '#FF6B35', bgColor: '#FFF3ED' },
+  created: { label: '待支付', color: '#FF4757', bgColor: '#FFF0F0' },
+  paid: { label: '待使用', color: '#FF6B35', bgColor: '#FFF3ED' },
   used: { label: '已使用', color: '#52C41A', bgColor: '#F6FFED' },
   refunded: { label: '已退款', color: '#999999', bgColor: '#F5F5F5' },
   expired: { label: '已过期', color: '#999999', bgColor: '#F5F5F5' },
+  closed: { label: '已关闭', color: '#999999', bgColor: '#F5F5F5' },
 }
 
 export default function OrderList() {
@@ -76,7 +78,8 @@ export default function OrderList() {
 
   const tabs = [
     { key: 'all', label: '全部' },
-    { key: 'pending', label: '待使用' },
+    { key: 'created', label: '待支付' },
+    { key: 'paid', label: '待使用' },
     { key: 'used', label: '已使用' },
     { key: 'refunded', label: '已退款' },
     { key: 'expired', label: '已过期' },
@@ -114,7 +117,7 @@ export default function OrderList() {
           </View>
         ) : (
           filteredOrders.map(order => {
-            const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.pending
+            const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.paid
             return (
               <Card key={order.id} className="mb-3 overflow-hidden" onClick={() => handleOrderClick(order)}>
                 <CardContent className="p-4">
@@ -161,10 +164,16 @@ export default function OrderList() {
                   {/* 底部操作区 */}
                   <View className="flex flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
                     <View className="flex flex-row items-center gap-1">
-                      {order.status === 'pending' && (
+                      {order.status === 'created' && (
+                        <>
+                          <Clock size={14} color="#FF4757" />
+                          <Text className="block text-xs text-[#FF4757]">待支付</Text>
+                        </>
+                      )}
+                      {order.status === 'paid' && (
                         <>
                           <Clock size={14} color="#FF6B35" />
-                          <Text className="block text-xs text-[#FF4757]">待核销</Text>
+                          <Text className="block text-xs text-[#FF6B35]">待核销</Text>
                         </>
                       )}
                       {order.status === 'used' && (
@@ -185,6 +194,12 @@ export default function OrderList() {
                         <>
                           <CircleX size={14} color="#999" />
                           <Text className="block text-xs text-gray-400">已过期</Text>
+                        </>
+                      )}
+                      {order.status === 'closed' && (
+                        <>
+                          <CircleX size={14} color="#999" />
+                          <Text className="block text-xs text-gray-400">已关闭</Text>
                         </>
                       )}
                     </View>

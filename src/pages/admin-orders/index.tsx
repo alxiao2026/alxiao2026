@@ -260,6 +260,8 @@ export default function AdminOrders() {
 
   const getStatusBadge = (status: string): { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
     switch (status) {
+      case 'created':
+        return { text: '待支付', variant: 'destructive' }
       case 'pending':
       case 'paid':
         return { text: '待核销', variant: 'secondary' }
@@ -270,6 +272,8 @@ export default function AdminOrders() {
         return { text: '已退款', variant: 'destructive' }
       case 'expired':
         return { text: '已过期', variant: 'outline' }
+      case 'closed':
+        return { text: '已关闭', variant: 'outline' }
       default:
         return { text: status || '未知', variant: 'outline' }
     }

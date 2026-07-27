@@ -417,6 +417,12 @@ export class LotteryService {
       throw new BadRequestException('无权操作该订单');
     }
 
+    // 2.5 订单状态门槛：仅待支付(created)/已支付(paid)订单可抽奖
+    // 先抽后付：待支付时中奖的折扣券/霸王餐将锁定，支付时直接抵扣
+    if (!['created', 'paid'].includes(orderData.status)) {
+      throw new BadRequestException('当前订单状态不可参与抽奖');
+    }
+
     // 3. 验证未重复抽奖
     const { data: existingRecord } = await this.client
       .from('lottery_records')
@@ -532,28 +538,32 @@ export class LotteryService {
     if (isWinner && resultPrize) {
       const prize = resultPrize;
       if (prize.prize_type === 'coupon') {
-        // 折扣券：返还金额 = 订单金额 × (10 - 折扣) / 10，受【单笔最高优惠金额】封顶
+        // 折扣券：抵扣金额 = 订单金额 × (10 - 折扣) / 10，受【单笔最高优惠金额】封顶
+        // 本单即时抵扣模式：中奖后锁券(locked)，支付时直接抵扣；订单关闭/退款则作废(voided)
         const rate = parseFloat(prize.discount_rate || '0');
         const cap = parseFloat(prize.discount_cap || '0');
         const raw = Math.round((orderTotal * (10 - rate) / 10) * 100) / 100;
         discountCapped = cap > 0 && raw > cap;
         refundAmount = discountCapped ? cap : raw;
-        refundStatus = 'redeemed'; // 返还即时到账，折扣券直接核销
+        refundStatus = 'locked'; // 锁定待支付抵扣，支付成功转为 redeemed
       } else if (prize.prize_type === 'product') {
         redemptionCode = `PRD-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
         refundStatus = 'pending';
       } else if (prize.prize_type === 'free_meal') {
+        // 霸王餐：本单免单（支付时实付 0.01 元兜底），锁券待支付
         refundAmount = orderTotal;
-        refundStatus = 'pending';
+        refundStatus = 'locked'; // 锁定待支付抵扣
         redemptionCode = `BWC-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       }
     }
 
-    // 10. 记录抽奖结果（折扣券统一命名为「X元消费券」，X = 本单实际返还金额）
+    // 10. 记录抽奖结果（折扣券/霸王餐统一命名为「X元消费券/免单券」，X = 本单抵扣金额）
     const displayPrizeName = resultPrize
       ? resultPrize.prize_type === 'coupon'
         ? `${refundAmount}元消费券`
-        : resultPrize.name
+        : resultPrize.prize_type === 'free_meal'
+          ? '霸王餐免单券'
+          : resultPrize.name
       : null;
     const recordData: Record<string, any> = {
       order_id: orderId,

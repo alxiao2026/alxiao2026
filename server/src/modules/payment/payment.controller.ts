@@ -1,0 +1,63 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  HttpCode,
+  BadRequestException,
+} from '@nestjs/common';
+import { PaymentService } from './payment.service';
+
+@Controller('payment')
+export class PaymentController {
+  constructor(private readonly paymentService: PaymentService) {}
+
+  /** 发起支付预下单：后端金额引擎计算实付，前端只展示 */
+  @Post('prepay')
+  @HttpCode(200)
+  async prepay(@Body() body: { order_id?: string; user_id?: string }) {
+    if (!body.order_id || !body.user_id) {
+      throw new BadRequestException('缺少 order_id 或 user_id');
+    }
+    return this.paymentService.prepay({
+      order_id: body.order_id,
+      user_id: body.user_id,
+    });
+  }
+
+  /** Mock 支付回调（模拟微信异步通知；真实回调接入 /payment/notify） */
+  @Post('mock-notify')
+  @HttpCode(200)
+  async mockNotify(@Body() body: { prepay_id?: string; result?: 'success' | 'fail' }) {
+    if (!body.prepay_id) {
+      throw new BadRequestException('缺少 prepay_id');
+    }
+    return this.paymentService.mockNotify({
+      prepay_id: body.prepay_id,
+      result: body.result,
+    });
+  }
+
+  /** 用户主动退款（未核销团购券） */
+  @Post('refund')
+  @HttpCode(200)
+  async refund(
+    @Body() body: { order_id?: string; user_id?: string; reason?: string },
+  ) {
+    if (!body.order_id || !body.user_id) {
+      throw new BadRequestException('缺少 order_id 或 user_id');
+    }
+    return this.paymentService.refund({
+      order_id: body.order_id,
+      user_id: body.user_id,
+      reason: body.reason,
+    });
+  }
+
+  /** 查询订单支付信息 */
+  @Get('order/:orderId')
+  async getByOrder(@Param('orderId') orderId: string) {
+    return this.paymentService.getByOrder(orderId);
+  }
+}

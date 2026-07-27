@@ -97,8 +97,13 @@ export const orders = pgTable("orders", {
 	expire_at: timestamp("expire_at", { withTimezone: true }), // 过期时间
 	shop_name: varchar("shop_name", { length: 128 }), // 消费门店名称
 	order_no: varchar("order_no", { length: 64 }), // 订单编号
-	status: varchar("status", { length: 20 }).notNull().default("pending"), // pending/paid/completed/expired/refunded
-	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }), // 实际退款金额（退款时已扣除折扣券返还金额）
+	status: varchar("status", { length: 20 }).notNull().default("created"), // created=待支付 / paid=已支付待使用 / used=已核销 / closed=超时关闭 / expired=已过期 / refunded=已退款
+	original_amount: numeric("original_amount", { precision: 10, scale: 2 }), // 原始金额（后端算价：单价×数量）
+	discount_amount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 折扣券/霸王餐抵扣金额
+	pay_amount: numeric("pay_amount", { precision: 10, scale: 2 }), // 实付金额（原始金额-抵扣，≥0.01）
+	paid_at: timestamp("paid_at", { withTimezone: true }), // 支付完成时间
+	pay_expire_at: timestamp("pay_expire_at", { withTimezone: true }), // 支付截止时间（创建+15分钟）
+	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }), // 实际退款金额（=实付金额）
 	shared: boolean("shared").notNull().default(false),
 	verified_by: varchar("verified_by", { length: 128 }), // 最近核销人账号ID
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -110,6 +115,31 @@ export const orders = pgTable("orders", {
 	index("orders_package_id_idx").on(table.package_id),
 	index("orders_verification_code_idx").on(table.verification_code),
 	index("orders_order_no_idx").on(table.order_no),
+]);
+
+// 支付流水表（Mock 通道，未来对接微信支付）
+export const payments = pgTable("payments", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	order_id: varchar("order_id", { length: 36 }).notNull(), // 关联订单
+	user_id: varchar("user_id", { length: 128 }).notNull(),
+	prepay_id: varchar("prepay_id", { length: 64 }), // 预支付订单号（Mock 生成，未来为微信 prepay_id）
+	transaction_id: varchar("transaction_id", { length: 64 }), // 支付流水号（幂等键）
+	channel: varchar("channel", { length: 20 }).notNull().default("mock"), // mock / wechat
+	status: varchar("status", { length: 20 }).notNull().default("prepay"), // prepay/paid/failed/refunding/refunded
+	original_amount: numeric("original_amount", { precision: 10, scale: 2 }).notNull(), // 原始金额
+	discount_amount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 抵扣金额
+	pay_amount: numeric("pay_amount", { precision: 10, scale: 2 }).notNull(), // 实付金额
+	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }).default("0"), // 已退金额
+	lottery_record_id: varchar("lottery_record_id", { length: 36 }), // 抵扣所用中奖记录
+	notify_count: integer("notify_count").notNull().default(0), // 回调次数（幂等审计）
+	paid_at: timestamp("paid_at", { withTimezone: true }),
+	refunded_at: timestamp("refunded_at", { withTimezone: true }),
+	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updated_at: timestamp("updated_at", { withTimezone: true }),
+}, (table) => [
+	index("payments_order_id_idx").on(table.order_id),
+	index("payments_user_id_idx").on(table.user_id),
+	index("payments_status_idx").on(table.status),
 ]);
 
 // 基础套餐表

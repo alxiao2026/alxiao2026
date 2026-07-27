@@ -11,6 +11,7 @@ import { PackageModule } from './modules/package/package.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { UserModule } from './modules/user/user.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { UserModule } from './modules/user/user.module';
     UploadModule,
     MerchantModule,
     UserModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

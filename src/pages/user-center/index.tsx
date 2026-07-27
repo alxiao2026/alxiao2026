@@ -7,7 +7,7 @@ import AppTabBar from '@/components/app-tab-bar';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -23,6 +23,7 @@ interface UserProfile {
 
 interface UserStats {
   total_orders: number;
+  unpaid_orders: number;
   pending_orders: number;
   used_orders: number;
   refunded_orders: number;
@@ -283,8 +284,15 @@ const UserCenterPage = () => {
       {/* 订单统计 */}
       <View className="mx-4 -mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
         <View className="flex flex-row">
-          <View className="flex-1 py-4 flex flex-col items-center" onClick={() => goToOrderList('pending')}>
+          <View className="flex-1 py-4 flex flex-col items-center" onClick={() => goToOrderList('created')}>
             <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-2">
+              <Wallet size={20} color="#FF4757" />
+            </View>
+            <Text className="text-lg font-bold text-gray-800 block">{stats?.unpaid_orders || 0}</Text>
+            <Text className="text-xs text-gray-500 block">待支付</Text>
+          </View>
+          <View className="flex-1 py-4 flex flex-col items-center" onClick={() => goToOrderList('paid')}>
+            <View className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mb-2">
               <Ticket size={20} color="#F97316" />
             </View>
             <Text className="text-lg font-bold text-gray-800 block">{stats?.pending_orders || 0}</Text>
