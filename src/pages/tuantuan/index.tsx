@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
+import AppTabBar from '@/components/app-tab-bar';
 import { Trophy, Crown, Store, ChevronRight, Sparkles } from 'lucide-react-taro';
 
 interface RankShop {
@@ -174,12 +175,18 @@ export default function TuantuanPage() {
         <View className="px-4 mt-6 mb-10">
           <Button
             className="w-full bg-[#FF4757] text-white rounded-full py-3 font-bold"
-            onClick={() => Taro.switchTab({ url: '/pages/index/index' })}
+            onClick={() => Taro.reLaunch({ url: '/pages/index/index' })}
           >
             <Text>去逛逛 抽霸王餐 🎉</Text>
           </Button>
         </View>
+
+        {/* 底部占位（避让悬浮 TabBar） */}
+        <View className="h-24" />
       </ScrollView>
+
+      {/* 悬浮胶囊导航栏 */}
+      <AppTabBar current="/pages/tuantuan/index" />
     </View>
   );
 }

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
+import AppTabBar from '@/components/app-tab-bar';
 import {
   LogIn,
   MapPin, ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
@@ -197,7 +198,7 @@ const IndexPage = () => {
   // 用户区域点击：已登录进个人中心，未登录跳登录页
   const handleUserBarClick = () => {
     if (isLoggedIn) {
-      Taro.switchTab({ url: '/pages/user-center/index' });
+      Taro.reLaunch({ url: '/pages/user-center/index' });
     } else {
       Taro.navigateTo({ url: '/pages/login/index' });
     }
@@ -535,8 +536,8 @@ const IndexPage = () => {
           </View>
         )}
 
-        {/* 底部占位 */}
-        <View className="h-8" />
+        {/* 底部占位（避让悬浮 TabBar） */}
+        <View className="h-24" />
       </ScrollView>
 
       {/* 抽奖动画 */}
@@ -556,6 +557,9 @@ const IndexPage = () => {
           setLotteryResult(null);
         }}
       />
+
+      {/* 悬浮胶囊导航栏 */}
+      <AppTabBar current="/pages/index/index" />
     </View>
   );
 };

@@ -157,7 +157,7 @@ const AdminPage = () => {
         <Text className="block text-gray-500 text-sm text-center mb-6">该功能仅对商家用户开放{'\n'}请使用商家管理员账号登录</Text>
         <View
           className="bg-[#FF4757] rounded-full px-8 py-3"
-          onClick={() => Taro.switchTab({ url: '/pages/index/index' })}
+          onClick={() => Taro.reLaunch({ url: '/pages/index/index' })}
         >
           <Text className="block text-white font-medium">返回首页</Text>
         </View>
@@ -183,7 +183,7 @@ const AdminPage = () => {
               {merchantName || '膨胀团'}
             </Text>
           </View>
-          <View className="bg-white rounded-full px-3 py-1" onClick={() => Taro.switchTab({ url: '/pages/user-center/index' })}>
+          <View className="bg-white rounded-full px-3 py-1" onClick={() => Taro.reLaunch({ url: '/pages/user-center/index' })}>
             <Text className="block text-[#FF4757] text-xs">我的</Text>
           </View>
         </View>

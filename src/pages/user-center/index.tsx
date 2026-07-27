@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
+import AppTabBar from '@/components/app-tab-bar';
 import {
-  ClipboardList, ChevronRight, ChevronLeft, Pencil,
+  ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
   ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed
 } from 'lucide-react-taro';
@@ -235,13 +236,11 @@ const UserCenterPage = () => {
   }
 
   return (
+    <>
     <ScrollView scrollY className="min-h-screen bg-gray-50">
       {/* 自定义导航栏 */}
       <View className="bg-[#FF4757] flex items-center px-4 py-3">
-        <View onClick={() => Taro.navigateBack()} className="mr-3">
-          <ChevronLeft size={22} color="#ffffff" />
-        </View>
-        <Text className="block text-white text-lg font-semibold flex-1 text-center mr-8">个人中心</Text>
+        <Text className="block text-white text-lg font-semibold flex-1 text-center">个人中心</Text>
       </View>
 
       {/* 顶部用户区域 */}
@@ -393,7 +392,14 @@ const UserCenterPage = () => {
         <Text className="block text-xs text-gray-400" style={{ letterSpacing: '2px' }}>- 给生活来点小惊喜 -</Text>
         <Text className="block text-xs text-gray-300 mt-1">膨胀团 v1.0.0</Text>
       </View>
+
+      {/* 底部占位（避让悬浮 TabBar） */}
+      <View className="h-24" />
     </ScrollView>
+
+    {/* 悬浮胶囊导航栏 */}
+    <AppTabBar current="/pages/user-center/index" />
+    </>
   );
 };
 

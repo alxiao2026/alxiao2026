@@ -387,7 +387,7 @@ export default function Lottery() {
   }
 
   const goHome = () => {
-    Taro.switchTab({ url: '/pages/index/index' })
+    Taro.reLaunch({ url: '/pages/index/index' })
   }
 
   const goRecords = () => {
@@ -395,7 +395,7 @@ export default function Lottery() {
   }
 
   const goUserCenter = () => {
-    Taro.switchTab({ url: '/pages/user-center/index' })
+    Taro.reLaunch({ url: '/pages/user-center/index' })
   }
 
   const handleTab = (key: string) => {
