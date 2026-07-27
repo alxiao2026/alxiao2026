@@ -26,7 +26,6 @@ export default function AppTabBar({ current }: AppTabBarProps) {
   };
 
   const isHome = current === HOME_PATH;
-  const isTuantuan = current === TUANTUAN_PATH;
   const isMine = current === MINE_PATH;
 
   return (
@@ -51,7 +50,7 @@ export default function AppTabBar({ current }: AppTabBarProps) {
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          height: '60px',
+          height: '48px',
           position: 'relative',
         }}
       >
@@ -60,7 +59,7 @@ export default function AppTabBar({ current }: AppTabBarProps) {
           style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => go(HOME_PATH)}
         >
-          <House size={22} color={isHome ? ACTIVE_COLOR : INACTIVE_COLOR} strokeWidth={2.2} />
+          <House size={20} color={isHome ? ACTIVE_COLOR : INACTIVE_COLOR} strokeWidth={2.2} />
           <Text
             className={`block text-xs mt-1 ${isHome ? 'font-semibold' : ''}`}
             style={{ color: isHome ? ACTIVE_COLOR : INACTIVE_COLOR }}
@@ -77,10 +76,10 @@ export default function AppTabBar({ current }: AppTabBarProps) {
           <View
             style={{
               position: 'absolute',
-              top: '-30px',
-              width: '68px',
-              height: '68px',
-              borderRadius: '34px',
+              top: '-24px',
+              width: '58px',
+              height: '58px',
+              borderRadius: '29px',
               backgroundColor: '#ffffff',
               boxShadow: '0 4px 14px rgba(255, 71, 87, 0.25)',
               display: 'flex',
@@ -88,14 +87,8 @@ export default function AppTabBar({ current }: AppTabBarProps) {
               justifyContent: 'center',
             }}
           >
-            <Image src={logoImg} style={{ width: '58px', height: '58px' }} mode="aspectFit" />
+            <Image src={logoImg} style={{ width: '50px', height: '50px' }} mode="aspectFit" />
           </View>
-          <Text
-            className={`block text-xs mb-1 ${isTuantuan ? 'font-semibold' : ''}`}
-            style={{ color: isTuantuan ? ACTIVE_COLOR : INACTIVE_COLOR }}
-          >
-            团团
-          </Text>
         </View>
 
         {/* 我的 */}
@@ -103,7 +96,7 @@ export default function AppTabBar({ current }: AppTabBarProps) {
           style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => go(MINE_PATH)}
         >
-          <CircleUserRound size={22} color={isMine ? ACTIVE_COLOR : INACTIVE_COLOR} strokeWidth={2.2} />
+          <CircleUserRound size={20} color={isMine ? ACTIVE_COLOR : INACTIVE_COLOR} strokeWidth={2.2} />
           <Text
             className={`block text-xs mt-1 ${isMine ? 'font-semibold' : ''}`}
             style={{ color: isMine ? ACTIVE_COLOR : INACTIVE_COLOR }}
