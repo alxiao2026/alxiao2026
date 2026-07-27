@@ -182,7 +182,7 @@ export default function TuantuanPage() {
         </View>
 
         {/* 底部占位（避让悬浮 TabBar） */}
-        <View className="h-24" />
+        <View className="h-36" />
       </ScrollView>
 
       {/* 悬浮胶囊导航栏 */}

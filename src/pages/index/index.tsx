@@ -537,7 +537,7 @@ const IndexPage = () => {
         )}
 
         {/* 底部占位（避让悬浮 TabBar） */}
-        <View className="h-24" />
+        <View className="h-36" />
       </ScrollView>
 
       {/* 抽奖动画 */}
