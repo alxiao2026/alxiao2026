@@ -397,6 +397,13 @@ const IndexPage = () => {
                         </View>
                       )}
 
+                      {/* 抽奖提示（红色背景） */}
+                      <View className="flex flex-row mt-1">
+                        <View className="bg-[#FF4757] rounded-full px-3 py-1">
+                          <Text className="block text-xs text-white font-semibold">下单抽霸王餐</Text>
+                        </View>
+                      </View>
+
                       {/* 价格行 */}
                       <View className="flex flex-row items-end justify-between mt-2">
                         <View className="flex flex-row items-baseline gap-1">
