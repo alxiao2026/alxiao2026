@@ -508,7 +508,6 @@ const IndexPage = () => {
         isWinner={lotteryResult?.is_winner ?? false}
         prizeName={lotteryResult?.record?.prize_name ?? null}
         prizeType={(lotteryResult?.record?.prize_type as 'coupon' | 'product' | 'free_meal') || 'coupon'}
-        discountRate={lotteryResult?.record?.discount_rate || 0}
         discountCap={lotteryResult?.record?.discount_cap || 0}
         discountCapped={lotteryResult?.record?.discount_capped || false}
         productName={lotteryResult?.record?.product_name || ''}

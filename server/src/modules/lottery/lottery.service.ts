@@ -549,12 +549,17 @@ export class LotteryService {
       }
     }
 
-    // 10. 记录抽奖结果
+    // 10. 记录抽奖结果（折扣券统一命名为「X元消费券」，X = 本单实际返还金额）
+    const displayPrizeName = resultPrize
+      ? resultPrize.prize_type === 'coupon'
+        ? `${refundAmount}元消费券`
+        : resultPrize.name
+      : null;
     const recordData: Record<string, any> = {
       order_id: orderId,
       user_id: userId,
       is_winner: isWinner,
-      prize_name: resultPrize?.name || null,
+      prize_name: displayPrizeName,
       prize_id: resultPrize?.id || null,
       redemption_code: redemptionCode,
       refund_amount: refundAmount,

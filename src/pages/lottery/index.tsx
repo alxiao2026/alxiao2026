@@ -430,11 +430,11 @@ export default function Lottery() {
       return (
         <View className="mt-2">
           <Text className="block text-sm text-amber-700 text-center">
-            {drawResult.discount_rate}折 · 已返还 ¥{drawResult.refund_amount}
+            消费券金额随后返还原账户
           </Text>
           {drawResult.discount_capped ? (
             <Text className="block text-xs text-amber-500 mt-1 text-center">
-              单笔最高优惠 ¥{drawResult.discount_cap}，已按上限返还
+              单笔最高优惠 ¥{drawResult.discount_cap}，已按上限返还 ¥{drawResult.refund_amount}
             </Text>
           ) : null}
         </View>

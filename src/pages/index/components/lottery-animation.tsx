@@ -9,7 +9,6 @@ interface LotteryAnimationProps {
   isWinner: boolean;
   prizeName: string | null;
   prizeType?: 'coupon' | 'product' | 'free_meal';
-  discountRate?: number;
   discountCap?: number;
   discountCapped?: boolean;
   productName?: string;
@@ -21,7 +20,7 @@ interface LotteryAnimationProps {
 
 const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
 
-const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountRate, discountCap, discountCapped, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
+const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountCap, discountCapped, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
   const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealing' | 'result'>('idle');
 
   useEffect(() => {
@@ -127,19 +126,15 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountRat
               </View>
             )}
 
-            {/* 折扣券模式：显示折扣返还金额与封顶提示 */}
+            {/* 折扣券模式：返还说明与封顶提示（奖品名已统一为「X元消费券」） */}
             {isWinner && prizeType === 'coupon' && (
               <View className="mt-3 flex flex-col items-center">
                 <Text className="block text-sm lottery-text-white opacity-80">
-                  {discountRate}折 · 本次中奖返还 <Text className="font-bold text-base">¥{refundAmount}</Text>
+                  消费券金额随后返还原账户
                 </Text>
-                {discountCapped ? (
+                {discountCapped && (
                   <Text className="block text-xs lottery-text-white opacity-60 mt-1 text-center">
-                    单笔最高优惠 ¥{discountCap}，已按上限返还
-                  </Text>
-                ) : (
-                  <Text className="block text-xs lottery-text-white opacity-60 mt-1 text-center">
-                    返还金额已退回原支付账户，折扣券已核销
+                    单笔最高优惠 ¥{discountCap}，已按上限返还 ¥{refundAmount}
                   </Text>
                 )}
                 <Text className="block text-xs lottery-text-white opacity-50 mt-1 text-center">
