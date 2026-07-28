@@ -4,6 +4,7 @@ import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { navigateToTabBar } from '@/utils/navigate'
 import { Button } from '@/components/ui/button'
+import AppTabBar from '@/components/app-tab-bar'
 import {
   Gift,
   Ticket,
@@ -12,8 +13,6 @@ import {
   House,
   Share2,
   PartyPopper,
-  ClipboardList,
-  User,
   Sparkles,
 } from 'lucide-react-taro'
 import './index.css'
@@ -404,16 +403,6 @@ export default function Lottery() {
     Taro.navigateTo({ url: '/pages/lottery-records/index' })
   }
 
-  const goUserCenter = () => {
-    navigateToTabBar('/pages/user-center/index')
-  }
-
-  const handleTab = (key: string) => {
-    if (key === 'hall') goHome()
-    else if (key === 'task') Taro.showToast({ title: '任务中心敬请期待', icon: 'none' })
-    else if (key === 'mine') goUserCenter()
-  }
-
   const renderPoolIcon = (item: PrizePoolItem, index: number) => {
     const color = POOL_ICON_COLORS[index % POOL_ICON_COLORS.length]
     const name = item.name || ''
@@ -744,57 +733,6 @@ export default function Lottery() {
     )
   }
 
-  // ===== 游戏手柄渐变底部导航 =====
-  const renderTabBar = () => {
-    const tabs = [
-      { key: 'hall', label: '大厅', icon: House, active: false },
-      { key: 'box', label: '膨胀盲盒', icon: Gift, active: true },
-      { key: 'task', label: '任务', icon: ClipboardList, active: false },
-      { key: 'mine', label: '我的', icon: User, active: false },
-    ]
-    return (
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 14,
-          left: 16,
-          right: 16,
-          zIndex: 50,
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          padding: '10px 8px',
-          paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
-        }}
-        className="clay-tabbar"
-      >
-        {tabs.map((tab) => {
-          const IconComp = tab.icon
-          return (
-            <View
-              key={tab.key}
-              className={`flex flex-col items-center px-4 py-1 ${tab.active ? 'clay-tab-active' : ''}`}
-              onClick={() => handleTab(tab.key)}
-            >
-              <IconComp size={20} color={tab.active ? '#E8739F' : '#B89A6A'} />
-              <Text
-                className="block mt-1"
-                style={{
-                  fontSize: '10px',
-                  fontWeight: tab.active ? 800 : 600,
-                  color: tab.active ? '#E8739F' : '#B89A6A',
-                }}
-              >
-                {tab.label}
-              </Text>
-            </View>
-          )
-        })}
-      </View>
-    )
-  }
-
   // ===== 中奖结果页 =====
   const renderResult = () => {
     if (!drawResult) return null
@@ -960,7 +898,7 @@ export default function Lottery() {
           )}
           {stage === 'select' && renderPrizePool()}
           <View style={{ height: '120px' }} />
-          {renderTabBar()}
+          <AppTabBar current="/pages/lottery/index" />
         </>
       )}
 

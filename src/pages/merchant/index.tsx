@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import AppTabBar from '@/components/app-tab-bar'
 import {
   Share2,
   MapPin,
@@ -202,7 +203,8 @@ export default function MerchantPage() {
   const gallery = merchant?.images?.length ? merchant.images : merchant?.logo ? [merchant.logo] : []
 
   return (
-    <View className="min-h-screen bg-gray-50 pb-8">
+    <>
+      <View className="min-h-screen bg-gray-50 pb-8">
       {loading ? (
         <View>
           <Skeleton className="w-full h-64 rounded-none" />
@@ -526,8 +528,13 @@ export default function MerchantPage() {
               </Button>
             </View>
           </View>
+
+          {/* 底部占位避免被导航栏遮挡 */}
+          <View className="h-20" />
         </View>
       )}
     </View>
+    <AppTabBar current="/pages/merchant/index" />
+  </>
   )
 }
