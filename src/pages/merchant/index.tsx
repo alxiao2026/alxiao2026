@@ -420,13 +420,14 @@ export default function MerchantPage() {
                   className="w-full whitespace-nowrap"
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  <View className="flex flex-row gap-2 px-1">
+                  <View className="flex flex-row gap-1 px-0">
                     {prizes.map((prize) => (
                       <View
                         key={prize.id}
-                        className="flex-shrink-0 w-22 bg-white rounded-lg overflow-hidden shadow-sm"
+                        className="flex-1 bg-white rounded-lg overflow-hidden shadow-sm"
+                        style={{ minWidth: '32%', maxWidth: '34%' }}
                       >
-                        <View className="h-16 bg-gray-50 flex items-center justify-center relative">
+                        <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                           {prize.image_url ? (
                             <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
                           ) : (
