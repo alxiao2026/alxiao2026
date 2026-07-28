@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles } from 'lucide-react-taro'
 
 interface Order {
   id: string
@@ -426,6 +426,17 @@ export default function OrderDetail() {
               </View>
             </View>
 
+            {/* 抽奖提示（纯文案，不可点击） */}
+            <View
+              className="mx-4 mb-3 rounded-xl flex flex-row items-center gap-2 px-3 py-3"
+              style={{ background: 'linear-gradient(135deg, #FFF7E6 0%, #FFF0DB 100%)' }}
+            >
+              <Sparkles size={18} color="#FF9F43" />
+              <View className="flex-1">
+                <Text className="block text-xs font-semibold text-[#B88230]">支付成功后即可抽奖，赢霸王餐/折扣券/商品券</Text>
+                <Text className="block text-xs text-[#D6A95C] mt-1">中奖折扣券或霸王餐，中奖金额自动退还原账户</Text>
+              </View>
+            </View>
 
             {/* 立即支付按钮 */}
             <View className="px-4 pb-4">
