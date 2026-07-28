@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift } from 'lucide-react-taro'
+import { Clock, CircleCheck, CircleX, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Undo2, Wallet, Sparkles, Gift } from 'lucide-react-taro'
 
 interface Order {
   id: string
@@ -91,6 +91,8 @@ export default function OrderDetail() {
   const [refunding, setRefunding] = useState(false)
   const [countdownText, setCountdownText] = useState('')
   const [showPaySuccess, setShowPaySuccess] = useState(false)
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false)
+  const [refundResult, setRefundResult] = useState<{ success: boolean; msg: string } | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -252,35 +254,32 @@ export default function OrderDetail() {
   }
 
   /** 申请退款（未核销可退；退实付金额，已用折扣权益作废） */
-  const handleRefund = async () => {
+  const handleRefund = () => {
     if (refunding) return
-    Taro.showModal({
-      title: '申请退款',
-      content: '确认申请退款吗？退款将原路返回，本单已使用的抽奖折扣权益将作废',
-      confirmText: '确认退款',
-      confirmColor: '#FF4757',
-      success: async (modalRes) => {
-        if (!modalRes.confirm) return
-        setRefunding(true)
-        try {
-          const userId = Taro.getStorageSync('user_id')
-          console.log('[OrderDetail] 申请退款, order_id:', id)
-          const res = await Network.request({
-            url: '/api/payment/refund',
-            method: 'POST',
-            data: { order_id: id, user_id: userId, reason: '用户主动申请退款' },
-          })
-          console.log('[OrderDetail] 退款响应:', res.data)
-          Taro.showToast({ title: '退款成功', icon: 'success' })
-          await loadOrder()
-        } catch (err: any) {
-          console.error('[OrderDetail] 退款失败:', err)
-          Taro.showToast({ title: err?.data?.message || '退款失败，请联系客服', icon: 'none' })
-        } finally {
-          setRefunding(false)
-        }
-      },
-    })
+    setShowRefundConfirm(true)
+  }
+
+  const doRefund = async () => {
+    setShowRefundConfirm(false)
+    setRefunding(true)
+    try {
+      const userId = Taro.getStorageSync('user_id')
+      console.log('[OrderDetail] 申请退款, order_id:', id)
+      const res = await Network.request({
+        url: '/api/payment/refund',
+        method: 'POST',
+        data: { order_id: id, user_id: userId, reason: '用户主动申请退款' },
+      })
+      console.log('[OrderDetail] 退款响应:', res.data)
+      const data = (res.data as any)?.data || res.data
+      setRefundResult({ success: true, msg: data?.msg || '退款成功，金额将原路返回' })
+      await loadOrder()
+    } catch (err: any) {
+      console.error('[OrderDetail] 退款失败:', err)
+      setRefundResult({ success: false, msg: err?.data?.message || '退款失败，请联系客服' })
+    } finally {
+      setRefunding(false)
+    }
   }
 
   const handleRefreshQR = async () => {
@@ -744,6 +743,95 @@ export default function OrderDetail() {
         {/* 底部安全区 */}
         <View className="h-8" />
       </ScrollView>
+
+      {/* 退款确认弹层（活泼风格） */}
+      {showRefundConfirm && (
+        <View
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <View className="pay-success-pop relative mx-8 w-full max-w-sm rounded-3xl bg-white px-6 pb-6 pt-10 flex flex-col items-center overflow-visible">
+            {/* 彩色撒花装饰 */}
+            <View className="absolute rounded-full" style={{ top: 28, left: 36, width: 10, height: 10, backgroundColor: '#FFD666' }} />
+            <View className="absolute rounded-full" style={{ top: 52, left: 20, width: 7, height: 7, backgroundColor: '#69C0FF' }} />
+            <View className="absolute rounded-full" style={{ top: 36, right: 40, width: 8, height: 8, backgroundColor: '#95DE64' }} />
+            <View className="absolute rounded-full" style={{ top: 64, right: 24, width: 6, height: 6, backgroundColor: '#FF85C0' }} />
+
+            {/* 渐变徽章 */}
+            <View className="pay-success-badge relative flex items-center justify-center rounded-full" style={{ width: 88, height: 88, background: 'linear-gradient(135deg, #FF9F43 0%, #FFC53D 100%)', boxShadow: '0 8px 24px rgba(255,159,67,0.35)' }}>
+              <View className="absolute rounded-full" style={{ width: 112, height: 112, backgroundColor: 'rgba(255,197,61,0.15)' }} />
+              <Undo2 size={40} color="#FFFFFF" strokeWidth={2.5} />
+            </View>
+
+            {/* 文案 */}
+            <Text className="block text-xl font-bold text-gray-900 mt-5">确认申请退款吗</Text>
+            <Text className="block text-sm text-gray-500 mt-2 text-center">退款将原路返回，本单已使用的{'\n'}抽奖折扣权益将作废</Text>
+
+            {/* 按钮组 */}
+            <Button
+              className="w-full h-12 rounded-full mt-6 bg-gradient-to-r from-[#FF7A45] to-[#FFA940] border-0 shadow-lg"
+              disabled={refunding}
+              onClick={doRefund}
+            >
+              <Text className="block text-base font-semibold text-white">{refunding ? '退款中...' : '确认退款'}</Text>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-full mt-3 border-gray-200"
+              onClick={() => setShowRefundConfirm(false)}
+            >
+              <Text className="block text-sm text-gray-600">再想想</Text>
+            </Button>
+          </View>
+        </View>
+      )}
+
+      {/* 退款结果弹层（活泼风格） */}
+      {refundResult && (
+        <View
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <View className="pay-success-pop relative mx-8 w-full max-w-sm rounded-3xl bg-white px-6 pb-6 pt-10 flex flex-col items-center overflow-visible">
+            {/* 彩色撒花装饰 */}
+            <View className="absolute rounded-full" style={{ top: 28, left: 36, width: 10, height: 10, backgroundColor: '#FFD666' }} />
+            <View className="absolute rounded-full" style={{ top: 52, left: 20, width: 7, height: 7, backgroundColor: '#69C0FF' }} />
+            <View className="absolute rounded-full" style={{ top: 36, right: 40, width: 8, height: 8, backgroundColor: '#95DE64' }} />
+            <View className="absolute rounded-full" style={{ top: 64, right: 24, width: 6, height: 6, backgroundColor: '#FF85C0' }} />
+
+            {/* 渐变徽章：成功绿 / 失败红 */}
+            {refundResult.success ? (
+              <View className="pay-success-badge relative flex items-center justify-center rounded-full" style={{ width: 88, height: 88, background: 'linear-gradient(135deg, #52C41A 0%, #95DE64 100%)', boxShadow: '0 8px 24px rgba(82,196,26,0.3)' }}>
+                <View className="absolute rounded-full" style={{ width: 112, height: 112, backgroundColor: 'rgba(149,222,100,0.15)' }} />
+                <CircleCheck size={44} color="#FFFFFF" strokeWidth={2.5} />
+              </View>
+            ) : (
+              <View className="pay-success-badge relative flex items-center justify-center rounded-full" style={{ width: 88, height: 88, background: 'linear-gradient(135deg, #FF4D4F 0%, #FF7875 100%)', boxShadow: '0 8px 24px rgba(255,77,79,0.3)' }}>
+                <View className="absolute rounded-full" style={{ width: 112, height: 112, backgroundColor: 'rgba(255,120,117,0.15)' }} />
+                <CircleX size={44} color="#FFFFFF" strokeWidth={2.5} />
+              </View>
+            )}
+
+            {/* 文案 */}
+            <Text className="block text-xl font-bold text-gray-900 mt-5">{refundResult.success ? '退款成功' : '退款失败'}</Text>
+            <Text className="block text-sm text-gray-500 mt-2 text-center">{refundResult.msg}</Text>
+
+            {/* 按钮 */}
+            <Button
+              className={`w-full h-12 rounded-full mt-6 border-0 shadow-lg ${refundResult.success ? 'bg-gradient-to-r from-[#52C41A] to-[#73D13D]' : 'bg-gradient-to-r from-[#FF4D4F] to-[#FF7875]'}`}
+              onClick={() => setRefundResult(null)}
+            >
+              <Text className="block text-base font-semibold text-white">知道了</Text>
+            </Button>
+          </View>
+        </View>
+      )}
 
       {/* 支付成功弹层（自定义活泼风格） */}
       {showPaySuccess && (
