@@ -21,7 +21,11 @@ export default defineAppConfig({
     'pages/lottery-records/index',
     'pages/admin-lottery-records/index',
     'pages/admin-orders/index',
-    'pages/lottery/index'
+    'pages/lottery/index',
+    'pages/package-settlement-config/index',
+    'pages/merchant-balance/index',
+    'pages/settlement-records/index',
+    'pages/platform-commission/index'
   ],
   window: {
     backgroundTextStyle: 'light',

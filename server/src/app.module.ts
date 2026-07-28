@@ -12,6 +12,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { UserModule } from './modules/user/user.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { SettlementModule } from './modules/settlement/settlement.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PaymentModule } from './modules/payment/payment.module';
     MerchantModule,
     UserModule,
     PaymentModule,
+    SettlementModule,
   ],
   controllers: [AppController],
   providers: [AppService],
