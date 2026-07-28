@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
 import { Button } from '@/components/ui/button';
 import AppTabBar from '@/components/app-tab-bar';
-import { Trophy, Crown, Store, ChevronRight, Sparkles } from 'lucide-react-taro';
+import { Trophy, Crown, Store, ChevronRight, Sparkles, Gift } from 'lucide-react-taro';
 
 interface RankShop {
   id: number;
@@ -13,6 +13,14 @@ interface RankShop {
   logo: string | null;
   address: string | null;
   freeMealWins: number;
+}
+
+interface Prize {
+  id: number;
+  name: string;
+  prize_type: string;
+  probability: number;
+  image_url?: string;
 }
 
 const STEPS = [
@@ -23,6 +31,7 @@ const STEPS = [
 
 export default function TuantuanPage() {
   const [rankShops, setRankShops] = useState<RankShop[]>([]);
+  const [topPrizes, setTopPrizes] = useState<Prize[]>([]);
 
   useEffect(() => {
     fetchRankShops();
@@ -34,8 +43,34 @@ export default function TuantuanPage() {
       console.log('[团团] 霸王餐人气榜:', res.data);
       const data = (res.data as { data?: RankShop[] })?.data || [];
       setRankShops(data);
+      
+      // 获取人气榜第一名的奖品
+      if (data.length > 0) {
+        fetchTopPrizes(data[0].id);
+      }
     } catch (err) {
       console.error('获取霸王餐人气榜失败:', err);
+    }
+  };
+
+  const fetchTopPrizes = async (merchantId: number) => {
+    try {
+      const res = await Network.request({ url: `/api/merchants/${merchantId}` });
+      console.log('[团团] 人气王奖品:', res.data);
+      const data = (res.data as { data?: { prizes?: Prize[] } })?.data;
+      if (data?.prizes) {
+        // 奖品排序：霸王餐放第一位，其他随机
+        const rawPrizes = data.prizes;
+        const freeMeal = rawPrizes.filter(p => p.prize_type === 'free_meal');
+        const others = rawPrizes.filter(p => p.prize_type !== 'free_meal');
+        for (let i = others.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [others[i], others[j]] = [others[j], others[i]];
+        }
+        setTopPrizes([...freeMeal, ...others].slice(0, 5));
+      }
+    } catch (err) {
+      console.error('获取人气王奖品失败:', err);
     }
   };
 
@@ -81,6 +116,58 @@ export default function TuantuanPage() {
             </View>
           </View>
         </View>
+
+        {/* ===== 奖品展示栏 ===== */}
+        {topPrizes.length > 0 && (
+          <View className="mt-5 mx-4">
+            <View
+              className="rounded-3xl pt-4 pb-5 px-4 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #E8D5F2 0%, #D4B8E8 50%, #C9A8E8 100%)' }}
+            >
+              <View className="flex flex-row items-center justify-between mb-4">
+                <View className="flex flex-row items-center gap-2">
+                  <Sparkles size={18} color="#fff" className="shrink-0" />
+                  <Text className="text-base font-bold text-white">人气王奖品</Text>
+                </View>
+                <View className="bg-white bg-opacity-20 rounded-full px-3 py-1">
+                  <Text className="text-xs text-white font-medium">共 {topPrizes.length} 款</Text>
+                </View>
+              </View>
+
+              <ScrollView
+                scrollX
+                className="w-full whitespace-nowrap"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <View className="flex flex-row gap-3 px-1">
+                  {topPrizes.map((prize) => (
+                    <View
+                      key={prize.id}
+                      className="flex-shrink-0 w-24 bg-white rounded-xl overflow-hidden shadow-md"
+                    >
+                      <View className="h-20 bg-gray-50 flex items-center justify-center relative">
+                        {prize.image_url ? (
+                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
+                        ) : (
+                          <Gift size={28} color="#C9A8E8" />
+                        )}
+                        {prize.prize_type === 'free_meal' && (
+                          <View className="absolute top-1 right-1 bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] rounded-full px-2 py-1">
+                            <Text className="text-xs text-white font-bold">霸王餐</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="py-1 px-2">
+                        <Text className="block text-xs font-bold text-gray-800 text-center truncate">{prize.name}</Text>
+                        <Text className="block text-xs text-[#FF6B6B] text-center font-medium mt-1">中奖概率 {prize.probability}%</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        )}
 
         {/* ===== 霸王餐人气榜 ===== */}
         {rankShops.length > 0 && (

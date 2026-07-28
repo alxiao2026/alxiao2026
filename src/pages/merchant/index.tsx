@@ -396,7 +396,7 @@ export default function MerchantPage() {
             {/* 渐变背景容器 */}
             <View
               className="rounded-3xl pt-4 pb-5 px-4 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FFB347 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #E8D5F2 0%, #D4B8E8 50%, #C9A8E8 100%)' }}
             >
               {/* 标题行 */}
               <View className="flex flex-row items-center justify-between mb-4">
