@@ -126,11 +126,11 @@ export default function TuantuanPage() {
             >
               <View className="flex flex-row items-center justify-between mb-4">
                 <View className="flex flex-row items-center gap-2">
-                  <Sparkles size={18} color="#fff" className="shrink-0" />
-                  <Text className="text-base font-bold text-white">人气王奖品</Text>
+                  <Sparkles size={18} color="#5B3A8C" className="shrink-0" />
+                  <Text className="text-base font-bold text-[#5B3A8C]">人气王奖品</Text>
                 </View>
-                <View className="bg-white bg-opacity-20 rounded-full px-3 py-1">
-                  <Text className="text-xs text-white font-medium">共 {topPrizes.length} 款</Text>
+                <View className="bg-white bg-opacity-30 rounded-full px-3 py-1">
+                  <Text className="text-xs text-[#5B3A8C] font-medium">共 {topPrizes.length} 款</Text>
                 </View>
               </View>
 

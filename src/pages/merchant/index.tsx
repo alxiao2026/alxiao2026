@@ -401,11 +401,11 @@ export default function MerchantPage() {
               {/* 标题行 */}
               <View className="flex flex-row items-center justify-between mb-4">
                 <View className="flex flex-row items-center gap-2">
-                  <Sparkles size={18} color="#fff" className="shrink-0" />
-                  <Text className="text-base font-bold text-white">下单抽奖 · 100%有礼</Text>
+                  <Sparkles size={18} color="#5B3A8C" className="shrink-0" />
+                  <Text className="text-base font-bold text-[#5B3A8C]">下单抽奖 · 100%有礼</Text>
                 </View>
-                <View className="bg-white bg-opacity-20 rounded-full px-3 py-1">
-                  <Text className="text-xs text-white font-medium">共 {prizes.length} 款</Text>
+                <View className="bg-white bg-opacity-30 rounded-full px-3 py-1">
+                  <Text className="text-xs text-[#5B3A8C] font-medium">共 {prizes.length} 款</Text>
                 </View>
               </View>
 
