@@ -714,9 +714,11 @@ export default function Lottery() {
                     renderPoolIcon(item, index)
                   )}
                 </View>
-                <Text className="block text-xs font-bold text-amber-900 mt-1 text-center" numberOfLines={1}>
-                  {item.prize_type === 'coupon' ? '随机立减' : item.name}
-                </Text>
+                <View className="h-8 flex items-center justify-center mt-1">
+                  <Text className="block text-xs font-bold text-amber-900 text-center line-clamp-2">
+                    {item.prize_type === 'coupon' ? '随机立减' : item.name}
+                  </Text>
+                </View>
               </View>
             ) : (
               <View key={`empty-${index}`} className="flex flex-col items-center">

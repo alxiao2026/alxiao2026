@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -48,6 +48,7 @@ export default function PrizeManagePage() {
     prize_type: 'coupon' as 'coupon' | 'product' | 'free_meal',
     discount_rate: '8.5', discount_cap: '',
     product_name: '', product_value: '', validity_hours: '',
+    image_url: '',
     is_fallback: false,
   });
   // 可用门店：null 表示全部门店通用；商家账号固定为本店
@@ -112,7 +113,7 @@ export default function PrizeManagePage() {
 
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', is_fallback: false });
+    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', image_url: '', is_fallback: false });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -125,6 +126,7 @@ export default function PrizeManagePage() {
       discount_rate: prize.discount_rate || '8.5', discount_cap: prize.discount_cap || '',
       product_name: prize.product_name || '', product_value: prize.product_value || '',
       validity_hours: prize.validity_hours ? String(prize.validity_hours) : '',
+      image_url: prize.image_url || '',
       is_fallback: !!prize.is_fallback,
     });
     setFormMerchantId(prize.merchant_id ?? null);
@@ -148,6 +150,7 @@ export default function PrizeManagePage() {
         prize_type: prizeForm.prize_type, is_fallback: prizeForm.is_fallback,
         discount_rate: Number(prizeForm.discount_rate) || 0, discount_cap: Number(prizeForm.discount_cap) || 0,
         product_name: prizeForm.product_name, product_value: Number(prizeForm.product_value) || 0,
+        image_url: prizeForm.image_url || null,
       };
       // 商品/霸王餐：有效期（小时），留空表示使用全局默认
       if (prizeForm.prize_type === 'product' || prizeForm.prize_type === 'free_meal') {
@@ -166,6 +169,27 @@ export default function PrizeManagePage() {
     } catch (err) {
       console.error('保存失败:', err);
       Taro.showToast({ title: '保存失败', icon: 'none' });
+    }
+  };
+
+  const handleUploadPrizeImage = async () => {
+    try {
+      const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] });
+      const tempFilePath = res.tempFilePaths[0];
+      Taro.showLoading({ title: '上传中...' });
+      const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
+      Taro.hideLoading();
+      const url = (uploadRes.data as any)?.data?.url || (uploadRes.data as any)?.url;
+      if (url) {
+        setPrizeForm(prev => ({ ...prev, image_url: url }));
+        Taro.showToast({ title: '上传成功', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '上传失败', icon: 'none' });
+      }
+    } catch (err) {
+      Taro.hideLoading();
+      console.error('[PrizeManage] 上传图片失败:', err);
+      Taro.showToast({ title: '上传失败', icon: 'none' });
     }
   };
 
@@ -222,6 +246,12 @@ export default function PrizeManagePage() {
           prizes.map((prize) => (
             <Card key={prize.id} className="mb-3">
               <CardContent className="p-4">
+                {/* 奖品图片（有则展示） */}
+                {prize.image_url && (
+                  <View className="mb-3">
+                    <Image src={prize.image_url} className="w-full h-24 rounded-lg" mode="aspectFill" />
+                  </View>
+                )}
                 {/* 第一行：奖品名称 + 操作按钮 */}
                 <View className="flex flex-row items-center justify-between gap-2">
                   <View className="flex-1 min-w-0">
@@ -361,6 +391,23 @@ export default function PrizeManagePage() {
                     <Text className="block text-xs text-gray-400 mt-1">中奖后需在有效期内核销，过期无法兑奖；留空则使用抽奖设置中的全局有效期</Text>
                   </View>
                 )}
+                {/* 奖品图片 */}
+                <View>
+                  <Text className="block text-sm text-black mb-1">奖品图片（选填）</Text>
+                  <View className="flex flex-row gap-3 items-center">
+                    <View
+                      className="w-20 h-20 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center overflow-hidden"
+                      onClick={handleUploadPrizeImage}
+                    >
+                      {prizeForm.image_url ? (
+                        <Image src={prizeForm.image_url} className="w-full h-full" mode="aspectFill" />
+                      ) : (
+                        <Plus size={24} color="#9ca3af" />
+                      )}
+                    </View>
+                    <Text className="block text-xs text-gray-400 flex-1">点击上传奖品图片，支持 jpg/png；建议 200×200 像素</Text>
+                  </View>
+                </View>
                 {/* 可用门店 */}
                 <View>
                   <Text className="block text-sm text-black mb-1">可用门店</Text>
