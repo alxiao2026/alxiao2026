@@ -479,7 +479,7 @@ const IndexPage = () => {
               style={{ background: 'linear-gradient(135deg, #FFF0F5 0%, #F3E8FF 50%, #EFF6FF 100%)' }}
             >
               <Swiper
-                className="h-24"
+                className="h-52"
                 vertical
                 autoplay
                 circular
