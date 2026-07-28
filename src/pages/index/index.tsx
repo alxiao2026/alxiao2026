@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
-import AppTabBar from '@/components/app-tab-bar';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   ChevronRight, Clock, Flame, Trophy, Store
@@ -537,9 +536,6 @@ const IndexPage = () => {
           setLotteryResult(null);
         }}
       />
-
-      {/* 悬浮胶囊导航栏 */}
-      <AppTabBar current="/pages/index/index" />
     </View>
   );
 };
