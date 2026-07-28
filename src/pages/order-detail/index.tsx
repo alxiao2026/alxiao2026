@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift } from 'lucide-react-taro'
 
 interface Order {
   id: string
@@ -90,6 +90,7 @@ export default function OrderDetail() {
   const [paying, setPaying] = useState(false)
   const [refunding, setRefunding] = useState(false)
   const [countdownText, setCountdownText] = useState('')
+  const [showPaySuccess, setShowPaySuccess] = useState(false)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -238,17 +239,7 @@ export default function OrderDetail() {
         if (countdownRef.current) clearInterval(countdownRef.current)
         setPrepayInfo(null)
         await loadOrder()
-        Taro.showModal({
-          title: '支付成功',
-          content: '支付成功，快去参与抽奖赢免单吧！',
-          confirmText: '去抽奖',
-          cancelText: '查看订单',
-          success: (modalRes) => {
-            if (modalRes.confirm) {
-              Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
-            }
-          },
-        })
+        setShowPaySuccess(true)
       } else {
         Taro.showToast({ title: '支付未完成，请重试', icon: 'none' })
       }
@@ -753,6 +744,57 @@ export default function OrderDetail() {
         {/* 底部安全区 */}
         <View className="h-8" />
       </ScrollView>
+
+      {/* 支付成功弹层（自定义活泼风格） */}
+      {showPaySuccess && (
+        <View
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <View className="pay-success-pop relative mx-8 w-full max-w-sm rounded-3xl bg-white px-6 pb-6 pt-10 flex flex-col items-center overflow-visible">
+            {/* 彩色撒花装饰 */}
+            <View className="absolute rounded-full" style={{ top: 28, left: 36, width: 10, height: 10, backgroundColor: '#FFD666' }} />
+            <View className="absolute rounded-full" style={{ top: 52, left: 20, width: 7, height: 7, backgroundColor: '#95DE64' }} />
+            <View className="absolute rounded-full" style={{ top: 36, right: 40, width: 8, height: 8, backgroundColor: '#69C0FF' }} />
+            <View className="absolute rounded-full" style={{ top: 64, right: 24, width: 6, height: 6, backgroundColor: '#FF85C0' }} />
+            <View className="absolute rounded-full" style={{ top: 20, right: 78, width: 5, height: 5, backgroundColor: '#B37FEB' }} />
+
+            {/* 渐变对勾圆 + 光晕 */}
+            <View className="pay-success-badge relative flex items-center justify-center rounded-full" style={{ width: 88, height: 88, background: 'linear-gradient(135deg, #FF6B6B 0%, #FF9F43 100%)', boxShadow: '0 8px 24px rgba(255,107,107,0.35)' }}>
+              <View className="absolute rounded-full" style={{ width: 112, height: 112, backgroundColor: 'rgba(255,159,67,0.15)' }} />
+              <CircleCheck size={44} color="#FFFFFF" strokeWidth={2.5} />
+            </View>
+
+            {/* 文案 */}
+            <Text className="block text-xl font-bold text-gray-900 mt-5">支付成功啦</Text>
+            <Text className="block text-sm text-gray-500 mt-2 text-center">好运已到账，快去抽奖赢霸王餐吧</Text>
+
+            {/* 按钮组 */}
+            <Button
+              className="w-full h-12 rounded-full mt-6 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] border-0 shadow-lg"
+              onClick={() => {
+                setShowPaySuccess(false)
+                Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+              }}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Gift size={18} color="#FFFFFF" />
+                <Text className="block text-base font-semibold text-white">去抽奖赢免单</Text>
+              </View>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-full mt-3 border-gray-200"
+              onClick={() => setShowPaySuccess(false)}
+            >
+              <Text className="block text-sm text-gray-600">查看订单</Text>
+            </Button>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

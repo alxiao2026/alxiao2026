@@ -1,0 +1,18 @@
+
+/* 支付成功弹层动画 */
+@keyframes pay-success-pop {
+  0% { opacity: 0; transform: scale(0.75) translateY(24px); }
+  60% { opacity: 1; transform: scale(1.03) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pay-success-pop {
+  animation: pay-success-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pay-success-badge {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.pay-success-badge {
+  animation: pay-success-badge 0.45s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
