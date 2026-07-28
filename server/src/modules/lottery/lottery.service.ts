@@ -1031,7 +1031,7 @@ export class LotteryService {
   }
 
   /** 获取往期中奖名单（中奖记录 + 用户昵称，按时间倒序，最多50条） */
-  async getWinners(): Promise<Array<{
+  async getWinners(merchantId?: string): Promise<Array<{
     id: string;
     prize_name: string;
     user_id: string;
@@ -1039,12 +1039,21 @@ export class LotteryService {
     avatar_url: string | null;
     created_at: string;
   }>> {
-    const { data: records, error } = await this.client
+    let query = this.client
       .from('lottery_records')
-      .select('id, prize_name, user_id, created_at')
+      .select(
+        merchantId
+          ? 'id, prize_name, user_id, created_at, prizes!inner(merchant_id)'
+          : 'id, prize_name, user_id, created_at',
+      )
       .eq('is_winner', true)
       .order('created_at', { ascending: false })
       .limit(50);
+    // 商家维度：按奖品归属商家过滤（prizes.merchant_id）
+    if (merchantId) {
+      query = query.eq('prizes.merchant_id', merchantId);
+    }
+    const { data: records, error } = await query;
     if (error) throw new Error(`查询中奖记录失败: ${error.message}`);
 
     const list = (records as LotteryRecord[]) || [];

@@ -6,6 +6,7 @@ import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import {
   Share2,
   MapPin,
@@ -47,6 +48,15 @@ interface Prize {
   probability: number
 }
 
+interface WinnerRecord {
+  id: string
+  prize_name: string
+  user_id: string
+  nick_name: string
+  avatar_url: string | null
+  created_at: string
+}
+
 interface Package {
   id: string
   name: string
@@ -84,6 +94,7 @@ export default function MerchantPage() {
   const [error, setError] = useState('')
   const [swiperIndex, setSwiperIndex] = useState(0)
   const [winStats, setWinStats] = useState<{ totalWins: number; freeMealWins: number }>({ totalWins: 0, freeMealWins: 0 })
+  const [winners, setWinners] = useState<WinnerRecord[]>([])
 
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
@@ -115,9 +126,23 @@ export default function MerchantPage() {
     }
   }, [merchantId])
 
+  const fetchWinners = useCallback(async () => {
+    try {
+      const res = await Network.request({
+        url: `/api/lottery/winners?merchant_id=${merchantId}`,
+        method: 'GET',
+      })
+      const list = (res.data as any)?.data || res.data || []
+      setWinners(Array.isArray(list) ? list : [])
+    } catch (err) {
+      console.error('[Merchant] 获取中奖记录失败:', err)
+    }
+  }, [merchantId])
+
   useEffect(() => {
     fetchDetail()
-  }, [fetchDetail])
+    fetchWinners()
+  }, [fetchDetail, fetchWinners])
 
   useEffect(() => {
     if (merchant?.name) {
@@ -275,6 +300,44 @@ export default function MerchantPage() {
                   <Text className="text-xs text-amber-600 font-medium">中霸王餐 {winStats.freeMealWins} 次</Text>
                 </View>
               </View>
+
+              {/* 门店历史中奖记录（两条一组垂直滚动，展示用户头像） */}
+              {winners.length > 0 && (
+                <View className="flex flex-row items-center gap-2 mt-3 bg-amber-50 rounded-xl px-2 overflow-hidden">
+                  <PartyPopper size={14} color="#d97706" className="shrink-0" />
+                  <Swiper
+                    vertical
+                    autoplay
+                    circular
+                    interval={3000}
+                    duration={500}
+                    className="flex-1 h-20"
+                  >
+                    {Array.from({ length: Math.ceil(winners.length / 2) }).map((_, groupIdx) => (
+                      <SwiperItem key={groupIdx}>
+                        <View className="flex flex-col">
+                          {winners.slice(groupIdx * 2, groupIdx * 2 + 2).map((winner) => (
+                            <View key={winner.id} className="flex flex-row items-center gap-2 h-10">
+                              <Avatar className="w-6 h-6 shrink-0">
+                                {winner.avatar_url && <AvatarImage src={winner.avatar_url} />}
+                                <AvatarFallback className="text-xs">{(winner.nick_name || '匿')[0]}</AvatarFallback>
+                              </Avatar>
+                              <View className="flex-1 flex flex-row items-center min-w-0">
+                                <Text className="text-xs text-amber-700 truncate">
+                                  {winner.nick_name || '匿名用户'} 抽中 {winner.prize_name}
+                                </Text>
+                              </View>
+                              <Text className="text-xs text-amber-400 shrink-0">
+                                {winner.created_at?.slice(5, 10)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </SwiperItem>
+                    ))}
+                  </Swiper>
+                </View>
+              )}
 
               {/* 营业状态 */}
               <View className="flex flex-row items-center gap-2 mt-3">

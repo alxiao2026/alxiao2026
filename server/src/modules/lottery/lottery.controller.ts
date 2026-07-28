@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Req, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, Req, HttpCode } from '@nestjs/common';
 import { LotteryService } from './lottery.service';
 import type { Request } from 'express';
 
@@ -41,8 +41,8 @@ export class LotteryController {
   }
 
   @Get('winners')
-  async getWinners() {
-    const data = await this.lotteryService.getWinners();
+  async getWinners(@Query('merchant_id') merchantId?: string) {
+    const data = await this.lotteryService.getWinners(merchantId);
     return { code: 200, msg: 'success', data };
   }
 
