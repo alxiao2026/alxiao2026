@@ -511,6 +511,11 @@ const IndexPage = () => {
           </View>
         )}
 
+        {/* 底部文案 */}
+        <View className="py-4 text-center">
+          <Text className="block text-sm text-gray-400">给生活来点小惊喜</Text>
+        </View>
+
         {/* 底部占位（避让悬浮 TabBar） */}
         <View className="h-36" />
       </ScrollView>
