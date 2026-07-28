@@ -73,6 +73,8 @@ interface Merchant {
   phone: string
   business_hours: string
   location?: string
+  logo?: string
+  images?: string[]
   avg_price?: string
   has_private_room?: boolean
 }
@@ -729,7 +731,9 @@ export default function PackageDetail() {
               }}
             >
               <View className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                <Image src={merchant.location || ''} className="w-full h-full" mode="aspectFill" />
+                {(merchant.logo || merchant.images?.[0]) && (
+                  <Image src={merchant.logo || merchant.images?.[0] || ''} className="w-full h-full" mode="aspectFill" />
+                )}
               </View>
               <View className="flex-1">
                 <Text className="block text-base font-semibold text-gray-800">{merchant.name}</Text>
