@@ -402,7 +402,7 @@ const UserCenterPage = () => {
       </View>
 
       {/* 底部占位（避让悬浮 TabBar） */}
-      <View className="h-32" />
+      <View className="h-28" />
     </ScrollView>
 
     {/* 悬浮胶囊导航栏 */}
