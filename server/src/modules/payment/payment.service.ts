@@ -357,12 +357,13 @@ export class PaymentService {
       parseFloat(order.original_amount || '0') ||
       parseFloat(order.price || '0') * quantity;
 
-    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户（redeemed），全退须扣除
+    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户，全退须扣除
+    // 以 redeemed_at 判定"返还已发生"（券后续被作废 voided 时返还也已到账，仍须扣除）
     const { data: rebateRecords } = await this.client
       .from('lottery_records')
       .select('refund_amount')
       .eq('order_id', order.id)
-      .eq('refund_status', 'redeemed')
+      .not('redeemed_at', 'is', null)
       .gt('refund_amount', 0);
     const rebateAmount = (rebateRecords || []).reduce(
       (sum, r: any) => sum + (parseFloat(r.refund_amount || '0') || 0),
@@ -486,11 +487,12 @@ export class PaymentService {
       parseFloat(order.original_amount || '0') ||
       parseFloat(order.price || '0') * quantity;
 
+    // 以 redeemed_at 判定"返还已发生"（含 redeemed→voided 的券）
     const { data: rebateRecords } = await this.client
       .from('lottery_records')
       .select('refund_amount')
       .eq('order_id', order.id)
-      .eq('refund_status', 'redeemed')
+      .not('redeemed_at', 'is', null)
       .gt('refund_amount', 0);
     const rebateAmount = (rebateRecords || []).reduce(
       (sum, r: any) => sum + (parseFloat(r.refund_amount || '0') || 0),
