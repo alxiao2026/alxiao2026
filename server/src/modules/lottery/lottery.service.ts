@@ -1039,24 +1039,27 @@ export class LotteryService {
     avatar_url: string | null;
     created_at: string;
   }>> {
+    // 构建查询：如果有 merchantId，使用 inner join 关联 prizes 表过滤
+    const selectFields = merchantId
+      ? 'id, prize_name, user_id, created_at, prizes!inner(merchant_id)'
+      : 'id, prize_name, user_id, created_at';
+
     let query = this.client
       .from('lottery_records')
-      .select(
-        merchantId
-          ? 'id, prize_name, user_id, created_at, prizes!inner(merchant_id)'
-          : 'id, prize_name, user_id, created_at',
-      )
-      .eq('is_winner', true)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .select(selectFields)
+      .eq('is_winner', true);
+
     // 商家维度：按奖品归属商家过滤（prizes.merchant_id）
     if (merchantId) {
       query = query.eq('prizes.merchant_id', merchantId);
     }
+
+    query = query.order('created_at', { ascending: false }).limit(50);
     const { data: records, error } = await query;
     if (error) throw new Error(`查询中奖记录失败: ${error.message}`);
 
-    const list = (records as LotteryRecord[]) || [];
+    // 类型断言：基础字段来自 lottery_records，prizes 字段可能存在
+    const list = (records as Array<{ id: string; prize_name: string; user_id: string; created_at: string }>) || [];
     if (list.length === 0) return [];
 
     const userIds = [...new Set(list.map(r => r.user_id))];

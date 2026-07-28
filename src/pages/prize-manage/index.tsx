@@ -179,12 +179,15 @@ export default function PrizeManagePage() {
       Taro.showLoading({ title: '上传中...' });
       const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
       Taro.hideLoading();
-      const url = (uploadRes.data as any)?.data?.url || (uploadRes.data as any)?.url;
+      // Taro.uploadFile 返回的 data 是字符串，需要 JSON.parse
+      const resData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+      console.log('[PrizeManage] 上传响应:', resData);
+      const url = resData?.data?.url;
       if (url) {
         setPrizeForm(prev => ({ ...prev, image_url: url }));
         Taro.showToast({ title: '上传成功', icon: 'success' });
       } else {
-        Taro.showToast({ title: '上传失败', icon: 'none' });
+        Taro.showToast({ title: '上传失败：无URL', icon: 'none' });
       }
     } catch (err) {
       Taro.hideLoading();
