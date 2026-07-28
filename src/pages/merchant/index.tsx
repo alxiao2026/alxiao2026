@@ -301,33 +301,38 @@ export default function MerchantPage() {
                 </View>
               </View>
 
-              {/* 门店历史中奖记录（两条一组垂直滚动，展示用户头像） */}
+              {/* 门店历史中奖记录（两条一组垂直滚动，年轻活泼风格） */}
               {winners.length > 0 && (
-                <View className="flex flex-row items-center gap-2 mt-3 bg-amber-50 rounded-xl px-2 overflow-hidden">
-                  <PartyPopper size={14} color="#d97706" className="shrink-0" />
+                <View
+                  className="mt-3 rounded-2xl px-2 py-2 overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #FFF0F5 0%, #F3E8FF 50%, #EFF6FF 100%)' }}
+                >
                   <Swiper
                     vertical
                     autoplay
                     circular
                     interval={3000}
                     duration={500}
-                    className="flex-1 h-20"
+                    className="h-20"
                   >
                     {Array.from({ length: Math.ceil(winners.length / 2) }).map((_, groupIdx) => (
                       <SwiperItem key={groupIdx}>
-                        <View className="flex flex-col">
+                        <View className="flex flex-col gap-1">
                           {winners.slice(groupIdx * 2, groupIdx * 2 + 2).map((winner) => (
-                            <View key={winner.id} className="flex flex-row items-center gap-2 h-10">
-                              <Avatar className="w-6 h-6 shrink-0">
+                            <View
+                              key={winner.id}
+                              className="flex flex-row items-center gap-2 h-9 bg-white rounded-full px-2 shadow-sm"
+                            >
+                              <Avatar className="w-5 h-5 shrink-0">
                                 {winner.avatar_url && <AvatarImage src={winner.avatar_url} />}
                                 <AvatarFallback className="text-xs">{(winner.nick_name || '匿')[0]}</AvatarFallback>
                               </Avatar>
-                              <View className="flex-1 flex flex-row items-center min-w-0">
-                                <Text className="text-xs text-amber-700 truncate">
-                                  {winner.nick_name || '匿名用户'} 抽中 {winner.prize_name}
-                                </Text>
-                              </View>
-                              <Text className="text-xs text-amber-400 shrink-0">
+                              <Text className="flex-1 text-xs text-gray-700 truncate">
+                                {winner.nick_name || '匿名用户'}
+                                <Text className="text-pink-500"> 抽中 </Text>
+                                {winner.prize_name}
+                              </Text>
+                              <Text className="text-xs text-gray-400 shrink-0">
                                 {winner.created_at?.slice(5, 10)}
                               </Text>
                             </View>
