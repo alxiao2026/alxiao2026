@@ -392,27 +392,27 @@ export default function MerchantPage() {
           </View>
 
           {/* 商家奖品：横向滑动卡片（下单抽奖，置于团购套餐上方） */}
-          <View className="mt-3 mx-4">
+          <View className="mt-3 mx-5">
             {/* 渐变背景容器 */}
             <View
-              className="rounded-3xl pt-4 pb-5 px-4 shadow-lg"
+              className="rounded-2xl pt-3 pb-3 px-3 shadow-md"
               style={{ background: 'linear-gradient(135deg, #E8D5F2 0%, #D4B8E8 50%, #C9A8E8 100%)' }}
             >
               {/* 标题行 */}
-              <View className="flex flex-row items-center justify-between mb-4">
+              <View className="flex flex-row items-center justify-between mb-3">
                 <View className="flex flex-row items-center gap-2">
-                  <Sparkles size={18} color="#5B3A8C" className="shrink-0" />
-                  <Text className="text-base font-bold text-[#5B3A8C]">下单抽奖 · 100%有礼</Text>
+                  <Sparkles size={16} color="#5B3A8C" className="shrink-0" />
+                  <Text className="text-sm font-bold text-[#5B3A8C]">下单抽奖 · 100%有礼</Text>
                 </View>
-                <View className="bg-white bg-opacity-30 rounded-full px-3 py-1">
+                <View className="bg-white bg-opacity-30 rounded-full px-2 py-0">
                   <Text className="text-xs text-[#5B3A8C] font-medium">共 {prizes.length} 款</Text>
                 </View>
               </View>
 
               {prizes.length === 0 ? (
-                <View className="flex flex-col items-center py-8">
-                  <Gift size={40} color="rgba(255,255,255,0.6)" />
-                  <Text className="block text-sm text-gray-200 mt-3">商家正在筹备奖品，敬请期待</Text>
+                <View className="flex flex-col items-center py-6">
+                  <Gift size={32} color="rgba(255,255,255,0.6)" />
+                  <Text className="block text-sm text-gray-200 mt-2">商家正在筹备奖品，敬请期待</Text>
                 </View>
               ) : (
                 <ScrollView
@@ -420,17 +420,17 @@ export default function MerchantPage() {
                   className="w-full whitespace-nowrap"
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  <View className="flex flex-row gap-3 px-1">
+                  <View className="flex flex-row gap-2 px-1">
                     {prizes.map((prize) => (
                       <View
                         key={prize.id}
-                        className="flex-shrink-0 w-24 bg-white rounded-xl overflow-hidden shadow-md"
+                        className="flex-shrink-0 w-22 bg-white rounded-lg overflow-hidden shadow-sm"
                       >
-                        <View className="h-20 bg-gray-50 flex items-center justify-center relative">
+                        <View className="h-16 bg-gray-50 flex items-center justify-center relative">
                           {prize.image_url ? (
                             <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
                           ) : (
-                            <Gift size={28} color="#FF6B9D" />
+                            <Gift size={24} color="#FF6B9D" />
                           )}
                           {prize.prize_type === 'free_meal' && (
                             <View className="absolute top-1 left-1 bg-gradient-to-r from-orange-400 to-red-400 rounded-full px-1 py-0">
@@ -440,7 +440,7 @@ export default function MerchantPage() {
                         </View>
                         <View className="py-1 px-2">
                           <Text className="block text-xs font-bold text-gray-800 text-center truncate">{prize.name}</Text>
-                          <Text className="block text-xs text-[#FF6B6B] text-center font-medium mt-1">中奖概率 {prize.probability}%</Text>
+                          <Text className="block text-xs text-[#FF6B6B] text-center mt-1">中奖概率 {prize.probability}%</Text>
                         </View>
                       </View>
                     ))}
