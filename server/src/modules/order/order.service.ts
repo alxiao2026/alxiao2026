@@ -278,7 +278,7 @@ export class OrderService {
     }));
   }
 
-  async findOne(id: string): Promise<Order> {
+  async findOne(id: string): Promise<Order & { package_image?: string | null }> {
     const { data, error } = await this.client
       .from('orders')
       .select('*')
@@ -295,9 +295,21 @@ export class OrderService {
         .select('*')
         .eq('id', id)
         .maybeSingle();
-      if (fresh) return fresh as Order;
+      if (fresh) return fresh as Order & { package_image?: string | null };
     }
-    return order;
+
+    // 补充套餐封面图
+    let package_image: string | null = null;
+    if (order.package_id) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('cover_image')
+        .eq('id', order.package_id)
+        .maybeSingle();
+      package_image = pkg?.cover_image || null;
+    }
+
+    return { ...order, package_image };
   }
 
   async create(body: {
