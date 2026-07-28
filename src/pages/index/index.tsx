@@ -4,6 +4,7 @@ import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import AppTabBar from '@/components/app-tab-bar';
 import {
   ChevronRight, Clock, Flame, Trophy, Store
 } from 'lucide-react-taro';
@@ -225,6 +226,7 @@ const IndexPage = () => {
     : packages.filter(p => p.category?.startsWith(activeIndustry));
 
   return (
+  <>
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
         {/* ===== 顶部品牌区（居中极简） ===== */}
@@ -537,6 +539,8 @@ const IndexPage = () => {
         }}
       />
     </View>
+    <AppTabBar current="/pages/index/index" />
+  </>
   );
 };
 
