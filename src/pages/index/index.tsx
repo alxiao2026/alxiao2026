@@ -93,10 +93,10 @@ const IndexPage = () => {
   const [showLottery, setShowLottery] = useState(false);
   const [activeIndustry, setActiveIndustry] = useState('全部');
 
-  // 中奖名单按 3 条一屏分组，滚动时整屏翻页
+  // 中奖名单按 5 条一屏分组，滚动时整屏翻页
   const winnerGroups: WinnerRecord[][] = [];
-  for (let i = 0; i < winners.length; i += 3) {
-    winnerGroups.push(winners.slice(i, i + 3));
+  for (let i = 0; i < winners.length; i += 5) {
+    winnerGroups.push(winners.slice(i, i + 5));
   }
 
   // 从后端拉取最新用户信息，保证昵称/头像/登录态实时同步
