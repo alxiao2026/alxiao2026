@@ -258,7 +258,12 @@ const IndexPage = () => {
                 </View>
                 <View className="relative flex-shrink-0">
                   {rankShops[0].logo ? (
-                    <Image src={rankShops[0].logo} className="w-14 h-14 rounded-2xl" mode="aspectFill" />
+                    <Image 
+                      src={rankShops[0].logo} 
+                      className="w-14 h-14 rounded-2xl" 
+                      mode="aspectFill" 
+                      onError={() => console.log('[首页] 霸王餐人气榜冠军 logo 加载失败:', rankShops[0].logo)}
+                    />
                   ) : (
                     <View className="w-14 h-14 rounded-2xl bg-pink-50 flex items-center justify-center">
                       <Store size={28} color="#FF6B9D" />
@@ -296,7 +301,12 @@ const IndexPage = () => {
                         >
                           <View className="relative flex-shrink-0">
                             {shop.logo ? (
-                              <Image src={shop.logo} className="w-10 h-10 rounded-xl" mode="aspectFill" />
+                              <Image 
+                                src={shop.logo} 
+                                className="w-10 h-10 rounded-xl" 
+                                mode="aspectFill"
+                                onError={() => console.log('[首页] 霸王餐人气榜 logo 加载失败:', shop.logo)}
+                              />
                             ) : (
                               <View className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
                                 <Store size={20} color="#FF6B9D" />
