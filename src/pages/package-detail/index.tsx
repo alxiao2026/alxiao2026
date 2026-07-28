@@ -426,66 +426,56 @@ export default function PackageDetail() {
 
         {/* 奖品展示栏 */}
         {prizes.length > 0 && (
-          <View
-            className="mx-4 mt-3 rounded-2xl p-4"
-            style={{
-              background: 'linear-gradient(135deg, #E8D5F2 0%, #D4B8E8 50%, #C9A8E8 100%)',
-            }}
-          >
-            {/* 标题行 */}
-            <View className="flex flex-row items-center justify-between mb-3">
-              <View className="flex flex-row items-center gap-2">
-                <Sparkles size={18} color="#5B3A8C" className="shrink-0" />
-                <Text className="text-base font-bold text-[#5B3A8C]">下单抽奖 · 100%有礼</Text>
+          <View className="mt-3 mx-5">
+            {/* 渐变背景容器 */}
+            <View
+              className="rounded-2xl pt-3 pb-3 px-3 shadow-md"
+              style={{ background: 'linear-gradient(135deg, #E8D5F2 0%, #D4B8E8 50%, #C9A8E8 100%)' }}
+            >
+              {/* 标题行 */}
+              <View className="flex flex-row items-center justify-between mb-3">
+                <View className="flex flex-row items-center gap-2">
+                  <Sparkles size={16} color="#5B3A8C" className="shrink-0" />
+                  <Text className="text-sm font-bold text-[#5B3A8C]">下单抽奖 · 100%有礼</Text>
+                </View>
+                <View className="bg-white bg-opacity-30 rounded-full px-2 py-0">
+                  <Text className="text-xs text-[#5B3A8C] font-medium">共 {prizes.length} 款</Text>
+                </View>
               </View>
-              <View className="bg-white bg-opacity-30 rounded-full px-3 py-1">
-                <Text className="text-xs text-[#5B3A8C] font-medium">共 {prizes.length} 款</Text>
-              </View>
-            </View>
 
-            {/* 奖品横向滚动 */}
-            <ScrollView scrollX className="w-full">
-              <View className="flex flex-row gap-3" style={{ whiteSpace: 'nowrap' }}>
-                {prizes.map((prize) => {
-                  const isFreeMeal = prize.prize_type === 'free_meal'
-                  return (
+              <ScrollView
+                scrollX
+                className="w-full whitespace-nowrap"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <View className="flex flex-row gap-1 px-0">
+                  {prizes.map((prize) => (
                     <View
                       key={prize.id}
-                      className="flex-shrink-0 bg-white rounded-xl p-2"
-                      style={{ width: '100px' }}
+                      className="flex-1 bg-white rounded-lg overflow-hidden shadow-sm"
+                      style={{ minWidth: '32%', maxWidth: '34%' }}
                     >
-                      {/* 奖品图片 */}
-                      <View className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+                      <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                         {prize.image_url ? (
-                          <Image
-                            src={prize.image_url}
-                            className="w-full h-full"
-                            mode="aspectFill"
-                            onError={() => console.log('[套餐详情] 奖品图加载失败:', prize.image_url)}
-                          />
+                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
                         ) : (
-                          <View className="w-full h-full flex items-center justify-center">
-                            <Gift size={24} color="#ccc" />
-                          </View>
+                          <Gift size={24} color="#FF6B9D" />
                         )}
-                        {/* 霸王餐标签 */}
-                        {isFreeMeal && (
-                          <View
-                            className="absolute top-1 left-1 rounded px-2 py-1"
-                            style={{ background: 'linear-gradient(135deg, #FF6B6D 0%, #FF8C42 100%)' }}
-                          >
-                            <Text className="text-xs font-bold text-white">霸王餐</Text>
+                        {prize.prize_type === 'free_meal' && (
+                          <View className="absolute top-1 left-1 bg-gradient-to-r from-orange-400 to-red-400 rounded-full px-1 py-0">
+                            <Text className="text-white text-xs font-bold">霸王餐</Text>
                           </View>
                         )}
                       </View>
-                      {/* 名称和概率 */}
-                      <Text className="block text-xs font-medium text-gray-800 truncate">{prize.name}</Text>
-                      <Text className="block text-xs text-[#FF4757]">中奖概率 {prize.probability}%</Text>
+                      <View className="py-1 px-2">
+                        <Text className="block text-xs font-bold text-gray-800 text-center truncate">{prize.name}</Text>
+                        <Text className="block text-xs text-[#FF6B6B] text-center mt-1">中奖概率 {prize.probability}%</Text>
+                      </View>
                     </View>
-                  )
-                })}
-              </View>
-            </ScrollView>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
           </View>
         )}
 
