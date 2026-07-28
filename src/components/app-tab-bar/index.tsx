@@ -17,8 +17,15 @@ const MINE_PATH = '/pages/user-center/index';
 /**
  * 悬浮胶囊式底部导航（年轻活泼风）
  * 中间团团 logo 凸起，点击跳转对应主页
+ * 
+ * 注意：小程序端使用原生 tabBar，此组件仅在 H5 端渲染
  */
 export default function AppTabBar({ current }: AppTabBarProps) {
+  // 小程序端使用原生 tabBar，不渲染自定义组件
+  if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT) {
+    return null;
+  }
+
   const go = (path: string) => {
     if (current !== path) {
       Taro.reLaunch({ url: path });

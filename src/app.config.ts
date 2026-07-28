@@ -2,6 +2,7 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/tuantuan/index',
+    'pages/user-center/index',
     'pages/admin/index',
     'pages/package-detail/index',
     'pages/package-admin/index',
@@ -9,7 +10,6 @@ export default defineAppConfig({
     'pages/order-list/index',
     'pages/order-detail/index',
     'pages/refund-apply/index',
-    'pages/user-center/index',
     'pages/profile-edit/index',
     'pages/login/index',
     'pages/verification/index',
@@ -28,5 +28,31 @@ export default defineAppConfig({
     navigationBarBackgroundColor: '#FF4757',
     navigationBarTitleText: '有奖销售',
     navigationBarTextStyle: 'white'
+  },
+  tabBar: {
+    color: '#9CA3AF',
+    selectedColor: '#FF4757',
+    backgroundColor: '#ffffff',
+    borderStyle: 'black',
+    list: [
+      {
+        pagePath: 'pages/index/index',
+        text: '首页',
+        iconPath: './assets/tabbar/house.png',
+        selectedIconPath: './assets/tabbar/house-active.png'
+      },
+      {
+        pagePath: 'pages/tuantuan/index',
+        text: '团团',
+        iconPath: './assets/tabbar/tuantuan.png',
+        selectedIconPath: './assets/tabbar/tuantuan-active.png'
+      },
+      {
+        pagePath: 'pages/user-center/index',
+        text: '我的',
+        iconPath: './assets/tabbar/user.png',
+        selectedIconPath: './assets/tabbar/user-active.png'
+      }
+    ]
   }
 })

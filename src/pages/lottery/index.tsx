@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
+import { navigateToTabBar } from '@/utils/navigate'
 import { Button } from '@/components/ui/button'
 import {
   Gift,
@@ -396,7 +397,7 @@ export default function Lottery() {
   }
 
   const goHome = () => {
-    Taro.reLaunch({ url: '/pages/index/index' })
+    navigateToTabBar('/pages/index/index')
   }
 
   const goRecords = () => {
@@ -404,7 +405,7 @@ export default function Lottery() {
   }
 
   const goUserCenter = () => {
-    Taro.reLaunch({ url: '/pages/user-center/index' })
+    navigateToTabBar('/pages/user-center/index')
   }
 
   const handleTab = (key: string) => {
