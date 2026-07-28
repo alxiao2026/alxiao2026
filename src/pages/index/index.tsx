@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/utils';
 import AppTabBar from '@/components/app-tab-bar';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
-  ChevronRight, Clock, Flame, Trophy, Store, Crown, Award
+  ChevronRight, Clock, Flame, Trophy, Store
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
@@ -234,92 +234,88 @@ const IndexPage = () => {
           <Text className="block text-xs text-gray-400 mt-1">给生活来点小惊喜 · 每单都有好运 ✨</Text>
         </View>
 
-        {/* ===== 霸王餐人气榜（悬浮卡片） ===== */}
+        {/* ===== 霸王餐人气榜（年轻活泼风格） ===== */}
         {rankShops.length > 0 && (
           <View className="px-4 mt-2">
-            <View className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <View className="bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] px-4 py-3">
-                <View className="flex flex-row items-center gap-2">
-                  <Trophy size={18} color="#FFE27A" />
-                  <Text className="block text-sm font-bold text-white">霸王餐人气榜</Text>
-                  <Text className="block text-xs text-white ml-auto" style={{ opacity: 0.85 }}>好运正在派送中</Text>
-                </View>
+            <View
+              className="rounded-3xl overflow-hidden px-3 py-3"
+              style={{ background: 'linear-gradient(135deg, #FFE5EC 0%, #F3E8FF 50%, #E0F2FE 100%)' }}
+            >
+              {/* 标题栏 */}
+              <View className="flex flex-row items-center gap-2 mb-3 px-1">
+                <Trophy size={18} color="#FF6B9D" />
+                <Text className="block text-base font-bold text-pink-500">霸王餐人气榜</Text>
+                <Text className="block text-xs text-gray-400 ml-auto">🎉 好运正在派送</Text>
               </View>
-              <View className="px-3 py-3">
-                {/* 冠军卡 */}
-                <View
-                  className="rounded-2xl bg-gradient-to-r from-[#FFF3D6] to-[#FFE9B8] px-3 py-3 flex flex-row items-center gap-3 relative overflow-hidden"
-                  onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${rankShops[0].id}` })}
-                >
-                  <View className="absolute top-1 right-2 flex flex-row items-center gap-1">
-                    <Crown size={14} color="#D97706" />
-                    <Text className="block text-xs font-bold text-[#D97706]">人气王</Text>
-                  </View>
-                  <View className="relative flex-shrink-0">
-                    {rankShops[0].logo ? (
-                      <Image src={rankShops[0].logo} className="w-14 h-14 rounded-2xl" mode="aspectFill" />
-                    ) : (
-                      <View className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center">
-                        <Store size={28} color="#D97706" />
-                      </View>
-                    )}
-                    <View className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA502] flex items-center justify-center">
-                      <Text className="block text-xs font-bold text-white">1</Text>
-                    </View>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="block text-sm font-bold text-gray-900" numberOfLines={1}>{rankShops[0].name}</Text>
-                    <View className="flex flex-row items-baseline gap-1 mt-1">
-                      <Text className="block text-xs text-[#B7791F]">已送出</Text>
-                      <Text className="block text-lg font-bold text-[#D97706]">{rankShops[0].freeMealWins}</Text>
-                      <Text className="block text-xs text-[#B7791F]">份霸王餐 🎉</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={16} color="#D97706" />
+
+              {/* 冠军卡 */}
+              <View
+                className="bg-white rounded-2xl px-3 py-3 flex flex-row items-center gap-3 relative shadow-sm mb-2"
+                onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${rankShops[0].id}` })}
+              >
+                <View className="absolute top-2 right-2 bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full px-2 py-1">
+                  <Text className="block text-xs font-bold text-white">人气王</Text>
                 </View>
-                {/* 2-5 名：双列卡片 */}
-                {[
-                  rankShops.slice(1, 3),
-                  rankShops.slice(3, 5),
-                ].map((row, rowIdx) => (
-                  row.length > 0 && (
-                    <View key={rowIdx} className="flex flex-row gap-2 mt-2">
-                      {row.map((shop) => {
-                        const rank = rankShops.indexOf(shop) + 1;
-                        const medal = rank === 2
-                          ? 'bg-gradient-to-br from-[#E5E7EB] to-[#9CA3AF]'
-                          : rank === 3
-                            ? 'bg-gradient-to-br from-[#F0B27A] to-[#CD7F32]'
-                            : 'bg-gradient-to-br from-[#CBD5E0] to-[#A0AEC0]';
-                        return (
-                          <View
-                            key={shop.id}
-                            className="flex-1 bg-gray-50 rounded-2xl px-2 py-2 flex flex-row items-center gap-2"
-                            onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${shop.id}` })}
-                          >
-                            <View className="relative flex-shrink-0">
-                              {shop.logo ? (
-                                <Image src={shop.logo} className="w-10 h-10 rounded-xl" mode="aspectFill" />
-                              ) : (
-                                <View className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                                  <Store size={20} color="#FF4757" />
-                                </View>
-                              )}
-                              <View className={`absolute -top-1 -left-1 w-5 h-5 rounded-full ${medal} flex items-center justify-center`}>
-                                <Text className="block text-xs font-bold text-white">{rank}</Text>
+                <View className="relative flex-shrink-0">
+                  {rankShops[0].logo ? (
+                    <Image src={rankShops[0].logo} className="w-14 h-14 rounded-2xl" mode="aspectFill" />
+                  ) : (
+                    <View className="w-14 h-14 rounded-2xl bg-pink-50 flex items-center justify-center">
+                      <Store size={28} color="#FF6B9D" />
+                    </View>
+                  )}
+                  <View className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow">
+                    <Text className="block text-xs font-bold text-white">1</Text>
+                  </View>
+                </View>
+                <View className="flex-1">
+                  <Text className="block text-sm font-bold text-gray-800" numberOfLines={1}>{rankShops[0].name}</Text>
+                  <View className="flex flex-row items-center gap-1 mt-1">
+                    <Text className="block text-lg font-bold text-pink-500">{rankShops[0].freeMealWins}</Text>
+                    <Text className="block text-xs text-gray-400">份霸王餐</Text>
+                  </View>
+                </View>
+                <ChevronRight size={16} color="#FF6B9D" />
+              </View>
+
+              {/* 2-5 名：双列卡片 */}
+              {[
+                rankShops.slice(1, 3),
+                rankShops.slice(3, 5),
+              ].map((row, rowIdx) => (
+                row.length > 0 && (
+                  <View key={rowIdx} className="flex flex-row gap-2 mt-2">
+                    {row.map((shop) => {
+                      const rank = rankShops.indexOf(shop) + 1;
+                      const medalColor = rank === 2 ? 'from-gray-300 to-gray-400' : rank === 3 ? 'from-amber-300 to-amber-500' : 'from-gray-200 to-gray-300';
+                      return (
+                        <View
+                          key={shop.id}
+                          className="flex-1 bg-white rounded-2xl px-2 py-2 flex flex-row items-center gap-2 shadow-sm"
+                          onClick={() => Taro.navigateTo({ url: `/pages/merchant/index?id=${shop.id}` })}
+                        >
+                          <View className="relative flex-shrink-0">
+                            {shop.logo ? (
+                              <Image src={shop.logo} className="w-10 h-10 rounded-xl" mode="aspectFill" />
+                            ) : (
+                              <View className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
+                                <Store size={20} color="#FF6B9D" />
                               </View>
-                            </View>
-                            <View className="flex-1 overflow-hidden">
-                              <Text className="block text-xs font-bold text-gray-800" numberOfLines={1}>{shop.name}</Text>
-                              <Text className="block text-xs text-[#FF4757] font-semibold mt-1">{shop.freeMealWins} 份霸王餐</Text>
+                            )}
+                            <View className={`absolute -top-1 -left-1 w-5 h-5 rounded-full bg-gradient-to-br ${medalColor} flex items-center justify-center`}>
+                              <Text className="block text-xs font-bold text-white">{rank}</Text>
                             </View>
                           </View>
-                        );
-                      })}
-                    </View>
-                  )
-                ))}
-              </View>
+                          <View className="flex-1 overflow-hidden">
+                            <Text className="block text-xs font-bold text-gray-800" numberOfLines={1}>{shop.name}</Text>
+                            <Text className="block text-xs text-pink-500 font-semibold mt-1">{shop.freeMealWins} 份霸王餐</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )
+              ))}
             </View>
           </View>
         )}
@@ -456,19 +452,23 @@ const IndexPage = () => {
           )}
         </View>
 
-        {/* ===== 往期中奖名单（滚动播报） ===== */}
+        {/* ===== 往期中奖名单（年轻活泼风格） ===== */}
         {winners.length > 0 && (
           <View className="px-4 mt-5 mb-6">
-            <View className="flex flex-row items-center gap-2 mb-3">
-              <Award size={18} color="#FF4757" />
+            {/* 标题栏 */}
+            <View className="flex flex-row items-center gap-2 mb-3 px-1">
               <Text className="block text-base font-bold text-gray-800">往期中奖名单</Text>
-              <View className="ml-auto bg-red-50 rounded-full px-2 py-1">
-                <Text className="block text-xs text-[#FF4757]">好运接力中</Text>
+              <View className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-full px-2 py-1">
+                <Text className="block text-xs text-pink-500">🍀 好运接力中</Text>
               </View>
             </View>
-            <View className="bg-white rounded-2xl overflow-hidden">
+            {/* 渐变背景容器 */}
+            <View
+              className="rounded-2xl px-2 py-2 overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #FFF0F5 0%, #F3E8FF 50%, #EFF6FF 100%)' }}
+            >
               <Swiper
-                className="h-30"
+                className="h-24"
                 vertical
                 autoplay
                 circular
@@ -477,20 +477,23 @@ const IndexPage = () => {
               >
                 {winnerGroups.map((group, gi) => (
                   <SwiperItem key={gi}>
-                    {group.map((w) => (
-                      <View key={w.id} className="flex flex-row items-center px-4 h-10">
-                        <Avatar className="h-7 w-7">
-                          {w.avatar_url ? <AvatarImage src={w.avatar_url} /> : null}
-                          <AvatarFallback className="bg-red-50 flex items-center justify-center">
-                            <Text className="block text-xs font-semibold text-[#FF4757]">{(w.nick_name || '客').charAt(0)}</Text>
-                          </AvatarFallback>
-                        </Avatar>
-                        <Text className="block text-sm text-gray-700 ml-2 flex-1" numberOfLines={1}>
-                          恭喜 {w.nick_name} 抽中
-                        </Text>
-                        <Text className="block text-sm font-semibold text-[#FF4757] ml-2" numberOfLines={1}>{w.prize_name}</Text>
-                      </View>
-                    ))}
+                    <View className="flex flex-col gap-1">
+                      {group.map((w) => (
+                        <View key={w.id} className="flex flex-row items-center bg-white rounded-full px-3 h-10 shadow-sm">
+                          <Avatar className="h-6 w-6">
+                            {w.avatar_url ? <AvatarImage src={w.avatar_url} /> : null}
+                            <AvatarFallback className="bg-pink-50 flex items-center justify-center">
+                              <Text className="block text-xs font-semibold text-pink-500">{(w.nick_name || '客').charAt(0)}</Text>
+                            </AvatarFallback>
+                          </Avatar>
+                          <Text className="block text-xs text-gray-600 ml-2">
+                            {w.nick_name}
+                            <Text className="text-pink-500"> 抽中 </Text>
+                            <Text className="text-gray-800 font-semibold">{w.prize_name}</Text>
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
                   </SwiperItem>
                 ))}
               </Swiper>
