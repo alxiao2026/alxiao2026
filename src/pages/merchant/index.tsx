@@ -113,7 +113,16 @@ export default function MerchantPage() {
         return
       }
       setMerchant(data.merchant)
-      setPrizes(Array.isArray(data.prizes) ? data.prizes : [])
+      // 奖品排序：霸王餐放第一位，其他随机
+      const rawPrizes = Array.isArray(data.prizes) ? data.prizes : []
+      const freeMeal = rawPrizes.filter(p => p.prize_type === 'free_meal')
+      const others = rawPrizes.filter(p => p.prize_type !== 'free_meal')
+      // 其他奖品随机排序
+      for (let i = others.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[others[i], others[j]] = [others[j], others[i]]
+      }
+      setPrizes([...freeMeal, ...others])
       setPackages(Array.isArray(data.packages) ? data.packages : [])
       setWinStats({
         totalWins: Number(data.winStats?.totalWins) || 0,
@@ -406,34 +415,61 @@ export default function MerchantPage() {
                   <Text className="block text-sm text-gray-200 mt-3">商家正在筹备奖品，敬请期待</Text>
                 </View>
               ) : (
-                <View className="flex flex-row flex-wrap gap-3">
-                  {prizes.map((prize) => (
-                    <View
-                      key={prize.id}
-                      className="w-[48%] bg-white rounded-2xl overflow-hidden shadow-md"
-                    >
-                      {/* 奖品图片 */}
-                      <View className="aspect-square bg-gray-50 flex items-center justify-center">
-                        {prize.image_url ? (
-                          <Image
-                            src={prize.image_url}
-                            className="w-full h-full"
-                            mode="aspectFill"
-                          />
-                        ) : (
-                          <Gift size={48} color="#FF6B9D" />
-                        )}
-                      </View>
-                      {/* 奖品信息 */}
-                      <View className="p-2">
-                        <Text className="block text-sm font-bold text-gray-800 text-center overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
-                        <View className="flex flex-row items-center justify-center mt-1">
-                          <Text className="text-xs text-[#FF6B9D] font-semibold">中奖率 {prize.probability}%</Text>
+                <Swiper
+                  vertical
+                  autoplay
+                  circular
+                  interval={4000}
+                  duration={500}
+                  className="w-full h-40"
+                >
+                  {/* 两个奖品一组 */}
+                  {Array.from({ length: Math.ceil(prizes.length / 2) }).map((_, pageIndex) => {
+                    const p1 = prizes[pageIndex * 2]
+                    const p2 = prizes[pageIndex * 2 + 1]
+                    return (
+                      <SwiperItem key={pageIndex}>
+                        <View className="flex flex-row gap-2 px-1">
+                          {/* 第一个奖品 */}
+                          <View className="flex-1 bg-white rounded-xl overflow-hidden shadow-md">
+                            <View className="aspect-square bg-gray-50 flex items-center justify-center relative">
+                              {p1.image_url ? (
+                                <Image src={p1.image_url} className="w-full h-full" mode="aspectFill" />
+                              ) : (
+                                <Gift size={32} color="#FF6B9D" />
+                              )}
+                              {p1.prize_type === 'free_meal' && (
+                                <View className="absolute top-1 left-1 bg-gradient-to-r from-orange-400 to-red-400 rounded-full px-1 py-1">
+                                  <Text className="text-white text-xs font-bold">霸王餐</Text>
+                                </View>
+                              )}
+                            </View>
+                            <View className="py-1 px-2">
+                              <Text className="block text-xs font-bold text-gray-800 text-center truncate">{p1.name}</Text>
+                              <Text className="block text-xs text-[#FF6B9D] text-center font-medium mt-1">{p1.probability}%</Text>
+                            </View>
+                          </View>
+                          {/* 第二个奖品 */}
+                          {p2 && (
+                            <View className="flex-1 bg-white rounded-xl overflow-hidden shadow-md">
+                              <View className="aspect-square bg-gray-50 flex items-center justify-center">
+                                {p2.image_url ? (
+                                  <Image src={p2.image_url} className="w-full h-full" mode="aspectFill" />
+                                ) : (
+                                  <Gift size={32} color="#FF6B9D" />
+                                )}
+                              </View>
+                              <View className="py-1 px-2">
+                                <Text className="block text-xs font-bold text-gray-800 text-center truncate">{p2.name}</Text>
+                                <Text className="block text-xs text-[#FF6B9D] text-center font-medium mt-1">{p2.probability}%</Text>
+                              </View>
+                            </View>
+                          )}
                         </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
+                      </SwiperItem>
+                    )
+                  })}
+                </Swiper>
               )}
             </View>
           </View>
