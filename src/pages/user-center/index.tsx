@@ -323,7 +323,7 @@ const UserCenterPage = () => {
       </View>
 
       {/* 消费数据 */}
-      <View className="mx-4 mt-2 bg-white rounded-2xl overflow-hidden">
+      <View className="mx-4 mt-3 bg-white rounded-2xl overflow-hidden">
         <View className="flex flex-row">
           <View className="flex-1 py-4 flex flex-col items-center border-r border-gray-50" onClick={goToLotteryRecords}>
             <View className="flex items-center mb-1">
@@ -347,7 +347,7 @@ const UserCenterPage = () => {
       </View>
 
       {/* 功能菜单 */}
-      <View className="mx-4 mt-2 bg-white rounded-2xl overflow-hidden">
+      <View className="mx-4 mt-3 bg-white rounded-2xl overflow-hidden">
         {menuItems.map((item, index) => (
           <View key={item.label}>
             <View
@@ -367,7 +367,7 @@ const UserCenterPage = () => {
       </View>
 
       {/* 底部退出 */}
-      <View className="mx-4 mt-3 mb-8">
+      <View className="mx-4 mt-4 mb-8">
         <View
           className="bg-white rounded-2xl py-3 flex items-center justify-center active:bg-gray-50"
           onClick={() => {
