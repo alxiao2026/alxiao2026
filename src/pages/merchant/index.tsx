@@ -383,61 +383,71 @@ export default function MerchantPage() {
           </View>
 
           {/* 商家奖品：横向滑动卡片（下单抽奖，置于团购套餐上方） */}
-          <View className="mt-3">
-            <View className="bg-white rounded-2xl mx-4 pt-4 pb-4 shadow-sm">
-              <View className="px-4 flex flex-row items-center justify-between">
+          <View className="mt-3 mx-4">
+            {/* 渐变背景容器 */}
+            <View
+              className="rounded-3xl pt-4 pb-5 px-4 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #FF6B9D 0%, #A855F7 50%, #6366F1 100%)' }}
+            >
+              {/* 标题行 */}
+              <View className="flex flex-row items-center justify-between mb-4">
                 <View className="flex flex-row items-center gap-2">
-                  <Gift size={17} color="#FF4757" />
-                  <Text className="text-base font-bold text-gray-900">下单抽奖 · 100%有礼</Text>
+                  <Sparkles size={18} color="#fff" className="shrink-0" />
+                  <Text className="text-base font-bold text-white">下单抽奖 · 100%有礼</Text>
                 </View>
-                <Text className="text-xs text-gray-400">共 {prizes.length} 款奖品</Text>
+                <View className="bg-white bg-opacity-20 rounded-full px-3 py-1">
+                  <Text className="text-xs text-white font-medium">共 {prizes.length} 款</Text>
+                </View>
               </View>
 
               {prizes.length === 0 ? (
-                <View className="flex flex-col items-center py-10">
-                  <Gift size={40} color="#e5e7eb" />
-                  <Text className="block text-sm text-gray-400 mt-3">商家正在筹备奖品，敬请期待</Text>
+                <View className="flex flex-col items-center py-8">
+                  <Gift size={40} color="rgba(255,255,255,0.6)" />
+                  <Text className="block text-sm text-gray-200 mt-3">商家正在筹备奖品，敬请期待</Text>
                 </View>
               ) : (
-                <ScrollView scrollX className="mt-3 whitespace-nowrap" showScrollbar={false}>
-                  <View className="flex flex-row gap-3 px-4">
-                    {prizes.map((prize, idx) => {
-                      const bgColors = ['#FFE9E9', '#FFF4D9', '#FFF9F0', '#EDF4FF', '#F0EBFF']
-                      const bg = bgColors[idx % bgColors.length]
-                      return (
-                        <View
-                          key={prize.id}
-                          className="w-28 shrink-0 bg-white rounded-xl overflow-hidden shadow-md"
-                        >
-                          {/* 上半：名称 + 中奖率 + 图片（浅色背景） */}
-                          <View className="flex flex-col items-center pt-2 pb-2" style={{ backgroundColor: bg }}>
-                            <Text className="block text-sm font-bold text-gray-800 text-center px-1 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
-                            <Text className="block text-xs text-[#FF4757] font-semibold mt-1">中奖率{prize.probability}%</Text>
-                            <View className="w-14 h-14 mt-2 flex items-center justify-center">
-                              {prize.image_url ? (
-                                <Image src={prize.image_url} className="w-14 h-14 rounded-lg" mode="aspectFit" />
-                              ) : (
-                                <Gift size={40} color="#FF4757" />
-                              )}
-                            </View>
-                          </View>
-                          {/* 下半：去开奖按钮 */}
-                          <View className="bg-white py-2 flex items-center justify-center">
-                            <Button
-                              size="sm"
-                              className="rounded-full bg-[#FF4757] text-white h-7 px-4"
-                              onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
-                            >
-                              <Text className="text-xs font-semibold text-white">去开奖</Text>
-                            </Button>
+                <ScrollView scrollX className="whitespace-nowrap" showScrollbar={false}>
+                  <View className="flex flex-row gap-3">
+                    {prizes.map((prize) => (
+                      <View
+                        key={prize.id}
+                        className="w-24 shrink-0 bg-white rounded-2xl overflow-hidden shadow-md"
+                      >
+                        {/* 奖品图片 */}
+                        <View className="w-24 h-24 bg-gray-50 flex items-center justify-center">
+                          {prize.image_url ? (
+                            <Image
+                              src={prize.image_url}
+                              className="w-20 h-20 rounded-xl"
+                              mode="aspectFill"
+                            />
+                          ) : (
+                            <Gift size={36} color="#FF6B9D" />
+                          )}
+                        </View>
+                        {/* 奖品信息 */}
+                        <View className="p-2">
+                          <Text className="block text-xs font-bold text-gray-800 text-center overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
+                          <View className="flex flex-row items-center justify-center mt-1">
+                            <Text className="text-xs text-[#FF6B9D] font-semibold">中奖率 {prize.probability}%</Text>
                           </View>
                         </View>
-                      )
-                    })}
+                      </View>
+                    ))}
                   </View>
                 </ScrollView>
               )}
 
+              {/* 底部引导 */}
+              <View className="flex flex-row items-center justify-center mt-4">
+                <Button
+                  size="sm"
+                  className="rounded-full bg-white h-8 px-5 shadow-sm"
+                  onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
+                >
+                  <Text className="text-sm font-bold text-[#FF6B9D]">立即参与抽奖</Text>
+                </Button>
+              </View>
             </View>
           </View>
 
