@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
-import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
 import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -406,48 +406,35 @@ export default function MerchantPage() {
                   <Text className="block text-sm text-gray-200 mt-3">商家正在筹备奖品，敬请期待</Text>
                 </View>
               ) : (
-                <ScrollView scrollX className="whitespace-nowrap" showScrollbar={false}>
-                  <View className="flex flex-row gap-3">
-                    {prizes.map((prize) => (
-                      <View
-                        key={prize.id}
-                        className="w-24 shrink-0 bg-white rounded-2xl overflow-hidden shadow-md"
-                      >
-                        {/* 奖品图片 */}
-                        <View className="w-24 h-24 bg-gray-50 flex items-center justify-center">
-                          {prize.image_url ? (
-                            <Image
-                              src={prize.image_url}
-                              className="w-20 h-20 rounded-xl"
-                              mode="aspectFill"
-                            />
-                          ) : (
-                            <Gift size={36} color="#FF6B9D" />
-                          )}
-                        </View>
-                        {/* 奖品信息 */}
-                        <View className="p-2">
-                          <Text className="block text-xs font-bold text-gray-800 text-center overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
-                          <View className="flex flex-row items-center justify-center mt-1">
-                            <Text className="text-xs text-[#FF6B9D] font-semibold">中奖率 {prize.probability}%</Text>
-                          </View>
+                <View className="flex flex-row flex-wrap gap-3">
+                  {prizes.map((prize) => (
+                    <View
+                      key={prize.id}
+                      className="w-[48%] bg-white rounded-2xl overflow-hidden shadow-md"
+                    >
+                      {/* 奖品图片 */}
+                      <View className="aspect-square bg-gray-50 flex items-center justify-center">
+                        {prize.image_url ? (
+                          <Image
+                            src={prize.image_url}
+                            className="w-full h-full"
+                            mode="aspectFill"
+                          />
+                        ) : (
+                          <Gift size={48} color="#FF6B9D" />
+                        )}
+                      </View>
+                      {/* 奖品信息 */}
+                      <View className="p-2">
+                        <Text className="block text-sm font-bold text-gray-800 text-center overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{prize.name}</Text>
+                        <View className="flex flex-row items-center justify-center mt-1">
+                          <Text className="text-xs text-[#FF6B9D] font-semibold">中奖率 {prize.probability}%</Text>
                         </View>
                       </View>
-                    ))}
-                  </View>
-                </ScrollView>
+                    </View>
+                  ))}
+                </View>
               )}
-
-              {/* 底部引导 */}
-              <View className="flex flex-row items-center justify-center mt-4">
-                <Button
-                  size="sm"
-                  className="rounded-full bg-white h-8 px-5 shadow-sm"
-                  onClick={() => Taro.navigateTo({ url: '/pages/lottery/index' })}
-                >
-                  <Text className="text-sm font-bold text-[#FF6B9D]">立即参与抽奖</Text>
-                </Button>
-              </View>
             </View>
           </View>
 
