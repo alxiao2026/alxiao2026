@@ -39,11 +39,18 @@ export class PaymentController {
     });
   }
 
-  /** 用户主动退款（未核销团购券） */
+  /** 用户主动退款（未核销团购券，支持按份部分退款） */
   @Post('refund')
   @HttpCode(200)
   async refund(
-    @Body() body: { order_id?: string; user_id?: string; reason?: string },
+    @Body()
+    body: {
+      order_id?: string;
+      user_id?: string;
+      reason?: string;
+      note?: string;
+      refund_quantity?: number;
+    },
   ) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
@@ -52,7 +59,15 @@ export class PaymentController {
       order_id: body.order_id,
       user_id: body.user_id,
       reason: body.reason,
+      note: body.note,
+      refund_quantity: body.refund_quantity,
     });
+  }
+
+  /** 查询订单可退款信息（退款申请页金额预览） */
+  @Get('refundable/:orderId')
+  async getRefundable(@Param('orderId') orderId: string) {
+    return this.paymentService.getRefundable(orderId);
   }
 
   /** 查询订单支付信息 */

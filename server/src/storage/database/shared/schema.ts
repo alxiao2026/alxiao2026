@@ -104,6 +104,7 @@ export const orders = pgTable("orders", {
 	paid_at: timestamp("paid_at", { withTimezone: true }), // 支付完成时间
 	pay_expire_at: timestamp("pay_expire_at", { withTimezone: true }), // 支付截止时间（创建+15分钟）
 	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }), // 实际退款金额（=实付金额）
+	refunded_quantity: integer("refunded_quantity").notNull().default(0), // 已退款份数（部分退款累计）
 	shared: boolean("shared").notNull().default(false),
 	verified_by: varchar("verified_by", { length: 128 }), // 最近核销人账号ID
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

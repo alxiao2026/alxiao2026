@@ -296,11 +296,14 @@ export class PaymentService {
   }
 
   /**
-   * 用户主动全额退款（Mock 版；未核销团购券可退）
-   * 退款金额 = 实付金额 − 已返还的折扣/霸王餐金额（先付后返：中奖返还已到账，退款须扣除）
-   * 营销权益联动：退款后折扣权益作废(voided)，不可恢复
+   * 用户主动退款（Mock 版；未核销团购券可退，支持按份部分退款）
+   * 金额引擎：
+   * - 单份实付价 = 实付金额 ÷ 购买份数
+   * - 部分退款：退款金额 = 单份实付价 × 退款份数（四舍五入2位，封顶剩余可退金额）
+   * - 全额退款（退完全部剩余份数）：退款金额 = 实付 − 已返还折扣 − 累计已退（中奖返还已到账，全退须扣除）
+   * 营销权益联动：一旦发生退款，本单折扣权益即作废(voided)，不可恢复
    */
-  async refund(body: { order_id: string; user_id: string; reason?: string }) {
+  async refund(body: { order_id: string; user_id: string; reason?: string; note?: string; refund_quantity?: number }) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
     }
@@ -324,11 +327,27 @@ export class PaymentService {
       throw new BadRequestException('仅已支付订单可申请退款');
     }
 
+    const quantity = order.quantity || 1;
+    const verifiedCount = order.verified_count || 0;
+    const refundedQty = order.refunded_quantity || 0;
+    const refundableQty = quantity - verifiedCount - refundedQty;
+    if (refundableQty <= 0) {
+      throw new BadRequestException('该订单已无可退款份数');
+    }
+
+    const refundQty = body.refund_quantity ? Math.floor(Number(body.refund_quantity)) : refundableQty;
+    if (!Number.isFinite(refundQty) || refundQty < 1) {
+      throw new BadRequestException('退款份数无效');
+    }
+    if (refundQty > refundableQty) {
+      throw new BadRequestException(`最多可退 ${refundableQty} 份`);
+    }
+
     const { data: payment } = await this.client
       .from('payments')
       .select('*')
       .eq('order_id', order.id)
-      .eq('status', 'paid')
+      .in('status', ['paid', 'refunded'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -336,9 +355,9 @@ export class PaymentService {
     const paidAmount =
       parseFloat(order.pay_amount || '0') ||
       parseFloat(order.original_amount || '0') ||
-      parseFloat(order.price || '0') * (order.quantity || 1);
+      parseFloat(order.price || '0') * quantity;
 
-    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户（redeemed），退款须扣除
+    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户（redeemed），全退须扣除
     const { data: rebateRecords } = await this.client
       .from('lottery_records')
       .select('refund_amount')
@@ -350,42 +369,62 @@ export class PaymentService {
       0,
     );
 
-    const refundAmount = Math.round(Math.max(paidAmount - rebateAmount, 0) * 100) / 100;
+    // 累计已退金额（此前部分退款）
+    const alreadyRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+
+    const isFullRefund = refundQty === refundableQty;
+    const unitPay = Math.round((paidAmount / quantity) * 100) / 100;
+    let refundAmount: number;
+    if (isFullRefund) {
+      // 全退：退剩余全部（扣除已返还折扣与累计已退）
+      refundAmount = Math.round(Math.max(paidAmount - rebateAmount - alreadyRefunded, 0) * 100) / 100;
+    } else {
+      // 部分退：按实付均价退
+      refundAmount = Math.round(unitPay * refundQty * 100) / 100;
+      const remainRefundable = Math.round((paidAmount - alreadyRefunded) * 100) / 100;
+      refundAmount = Math.min(refundAmount, remainRefundable);
+    }
 
     const now = new Date().toISOString();
+    const newRefundedQty = refundedQty + refundQty;
+    const fullyRefunded = verifiedCount + newRefundedQty >= quantity;
+    const totalRefundedAmount = Math.round((alreadyRefunded + refundAmount) * 100) / 100;
 
-    // 1. 支付单 → refunded
+    // 1. 支付单：累计退款金额；全退时 → refunded
     if (payment) {
       const { error: payErr } = await this.client
         .from('payments')
         .update({
-          status: 'refunded',
-          refund_amount: refundAmount,
+          status: fullyRefunded ? 'refunded' : 'paid',
+          refund_amount: totalRefundedAmount,
           refunded_at: now,
           updated_at: now,
         })
-        .eq('id', payment.id)
-        .eq('status', 'paid');
+        .eq('id', payment.id);
       if (payErr) {
         throw new InternalServerErrorException(`退款失败: ${payErr.message}`);
       }
     }
 
-    // 2. 订单 → refunded，记录实际退款金额（实付）
+    // 2. 订单：累计退款份数/金额；全退 → refunded
+    const orderUpdate: Record<string, any> = {
+      refunded_quantity: newRefundedQty,
+      refund_amount: totalRefundedAmount,
+      updated_at: now,
+    };
+    if (fullyRefunded) {
+      orderUpdate.status = 'refunded';
+    }
     const { error: orderErr } = await this.client
       .from('orders')
-      .update({
-        status: 'refunded',
-        refund_amount: refundAmount,
-        updated_at: now,
-      })
+      .update(orderUpdate)
       .eq('id', order.id)
       .eq('status', 'paid');
     if (orderErr) {
       throw new InternalServerErrorException(`更新订单失败: ${orderErr.message}`);
     }
 
-    // 3. 营销权益联动：本单抵扣的折扣权益作废，不可恢复
+    // 3. 营销权益联动：一旦发生退款，本单折扣权益作废，不可恢复
     // 注意：lottery_records 无 prize_type 列，locked/redeemed 状态仅存在于折扣券/霸王餐
     await this.client
       .from('lottery_records')
@@ -393,7 +432,7 @@ export class PaymentService {
       .eq('order_id', order.id)
       .in('refund_status', ['locked', 'redeemed']);
 
-    // 4. 回补团购库存
+    // 4. 按退款份数回补团购库存
     if (order.package_id) {
       const { data: pkg } = await this.client
         .from('packages')
@@ -403,20 +442,80 @@ export class PaymentService {
       if (pkg) {
         await this.client
           .from('packages')
-          .update({ stock: (pkg.stock || 0) + (order.quantity || 1) })
+          .update({ stock: (pkg.stock || 0) + refundQty })
           .eq('id', order.package_id);
       }
     }
 
+    const reasonText = body.reason ? `（${body.reason}${body.note ? `：${body.note}` : ''}）` : '';
+    let message: string;
+    if (isFullRefund && rebateAmount > 0) {
+      message = `已退款 ¥${refundAmount}（实付 ¥${paidAmount.toFixed(2)} − 已返还 ¥${rebateAmount.toFixed(2)}），折扣权益已作废`;
+    } else if (!fullyRefunded) {
+      message = `已退款 ¥${refundAmount}（¥${unitPay.toFixed(2)} × ${refundQty}份），剩余 ${quantity - verifiedCount - newRefundedQty} 份仍可使用`;
+    } else {
+      message = `已退款 ¥${refundAmount}`;
+    }
+
     return {
-      status: 'refunded',
+      status: fullyRefunded ? 'refunded' : 'partial_refunded',
       order_id: order.id,
       refund_amount: refundAmount,
+      refund_quantity: refundQty,
+      total_refunded: totalRefundedAmount,
       rebate_amount: rebateAmount,
-      message:
-        rebateAmount > 0
-          ? `已退款 ¥${refundAmount}（实付 ¥${paidAmount.toFixed(2)} − 已返还 ¥${rebateAmount.toFixed(2)}），折扣权益已作废`
-          : `已退款 ¥${refundAmount}`,
+      reason: reasonText || undefined,
+      message,
+    };
+  }
+
+  /** 查询订单可退款信息（退款申请页金额引擎预览） */
+  async getRefundable(orderId: string) {
+    const { data: order } = await this.client
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+    if (!order) throw new NotFoundException('订单不存在');
+
+    const quantity = order.quantity || 1;
+    const verifiedCount = order.verified_count || 0;
+    const refundedQty = order.refunded_quantity || 0;
+    const paidAmount =
+      parseFloat(order.pay_amount || '0') ||
+      parseFloat(order.original_amount || '0') ||
+      parseFloat(order.price || '0') * quantity;
+
+    const { data: rebateRecords } = await this.client
+      .from('lottery_records')
+      .select('refund_amount')
+      .eq('order_id', order.id)
+      .eq('refund_status', 'redeemed')
+      .gt('refund_amount', 0);
+    const rebateAmount = (rebateRecords || []).reduce(
+      (sum, r: any) => sum + (parseFloat(r.refund_amount || '0') || 0),
+      0,
+    );
+
+    const { data: payment } = await this.client
+      .from('payments')
+      .select('refund_amount')
+      .eq('order_id', order.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const alreadyRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+
+    return {
+      order_status: order.status,
+      quantity,
+      verified_count: verifiedCount,
+      refunded_quantity: refundedQty,
+      refundable_quantity: Math.max(quantity - verifiedCount - refundedQty, 0),
+      pay_amount: paidAmount,
+      unit_pay: Math.round((paidAmount / quantity) * 100) / 100,
+      rebate_amount: rebateAmount,
+      already_refunded: alreadyRefunded,
     };
   }
 
