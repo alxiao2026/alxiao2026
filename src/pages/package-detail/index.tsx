@@ -230,16 +230,8 @@ export default function PackageDetail() {
       const orderData = res.data?.data || res.data
       if (orderData?.id) {
         setShowPurchaseModal(false)
-        // 下单成功（待支付），跳订单详情页完成支付
-        Taro.showModal({
-          title: '下单成功',
-          content: '订单已创建，请在15分钟内完成支付',
-          showCancel: false,
-          confirmText: '去支付',
-          success: () => {
-            Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
-          },
-        })
+        // 下单成功（待支付），直接跳订单详情页完成支付，无需弹窗
+        Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderData.id}` })
       } else {
         Taro.showModal({
           title: '提示',
