@@ -1059,7 +1059,7 @@ export class LotteryService {
     if (error) throw new Error(`查询中奖记录失败: ${error.message}`);
 
     // 类型断言：基础字段来自 lottery_records，prizes 字段可能存在
-    const list = (records as Array<{ id: string; prize_name: string; user_id: string; created_at: string }>) || [];
+    const list = (records as unknown as Array<{ id: string; prize_name: string; user_id: string; created_at: string }>) || [];
     if (list.length === 0) return [];
 
     const userIds = [...new Set(list.map(r => r.user_id))];
