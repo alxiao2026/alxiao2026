@@ -90,7 +90,7 @@ const AdminPage = () => {
     try {
       const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
       if (!userId) return;
-      // 经营概况数据随时间筛选维度展示（与平台统计一致的参数逻辑；商家固定为今日）
+      // 经营概况数据随时间筛选维度展示（今日/近7天/近30天/自定义）
       const end = new Date();
       const start = new Date();
       if (timeFilter === 'week') {
@@ -246,14 +246,11 @@ const AdminPage = () => {
         <View className="flex flex-row items-center justify-between mb-3">
           <Text className="block text-base font-semibold text-gray-800">经营概况</Text>
           <Text className="block text-xs text-gray-400">
-            {roleCode === 2
-              ? (timeFilter === 'today' ? '今日' : timeFilter === 'week' ? '近7天' : timeFilter === 'month' ? '近30天' : '自定义')
-              : '今日'}
+            {timeFilter === 'today' ? '今日' : timeFilter === 'week' ? '近7天' : timeFilter === 'month' ? '近30天' : '自定义'}
           </Text>
         </View>
 
-        {/* 时间筛选器（仅系统管理员可见，用于筛选平台统计数据） */}
-        {roleCode === 2 && (
+        {/* 时间筛选器（今日/近7天/近30天/自定义） */}
         <View className="flex flex-row gap-2 mb-3">
           <View className="flex-1">
             <View
@@ -288,10 +285,9 @@ const AdminPage = () => {
             </View>
           </View>
         </View>
-        )}
 
-        {/* 自定义时间选择（日历选择器，仅系统管理员可见） */}
-        {roleCode === 2 && timeFilter === 'custom' && (
+        {/* 自定义时间选择（日历选择器） */}
+        {timeFilter === 'custom' && (
           <View className="flex flex-row gap-2 mb-3">
             <View className="flex-1">
               <Picker
