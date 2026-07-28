@@ -396,7 +396,7 @@ export default function MerchantPage() {
             {/* 渐变背景容器 */}
             <View
               className="rounded-3xl pt-4 pb-5 px-4 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #FF6B9D 0%, #A855F7 50%, #6366F1 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FFB347 100%)' }}
             >
               {/* 标题行 */}
               <View className="flex flex-row items-center justify-between mb-4">
@@ -440,7 +440,7 @@ export default function MerchantPage() {
                         </View>
                         <View className="py-1 px-2">
                           <Text className="block text-xs font-bold text-gray-800 text-center truncate">{prize.name}</Text>
-                          <Text className="block text-xs text-[#FF6B9D] text-center font-medium mt-1">{prize.probability}%</Text>
+                          <Text className="block text-xs text-[#FF6B6B] text-center font-medium mt-1">中奖概率 {prize.probability}%</Text>
                         </View>
                       </View>
                     ))}
