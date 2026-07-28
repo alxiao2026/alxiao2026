@@ -297,7 +297,8 @@ export class PaymentService {
 
   /**
    * 用户主动全额退款（Mock 版；未核销团购券可退）
-   * 退款金额 = 实付金额（折扣券抵扣部分本就不曾支付，权益直接作废）
+   * 退款金额 = 实付金额 − 已返还的折扣/霸王餐金额（先付后返：中奖返还已到账，退款须扣除）
+   * 营销权益联动：退款后折扣权益作废(voided)，不可恢复
    */
   async refund(body: { order_id: string; user_id: string; reason?: string }) {
     if (!body.order_id || !body.user_id) {
@@ -332,12 +333,24 @@ export class PaymentService {
       .limit(1)
       .maybeSingle();
 
-    const refundAmount =
-      Math.round(
-        (parseFloat(order.pay_amount || '0') ||
-          parseFloat(order.original_amount || '0') ||
-          parseFloat(order.price || '0') * (order.quantity || 1)) * 100,
-      ) / 100;
+    const paidAmount =
+      parseFloat(order.pay_amount || '0') ||
+      parseFloat(order.original_amount || '0') ||
+      parseFloat(order.price || '0') * (order.quantity || 1);
+
+    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户（redeemed），退款须扣除
+    const { data: rebateRecords } = await this.client
+      .from('lottery_records')
+      .select('refund_amount')
+      .eq('order_id', order.id)
+      .eq('refund_status', 'redeemed')
+      .gt('refund_amount', 0);
+    const rebateAmount = (rebateRecords || []).reduce(
+      (sum, r: any) => sum + (parseFloat(r.refund_amount || '0') || 0),
+      0,
+    );
+
+    const refundAmount = Math.round(Math.max(paidAmount - rebateAmount, 0) * 100) / 100;
 
     const now = new Date().toISOString();
 
@@ -399,7 +412,11 @@ export class PaymentService {
       status: 'refunded',
       order_id: order.id,
       refund_amount: refundAmount,
-      message: `已退款 ¥${refundAmount}，折扣权益已作废`,
+      rebate_amount: rebateAmount,
+      message:
+        rebateAmount > 0
+          ? `已退款 ¥${refundAmount}（实付 ¥${paidAmount.toFixed(2)} − 已返还 ¥${rebateAmount.toFixed(2)}），折扣权益已作废`
+          : `已退款 ¥${refundAmount}`,
     };
   }
 
