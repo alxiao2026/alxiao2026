@@ -522,44 +522,6 @@ export default function MerchantPage() {
             </View>
           </View>
 
-          {/* 财务管理 */}
-          <View className="px-4 mt-3">
-            <View className="bg-white rounded-2xl p-4">
-              <View className="flex flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-bold text-gray-900">财务管理</Text>
-              </View>
-              <View className="flex flex-row gap-2">
-                <View className="flex-1 bg-gradient-to-r from-[#E8D5F2] to-[#D4B8E8] rounded-xl p-3" onClick={() => Taro.navigateTo({ url: '/pages/package-settlement-config/index' })}>
-                  <View className="flex flex-row items-center justify-between">
-                    <View>
-                      <Text className="block text-sm font-semibold text-[#5B3A8C]">套餐结算配置</Text>
-                      <Text className="block text-xs text-[#7B5A9C] mt-1">配置套餐结算方式</Text>
-                    </View>
-                    <ChevronRight size={16} color="#5B3A8C" />
-                  </View>
-                </View>
-                <View className="flex-1 bg-gradient-to-r from-[#E8D5F2] to-[#D4B8E8] rounded-xl p-3" onClick={() => Taro.navigateTo({ url: '/pages/merchant-balance/index' })}>
-                  <View className="flex flex-row items-center justify-between">
-                    <View>
-                      <Text className="block text-sm font-semibold text-[#5B3A8C]">商家余额</Text>
-                      <Text className="block text-xs text-[#7B5A9C] mt-1">查看余额、提现</Text>
-                    </View>
-                    <ChevronRight size={16} color="#5B3A8C" />
-                  </View>
-                </View>
-                <View className="flex-1 bg-gradient-to-r from-[#E8D5F2] to-[#D4B8E8] rounded-xl p-3" onClick={() => Taro.navigateTo({ url: '/pages/settlement-records/index' })}>
-                  <View className="flex flex-row items-center justify-between">
-                    <View>
-                      <Text className="block text-sm font-semibold text-[#5B3A8C]">结算明细</Text>
-                      <Text className="block text-xs text-[#7B5A9C] mt-1">查看结算记录</Text>
-                    </View>
-                    <ChevronRight size={16} color="#5B3A8C" />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-
           {/* 底部分享引导 */}
           <View className="px-4 mt-3">
             <View className="relative w-full h-11">
