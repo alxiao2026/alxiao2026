@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import * as QRCode from 'qrcode';
+import { NotificationService } from '../notification/notification.service';
 
 export interface Order {
   id: string;
@@ -64,6 +65,8 @@ function localTimeStr(d: Date): string {
 @Injectable()
 export class OrderService {
   private client = getSupabaseClient();
+
+  constructor(private readonly notificationService: NotificationService) {}
 
   async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string, keyword?: string): Promise<Order[]> {
     // 先查该商家的所有套餐ID
@@ -402,6 +405,11 @@ export class OrderService {
       }
     }
 
+    // 通知3：下单成功待抽奖通知
+    await this.notificationService.notify(body.user_id, 'order_created', {
+      package_name: pkg.name,
+    });
+
     return data as Order;
   }
 
@@ -545,6 +553,7 @@ export class OrderService {
 
   async verify(code: string, verifyCount = 1, merchantUserId?: string): Promise<Order> {
     if (!code) throw new BadRequestException('核销码不能为空');
+    let packageName = '';
 
     const { data: order, error: findError } = await this.client
       .from('orders')
@@ -567,6 +576,7 @@ export class OrderService {
         .maybeSingle();
 
       if (!pkgError && pkg) {
+        packageName = pkg.name || '';
         // 商家身份和门店关联验证（超级管理员可核销所有门店订单）
         if (merchantUserId) {
           const { data: merchantUser } = await this.client
@@ -694,6 +704,14 @@ export class OrderService {
       .single();
 
     if (error) throw new Error(`核销失败: ${error.message}`);
+
+    // 通知7：订单核销成功通知
+    await this.notificationService.notify(order.user_id, 'order_verified', {
+      package_name: packageName,
+      verify_time: new Date().toISOString(),
+      count: verifyCount,
+    });
+
     return data as Order;
   }
 

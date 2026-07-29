@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { S3Storage } from 'coze-coding-dev-sdk';
+import { NotificationService } from '../notification/notification.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -80,6 +81,8 @@ const DEFAULT_SETTINGS: LotterySettings = {
 @Injectable()
 export class LotteryService {
   private client = getSupabaseClient();
+
+  constructor(private readonly notificationService: NotificationService) {}
   private storage = new S3Storage({
     endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
     accessKey: '',
@@ -605,6 +608,16 @@ export class LotteryService {
       },
     });
 
+    // 通知8：抽中奖品通知
+    if (isWinner && resultPrize) {
+      const prizeValidity = await this.getPrizeValidityHours(resultPrize.id);
+      const expireHours = prizeValidity ?? (await this.getRedemptionExpiryHours());
+      await this.notificationService.notify(userId, 'prize_won', {
+        prize_name: resultPrize.name,
+        expire_time: `中奖后${expireHours}小时内有效`,
+      });
+    }
+
     return {
       is_winner: isWinner,
       prize: resultPrize,
@@ -663,6 +676,11 @@ export class LotteryService {
       is_winner: true,
       ip_address: ipAddress,
       detail: { redemption_code: redemptionCode, winner_user_id: recordData.user_id },
+    });
+
+    // 通知12：奖品核销成功通知
+    await this.notificationService.notify(recordData.user_id, 'prize_redeemed', {
+      prize_name: recordData.prize_name || '奖品',
     });
 
     return updated as LotteryRecord;
@@ -1107,6 +1125,10 @@ export class LotteryService {
       .from('users')
       .update({ share_count: newCount })
       .eq('user_id', userId);
+
+    // 通知11：分享成功提示
+    await this.notificationService.notify(userId, 'share_success', {});
+
     return { share_count: newCount };
   }
 

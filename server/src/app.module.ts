@@ -13,6 +13,7 @@ import { MerchantModule } from './modules/merchant/merchant.module';
 import { UserModule } from './modules/user/user.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SettlementModule } from './modules/settlement/settlement.module';
     UserModule,
     PaymentModule,
     SettlementModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

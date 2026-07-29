@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { getSupabaseClient } from '../../storage/database/supabase-client';
+import { NotificationService } from '../notification/notification.service';
 
 export interface PaymentRecord {
   id: string;
@@ -33,6 +34,8 @@ const MIN_PAY_AMOUNT = 0.01; // 实付兜底：最低 0.01 元
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
   private client = getSupabaseClient();
+
+  constructor(private readonly notificationService: NotificationService) {}
 
   /**
    * 金额计算引擎（后端权威计算，前端只展示）
@@ -287,6 +290,18 @@ export class PaymentService {
         .eq('refund_status', 'locked');
     }
 
+    // 通知5：订单付款成功通知
+    const { data: paidOrder } = await this.client
+      .from('orders')
+      .select('order_no, packages:package_id(name)')
+      .eq('id', payment.order_id)
+      .maybeSingle();
+    await this.notificationService.notify(payment.user_id, 'order_paid', {
+      package_name: (paidOrder?.packages as any)?.name || '团购套餐',
+      amount: payment.pay_amount,
+      order_no: paidOrder?.order_no || '',
+    });
+
     return {
       status: 'paid',
       order_id: payment.order_id,
@@ -456,6 +471,28 @@ export class PaymentService {
       message = `已退款 ¥${refundAmount}（¥${unitPay.toFixed(2)} × ${refundQty}份），剩余 ${quantity - verifiedCount - newRefundedQty} 份仍可使用`;
     } else {
       message = `已退款 ¥${refundAmount}`;
+    }
+
+    // 通知13：客户退款成功通知
+    const { data: refundOrder } = await this.client
+      .from('orders')
+      .select('order_no, packages:package_id(name, merchant_id)')
+      .eq('id', order.id)
+      .maybeSingle();
+    const refundPkgName = (refundOrder?.packages as any)?.name || '团购套餐';
+    await this.notificationService.notify(body.user_id, 'customer_refund_success', {
+      package_name: refundPkgName,
+      refund_amount: refundAmount,
+    });
+
+    // 通知9：商户退款成功通知
+    const refundMerchantId = (refundOrder?.packages as any)?.merchant_id;
+    if (refundMerchantId) {
+      await this.notificationService.notifyMerchant(refundMerchantId, 'merchant_refund_success', {
+        package_name: refundPkgName,
+        refund_amount: refundAmount,
+        order_no: refundOrder?.order_no || '',
+      });
     }
 
     return {

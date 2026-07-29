@@ -25,7 +25,8 @@ export default defineAppConfig({
     'pages/package-settlement-config/index',
     'pages/merchant-balance/index',
     'pages/settlement-records/index',
-    'pages/platform-commission/index'
+    'pages/platform-commission/index',
+    'pages/notification-center/index'
   ],
   window: {
     backgroundTextStyle: 'light',

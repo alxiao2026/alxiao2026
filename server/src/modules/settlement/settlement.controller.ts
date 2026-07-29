@@ -86,6 +86,14 @@ export class SettlementController {
 
   // ==================== 提现 ====================
 
+  /** 管理员确认打款（提现已到账） */
+  @Post('withdrawals/:id/mark-paid')
+  @HttpCode(200)
+  async markWithdrawalPaid(@Param('id') id: string) {
+    const data = await this.settlementService.markWithdrawalPaid(id);
+    return { code: 200, msg: '已确认打款', data };
+  }
+
   /** 申请提现 */
   @Post('withdraw')
   @HttpCode(HttpStatus.OK)

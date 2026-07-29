@@ -7,7 +7,7 @@ import AppTabBar from '@/components/app-tab-bar';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -50,6 +50,7 @@ const UserCenterPage = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [nickName, setNickName] = useState('');
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchProfile = useCallback(async (uid: string) => {
     try {
@@ -91,6 +92,9 @@ const UserCenterPage = () => {
       if (res.data?.code === 200 && res.data?.data) {
         setPermissions(res.data.data);
       }
+      // 拉取未读通知数
+      const countRes = await Network.request({ url: `/api/notifications/unread-count?user_id=${uid}` });
+      setUnreadCount((countRes.data as any)?.data?.count || 0);
     } catch (e) {
       console.error('获取用户权限失败:', e);
     }
@@ -176,6 +180,13 @@ const UserCenterPage = () => {
       onClick: goToAdmin
     }] : []),
     ...(permissions?.can_access_admin ? [{ icon: <Wallet size={20} color="#6B7280" />, label: "商家余额", desc: "查看余额、提现", onClick: goToMerchantBalance }] : []),
+    {
+      icon: <Bell size={20} color="#6B7280" />,
+      label: '消息通知',
+      desc: '订单、中奖、退款等提醒',
+      badge: unreadCount,
+      onClick: () => Taro.navigateTo({ url: '/pages/notification-center/index' })
+    },
     {
       icon: <Trophy size={20} color="#6B7280" />,
       label: '中奖记录',
@@ -357,7 +368,14 @@ const UserCenterPage = () => {
             >
               <View className="mr-3">{item.icon}</View>
               <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-800 block">{item.label}</Text>
+                <View className="flex flex-row items-center">
+                  <Text className="text-sm font-medium text-gray-800">{item.label}</Text>
+                  {(item as any).badge > 0 && (
+                    <View className="ml-2 px-1 h-4 min-w-4 rounded-full bg-[#FF4757] flex items-center justify-center">
+                      <Text className="text-xs text-white">{(item as any).badge > 99 ? '99+' : (item as any).badge}</Text>
+                    </View>
+                  )}
+                </View>
                 <Text className="text-xs text-gray-400 block mt-1">{item.desc}</Text>
               </View>
               <ChevronRight size={18} color="#D1D5DB" />

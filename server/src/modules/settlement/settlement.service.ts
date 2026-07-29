@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class SettlementService {
   private readonly supabase: SupabaseClient = getSupabaseClient();
+
+  constructor(private readonly notificationService: NotificationService) {}
 
   /** 商家端数据脱敏：剔除结算配置数字（佣金率/结算价仅平台管理员可见） */
   private stripConfigFields<T extends Record<string, any>>(rows: T[] | null): T[] {
@@ -295,7 +298,41 @@ export class SettlementService {
 
     if (balanceError) throw balanceError;
 
+    // 通知2：商户资金提交提现成功通知
+    await this.notificationService.notifyMerchant(merchant_id, 'withdraw_submitted', { amount });
+
     return record;
+  }
+
+  /** 管理员确认打款：提现已到账（通知1：商户资金提现到账通知） */
+  async markWithdrawalPaid(withdrawalId: string) {
+    const { data: record, error: findError } = await this.supabase
+      .from('withdrawal_records')
+      .select('*')
+      .eq('id', withdrawalId)
+      .single();
+
+    if (findError || !record) throw new NotFoundException('提现记录不存在');
+    if (record.status === 'success') return record;
+    if (record.status !== 'pending') {
+      throw new BadRequestException('当前状态不可确认打款');
+    }
+
+    const { data, error } = await this.supabase
+      .from('withdrawal_records')
+      .update({ status: 'success', updated_at: new Date().toISOString() })
+      .eq('id', withdrawalId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // 通知1：商户资金提现到账通知
+    await this.notificationService.notifyMerchant(record.merchant_id, 'withdraw_arrived', {
+      amount: record.amount,
+    });
+
+    return data;
   }
 
   /** 获取提现记录列表 */
