@@ -211,7 +211,7 @@ const AdminPage = () => {
 
       {/* 功能图标网格 */}
       <View className="bg-white rounded-2xl mx-4 -mt-4 p-4 shadow-sm relative z-10">
-        <View className="flex flex-row flex-wrap">
+        <View className="grid grid-cols-4 gap-2">
           {[
             { icon: 'clipboard', label: '订单明细', color: '#3b82f6', bg: '#eff6ff', page: '/pages/admin-orders/index', adminOnly: true },
             { icon: 'scan', label: '验券及退款', color: '#FF4757', bg: '#fef2f2', page: '/pages/verification/index', adminOnly: false, merchantOnly: true },
@@ -221,22 +221,21 @@ const AdminPage = () => {
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
             { icon: 'wallet', label: '平台佣金', color: '#f59e0b', bg: '#fffbeb', page: '/pages/platform-commission/index', adminOnly: true },
-          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item, _, arr) => (
+          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
             <View
               key={item.label}
               className="flex flex-col items-center py-2"
-              style={{ width: `${100 / arr.length}%` }}
               onClick={() => Taro.navigateTo({ url: item.page })}
             >
-              <View className="w-12 h-12 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
-                {item.icon === 'scan' && <ScanLine size={22} color={item.color} />}
-                {item.icon === 'clipboard' && <ClipboardList size={22} color={item.color} />}
-                {item.icon === 'package' && <Package size={22} color={item.color} />}
-                {item.icon === 'gift' && <Gift size={22} color={item.color} />}
-                {item.icon === 'trophy' && <Trophy size={22} color={item.color} />}
-                {item.icon === 'store' && <Store size={22} color={item.color} />}
-                {item.icon === 'settings' && <Settings size={22} color={item.color} />}
-                {item.icon === 'wallet' && <Wallet size={22} color={item.color} />}
+              <View className="w-14 h-14 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
+                {item.icon === 'scan' && <ScanLine size={28} color={item.color} />}
+                {item.icon === 'clipboard' && <ClipboardList size={28} color={item.color} />}
+                {item.icon === 'package' && <Package size={28} color={item.color} />}
+                {item.icon === 'gift' && <Gift size={28} color={item.color} />}
+                {item.icon === 'trophy' && <Trophy size={28} color={item.color} />}
+                {item.icon === 'store' && <Store size={28} color={item.color} />}
+                {item.icon === 'settings' && <Settings size={28} color={item.color} />}
+                {item.icon === 'wallet' && <Wallet size={28} color={item.color} />}
               </View>
               <Text className="block text-xs text-gray-600 text-center">{item.label}</Text>
             </View>
