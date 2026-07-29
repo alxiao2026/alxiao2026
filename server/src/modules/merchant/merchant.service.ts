@@ -1,11 +1,33 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+/** 结算配置必填校验（系统管理员在商家编辑页配置，未填无法保存商家） */
+function validateSettlementConfig(body: { settlement_type?: number; commission_rate?: number; settlement_price?: number }) {
+  const type = Number(body.settlement_type);
+  if (!type || (type !== 1 && type !== 2)) {
+    throw new BadRequestException('请选择结算配置方式（佣金百分比或套餐结算价）');
+  }
+  if (type === 1) {
+    const rate = Number(body.commission_rate);
+    if (body.commission_rate === undefined || body.commission_rate === null || Number.isNaN(rate) || rate < 0 || rate > 100) {
+      throw new BadRequestException('请填写有效的佣金百分比（0-100）');
+    }
+  }
+  if (type === 2) {
+    const price = Number(body.settlement_price);
+    if (body.settlement_price === undefined || body.settlement_price === null || Number.isNaN(price) || price <= 0) {
+      throw new BadRequestException('请填写有效的套餐结算价（需大于0）');
+    }
+  }
+}
+
 export interface CreateMerchantDto {
   name: string;
   logo?: string;
   images?: string[];
   address?: string;
+  /** 前端表单使用 location 字段提交地址 */
+  location?: string;
   phone?: string;
   business_hours?: string;
   category?: string;
@@ -14,6 +36,9 @@ export interface CreateMerchantDto {
   longitude?: string;
   admin_phone: string;
   admin_password: string;
+  settlement_type: number;
+  commission_rate?: number;
+  settlement_price?: number;
 }
 
 export interface UpdateMerchantDto {
@@ -21,6 +46,8 @@ export interface UpdateMerchantDto {
   logo?: string;
   images?: string[];
   address?: string;
+  /** 前端表单使用 location 字段提交地址 */
+  location?: string;
   phone?: string;
   business_hours?: string;
   category?: string;
@@ -29,6 +56,9 @@ export interface UpdateMerchantDto {
   longitude?: string;
   admin_phone?: string;
   admin_password?: string;
+  settlement_type?: number;
+  commission_rate?: number;
+  settlement_price?: number;
 }
 
 export interface Merchant {
@@ -42,6 +72,9 @@ export interface Merchant {
   description?: string;
   latitude?: string;
   longitude?: string;
+  settlement_type?: number;
+  commission_rate?: number;
+  settlement_price?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -122,8 +155,14 @@ export class MerchantService {
       ).length;
     }
 
+    // 消费者端不暴露结算配置数字（仅系统管理员后台可见）
+    const publicMerchant = { ...merchant } as Record<string, unknown>;
+    delete publicMerchant.settlement_type;
+    delete publicMerchant.commission_rate;
+    delete publicMerchant.settlement_price;
+
     return {
-      merchant,
+      merchant: publicMerchant,
       prizes: prizes || [],
       packages: packages || [],
       winStats: { totalWins, freeMealWins },
@@ -200,6 +239,7 @@ export class MerchantService {
     if (!body.name) throw new BadRequestException('商家名称不能为空');
     if (!body.admin_phone) throw new BadRequestException('管理员手机号不能为空');
     if (!body.admin_password) throw new BadRequestException('管理员登录密码不能为空');
+    validateSettlementConfig(body);
 
     const { data, error } = await this.client
       .from('merchants')
@@ -207,11 +247,14 @@ export class MerchantService {
         name: body.name,
         logo: body.logo,
         images: body.images || [],
-        address: body.address,
+        address: body.location || body.address,
         phone: body.phone,
         business_hours: body.business_hours,
         category: body.category,
         description: body.description,
+        settlement_type: body.settlement_type,
+        commission_rate: body.settlement_type === 1 ? Number(body.commission_rate) : 0,
+        settlement_price: body.settlement_type === 2 ? Number(body.settlement_price) : 0,
       })
       .select()
       .single();
@@ -278,12 +321,18 @@ export class MerchantService {
   }
 
   async update(id: number, body: UpdateMerchantDto): Promise<Merchant> {
-    const { admin_phone, admin_password, ...merchantFields } = body;
+    const { admin_phone, admin_password, location, ...restFields } = body;
+    validateSettlementConfig(restFields);
 
+    const type = Number(restFields.settlement_type);
     const { data, error } = await this.client
       .from('merchants')
       .update({
-        ...merchantFields,
+        ...restFields,
+        ...(location !== undefined && { address: location }),
+        settlement_type: type,
+        commission_rate: type === 1 ? Number(restFields.commission_rate) : 0,
+        settlement_price: type === 2 ? Number(restFields.settlement_price) : 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

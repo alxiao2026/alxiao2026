@@ -9,11 +9,8 @@ interface SettlementRecord {
   id: string;
   order_id: string;
   order_amount: number;
-  settlement_type: number;
-  commission_rate: number;
   commission_amount: number;
   settlement_amount: number;
-  settlement_price?: number;
   settlement_date: string;
   status: string;
   settled_at?: string;
@@ -148,12 +145,8 @@ export default function SettlementRecordsPage() {
                       <Text className="block text-sm font-semibold text-gray-800">¥{record.order_amount.toFixed(2)}</Text>
                     </View>
                     <View className="flex justify-between">
-                      <Text className="block text-xs text-gray-500">
-                        {record.settlement_type === 1 ? `佣金率 ${record.commission_rate}%` : '结算价'}
-                      </Text>
-                      <Text className="block text-sm text-gray-600">
-                        {record.settlement_type === 1 ? `¥${record.commission_amount.toFixed(2)}` : `¥${(record.settlement_price ?? 0).toFixed(2)}`}
-                      </Text>
+                      <Text className="block text-xs text-gray-500">平台佣金</Text>
+                      <Text className="block text-sm text-gray-600">¥{record.commission_amount.toFixed(2)}</Text>
                     </View>
                     <View className="flex justify-between border-t border-gray-100 pt-2">
                       <Text className="block text-xs text-gray-500">商家应得</Text>

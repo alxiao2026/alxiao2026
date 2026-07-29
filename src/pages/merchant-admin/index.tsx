@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 
 interface Merchant {
@@ -21,6 +23,9 @@ interface Merchant {
   latitude?: string;
   longitude?: string;
   images?: string[];
+  settlement_type?: number;
+  commission_rate?: number;
+  settlement_price?: number;
 }
 
 export default function MerchantAdmin() {
@@ -51,6 +56,9 @@ export default function MerchantAdmin() {
     images: [] as string[],
     admin_phone: '',
     admin_password: '',
+    settlement_type: 0,
+    commission_rate: '',
+    settlement_price: '',
   });
 
   useEffect(() => {
@@ -87,6 +95,9 @@ export default function MerchantAdmin() {
       images: [],
       admin_phone: '',
       admin_password: '',
+      settlement_type: 0,
+      commission_rate: '',
+      settlement_price: '',
     });
     setShowForm(true);
   };
@@ -106,6 +117,9 @@ export default function MerchantAdmin() {
       images: merchant.images || [],
       admin_phone: '',
       admin_password: '',
+      settlement_type: merchant.settlement_type || 0,
+      commission_rate: merchant.settlement_type === 1 && merchant.commission_rate != null ? String(merchant.commission_rate) : '',
+      settlement_price: merchant.settlement_type === 2 && merchant.settlement_price != null ? String(merchant.settlement_price) : '',
     });
 
     // 加载该商家的管理员账号并回显
@@ -480,19 +494,44 @@ export default function MerchantAdmin() {
       return;
     }
 
+    // 验证结算配置（必填，未填无法保存商家）
+    if (formData.settlement_type !== 1 && formData.settlement_type !== 2) {
+      Taro.showToast({ title: '请选择结算配置方式', icon: 'none' });
+      return;
+    }
+    if (formData.settlement_type === 1) {
+      const rate = Number(formData.commission_rate);
+      if (formData.commission_rate === '' || Number.isNaN(rate) || rate < 0 || rate > 100) {
+        Taro.showToast({ title: '请填写0-100的佣金百分比', icon: 'none' });
+        return;
+      }
+    }
+    if (formData.settlement_type === 2) {
+      const price = Number(formData.settlement_price);
+      if (formData.settlement_price === '' || Number.isNaN(price) || price <= 0) {
+        Taro.showToast({ title: '请填写大于0的套餐结算价', icon: 'none' });
+        return;
+      }
+    }
+
     try {
       let res;
+      const submitData = {
+        ...formData,
+        commission_rate: formData.settlement_type === 1 ? Number(formData.commission_rate) : 0,
+        settlement_price: formData.settlement_type === 2 ? Number(formData.settlement_price) : 0,
+      };
       if (editingMerchant) {
         res = await Network.request({
           url: `/api/merchants/${editingMerchant.id}`,
           method: 'PUT',
-          data: formData,
+          data: submitData,
         });
       } else {
         res = await Network.request({
           url: '/api/merchants',
           method: 'POST',
-          data: formData,
+          data: submitData,
         });
       }
 
@@ -830,6 +869,73 @@ export default function MerchantAdmin() {
                   onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
                   maxlength={200}
                 />
+              </View>
+
+              {/* 结算配置（必填，仅系统管理员可见可修改） */}
+              <View className="mb-4 bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                <View className="flex flex-row items-center mb-1">
+                  <ShieldCheck size={16} color="#6366f1" />
+                  <Text className="block text-sm font-medium text-gray-800 ml-1">
+                    结算配置 <Text className="text-[#FF4757]">*</Text>
+                  </Text>
+                </View>
+                <Text className="block text-xs text-gray-400 mb-3">必填项，未填写无法保存商家；配置数字仅平台管理员可见，商家与消费者端不展示</Text>
+                <RadioGroup
+                  value={formData.settlement_type ? String(formData.settlement_type) : ''}
+                  onValueChange={(value) => setFormData({ ...formData, settlement_type: parseInt(value) })}
+                >
+                  <View className="space-y-3">
+                    <View className="flex items-center space-x-3 p-3 bg-white rounded-xl">
+                      <RadioGroupItem value="1" id="settle-type-1" />
+                      <Label className="flex-1">
+                        <View className="flex items-center">
+                          <Percent size={18} color="#FF4757" className="mr-2" />
+                          <View>
+                            <Text className="block text-sm font-medium text-gray-800">佣金百分比</Text>
+                            <Text className="block text-xs text-gray-500">按订单金额的百分比收取平台佣金</Text>
+                          </View>
+                        </View>
+                      </Label>
+                    </View>
+                    <View className="flex items-center space-x-3 p-3 bg-white rounded-xl">
+                      <RadioGroupItem value="2" id="settle-type-2" />
+                      <Label className="flex-1">
+                        <View className="flex items-center">
+                          <Coins size={18} color="#f59e0b" className="mr-2" />
+                          <View>
+                            <Text className="block text-sm font-medium text-gray-800">套餐结算价</Text>
+                            <Text className="block text-xs text-gray-500">按固定价格与商家结算</Text>
+                          </View>
+                        </View>
+                      </Label>
+                    </View>
+                  </View>
+                </RadioGroup>
+
+                {formData.settlement_type === 1 && (
+                  <View className="mt-3">
+                    <Text className="block text-sm font-medium text-gray-800 mb-2">佣金百分比（%）</Text>
+                    <Input
+                      className="w-full bg-white"
+                      placeholder="请输入0-100的佣金百分比"
+                      type="digit"
+                      value={formData.commission_rate}
+                      onInput={(e) => setFormData({ ...formData, commission_rate: e.detail.value })}
+                    />
+                  </View>
+                )}
+                {formData.settlement_type === 2 && (
+                  <View className="mt-3">
+                    <Text className="block text-sm font-medium text-gray-800 mb-2">套餐结算价（元）</Text>
+                    <Input
+                      className="w-full bg-white"
+                      placeholder="请输入每单固定结算金额"
+                      type="digit"
+                      value={formData.settlement_price}
+                      onInput={(e) => setFormData({ ...formData, settlement_price: e.detail.value })}
+                    />
+                  </View>
+                )}
               </View>
             </View>
 

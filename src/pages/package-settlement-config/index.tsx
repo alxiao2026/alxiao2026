@@ -27,10 +27,33 @@ export default function PackageSettlementConfigPage() {
   });
   const [saving, setSaving] = useState(false);
   const [, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetchConfig();
+    checkAdminPermission();
   }, []);
+
+  // 结算配置仅系统管理员可查看和修改
+  const checkAdminPermission = async () => {
+    try {
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+      if (!userId) {
+        setIsAdmin(false);
+        return;
+      }
+      const res = await Network.request({ url: `/api/users/${userId}/permissions` });
+      const perms = (res.data as any)?.data;
+      if (!perms || perms.role_code !== 2) {
+        setIsAdmin(false);
+        return;
+      }
+      setIsAdmin(true);
+      fetchConfig();
+    } catch (error) {
+      console.error('权限校验失败:', error);
+      setIsAdmin(false);
+    }
+  };
 
   const fetchConfig = async () => {
     if (!packageId) return;
@@ -75,6 +98,25 @@ export default function PackageSettlementConfigPage() {
       setSaving(false);
     }
   };
+
+  if (isAdmin === null) {
+    return (
+      <View className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Text className="block text-sm text-gray-400">加载中...</Text>
+      </View>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <View className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+        <View className="bg-white rounded-2xl p-8 text-center w-full">
+          <Text className="block text-base font-semibold text-gray-800 mb-2">无访问权限</Text>
+          <Text className="block text-sm text-gray-500">结算配置仅平台系统管理员可查看和修改</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="min-h-screen bg-gray-50 pb-20">

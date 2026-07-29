@@ -6,6 +6,14 @@ import { SupabaseClient } from '@supabase/supabase-js';
 export class SettlementService {
   private readonly supabase: SupabaseClient = getSupabaseClient();
 
+  /** 商家端数据脱敏：剔除结算配置数字（佣金率/结算价仅平台管理员可见） */
+  private stripConfigFields<T extends Record<string, any>>(rows: T[] | null): T[] {
+    return (rows || []).map((row) => {
+      const { settlement_type, commission_rate, settlement_price, ...rest } = row;
+      return rest as T;
+    });
+  }
+
   // ==================== 套餐结算配置 ====================
 
   /** 获取套餐结算配置 */
@@ -77,7 +85,7 @@ export class SettlementService {
   async getConfigsByMerchant(merchantId: string) {
     const { data: packages, error: pkgError } = await this.supabase
       .from('packages')
-      .select('id, title, price, cover_image')
+      .select('id, name, price, cover_image')
       .eq('merchant_id', merchantId);
 
     if (pkgError) throw pkgError;
@@ -147,7 +155,7 @@ export class SettlementService {
       .select(`
         *,
         orders:order_id (id, order_no, created_at),
-        packages:package_id (id, title, price, cover_image)
+        packages:package_id (id, name, price, cover_image)
       `)
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false });
@@ -190,7 +198,7 @@ export class SettlementService {
     });
 
     return {
-      list: data,
+      list: this.stripConfigFields(data),
       total: count || 0,
       page,
       pageSize,
@@ -227,7 +235,7 @@ export class SettlementService {
       .select(`
         *,
         orders:order_id (id, order_no, created_at, pay_time),
-        packages:package_id (id, title, price)
+        packages:package_id (id, name, price)
       `)
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false });
@@ -242,7 +250,7 @@ export class SettlementService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data;
+    return this.stripConfigFields(data);
   }
 
   // ==================== 提现 ====================
@@ -326,7 +334,7 @@ export class SettlementService {
       .select(`
         *,
         orders:order_id (id, order_no, created_at),
-        packages:package_id (id, title),
+        packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
       .order('created_at', { ascending: false });
@@ -366,7 +374,7 @@ export class SettlementService {
       .select(`
         *,
         orders:order_id (id, order_no, created_at),
-        packages:package_id (id, title),
+        packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
       .order('created_at', { ascending: false });
@@ -436,12 +444,29 @@ export class SettlementService {
     if (orderError) throw orderError;
     if (!order) throw new NotFoundException('订单不存在');
 
-    // 查询结算配置
-    const { data: config } = await this.supabase
+    // 商家ID：orders 表无 merchant_id 列，需从关联套餐获取（packages.merchant_id 为 varchar）
+    const merchantId = order.packages?.merchant_id
+      ? Number(order.packages.merchant_id)
+      : null;
+
+    // 查询结算配置：优先套餐级配置，无则回退商家级默认配置
+    const { data: packageConfig } = await this.supabase
       .from('package_settlement_configs')
       .select('*')
       .eq('package_id', order.package_id)
       .single();
+
+    let config = packageConfig;
+    if (!config && merchantId) {
+      const { data: merchantConfig } = await this.supabase
+        .from('merchants')
+        .select('settlement_type, commission_rate, settlement_price')
+        .eq('id', merchantId)
+        .single();
+      if (merchantConfig?.settlement_type) {
+        config = merchantConfig;
+      }
+    }
 
     // 计算结算金额
     let commissionAmount = 0;
@@ -450,17 +475,17 @@ export class SettlementService {
     if (config) {
       if (config.settlement_type === 1) {
         // 佣金百分比
-        commissionAmount = (order.final_amount * config.commission_rate) / 100;
-        settlementAmount = order.final_amount - commissionAmount;
+        commissionAmount = (order.pay_amount * config.commission_rate) / 100;
+        settlementAmount = order.pay_amount - commissionAmount;
       } else {
         // 套餐结算价
         settlementAmount = config.settlement_price * order.quantity;
-        commissionAmount = order.final_amount - settlementAmount;
+        commissionAmount = order.pay_amount - settlementAmount;
       }
     } else {
       // 默认无佣金
       commissionAmount = 0;
-      settlementAmount = order.final_amount;
+      settlementAmount = order.pay_amount;
     }
 
     // 计算结算日期（T+7）
@@ -472,9 +497,9 @@ export class SettlementService {
       .from('settlement_records')
       .insert({
         order_id: orderId,
-        merchant_id: order.merchant_id,
+        merchant_id: merchantId,
         package_id: order.package_id,
-        order_amount: order.final_amount,
+        order_amount: order.pay_amount,
         settlement_type: config?.settlement_type || 1,
         commission_rate: config?.commission_rate || 0,
         commission_amount: commissionAmount,
