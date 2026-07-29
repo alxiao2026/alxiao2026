@@ -663,7 +663,7 @@ export default function PackageAdmin() {
           combinations: Array.isArray(pkg.combinations) ? pkg.combinations : (typeof pkg.combinations === 'string' ? JSON.parse(pkg.combinations) : []),
           cover_image: pkg.cover_image || '',
           environment_images: Array.isArray(pkg.environment_images) ? pkg.environment_images : (typeof pkg.environment_images === 'string' ? JSON.parse(pkg.environment_images) : []),
-          stock: pkg.stock || '',
+          stock: pkg.stock ?? 0,
           sale_start_date: pkg.sale_start_date || '',
           sale_end_date: pkg.sale_end_date || '',
           auto_renew: pkg.auto_renew || false,

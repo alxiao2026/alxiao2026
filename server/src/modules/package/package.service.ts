@@ -306,7 +306,14 @@ export class PackageService {
     if (body.features !== undefined) updateData.features = body.features;
     if (body.cover_image !== undefined) updateData.cover_image = body.cover_image;
     if (body.environment_images !== undefined) updateData.environment_images = body.environment_images;
-    if (body.stock !== undefined) updateData.stock = body.stock;
+    // 数值字段防御性清洗：空字符串/非法值视为未提供，避免 integer 列写入 '' 报错
+    const toInt = (v: any): number | undefined => {
+      if (v === undefined || v === null || v === '') return undefined;
+      const n = Number(v);
+      return Number.isNaN(n) ? undefined : Math.trunc(n);
+    };
+    const stockVal = toInt(body.stock);
+    if (stockVal !== undefined) updateData.stock = stockVal;
     if (body.sale_start_date !== undefined) updateData.sale_start_date = body.sale_start_date;
     if (body.sale_end_date !== undefined) updateData.sale_end_date = body.sale_end_date;
     if (body.auto_renew !== undefined) updateData.auto_renew = body.auto_renew;
@@ -316,11 +323,15 @@ export class PackageService {
     if (body.merchant_id !== undefined) updateData.merchant_id = body.merchant_id;
     if (body.combinations !== undefined) updateData.combinations = body.combinations;
     // 交易规则
-    if (body.purchase_limit !== undefined) updateData.purchase_limit = body.purchase_limit;
+    const purchase_limitVal = toInt(body.purchase_limit);
+    if (purchase_limitVal !== undefined) updateData.purchase_limit = purchase_limitVal;
     if (body.purchase_limit_type !== undefined) updateData.purchase_limit_type = body.purchase_limit_type;
-    if (body.purchase_limit_per_day !== undefined) updateData.purchase_limit_per_day = body.purchase_limit_per_day;
-    if (body.purchase_limit_per_month !== undefined) updateData.purchase_limit_per_month = body.purchase_limit_per_month;
-    if (body.valid_days !== undefined) updateData.valid_days = body.valid_days;
+    const purchase_limit_per_dayVal = toInt(body.purchase_limit_per_day);
+    if (purchase_limit_per_dayVal !== undefined) updateData.purchase_limit_per_day = purchase_limit_per_dayVal;
+    const purchase_limit_per_monthVal = toInt(body.purchase_limit_per_month);
+    if (purchase_limit_per_monthVal !== undefined) updateData.purchase_limit_per_month = purchase_limit_per_monthVal;
+    const valid_daysVal = toInt(body.valid_days);
+    if (valid_daysVal !== undefined) updateData.valid_days = valid_daysVal;
     if (body.valid_from_purchase !== undefined) updateData.valid_from_purchase = body.valid_from_purchase;
     if (body.valid_date_type !== undefined) updateData.valid_date_type = body.valid_date_type;
     if (body.valid_date_start !== undefined) updateData.valid_date_start = body.valid_date_start;
@@ -333,9 +344,11 @@ export class PackageService {
     if (body.available_time_start !== undefined) updateData.available_time_start = body.available_time_start;
     if (body.available_time_end !== undefined) updateData.available_time_end = body.available_time_end;
     if (body.limit_usage_count !== undefined) updateData.limit_usage_count = body.limit_usage_count;
-    if (body.usage_count_limit !== undefined) updateData.usage_count_limit = body.usage_count_limit;
+    const usage_count_limitVal = toInt(body.usage_count_limit);
+    if (usage_count_limitVal !== undefined) updateData.usage_count_limit = usage_count_limitVal;
     if (body.need_reservation !== undefined) updateData.need_reservation = body.need_reservation;
-    if (body.reservation_hours !== undefined) updateData.reservation_hours = body.reservation_hours;
+    const reservation_hoursVal = toInt(body.reservation_hours);
+    if (reservation_hoursVal !== undefined) updateData.reservation_hours = reservation_hoursVal;
     // 消费规则
     if (body.other_discount !== undefined) updateData.other_discount = body.other_discount;
     if (body.private_room !== undefined) updateData.private_room = body.private_room;
