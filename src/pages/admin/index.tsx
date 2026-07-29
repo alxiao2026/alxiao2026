@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList } from 'lucide-react-taro';
+import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -220,6 +220,7 @@ const AdminPage = () => {
             { icon: 'trophy', label: '抽奖记录', color: '#06b6d4', bg: '#ecfeff', page: '/pages/admin-lottery-records/index', adminOnly: false },
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
+            { icon: 'wallet', label: '平台佣金', color: '#f59e0b', bg: '#fffbeb', page: '/pages/platform-commission/index', adminOnly: true },
           ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item, _, arr) => (
             <View
               key={item.label}
@@ -235,6 +236,7 @@ const AdminPage = () => {
                 {item.icon === 'trophy' && <Trophy size={22} color={item.color} />}
                 {item.icon === 'store' && <Store size={22} color={item.color} />}
                 {item.icon === 'settings' && <Settings size={22} color={item.color} />}
+                {item.icon === 'wallet' && <Wallet size={22} color={item.color} />}
               </View>
               <Text className="block text-xs text-gray-600 text-center">{item.label}</Text>
             </View>
