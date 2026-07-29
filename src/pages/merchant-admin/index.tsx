@@ -41,6 +41,10 @@ export default function MerchantAdmin() {
   const [tempCloseTime, setTempCloseTime] = useState('22:00');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  // 结算价模式下的套餐结算价列表（逐个套餐设置）
+  const [packagePrices, setPackagePrices] = useState<Array<{ id: string; name: string; price: number; settlement_price: string }>>([]);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -58,7 +62,6 @@ export default function MerchantAdmin() {
     admin_password: '',
     settlement_type: 0,
     commission_rate: '',
-    settlement_price: '',
   });
 
   useEffect(() => {
@@ -97,9 +100,41 @@ export default function MerchantAdmin() {
       admin_password: '',
       settlement_type: 0,
       commission_rate: '',
-      settlement_price: '',
     });
+    setPackagePrices([]);
     setShowForm(true);
+  };
+
+  /** 加载商家所有套餐及其结算价（结算价模式下逐个设置） */
+  const loadPackagePrices = async (merchantId: number) => {
+    setLoadingPackages(true);
+    try {
+      const res = await Network.request({ url: `/api/settlement/config/merchant/${merchantId}` });
+      console.log('套餐结算配置响应:', res.data);
+      const list = (res.data as any)?.data || [];
+      setPackagePrices(
+        list.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          settlement_price: p.config?.settlement_price != null && Number(p.config.settlement_price) > 0 ? String(p.config.settlement_price) : '',
+        }))
+      );
+    } catch (error) {
+      console.error('加载套餐结算价失败:', error);
+      setPackagePrices([]);
+    } finally {
+      setLoadingPackages(false);
+    }
+  };
+
+  /** 切换结算方式（两种模式互斥，切换后另一种模式自动失效） */
+  const handleSettlementTypeChange = (value: string) => {
+    const type = parseInt(value);
+    setFormData({ ...formData, settlement_type: type });
+    if (type === 2 && editingMerchant?.id) {
+      loadPackagePrices(editingMerchant.id);
+    }
   };
 
   const handleEdit = async (merchant: Merchant) => {
@@ -119,8 +154,13 @@ export default function MerchantAdmin() {
       admin_password: '',
       settlement_type: merchant.settlement_type || 0,
       commission_rate: merchant.settlement_type === 1 && merchant.commission_rate != null ? String(merchant.commission_rate) : '',
-      settlement_price: merchant.settlement_type === 2 && merchant.settlement_price != null ? String(merchant.settlement_price) : '',
     });
+    // 结算价模式：回显该商家所有套餐的结算价
+    if (merchant.settlement_type === 2) {
+      loadPackagePrices(merchant.id);
+    } else {
+      setPackagePrices([]);
+    }
 
     // 加载该商家的管理员账号并回显
     try {
@@ -506,20 +546,30 @@ export default function MerchantAdmin() {
         return;
       }
     }
-    if (formData.settlement_type === 2) {
-      const price = Number(formData.settlement_price);
-      if (formData.settlement_price === '' || Number.isNaN(price) || price <= 0) {
-        Taro.showToast({ title: '请填写大于0的套餐结算价', icon: 'none' });
+    // 结算价模式：每个套餐的结算价必填，有空值跳窗提示
+    if (formData.settlement_type === 2 && packagePrices.length > 0) {
+      const emptyPkgs = packagePrices.filter((p) => {
+        const v = Number(p.settlement_price);
+        return p.settlement_price.trim() === '' || Number.isNaN(v) || v <= 0;
+      });
+      if (emptyPkgs.length > 0) {
+        Taro.showModal({
+          title: '结算价未填写完整',
+          content: `以下套餐的结算价为空或无效：\n${emptyPkgs.map((p) => `· ${p.name}`).join('\n')}\n\n请逐个填写后再保存`,
+          showCancel: false,
+          confirmText: '去填写',
+          confirmColor: '#FF4757',
+        });
         return;
       }
     }
 
     try {
+      setSaving(true);
       let res;
       const submitData = {
         ...formData,
         commission_rate: formData.settlement_type === 1 ? Number(formData.commission_rate) : 0,
-        settlement_price: formData.settlement_type === 2 ? Number(formData.settlement_price) : 0,
       };
       if (editingMerchant) {
         res = await Network.request({
@@ -548,12 +598,45 @@ export default function MerchantAdmin() {
         return;
       }
 
+      // 结算价模式：商家保存成功后，逐套餐写入结算价配置
+      if (formData.settlement_type === 2 && packagePrices.length > 0) {
+        const merchantId = editingMerchant?.id ?? (res.data as any)?.data?.id;
+        const results = await Promise.all(
+          packagePrices.map((pkg) =>
+            Network.request({
+              url: '/api/settlement/config',
+              method: 'POST',
+              data: {
+                package_id: pkg.id,
+                merchant_id: merchantId,
+                settlement_type: 2,
+                commission_rate: 0,
+                settlement_price: Number(pkg.settlement_price),
+              },
+            })
+          )
+        );
+        const failed = results.filter((r) => r.statusCode < 200 || r.statusCode >= 300);
+        if (failed.length > 0) {
+          Taro.showModal({
+            title: '部分结算价保存失败',
+            content: '商家信息已保存，但有套餐结算价写入失败，请重新编辑该商家检查结算价',
+            showCancel: false,
+          });
+          setShowForm(false);
+          loadMerchants();
+          return;
+        }
+      }
+
       Taro.showToast({ title: editingMerchant ? '更新成功' : '添加成功', icon: 'success' });
       setShowForm(false);
       loadMerchants();
     } catch (error) {
       console.error('保存失败:', error);
       Taro.showToast({ title: '保存失败', icon: 'error' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -882,7 +965,7 @@ export default function MerchantAdmin() {
                 <Text className="block text-xs text-gray-400 mb-3">必填项，未填写无法保存商家；配置数字仅平台管理员可见，商家与消费者端不展示</Text>
                 <RadioGroup
                   value={formData.settlement_type ? String(formData.settlement_type) : ''}
-                  onValueChange={(value) => setFormData({ ...formData, settlement_type: parseInt(value) })}
+                  onValueChange={handleSettlementTypeChange}
                 >
                   <View className="space-y-3">
                     <View className="flex items-center space-x-3 p-3 bg-white rounded-xl">
@@ -926,14 +1009,46 @@ export default function MerchantAdmin() {
                 )}
                 {formData.settlement_type === 2 && (
                   <View className="mt-3">
-                    <Text className="block text-sm font-medium text-gray-800 mb-2">套餐结算价（元）</Text>
-                    <Input
-                      className="w-full bg-white"
-                      placeholder="请输入每单固定结算金额"
-                      type="digit"
-                      value={formData.settlement_price}
-                      onInput={(e) => setFormData({ ...formData, settlement_price: e.detail.value })}
-                    />
+                    <Text className="block text-sm font-medium text-gray-800 mb-2">套餐结算价（逐个套餐设置）</Text>
+                    {loadingPackages ? (
+                      <View className="bg-white rounded-xl p-4 text-center">
+                        <Text className="block text-sm text-gray-400">正在加载门店套餐...</Text>
+                      </View>
+                    ) : packagePrices.length === 0 ? (
+                      <View className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                        <Text className="block text-xs text-amber-600">
+                          {editingMerchant ? '该商家暂无套餐，保存后请先添加套餐，再回到本页逐个设置结算价' : '新建商家保存并添加套餐后，可回到本页逐个设置结算价'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View className="space-y-2">
+                        {packagePrices.map((pkg, idx) => (
+                          <View key={pkg.id} className="flex flex-row items-center gap-3 bg-white rounded-xl p-3">
+                            <View className="flex-1">
+                              <Text className="block text-sm font-medium text-gray-800">{pkg.name}</Text>
+                              <Text className="block text-xs text-gray-400 mt-1">售价 ¥{pkg.price}</Text>
+                            </View>
+                            <View className="flex flex-row items-center bg-gray-50 rounded-lg px-3 py-2 w-32">
+                              <Text className="text-sm text-gray-400 mr-1">¥</Text>
+                              <Input
+                                className="flex-1 text-sm"
+                                placeholder="结算价"
+                                type="digit"
+                                value={pkg.settlement_price}
+                                onInput={(e) => {
+                                  const next = [...packagePrices];
+                                  next[idx] = { ...next[idx], settlement_price: e.detail.value };
+                                  setPackagePrices(next);
+                                }}
+                              />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {packagePrices.length > 0 && (
+                      <Text className="block text-xs text-gray-400 mt-2">每个套餐都必须填写结算价，留空将无法保存</Text>
+                    )}
                   </View>
                 )}
               </View>
@@ -951,8 +1066,9 @@ export default function MerchantAdmin() {
               <Button
                 className="flex-1 bg-[#FF4757]"
                 onClick={handleSubmit}
+                disabled={saving}
               >
-                <Text className="text-white">保存</Text>
+                <Text className="text-white">{saving ? '保存中...' : '保存'}</Text>
               </Button>
             </View>
           </View>

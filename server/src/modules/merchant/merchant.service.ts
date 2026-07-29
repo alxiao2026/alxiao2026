@@ -13,12 +13,7 @@ function validateSettlementConfig(body: { settlement_type?: number; commission_r
       throw new BadRequestException('请填写有效的佣金百分比（0-100）');
     }
   }
-  if (type === 2) {
-    const price = Number(body.settlement_price);
-    if (body.settlement_price === undefined || body.settlement_price === null || Number.isNaN(price) || price <= 0) {
-      throw new BadRequestException('请填写有效的套餐结算价（需大于0）');
-    }
-  }
+  // type === 2（套餐结算价）：结算价按套餐逐个配置，保存商家时由前端逐套餐调用配置接口，此处仅要求选择结算方式
 }
 
 export interface CreateMerchantDto {
@@ -254,7 +249,7 @@ export class MerchantService {
         description: body.description,
         settlement_type: body.settlement_type,
         commission_rate: body.settlement_type === 1 ? Number(body.commission_rate) : 0,
-        settlement_price: body.settlement_type === 2 ? Number(body.settlement_price) : 0,
+        settlement_price: 0,
       })
       .select()
       .single();
@@ -332,7 +327,7 @@ export class MerchantService {
         ...(location !== undefined && { address: location }),
         settlement_type: type,
         commission_rate: type === 1 ? Number(restFields.commission_rate) : 0,
-        settlement_price: type === 2 ? Number(restFields.settlement_price) : 0,
+        settlement_price: 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

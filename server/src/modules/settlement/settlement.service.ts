@@ -449,43 +449,51 @@ export class SettlementService {
       ? Number(order.packages.merchant_id)
       : null;
 
-    // 查询结算配置：优先套餐级配置，无则回退商家级默认配置
-    const { data: packageConfig } = await this.supabase
-      .from('package_settlement_configs')
-      .select('*')
-      .eq('package_id', order.package_id)
-      .single();
+    // 以商家当前结算模式为准（佣金百分比 / 套餐结算价互斥，切换后另一种模式自动失效）
+    const { data: merchantConfig } = merchantId
+      ? await this.supabase
+          .from('merchants')
+          .select('settlement_type, commission_rate')
+          .eq('id', merchantId)
+          .single()
+      : { data: null };
 
-    let config = packageConfig;
-    if (!config && merchantId) {
-      const { data: merchantConfig } = await this.supabase
-        .from('merchants')
-        .select('settlement_type, commission_rate, settlement_price')
-        .eq('id', merchantId)
+    let settlementType: number;
+    let commissionRate = 0;
+    let settlementPrice = 0;
+
+    if (merchantConfig?.settlement_type === 2) {
+      // 结算价模式：取该套餐的结算价配置，未配置则无法结算
+      const { data: packageConfig } = await this.supabase
+        .from('package_settlement_configs')
+        .select('settlement_price')
+        .eq('package_id', order.package_id)
         .single();
-      if (merchantConfig?.settlement_type) {
-        config = merchantConfig;
+      if (!packageConfig || packageConfig.settlement_price == null || Number(packageConfig.settlement_price) <= 0) {
+        throw new BadRequestException('该套餐未配置结算价，请先在管理后台编辑商家完成套餐结算价设置');
       }
+      settlementType = 2;
+      settlementPrice = Number(packageConfig.settlement_price);
+    } else if (merchantConfig?.settlement_type === 1 && merchantConfig.commission_rate != null) {
+      // 佣金百分比模式：使用商家级佣金率
+      settlementType = 1;
+      commissionRate = Number(merchantConfig.commission_rate);
+    } else {
+      throw new BadRequestException('商家未配置结算方式，请先在管理后台编辑商家完成结算配置');
     }
 
     // 计算结算金额
     let commissionAmount = 0;
     let settlementAmount = 0;
 
-    if (config) {
-      if (config.settlement_type === 1) {
-        // 佣金百分比
-        commissionAmount = (order.pay_amount * config.commission_rate) / 100;
-        settlementAmount = order.pay_amount - commissionAmount;
-      } else {
-        // 套餐结算价
-        settlementAmount = config.settlement_price * order.quantity;
-        commissionAmount = order.pay_amount - settlementAmount;
-      }
+    if (settlementType === 1) {
+      // 佣金百分比
+      commissionAmount = (order.pay_amount * commissionRate) / 100;
+      settlementAmount = order.pay_amount - commissionAmount;
     } else {
-      // 默认无佣金
-      commissionAmount = 0;
-      settlementAmount = order.pay_amount;
+      // 套餐结算价
+      settlementAmount = settlementPrice * order.quantity;
+      commissionAmount = order.pay_amount - settlementAmount;
     }
 
     // 计算结算日期（T+7）
@@ -500,8 +508,8 @@ export class SettlementService {
         merchant_id: merchantId,
         package_id: order.package_id,
         order_amount: order.pay_amount,
-        settlement_type: config?.settlement_type || 1,
-        commission_rate: config?.commission_rate || 0,
+        settlement_type: settlementType,
+        commission_rate: commissionRate,
         commission_amount: commissionAmount,
         settlement_amount: settlementAmount,
         settlement_date: settlementDate.toISOString().split('T')[0],
