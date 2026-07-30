@@ -11,6 +11,8 @@ import * as crypto from 'crypto';
  *   WECHAT_MCH_SERIAL_NO    商户 API 证书序列号
  *   WECHAT_PRIVATE_KEY      商户 API 证书私钥（apiclient_key.pem 全文，换行可用 \n 转义）
  *   WECHAT_PAY_NOTIFY_URL   支付结果回调地址（公网 HTTPS）
+ *   WECHAT_PAY_PUBLIC_KEY_ID  微信支付公钥 ID（PUB_KEY_ID_...，新商户号官方默认验签方式）
+ *   WECHAT_PAY_PUBLIC_KEY     微信支付公钥 PEM 全文（商户平台 → API 安全 → 微信支付公钥）
  *
  * 任一缺失时 isEnabled() 返回 false，支付模块自动回退 Mock 通道。
  */
@@ -22,6 +24,12 @@ export class WechatPayService {
   private readonly mchId = process.env.WECHAT_MCH_ID || '';
   private readonly apiV3Key = process.env.WECHAT_API_V3_KEY || '';
   private readonly serialNo = process.env.WECHAT_MCH_SERIAL_NO || '';
+  // 微信支付公钥（新商户号官方默认验签方式，回调 serial 形如 PUB_KEY_ID_...）
+  private readonly payPublicKeyId = process.env.WECHAT_PAY_PUBLIC_KEY_ID || '';
+  private readonly payPublicKey = (process.env.WECHAT_PAY_PUBLIC_KEY || '').replace(
+    /\\n/g,
+    '\n',
+  );
   private readonly privateKey = (process.env.WECHAT_PRIVATE_KEY || '').replace(
     /\\n/g,
     '\n',
@@ -125,22 +133,38 @@ export class WechatPayService {
       throw new Error('缺少微信支付回调签名头');
     }
 
-    await this.loadPlatformCertificates();
-    let cert = this.platformCerts.get(serial);
-    if (!cert) {
-      // 平台证书轮换：强制刷新后重试一次
-      await this.loadPlatformCertificates(true);
-      cert = this.platformCerts.get(serial);
-    }
-    if (!cert) {
-      throw new Error(`未找到微信支付平台证书 serial=${serial}`);
+    let verifyKey: string;
+    if (serial.startsWith('PUB_KEY_ID_')) {
+      // 微信支付公钥模式（新商户号默认）：直接用本地配置的公钥验签
+      if (!this.payPublicKey) {
+        throw new Error('回调使用微信支付公钥签名，但未配置 WECHAT_PAY_PUBLIC_KEY');
+      }
+      if (this.payPublicKeyId && serial !== this.payPublicKeyId) {
+        this.logger.warn(
+          `微信支付公钥 ID 不一致: 回调=${serial}, 配置=${this.payPublicKeyId}`,
+        );
+      }
+      verifyKey = this.payPublicKey;
+    } else {
+      // 平台证书模式：下载并缓存平台证书（商户号无平台证书时为空，属正常降级）
+      await this.loadPlatformCertificates();
+      let cert = this.platformCerts.get(serial);
+      if (!cert) {
+        // 平台证书轮换：强制刷新后重试一次
+        await this.loadPlatformCertificates(true);
+        cert = this.platformCerts.get(serial);
+      }
+      if (!cert) {
+        throw new Error(`未找到微信支付平台证书 serial=${serial}`);
+      }
+      verifyKey = cert;
     }
 
     const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
     const ok = crypto
       .createVerify('RSA-SHA256')
       .update(message)
-      .verify(cert, signature, 'base64');
+      .verify(verifyKey, signature, 'base64');
     if (!ok) {
       throw new Error('微信支付回调验签失败');
     }
@@ -224,9 +248,16 @@ export class WechatPayService {
       this.platformCerts.size > 0 && Date.now() - this.certsLoadedAt < 3600_000;
     if (!force && cacheValid) return;
 
-    const res = await this.requestWechat('GET', '/v3/certificates');
-    // 微信平台实际返回字段为 data（兼容旧字段 certificates）
-    const list = res?.data || res?.certificates || [];
+    let list: any[] = [];
+    try {
+      const res = await this.requestWechat('GET', '/v3/certificates');
+      // 微信平台实际返回字段为 data（兼容旧字段 certificates）
+      list = res?.data || res?.certificates || [];
+    } catch (err: any) {
+      // 新商户号默认仅提供「微信支付公钥」模式，无平台证书可下载（404 属预期，静默降级）
+      this.logger.warn(`微信平台证书不可用（公钥模式属预期）: ${err?.message}`);
+      return;
+    }
     const next = new Map<string, string>();
     for (const item of list) {
       const enc = item?.encrypt_certificate;
