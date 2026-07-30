@@ -115,6 +115,12 @@ export class SettlementController {
   // ==================== 平台佣金 ====================
 
   /** 获取平台佣金明细列表 */
+  @Get('commission/summary')
+  async getCommissionSummary() {
+    const data = await this.settlementService.getCommissionSummary();
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('commission')
   async getCommissionRecords(
     @Query('start_date') startDate?: string,

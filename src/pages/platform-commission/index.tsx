@@ -65,7 +65,10 @@ export default function PlatformCommissionPage() {
       setLoading(true);
       const { data } = await Network.request({ url: "/api/settlement/commission", method: "GET", data: { start_date: startDate, end_date: endDate } });
       if (data?.data) {
-        setRecords(data.data);
+        const list = data.data.list;
+        setRecords(Array.isArray(list) ? list : []);
+      } else {
+        setRecords([]);
       }
     } catch (error) {
       console.error('获取佣金明细失败:', error);

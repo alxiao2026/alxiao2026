@@ -358,6 +358,26 @@ export class SettlementService {
   // ==================== 平台佣金 ====================
 
   /** 获取平台佣金明细列表 */
+  /** 平台佣金汇总（全部记录，不分页） */
+  async getCommissionSummary() {
+    const { data, error } = await this.supabase
+      .from('settlement_records')
+      .select('commission_amount, settlement_amount');
+
+    if (error) throw error;
+
+    const summary = {
+      total_commission: 0,
+      total_settlement: 0,
+      total_orders: (data || []).length,
+    };
+    (data || []).forEach((item) => {
+      summary.total_commission += Number(item.commission_amount) || 0;
+      summary.total_settlement += Number(item.settlement_amount) || 0;
+    });
+    return summary;
+  }
+
   async getCommissionRecords(options: {
     startDate?: string;
     endDate?: string;
