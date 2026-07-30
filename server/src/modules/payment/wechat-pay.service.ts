@@ -206,6 +206,8 @@ export class WechatPayService {
         Authorization: authorization,
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        // Node undici 默认发送 "Accept-Language: *"，微信商户 API 不接受，必须显式指定
+        'Accept-Language': 'zh-CN',
       },
       body: bodyStr || undefined,
     });
@@ -223,7 +225,8 @@ export class WechatPayService {
     if (!force && cacheValid) return;
 
     const res = await this.requestWechat('GET', '/v3/certificates');
-    const list = res?.certificates || [];
+    // 微信平台实际返回字段为 data（兼容旧字段 certificates）
+    const list = res?.data || res?.certificates || [];
     const next = new Map<string, string>();
     for (const item of list) {
       const enc = item?.encrypt_certificate;
