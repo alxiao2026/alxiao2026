@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body, HttpCode, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, HttpCode, Query, BadRequestException } from '@nestjs/common';
 import { UserService, UpdateUserBody, roleToCode } from './user.service';
 
 @Controller('users')
@@ -32,13 +32,22 @@ export class UserController {
     return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
-  /** 微信授权登录 */
+  /** 微信授权登录：小程序端传 code（Taro.login 获取，后端换 openid）；开发态兼容直传 open_id */
   @Post('login/wechat')
   @HttpCode(200)
-  async loginByWechat(@Body() body: { open_id: string; nick_name?: string; avatar_url?: string }) {
-    console.log('[UserController] loginByWechat:', body.open_id);
-    const user = await this.userService.loginByWechat(body.open_id, body.nick_name, body.avatar_url);
-    return { code: 200, msg: 'success', data: user };
+  async loginByWechat(@Body() body: { code?: string; open_id?: string; nick_name?: string; avatar_url?: string }) {
+    let openId = body.open_id;
+    if (body.code) {
+      console.log('[UserController] loginByWechat: code2session');
+      const session = await this.userService.code2Session(body.code);
+      openId = session.openid;
+    }
+    if (!openId) {
+      throw new BadRequestException('缺少 code 或 open_id');
+    }
+    console.log('[UserController] loginByWechat:', openId);
+    const user = await this.userService.loginByWechat(openId, body.nick_name, body.avatar_url);
+    return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
   /** 用户列表（管理后台，分页 + 关键词搜索） */

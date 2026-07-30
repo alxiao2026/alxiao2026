@@ -49,6 +49,14 @@ interface PrepayInfo {
   pay_amount: number
   discount_name: string | null
   pay_expire_at: string | null
+  /** 微信通道：小程序调起支付参数（后端二次签名） */
+  wechat_pay?: {
+    timeStamp: string
+    nonceStr: string
+    package: string
+    signType: 'RSA'
+    paySign: string
+  }
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bgGradient: string }> = {
@@ -213,7 +221,22 @@ export default function OrderDetail() {
     countdownRef.current = setInterval(tick, 1000)
   }
 
-  /** 立即支付（Mock 通道）：prepay → mock-notify（模拟微信异步回调）→ 刷新订单 */
+  /** 轮询等待微信支付回调落库（订单 → paid），最长约 8 秒 */
+  const waitOrderPaid = async (): Promise<boolean> => {
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 1000))
+      try {
+        const res = await Network.request({ url: `/api/orders/${id}` })
+        const data = res.data?.data || res.data
+        if (data?.status === 'paid' || data?.status === 'used') return true
+      } catch (e) {
+        console.warn('[OrderDetail] 轮询订单状态失败:', e)
+      }
+    }
+    return false
+  }
+
+  /** 立即支付：微信通道（小程序真实支付）/ Mock 通道（H5、开发态） */
   const handlePay = async () => {
     if (paying) return
     setPaying(true)
@@ -226,6 +249,40 @@ export default function OrderDetail() {
         setPaying(false)
         return
       }
+
+      // ===== 微信通道：小程序端调起真实微信支付，订单状态以微信回调为准 =====
+      if (prepay.channel === 'wechat' && prepay.wechat_pay && Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+        console.log('[OrderDetail] 调起微信支付, prepay_id:', prepay.prepay_id)
+        try {
+          await Taro.requestPayment({
+            timeStamp: prepay.wechat_pay.timeStamp,
+            nonceStr: prepay.wechat_pay.nonceStr,
+            package: prepay.wechat_pay.package,
+            signType: prepay.wechat_pay.signType,
+            paySign: prepay.wechat_pay.paySign,
+          })
+        } catch (payErr: any) {
+          console.warn('[OrderDetail] 微信支付未完成:', payErr?.errMsg)
+          Taro.showToast({
+            title: payErr?.errMsg?.includes('cancel') ? '已取消支付' : '支付未完成，请重试',
+            icon: 'none',
+          })
+          return
+        }
+        // 用户支付成功：等待微信异步回调落库（状态以回调为准，前端不直接改状态）
+        const paid = await waitOrderPaid()
+        if (countdownRef.current) clearInterval(countdownRef.current)
+        setPrepayInfo(null)
+        await loadOrder()
+        if (paid) {
+          setShowPaySuccess(true)
+        } else {
+          Taro.showToast({ title: '支付确认中，请稍后刷新查看', icon: 'none' })
+        }
+        return
+      }
+
+      // ===== Mock 通道（H5 / 开发态）：模拟微信异步回调 =====
       console.log('[OrderDetail] 发起 Mock 支付回调, prepay_id:', prepay.prepay_id)
       const res = await Network.request({
         url: '/api/payment/mock-notify',

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { getSupabaseClient } from '../../storage/database/supabase-client';
 import { NotificationService } from '../notification/notification.service';
+import { WechatPayService } from './wechat-pay.service';
 
 export interface PaymentRecord {
   id: string;
@@ -35,7 +36,10 @@ export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
   private client = getSupabaseClient();
 
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly wechatPay: WechatPayService,
+  ) {}
 
   /**
    * 金额计算引擎（后端权威计算，前端只展示）
@@ -142,6 +146,7 @@ export class PaymentService {
       .limit(1);
 
     let payment = existing?.[0] as PaymentRecord | undefined;
+    let amountChanged = false;
     if (payment) {
       if (
         Number(payment.pay_amount) !== calc.payAmount ||
@@ -163,6 +168,7 @@ export class PaymentService {
           throw new InternalServerErrorException(`更新支付单失败: ${error.message}`);
         }
         payment = updated as PaymentRecord;
+        amountChanged = true;
       }
     } else {
       const prepayId = `mock_prepay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -187,6 +193,72 @@ export class PaymentService {
       payment = created as PaymentRecord;
     }
 
+    // ===== 微信通道：支付配置齐全且用户已微信授权（有 open_id）时走真实下单 =====
+    if (this.wechatPay.isEnabled()) {
+      try {
+        const { data: userRow } = await this.client
+          .from('users')
+          .select('open_id')
+          .eq('user_id', body.user_id)
+          .maybeSingle();
+        const openId = (userRow as any)?.open_id;
+        if (openId) {
+          const outTradeNo = payment.id.replace(/-/g, '');
+          let prepayId = payment.prepay_id;
+          const needNewOrder =
+            amountChanged ||
+            payment.channel !== 'wechat' ||
+            !prepayId ||
+            prepayId.startsWith('mock_');
+          if (needNewOrder) {
+            // 金额变更需先关闭旧微信订单再重新下单
+            if (payment.channel === 'wechat' && prepayId && !prepayId.startsWith('mock_')) {
+              await this.wechatPay.closeOrder(outTradeNo);
+            }
+            const { data: orderRow } = await this.client
+              .from('orders')
+              .select('packages:package_id(name)')
+              .eq('id', order.id)
+              .maybeSingle();
+            const description = (orderRow?.packages as any)?.name || '团购套餐';
+            prepayId = await this.wechatPay.createJsapiOrder({
+              outTradeNo,
+              description,
+              totalFen: Math.round(calc.payAmount * 100),
+              openId,
+            });
+            const { data: wxUpdated, error: wxErr } = await this.client
+              .from('payments')
+              .update({
+                prepay_id: prepayId,
+                channel: 'wechat',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', payment.id)
+              .select()
+              .single();
+            if (wxErr) {
+              throw new InternalServerErrorException(`更新支付单失败: ${wxErr.message}`);
+            }
+            payment = wxUpdated as PaymentRecord;
+          }
+          return {
+            prepay_id: prepayId,
+            channel: 'wechat',
+            wechat_pay: this.wechatPay.buildMiniProgramPayParams(prepayId),
+            original_amount: calc.originalAmount,
+            discount_amount: calc.discountAmount,
+            pay_amount: calc.payAmount,
+            discount_name: calc.discountName,
+            pay_expire_at: order.pay_expire_at,
+          };
+        }
+        this.logger.log(`用户 ${body.user_id} 未绑定微信 open_id，回退 Mock 支付通道`);
+      } catch (err: any) {
+        this.logger.error(`微信下单失败，回退 Mock 通道: ${err?.message}`);
+      }
+    }
+
     return {
       prepay_id: payment.prepay_id,
       channel: payment.channel,
@@ -208,9 +280,49 @@ export class PaymentService {
   }
 
   /**
+   * 微信支付结果回调（V3）：验签 + 解密 → 复用统一状态流转
+   * 响应由 Controller 按微信约定返回 { code, message }；抛错即触发微信重试（幂等已保证）
+   */
+  async handleWechatNotify(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: string,
+  ) {
+    if (!this.wechatPay.isEnabled()) {
+      throw new BadRequestException('微信支付未配置');
+    }
+    const result = await this.wechatPay.verifyAndDecryptNotify(headers, rawBody);
+    this.logger.log(
+      `微信支付回调: out_trade_no=${result?.out_trade_no}, trade_state=${result?.trade_state}, transaction_id=${result?.transaction_id}`,
+    );
+    if (result?.trade_state !== 'SUCCESS') {
+      return { handled: false, trade_state: result?.trade_state };
+    }
+    // out_trade_no = payment.id 去连字符（32 位 hex）→ 还原为 uuid 查支付单
+    const raw = String(result.out_trade_no || '');
+    const paymentId =
+      raw.length === 32
+        ? `${raw.slice(0, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}-${raw.slice(16, 20)}-${raw.slice(20)}`
+        : raw;
+    const { data: payment } = await this.client
+      .from('payments')
+      .select('prepay_id')
+      .eq('id', paymentId)
+      .maybeSingle();
+    if (!payment) throw new NotFoundException('支付单不存在');
+    const handled = await this.handlePaidNotify(payment.prepay_id, 'success', {
+      transactionId: result.transaction_id,
+    });
+    return { handled: true, ...handled };
+  }
+
+  /**
    * 支付回调统一处理（幂等：transaction_id 唯一约束 + 状态机守卫）
    */
-  private async handlePaidNotify(prepayId: string, result: 'success' | 'fail') {
+  private async handlePaidNotify(
+    prepayId: string,
+    result: 'success' | 'fail',
+    opts?: { transactionId?: string },
+  ) {
     const { data: payment } = await this.client
       .from('payments')
       .select('*')
@@ -248,7 +360,9 @@ export class PaymentService {
     }
 
     const now = new Date().toISOString();
-    const transactionId = `mock_tx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const transactionId =
+      opts?.transactionId ||
+      `mock_tx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
     // 1. 支付单 → paid
     const { error: payErr } = await this.client
@@ -405,6 +519,25 @@ export class PaymentService {
     const newRefundedQty = refundedQty + refundQty;
     const fullyRefunded = verifiedCount + newRefundedQty >= quantity;
     const totalRefundedAmount = Math.round((alreadyRefunded + refundAmount) * 100) / 100;
+
+    // ===== 微信通道：真实支付单先发起微信退款，受理成功后才落库 =====
+    if (payment?.channel === 'wechat' && this.wechatPay.isEnabled() && refundAmount > 0) {
+      const outRefundNo = `R${payment.id.replace(/-/g, '')}${refundQty}${Date.now().toString(36)}`.slice(0, 64);
+      try {
+        await this.wechatPay.createRefund({
+          transactionId: payment.transaction_id || undefined,
+          outTradeNo: payment.id.replace(/-/g, ''),
+          outRefundNo,
+          refundFen: Math.round(refundAmount * 100),
+          totalFen: Math.round(paidAmount * 100),
+          reason: body.reason || '用户申请退款',
+        });
+        this.logger.log(`微信退款受理成功: payment=${payment.id}, refund=¥${refundAmount}`);
+      } catch (err: any) {
+        this.logger.error(`微信退款失败: ${err?.message}`);
+        throw new InternalServerErrorException(`微信退款失败: ${err?.message}`);
+      }
+    }
 
     // 1. 支付单：累计退款金额；全退时 → refunded
     if (payment) {

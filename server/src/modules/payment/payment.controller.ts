@@ -6,6 +6,7 @@ import {
   Param,
   HttpCode,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 
@@ -37,6 +38,19 @@ export class PaymentController {
       prepay_id: body.prepay_id,
       result: body.result,
     });
+  }
+
+  /**
+   * 微信支付结果回调（V3）
+   * 成功响应须为微信约定格式 { code: 'SUCCESS' }；处理失败抛异常（HTTP 4xx/5xx），微信会自动重试（幂等已保证）
+   */
+  @Post('wechat-notify')
+  @HttpCode(200)
+  async wechatNotify(@Req() req: any, @Body() body: any) {
+    const rawBody =
+      req.rawBody?.toString?.() || (body ? JSON.stringify(body) : '');
+    await this.paymentService.handleWechatNotify(req.headers, rawBody);
+    return { code: 'SUCCESS', message: '成功' };
   }
 
   /** 用户主动退款（未核销团购券，支持按份部分退款） */

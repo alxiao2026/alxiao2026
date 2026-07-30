@@ -147,27 +147,32 @@ const LoginPage = () => {
     }
   };
 
-  // ===== 微信授权登录 =====
+  // ===== 微信授权登录：Taro.login 获取 code → 后端 code2session 换取 openid =====
   const handleWxLogin = async () => {
+    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
+      Taro.showToast({ title: '微信登录仅支持微信小程序', icon: 'none' });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await Taro.getUserProfile({ desc: '用于完善用户资料', lang: 'zh_CN' });
-      const { nickName: name, avatarUrl: avatar } = res.userInfo;
-      // 生成 open_id（实际项目中应从微信登录凭证换区）
-      let openId = Taro.getStorageSync('wx_open_id');
-      if (!openId) {
-        openId = `wx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-        Taro.setStorageSync('wx_open_id', openId);
+      const wxLoginRes = await Taro.login();
+      if (!wxLoginRes.code) {
+        throw new Error('未获取到微信登录凭证');
       }
-      const loginRes = await Network.request({
+      console.log('[Login] wx.login success, code 获取成功，换取 openid...');
+      const res = await Network.request({
         url: '/api/users/login/wechat',
         method: 'POST',
-        data: { open_id: openId, nick_name: name, avatar_url: avatar }
+        data: { code: wxLoginRes.code }
       });
-      handleResponse(loginRes);
+      handleResponse(res);
     } catch (e) {
-      console.log('[Login] wx login cancelled:', e);
-      Taro.showToast({ title: '已取消授权', icon: 'none' });
+      console.error('[Login] wx login error:', e);
+      const errMsg =
+        (e as { data?: { message?: string } })?.data?.message ||
+        (e as Error)?.message ||
+        '微信登录失败，请重试';
+      Taro.showToast({ title: errMsg, icon: 'none' });
     } finally {
       setLoading(false);
     }
@@ -227,10 +232,10 @@ const LoginPage = () => {
               >
                 <View className="flex flex-row items-center justify-center gap-2">
                   <MessageCircle size={20} color="#fff" />
-                  <Text className="text-white font-medium">{loading ? '授权中...' : '微信一键登录'}</Text>
+                  <Text className="text-white font-medium">{loading ? '登录中...' : '微信一键登录'}</Text>
                 </View>
               </Button>
-              <Text className="text-xs text-gray-400 block text-center mt-2">授权后自动获取微信头像和昵称</Text>
+              <Text className="text-xs text-gray-400 block text-center mt-2">一键登录，新用户自动注册</Text>
             </View>
           )}
 

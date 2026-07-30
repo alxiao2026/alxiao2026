@@ -1,0 +1,270 @@
+import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
+
+/**
+ * 微信支付 V3 服务（小程序 JSAPI 支付）
+ *
+ * 配置（server/.env）：
+ *   WECHAT_APPID            小程序 AppID
+ *   WECHAT_MCH_ID           微信支付商户号
+ *   WECHAT_API_V3_KEY       商户 APIv3 密钥（32 位）
+ *   WECHAT_MCH_SERIAL_NO    商户 API 证书序列号
+ *   WECHAT_PRIVATE_KEY      商户 API 证书私钥（apiclient_key.pem 全文，换行可用 \n 转义）
+ *   WECHAT_PAY_NOTIFY_URL   支付结果回调地址（公网 HTTPS）
+ *
+ * 任一缺失时 isEnabled() 返回 false，支付模块自动回退 Mock 通道。
+ */
+@Injectable()
+export class WechatPayService {
+  private readonly logger = new Logger(WechatPayService.name);
+
+  private readonly appid = process.env.WECHAT_APPID || '';
+  private readonly mchId = process.env.WECHAT_MCH_ID || '';
+  private readonly apiV3Key = process.env.WECHAT_API_V3_KEY || '';
+  private readonly serialNo = process.env.WECHAT_MCH_SERIAL_NO || '';
+  private readonly privateKey = (process.env.WECHAT_PRIVATE_KEY || '').replace(
+    /\\n/g,
+    '\n',
+  );
+  private readonly notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
+
+  /** 微信平台证书缓存：serial_no -> 证书 PEM（平台证书会轮换，缓存 1 小时） */
+  private platformCerts = new Map<string, string>();
+  private certsLoadedAt = 0;
+
+  /** 支付配置是否齐全（齐全则启用真实微信通道，否则调用方回退 Mock） */
+  isEnabled(): boolean {
+    return Boolean(
+      this.appid &&
+        this.mchId &&
+        this.apiV3Key &&
+        this.serialNo &&
+        this.privateKey &&
+        this.notifyUrl,
+    );
+  }
+
+  // ==================== JSAPI 下单 ====================
+
+  /**
+   * 小程序 JSAPI 统一下单，返回 prepay_id
+   * https://pay.weixin.qq.com/doc/v3/apis/CHAPTER3_5.shtml
+   */
+  async createJsapiOrder(params: {
+    outTradeNo: string;
+    description: string;
+    totalFen: number;
+    openId: string;
+  }): Promise<string> {
+    const body = {
+      appid: this.appid,
+      mchid: this.mchId,
+      description: (params.description || '团购套餐').slice(0, 127),
+      out_trade_no: params.outTradeNo,
+      notify_url: this.notifyUrl,
+      amount: { total: params.totalFen, currency: 'CNY' },
+      payer: { openid: params.openId },
+    };
+    const res = await this.requestWechat('POST', '/v3/pay/transactions/jsapi', body);
+    if (!res?.prepay_id) {
+      throw new Error(`微信下单未返回 prepay_id: ${JSON.stringify(res)}`);
+    }
+    return res.prepay_id as string;
+  }
+
+  /** 关闭订单（金额变更需要重新下单时调用，忽略失败） */
+  async closeOrder(outTradeNo: string): Promise<void> {
+    try {
+      await this.requestWechat(
+        'POST',
+        `/v3/pay/transactions/out-trade-no/${outTradeNo}/close`,
+        { mchid: this.mchId },
+      );
+    } catch (err: any) {
+      this.logger.warn(`关闭微信订单失败（可忽略）: ${err?.message}`);
+    }
+  }
+
+  /**
+   * 生成小程序 Taro.requestPayment 调起参数（二次签名）
+   * 签名串：appId\ntimeStamp\nnonceStr\npackage\n
+   */
+  buildMiniProgramPayParams(prepayId: string) {
+    const timeStamp = Math.floor(Date.now() / 1000).toString();
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+    const pkg = `prepay_id=${prepayId}`;
+    const message = `${this.appid}\n${timeStamp}\n${nonceStr}\n${pkg}\n`;
+    const paySign = crypto
+      .createSign('RSA-SHA256')
+      .update(message)
+      .sign(this.privateKey, 'base64');
+    return {
+      timeStamp,
+      nonceStr,
+      package: pkg,
+      signType: 'RSA' as const,
+      paySign,
+    };
+  }
+
+  // ==================== 支付回调 ====================
+
+  /**
+   * 验证微信回调签名并解密资源，返回支付结果明文
+   * { transaction_id, out_trade_no, trade_state, success_time, amount: { total, payer_total } ... }
+   */
+  async verifyAndDecryptNotify(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: string,
+  ): Promise<any> {
+    const timestamp = this.pickHeader(headers, 'wechatpay-timestamp');
+    const nonce = this.pickHeader(headers, 'wechatpay-nonce');
+    const signature = this.pickHeader(headers, 'wechatpay-signature');
+    const serial = this.pickHeader(headers, 'wechatpay-serial');
+    if (!timestamp || !nonce || !signature || !serial) {
+      throw new Error('缺少微信支付回调签名头');
+    }
+
+    await this.loadPlatformCertificates();
+    let cert = this.platformCerts.get(serial);
+    if (!cert) {
+      // 平台证书轮换：强制刷新后重试一次
+      await this.loadPlatformCertificates(true);
+      cert = this.platformCerts.get(serial);
+    }
+    if (!cert) {
+      throw new Error(`未找到微信支付平台证书 serial=${serial}`);
+    }
+
+    const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
+    const ok = crypto
+      .createVerify('RSA-SHA256')
+      .update(message)
+      .verify(cert, signature, 'base64');
+    if (!ok) {
+      throw new Error('微信支付回调验签失败');
+    }
+
+    const body = JSON.parse(rawBody);
+    const resource = body?.resource;
+    if (!resource?.ciphertext) {
+      throw new Error('微信支付回调缺少 resource');
+    }
+    const plain = this.decryptAesGcm(
+      Buffer.from(this.apiV3Key, 'utf8'),
+      resource.nonce,
+      resource.associated_data,
+      resource.ciphertext,
+    );
+    return JSON.parse(plain);
+  }
+
+  // ==================== 退款 ====================
+
+  /**
+   * 申请退款（受理成功即返回；最终到账以微信退款回调/查询为准，此处按受理成功处理）
+   * https://pay.weixin.qq.com/doc/v3/apis/CHAPTER3_5.shtml
+   */
+  async createRefund(params: {
+    transactionId?: string;
+    outTradeNo: string;
+    outRefundNo: string;
+    refundFen: number;
+    totalFen: number;
+    reason?: string;
+  }): Promise<any> {
+    const body: Record<string, any> = {
+      out_refund_no: params.outRefundNo,
+      amount: { refund: params.refundFen, total: params.totalFen, currency: 'CNY' },
+    };
+    if (params.transactionId) body.transaction_id = params.transactionId;
+    else body.out_trade_no = params.outTradeNo;
+    if (params.reason) body.reason = params.reason.slice(0, 80);
+    return this.requestWechat('POST', '/v3/refund/domestic/refunds', body);
+  }
+
+  // ==================== 内部工具 ====================
+
+  /** 微信 V3 接口通用请求（携带 Authorization 签名头） */
+  private async requestWechat(method: string, path: string, body?: any): Promise<any> {
+    const url = `https://api.mch.weixin.qq.com${path}`;
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const bodyStr = body ? JSON.stringify(body) : '';
+    const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyStr}\n`;
+    const signature = crypto
+      .createSign('RSA-SHA256')
+      .update(message)
+      .sign(this.privateKey, 'base64');
+    const authorization =
+      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonce}",` +
+      `timestamp="${timestamp}",serial_no="${this.serialNo}",signature="${signature}"`;
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: authorization,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: bodyStr || undefined,
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`微信支付接口错误 HTTP ${res.status}: ${text}`);
+    }
+    return text ? JSON.parse(text) : {};
+  }
+
+  /** 下载并缓存微信平台证书（GET /v3/certificates，密文用 APIv3 密钥解密） */
+  private async loadPlatformCertificates(force = false): Promise<void> {
+    const cacheValid =
+      this.platformCerts.size > 0 && Date.now() - this.certsLoadedAt < 3600_000;
+    if (!force && cacheValid) return;
+
+    const res = await this.requestWechat('GET', '/v3/certificates');
+    const list = res?.certificates || [];
+    const next = new Map<string, string>();
+    for (const item of list) {
+      const enc = item?.encrypt_certificate;
+      if (!item?.serial_no || !enc?.ciphertext) continue;
+      const pem = this.decryptAesGcm(
+        Buffer.from(this.apiV3Key, 'utf8'),
+        enc.nonce,
+        enc.associated_data,
+        enc.ciphertext,
+      );
+      next.set(item.serial_no, pem);
+    }
+    if (next.size > 0) {
+      this.platformCerts = next;
+      this.certsLoadedAt = Date.now();
+      this.logger.log(`微信平台证书已加载 ${next.size} 张`);
+    }
+  }
+
+  /** AES-256-GCM 解密（微信 V3 密文：base64 密文尾部 16 字节为 authTag） */
+  private decryptAesGcm(
+    key: Buffer,
+    nonce: string,
+    aad: string | undefined,
+    ciphertextB64: string,
+  ): string {
+    const data = Buffer.from(ciphertextB64, 'base64');
+    const authTag = data.subarray(data.length - 16);
+    const ciphertext = data.subarray(0, data.length - 16);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce);
+    if (aad) decipher.setAAD(Buffer.from(aad, 'utf8'));
+    decipher.setAuthTag(authTag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+  }
+
+  private pickHeader(
+    headers: Record<string, string | string[] | undefined>,
+    name: string,
+  ): string {
+    const v = headers[name];
+    if (Array.isArray(v)) return v[0] || '';
+    return v || '';
+  }
+}

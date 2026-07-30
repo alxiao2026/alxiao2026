@@ -26,7 +26,15 @@ async function bootstrap() {
     credentials: true,
   });
   app.setGlobalPrefix('api');
-  app.use(express.json({ limit: '50mb' }));
+  // verify 回调保留原始报文（微信支付回调验签必须使用未序列化的 rawBody）
+  app.use(
+    express.json({
+      limit: '50mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // 配置 Multer 用于文件上传

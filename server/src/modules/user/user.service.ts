@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 角色编码：0=普通消费者，1=商家用户，2=系统管理员
@@ -249,6 +249,33 @@ export class UserService {
       .single();
     if (error) throw error;
     return created as User;
+  }
+
+  /**
+   * 微信登录凭证校验：小程序端 Taro.login() 获取的 code → 换取 openid
+   * https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
+   * 需在 server/.env 配置 WECHAT_APPID / WECHAT_SECRET
+   */
+  async code2Session(code: string): Promise<{ openid: string; unionid?: string }> {
+    const logger = new Logger('UserService.code2Session');
+    const appid = process.env.WECHAT_APPID || '';
+    const secret = process.env.WECHAT_SECRET || '';
+    if (!code) throw new BadRequestException('缺少微信登录 code');
+    if (!appid || !secret) {
+      throw new BadRequestException('微信登录未配置（缺少 WECHAT_APPID/WECHAT_SECRET）');
+    }
+    const url =
+      `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}` +
+      `&secret=${secret}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+    const res = await fetch(url);
+    const data: any = await res.json();
+    if (!data?.openid) {
+      logger.warn(`code2session 失败: ${JSON.stringify(data)}`);
+      throw new BadRequestException(
+        `微信登录失败: ${data?.errmsg || '凭证无效'}（errcode=${data?.errcode ?? 'unknown'}）`,
+      );
+    }
+    return { openid: data.openid, unionid: data.unionid };
   }
 
   /** 微信授权登录（有记录直接登录，无记录自动注册） */
