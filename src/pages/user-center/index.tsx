@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
+import { getNavSafeAreaTop } from '@/lib/utils';
 import AppTabBar from '@/components/app-tab-bar';
 import {
   ClipboardList, ChevronRight, Pencil,
@@ -231,7 +232,7 @@ const UserCenterPage = () => {
   if (!userId) {
     return (
       <View className="min-h-screen bg-gray-50">
-        <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pt-16 pb-12 flex flex-col items-center">
+        <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pb-12 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() + 16 }}>
           <View className="w-20 h-20 rounded-full bg-white bg-opacity-20 flex items-center justify-center mb-4">
             <User size={40} color="#FFFFFF" />
           </View>
@@ -251,8 +252,8 @@ const UserCenterPage = () => {
   return (
     <>
     <ScrollView scrollY className="min-h-screen bg-gray-50">
-      {/* 自定义导航栏 */}
-      <View className="bg-[#FF4757] flex items-center px-4 py-3">
+      {/* 自定义导航栏（动态避让状态栏与胶囊按钮） */}
+      <View className="bg-[#FF4757] flex items-center px-4 pb-3" style={{ paddingTop: getNavSafeAreaTop() }}>
         <Text className="block text-white text-lg font-semibold flex-1 text-center">个人中心</Text>
       </View>
 

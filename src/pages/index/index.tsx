@@ -2,7 +2,7 @@ import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/compo
 import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AppTabBar from '@/components/app-tab-bar';
 import {
@@ -229,8 +229,8 @@ const IndexPage = () => {
   <>
     <View className="min-h-screen bg-gray-50">
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部品牌区（居中极简） ===== */}
-        <View className="px-5 pt-6 pb-4 flex flex-col items-center">
+        {/* ===== 顶部品牌区（居中极简，动态避让状态栏与胶囊按钮） ===== */}
+        <View className="px-5 pb-4 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
           <Text className="block text-2xl font-bold text-[#FF4757]">膨胀团</Text>
           <Text className="block text-xs text-gray-400 mt-1">给生活来点小惊喜 · 每单都有好运 ✨</Text>
         </View>
