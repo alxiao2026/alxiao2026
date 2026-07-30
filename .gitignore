@@ -50,3 +50,10 @@ node-compile-cache/
 .codegraph/
 server/public/admin/
 ci-keys/
+
+# Chat attachments & sensitive keys
+assets/
+key/
+*.key
+*.p12
+*.pem
