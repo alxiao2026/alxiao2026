@@ -41,7 +41,8 @@ const LoginPage = () => {
       if (roleCode === 1 || roleCode === 2) {
         Taro.reLaunch({ url: '/pages/admin/index' });
       } else {
-        Taro.navigateBack();
+        // 普通用户登录成功直接进入个人中心（navigateBack 在页面栈为空时会失败，导致停留在登录页）
+        Taro.reLaunch({ url: '/pages/user-center/index' });
       }
     }, 800);
   };
