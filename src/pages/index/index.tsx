@@ -228,6 +228,11 @@ const IndexPage = () => {
   return (
   <>
     <View className="min-h-screen bg-gray-50">
+      {/* ===== 状态栏固定白色背景（不随页面滚动，保证系统时间/信号清晰可读） ===== */}
+      <View
+        className="bg-white"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, height: getNavSafeAreaTop(), zIndex: 100 }}
+      />
       <ScrollView className="flex-1" scrollY>
         {/* ===== 顶部品牌区（居中极简，动态避让状态栏与胶囊按钮） ===== */}
         <View className="px-5 pb-4 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
