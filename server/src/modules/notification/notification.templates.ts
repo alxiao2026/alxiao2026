@@ -25,6 +25,7 @@ export type NotificationType =
   | 'order_paid'
   | 'order_expiring'
   | 'order_verified'
+  | 'order_verify_revoked'
   | 'prize_won'
   | 'merchant_refund_success'
   | 'prize_expiring'
@@ -80,6 +81,11 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationType, NotificationTempla
   order_verified: {
     title: '核销成功通知',
     render: (d) => `您的订单 ${d.order_no ?? ''} 已核销成功，感谢您的光临，欢迎下次再来。`,
+    wechatTemplateId: '',
+  },
+  order_verify_revoked: {
+    title: '核销撤销通知',
+    render: (d) => `您的订单 ${d.order_no ?? ''} 核销已被商家撤销，订单已恢复待使用状态，如有疑问请联系商家。`,
     wechatTemplateId: '',
   },
   prize_won: {

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import * as QRCode from 'qrcode';
 import { NotificationService } from '../notification/notification.service';
+import { SettlementService } from '../settlement/settlement.service';
 
 export interface Order {
   id: string;
@@ -66,7 +67,10 @@ function localTimeStr(d: Date): string {
 export class OrderService {
   private client = getSupabaseClient();
 
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly settlementService: SettlementService,
+  ) {}
 
   async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string, keyword?: string): Promise<Order[]> {
     // 先查该商家的所有套餐ID
@@ -712,6 +716,9 @@ export class OrderService {
       count: verifyCount,
     });
 
+    // 结算：按套餐结算配置生成结算记录并更新商家余额（容错，不影响核销主流程）
+    await this.settlementService.settleOrder(data as Order, verifyCount);
+
     return data as Order;
   }
 
@@ -794,6 +801,81 @@ export class OrderService {
       expired: Date.now() > expiresAt,
       created_at: r.created_at,
     };
+  }
+
+  /** 撤销核销：核销后30分钟内可撤销，订单恢复待使用状态 */
+  async revokeVerify(orderId: string, merchantUserId?: string): Promise<Order> {
+    const { data: order, error: findError } = await this.client
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (findError) throw new Error(`查询订单失败: ${findError.message}`);
+    if (!order) throw new NotFoundException('订单不存在');
+    if (order.status === 'refunded') throw new BadRequestException('订单已退款，无法撤销核销');
+
+    const verifiedCount = order.verified_count || 0;
+    if (verifiedCount <= 0 || !order.verified_at) {
+      throw new BadRequestException('订单未核销，无需撤销');
+    }
+
+    // 仅允许撤销30分钟内的核销
+    const elapsed = Date.now() - new Date(order.verified_at).getTime();
+    if (elapsed > 30 * 60 * 1000) {
+      throw new BadRequestException('核销已超过30分钟，无法撤销');
+    }
+
+    // 商家权限：仅允许撤销本店订单（与核销一致的校验规则）
+    if (merchantUserId && order.package_id) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('merchant_id')
+        .eq('id', order.package_id)
+        .maybeSingle();
+      const { data: merchantUser } = await this.client
+        .from('users')
+        .select('role, merchant_id')
+        .eq('user_id', merchantUserId)
+        .maybeSingle();
+
+      if (merchantUser && merchantUser.role === 'merchant' && pkg) {
+        if (Number(pkg.merchant_id) !== Number(merchantUser.merchant_id)) {
+          throw new BadRequestException('该订单属于其他门店，无权撤销');
+        }
+      }
+    }
+
+    const { data, error } = await this.client
+      .from('orders')
+      .update({
+        verified_count: 0,
+        status: 'paid',
+        verified_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`撤销核销失败: ${error.message}`);
+
+    // 回滚该订单的结算记录与商家余额（容错，不影响撤销主流程）
+    await this.settlementService.rollbackOrderSettlement(orderId);
+
+    // 通知用户核销已被撤销（容错，不影响主流程）
+    try {
+      if (order.user_id) {
+        await this.notificationService.notify(order.user_id, 'order_verify_revoked', {
+          package_name: order.package_name || '',
+          revoke_time: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.warn('核销撤销通知发送失败:', e);
+    }
+
+    return data as Order;
   }
 
   /** 统一核销查询：自动识别团购订单码或奖品兑换码 */

@@ -60,6 +60,17 @@ export class OrderController {
   }
 
   /** 统一核销（自动识别团购订单码/奖品兑换码） */
+  /** 撤销核销（核销后30分钟内） */
+  @Post(':id/revoke-verify')
+  @HttpCode(200)
+  async revokeVerify(
+    @Param('id') id: string,
+    @Body() body: { merchant_user_id?: string },
+  ) {
+    const result = await this.orderService.revokeVerify(id, body.merchant_user_id);
+    return { code: 200, data: result, msg: '核销已撤销，订单恢复待使用' };
+  }
+
   @Post('unified-verify/:code')
   @HttpCode(200)
   async unifiedVerify(@Param('code') code: string, @Body() body: { verify_count?: number; merchant_user_id?: string }) {

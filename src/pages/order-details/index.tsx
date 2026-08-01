@@ -35,6 +35,7 @@ export default function OrderDetailsPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [revokingId, setRevokingId] = useState('');
 
   useEffect(() => {
     const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
@@ -71,6 +72,45 @@ export default function OrderDetailsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 撤销核销剩余时间（分钟）：核销后30分钟内可撤销，返回0表示不可撤销
+  const getRevokeRemainingMin = (order: OrderItem): number => {
+    if (!order.verified_at || !order.verified_count || order.verified_count <= 0) return 0;
+    const elapsed = Date.now() - new Date(order.verified_at).getTime();
+    const remaining = 30 * 60 * 1000 - elapsed;
+    return remaining > 0 ? Math.ceil(remaining / 60000) : 0;
+  };
+
+  // 撤销核销
+  const handleRevoke = (order: OrderItem) => {
+    Taro.showModal({
+      title: '撤销核销',
+      content: `撤销后订单「${order.package_name}」将恢复为待使用状态，顾客需重新出示核销码。确定撤销吗？`,
+      confirmText: '确定撤销',
+      confirmColor: '#FF4757',
+      success: async (modalRes) => {
+        if (!modalRes.confirm) return;
+        setRevokingId(order.id);
+        try {
+          const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+          await Network.request({
+            url: `/api/orders/${order.id}/revoke-verify`,
+            method: 'POST',
+            data: { merchant_user_id: userId },
+          });
+          Taro.showToast({ title: '已撤销核销', icon: 'success' });
+          if (merchantInfo) {
+            fetchOrders(merchantInfo.id, activeTab);
+          }
+        } catch (err: any) {
+          console.error('撤销核销失败:', err);
+          Taro.showToast({ title: err?.data?.message || '撤销失败，请重试', icon: 'none' });
+        } finally {
+          setRevokingId('');
+        }
+      },
+    });
   };
 
   const handleTabChange = (tab: string) => {
@@ -228,6 +268,7 @@ export default function OrderDetailsPage() {
         ) : (
           orders.map((order) => {
             const badge = getStatusBadge(order.status);
+            const remainingMin = getRevokeRemainingMin(order);
             return (
               <Card key={order.id} className="mb-3">
                 <CardContent className="p-4">
@@ -259,6 +300,29 @@ export default function OrderDetailsPage() {
                       )}
                     </View>
                   </View>
+                  {/* 撤销核销：核销后30分钟内可撤销，超时不可撤销 */}
+                  {order.verified_count > 0 && order.verified_at && (
+                    <View className="flex flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                      <Text className="text-xs text-gray-400">
+                        核销于 {formatDate(order.verified_at)}
+                      </Text>
+                      {remainingMin > 0 ? (
+                        <View className="flex flex-row items-center gap-2">
+                          <Text className="text-xs text-orange-400">{remainingMin}分钟内可撤销</Text>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={revokingId === order.id}
+                            onClick={() => handleRevoke(order)}
+                          >
+                            <Text className="block text-xs">{revokingId === order.id ? '撤销中' : '撤销核销'}</Text>
+                          </Button>
+                        </View>
+                      ) : (
+                        <Text className="text-xs text-gray-300">超30分钟不可撤销</Text>
+                      )}
+                    </View>
+                  )}
                 </CardContent>
               </Card>
             );

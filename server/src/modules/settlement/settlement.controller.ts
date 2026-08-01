@@ -5,6 +5,21 @@ import { SettlementService } from './settlement.service';
 export class SettlementController {
   constructor(private readonly settlementService: SettlementService) {}
 
+  /**
+   * 历史补账：为已核销但缺少结算记录的订单补建结算（仅超级管理员）
+   * POST /api/settlement/backfill
+   */
+  @Post('backfill')
+  @HttpCode(200)
+  async backfill(@Body() body: { admin_user_id?: string }) {
+    const result = await this.settlementService.backfillSettlements(body.admin_user_id || '');
+    return {
+      code: 200,
+      data: result,
+      msg: `补账完成：共 ${result.total} 笔已核销订单，新增 ${result.created} 条结算记录，跳过 ${result.skipped} 条`,
+    };
+  }
+
   // ==================== 套餐结算配置 ====================
 
   /** 获取套餐结算配置 */

@@ -33,6 +33,39 @@ export default function VerificationPage() {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any; prize?: any } | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  // 撤销核销（核销后30分钟内）
+  const handleRevokeVerify = (orderId: string) => {
+    Taro.showModal({
+      title: '撤销核销',
+      content: '撤销后该订单将恢复为待使用状态，确定撤销吗？',
+      confirmText: '确定撤销',
+      confirmColor: '#FF4757',
+      success: async (modalRes) => {
+        if (!modalRes.confirm) return;
+        setRevoking(true);
+        try {
+          console.log('[Verification] 撤销核销请求: POST /api/orders/' + orderId + '/revoke-verify');
+          const res = await Network.request({
+            url: `/api/orders/${orderId}/revoke-verify`,
+            method: 'POST',
+            data: { ...(currentUserId && { merchant_user_id: currentUserId }) },
+          });
+          console.log('[Verification] 撤销核销响应:', res.data);
+          const revokeResult = (res.data as any)?.data;
+          setVerifyResult({ success: true, message: '核销已撤销，订单恢复待使用', order: revokeResult });
+          Taro.showToast({ title: '已撤销核销', icon: 'success' });
+        } catch (err: any) {
+          console.error('[Verification] 撤销核销失败:', err);
+          const errMsg = err?.data?.message || '撤销失败，请重试';
+          Taro.showToast({ title: errMsg, icon: 'none' });
+        } finally {
+          setRevoking(false);
+        }
+      },
+    });
+  };
   const [verifyTarget, setVerifyTarget] = useState<any>(null);
   const [verifyCount, setVerifyCount] = useState(1);
   const [verifyFailReason, setVerifyFailReason] = useState<string | null>(null);
@@ -328,6 +361,19 @@ export default function VerificationPage() {
                   <Text className="block text-xs text-gray-500">
                     金额：¥{verifyResult.order.price} · 共{verifyResult.order.quantity || 1}份 · 已核销{verifyResult.order.verified_count || 0}份
                   </Text>
+                  {verifyResult.order.verified_count > 0 && (
+                    <View className="flex flex-row items-center justify-between mt-2 pt-2 border-t border-gray-200">
+                      <Text className="text-xs text-orange-400">30分钟内可撤销</Text>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={revoking}
+                        onClick={() => handleRevokeVerify(verifyResult.order!.id)}
+                      >
+                        <Text className="block text-xs">{revoking ? '撤销中' : '撤销核销'}</Text>
+                      </Button>
+                    </View>
+                  )}
                 </View>
               )}
               {verifyResult.prize && (
