@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components';
-import { useState, useEffect, useCallback } from 'react';
-import Taro from '@tarojs/taro';
+import { useState, useCallback } from 'react';
+import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import { getNavSafeAreaTop } from '@/lib/utils';
@@ -116,33 +116,45 @@ const UserCenterPage = () => {
     }
   }, []);
 
-  useEffect(() => {
+  // 每次进入页面都校验登录态：未登录直接跳登录页
+  // 先切回首页再压入登录页，保证用户从登录页返回时落在首页，不会反复横跳
+  useDidShow(() => {
+    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
     const savedUserId = Taro.getStorageSync('user_id');
+
+    if (!loggedIn || !savedUserId) {
+      setLoading(false);
+      Taro.switchTab({
+        url: '/pages/index/index',
+        success: () => {
+          Taro.navigateTo({ url: '/pages/login/index' });
+        }
+      });
+      return;
+    }
+
+    // 已有数据时静默刷新，避免闪全屏加载态
+    if (!profile) setLoading(true);
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
+    setUserId(savedUserId);
+    setNickName(savedNickName || '');
+    setAvatarUrl(savedAvatar || '');
+    // 登录/注册用户到后端
+    Network.request({
+      url: '/api/users/login',
+      method: 'POST',
+      // 不传 nick_name/avatar_url，避免本地旧缓存覆盖数据库最新资料
+      data: { user_id: savedUserId }
+    }).then((res) => {
+      console.log('[UserCenter] login:', res.data);
+      if (res.data?.code === 200 && res.data?.data) {
+        setProfile(res.data.data);
+      }
+    }).catch((e) => console.error('用户登录失败:', e));
 
-    if (savedUserId) {
-      setUserId(savedUserId);
-      setNickName(savedNickName || '');
-      setAvatarUrl(savedAvatar || '');
-      // 登录/注册用户到后端
-      Network.request({
-        url: '/api/users/login',
-        method: 'POST',
-        // 不传 nick_name/avatar_url，避免本地旧缓存覆盖数据库最新资料
-        data: { user_id: savedUserId }
-      }).then((res) => {
-        console.log('[UserCenter] login:', res.data);
-        if (res.data?.code === 200 && res.data?.data) {
-          setProfile(res.data.data);
-        }
-      }).catch((e) => console.error('用户登录失败:', e));
-
-      Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId), fetchLotteryCount(savedUserId)]).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [fetchProfile, fetchStats, fetchPermissions, fetchLotteryCount]);
+    Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId), fetchLotteryCount(savedUserId)]).finally(() => setLoading(false));
+  });
 
   const handleLogin = () => {
     Taro.navigateTo({ url: '/pages/login/index' });
@@ -228,23 +240,11 @@ const UserCenterPage = () => {
     );
   }
 
-  // 未登录状态
+  // 未登录状态：useDidShow 已触发跳转登录页，此处仅作过渡展示
   if (!userId) {
     return (
-      <View className="min-h-screen bg-gray-50">
-        <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pb-12 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() + 16 }}>
-          <View className="w-20 h-20 rounded-full bg-white bg-opacity-20 flex items-center justify-center mb-4">
-            <User size={40} color="#FFFFFF" />
-          </View>
-          <Text className="text-white text-lg font-semibold block">未登录</Text>
-          <Text className="text-white text-sm block mt-1" style={{ opacity: 0.7 }}>登录后享受更多会员权益</Text>
-          <View
-            className="mt-6 bg-white rounded-full px-8 py-3"
-            onClick={handleLogin}
-          >
-            <Text className="text-[#FF4757] font-semibold">立即登录</Text>
-          </View>
-        </View>
+      <View className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Text className="text-gray-400">正在前往登录...</Text>
       </View>
     );
   }
