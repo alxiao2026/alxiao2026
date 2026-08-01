@@ -115,7 +115,7 @@ const LoginPage: React.FC = () => {
     finishLogin();
   };
 
-  const handleResponse = (res: { data: ApiResponse<LoginUser> }) => {
+  const handleResponse = (res: { data: ApiResponse<LoginUser> }, options?: { skipProfileGuide?: boolean }) => {
     console.log('[Login] response raw data:', res.data);
     const body = res.data;
     if (body.code === 200) {
@@ -135,8 +135,10 @@ const LoginPage: React.FC = () => {
       Taro.setStorageSync('nick_name', user.nick_name || '');
       Taro.setStorageSync('avatar_url', user.avatar_url || '');
 
-      // 资料缺失（无头像 / 无昵称 / 仍是系统随机昵称）时，引导完善微信头像昵称（仅微信端）
+      // 资料缺失（无头像 / 无昵称 / 仍是系统随机昵称）时，引导完善微信头像昵称
+      // 仅微信一键登录触发；密码登录直接进入个人中心，资料可在个人中心自行编辑
       const needProfile =
+        !options?.skipProfileGuide &&
         isMiniApp &&
         (!user.avatar_url || !user.nick_name || String(user.nick_name).startsWith('邻居'));
       if (needProfile) {
@@ -219,7 +221,7 @@ const LoginPage: React.FC = () => {
           nick_name: pwdNickName.trim() || undefined
         }
       });
-      handleResponse(res);
+      handleResponse(res, { skipProfileGuide: true });
     } catch (e) {
       console.error('[Login] password login error:', e);
       const errMsg = (e as { data?: { message?: string } })?.data?.message || '登录失败，请重试';
