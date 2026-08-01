@@ -228,14 +228,13 @@ const IndexPage = () => {
   return (
   <>
     <View className="min-h-screen bg-gray-50">
-      {/* ===== 状态栏固定白色背景（不随页面滚动，保证系统时间/信号清晰可读） ===== */}
+      {/* ===== 状态栏固定背景（与品牌区同色系淡粉，无色差；不随页面滚动） ===== */}
       <View
-        className="bg-white"
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, height: getNavSafeAreaTop(), zIndex: 100 }}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, height: getNavSafeAreaTop(), zIndex: 100, backgroundColor: '#FFECEF' }}
       />
       <ScrollView className="flex-1" scrollY>
-        {/* ===== 顶部品牌区（居中极简，动态避让状态栏与胶囊按钮） ===== */}
-        <View className="px-5 pb-4 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
+        {/* ===== 顶部品牌区（淡粉渐变与状态栏无缝衔接，居中极简，动态避让状态栏与胶囊按钮） ===== */}
+        <View className="px-5 pb-4 flex flex-col items-center bg-gradient-to-b from-[#FFECEF] via-[#FFF5F6] to-transparent" style={{ paddingTop: getNavSafeAreaTop() }}>
           <Text className="block text-2xl font-bold text-[#FF4757]">膨胀团</Text>
           <Text className="block text-xs text-gray-400 mt-1">给生活来点小惊喜 · 每单都有好运 ✨</Text>
         </View>
