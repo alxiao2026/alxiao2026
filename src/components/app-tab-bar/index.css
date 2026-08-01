@@ -1,0 +1,33 @@
+/* H5 端底部导航动效（小程序端使用 custom-tab-bar，互不影响） */
+
+.app-tabbar-pop {
+  animation: app-tabbar-pop 0.28s ease;
+}
+
+@keyframes app-tabbar-pop {
+  0% {
+    transform: scale(0.75);
+  }
+  55% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 中间 logo：渐变描边 + 呼吸光效 */
+.app-tabbar-logo {
+  background: linear-gradient(135deg, #ff4757, #ff6b9d, #ffa502);
+  animation: app-tabbar-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes app-tabbar-breathe {
+  0%,
+  100% {
+    box-shadow: 0 6px 16px rgba(255, 71, 87, 0.35);
+  }
+  50% {
+    box-shadow: 0 6px 26px rgba(255, 107, 157, 0.6);
+  }
+}
