@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
 import { ChevronLeft, Phone, Lock, User } from 'lucide-react-taro';
+import './index.css';
 
 type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
 
@@ -168,10 +169,35 @@ const LoginPage: React.FC = () => {
     </View>
   );
 
+  // 带图标输入框（白底淡红边框 + 深色文字，输入内容清晰可见）
+  const renderField = (
+    icon: React.ReactNode,
+    placeholder: string,
+    value: string,
+    onChange: (v: string) => void,
+    options?: { password?: boolean; number?: boolean; maxLength?: number }
+  ) => (
+    <InputGroup className="h-12 rounded-full border-2 border-[#FFD6DC] bg-white">
+      <InputGroupAddon align="inline-start" className="pl-4">
+        {icon}
+      </InputGroupAddon>
+      <InputGroupInput
+        className="text-base text-gray-900"
+        placeholderClass="text-gray-400"
+        placeholder={placeholder}
+        password={options?.password}
+        type={options?.number ? 'number' : 'text'}
+        maxlength={options?.maxLength}
+        value={value}
+        onInput={(e) => onChange(e.detail.value)}
+      />
+    </InputGroup>
+  );
+
   // ===== 视图二：手机号密码登录 =====
   if (view === 'password') {
     return (
-      <View className="min-h-screen bg-white">
+      <View className="min-h-screen bg-gradient-to-b from-[#FFECEF] via-white to-white">
         {/* 顶部返回 */}
         <View className="flex flex-row items-center px-4 pt-4">
           <View className="p-2" onClick={() => setView('select')}>
@@ -181,45 +207,27 @@ const LoginPage: React.FC = () => {
         </View>
 
         {/* 表单 */}
-        <View className="px-8 mt-10 flex flex-col gap-4">
-          <InputGroup className="h-12 rounded-full border-gray-200 bg-gray-50">
-            <InputGroupAddon align="inline-start" className="pl-4">
-              <Phone size={18} color="#9CA3AF" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="text-base"
-              placeholder="请输入手机号"
-              type="number"
-              maxlength={11}
-              value={pwdPhone}
-              onInput={(e) => setPwdPhone(e.detail.value)}
-            />
-          </InputGroup>
-
-          <InputGroup className="h-12 rounded-full border-gray-200 bg-gray-50">
-            <InputGroupAddon align="inline-start" className="pl-4">
-              <Lock size={18} color="#9CA3AF" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="text-base"
-              placeholder="请输入密码（至少6位）"
-              password
-              value={password}
-              onInput={(e) => setPassword(e.detail.value)}
-            />
-          </InputGroup>
-
-          <InputGroup className="h-12 rounded-full border-gray-200 bg-gray-50">
-            <InputGroupAddon align="inline-start" className="pl-4">
-              <User size={18} color="#9CA3AF" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="text-base"
-              placeholder="昵称（选填，注册时使用）"
-              value={pwdNickName}
-              onInput={(e) => setPwdNickName(e.detail.value)}
-            />
-          </InputGroup>
+        <View className="px-8 mt-8 flex flex-col gap-4">
+          {renderField(
+            <Phone size={18} color="#FF4757" />,
+            '请输入手机号',
+            pwdPhone,
+            setPwdPhone,
+            { number: true, maxLength: 11 }
+          )}
+          {renderField(
+            <Lock size={18} color="#FF4757" />,
+            '请输入密码（至少6位）',
+            password,
+            setPassword,
+            { password: true }
+          )}
+          {renderField(
+            <User size={18} color="#FF4757" />,
+            '昵称（选填，注册时使用）',
+            pwdNickName,
+            setPwdNickName
+          )}
 
           <Button
             className="w-full h-12 rounded-full text-base font-semibold border-0 text-white mt-4"
@@ -237,22 +245,29 @@ const LoginPage: React.FC = () => {
     );
   }
 
-  // ===== 视图一：登录方式选择（简洁首页）=====
+  // ===== 视图一：登录方式选择（年轻活泼首页）=====
   return (
-    <View className="min-h-screen bg-white flex flex-col">
+    <View className="min-h-screen bg-gradient-to-b from-[#FFECEF] via-white to-white flex flex-col relative overflow-hidden">
+      {/* 漂浮 emoji 装饰 */}
+      <Text className="absolute login-float" style={{ top: '72px', left: '28px', fontSize: '24px' }}>🎈</Text>
+      <Text className="absolute login-float-delay" style={{ top: '52px', right: '32px', fontSize: '22px' }}>🎉</Text>
+      <Text className="absolute login-float-delay" style={{ top: '190px', right: '54px', fontSize: '18px' }}>✨</Text>
+      <Text className="absolute login-float" style={{ top: '210px', left: '46px', fontSize: '20px' }}>🎁</Text>
+
       {/* Logo 区 */}
-      <View className="flex flex-col items-center mt-28">
+      <View className="flex flex-col items-center mt-24">
         <View
-          className="w-24 h-24 rounded-full bg-white flex items-center justify-center"
-          style={{ boxShadow: '0 8px 24px rgba(255,71,87,0.18)' }}
+          className="w-24 h-24 rounded-full flex items-center justify-center login-logo-breathe"
+          style={{ background: 'linear-gradient(135deg,#FF4757,#FF8A5C)' }}
         >
-          <Text className="text-4xl font-bold" style={{ color: '#FF4757' }}>膨</Text>
+          <Text className="text-4xl font-bold text-white">膨</Text>
         </View>
-        <Text className="block text-base text-gray-400 mt-4">给生活来点小惊喜</Text>
+        <Text className="block text-2xl font-bold text-gray-900 mt-4">膨胀团</Text>
+        <Text className="block text-sm text-gray-400 mt-1">给生活来点小惊喜 ✨</Text>
       </View>
 
       {/* 登录按钮区 */}
-      <View className="px-8 mt-24">
+      <View className="px-8 mt-20">
         {/* 主按钮：微信授权登录（手机号一键登录） */}
         {isMiniApp && (
           <Button
@@ -269,7 +284,7 @@ const LoginPage: React.FC = () => {
         {/* 次按钮：跳转到手机号密码登录 */}
         <Button
           variant="outline"
-          className="w-full h-12 rounded-full text-base font-medium border-gray-300 text-gray-800 bg-white"
+          className="w-full h-12 rounded-full text-base font-medium border-2 border-[#FFD6DC] text-[#FF4757] bg-white"
           onClick={() => setView('password')}
         >
           手机号登录/注册

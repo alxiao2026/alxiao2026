@@ -1,0 +1,33 @@
+/* 登录页漂浮装饰动画 */
+@keyframes loginFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.login-float {
+  animation: loginFloat 3s ease-in-out infinite;
+}
+
+.login-float-delay {
+  animation: loginFloat 3s ease-in-out 1.5s infinite;
+}
+
+/* Logo 呼吸光环 */
+@keyframes loginLogoBreathe {
+  0%,
+  100% {
+    box-shadow: 0 10px 24px rgba(255, 71, 87, 0.35);
+  }
+  50% {
+    box-shadow: 0 10px 36px rgba(255, 71, 87, 0.55);
+  }
+}
+
+.login-logo-breathe {
+  animation: loginLogoBreathe 2.4s ease-in-out infinite;
+}
