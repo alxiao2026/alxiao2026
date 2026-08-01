@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import { View, Text, Image, ScrollView, Picker } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Search, X, ChevronDown, Ellipsis, Store, Sparkles, Timer, Flame, Package as PackageIcon } from 'lucide-react-taro';
 
 interface Package {
@@ -21,6 +22,7 @@ interface Package {
   sales_count: number;
   is_active: boolean;
   merchant_id: string | null;
+  sale_start_date: string | null;
   sale_end_date: string | null;
   created_at: string;
   updated_at: string | null;
@@ -59,6 +61,13 @@ export default function ProductManagePage() {
   const [merchantLoaded, setMerchantLoaded] = useState(false);
   const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState('');
+  const [stockTarget, setStockTarget] = useState<Package | null>(null);
+  const [stockInput, setStockInput] = useState('');
+  const [savingStock, setSavingStock] = useState(false);
+  const [dateTarget, setDateTarget] = useState<Package | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
 
   const isSuperAdmin = Taro.getStorageSync('role_code') === 'super_admin';
 
@@ -156,6 +165,84 @@ export default function ProductManagePage() {
       fetchPackages();
     } catch (err) {
       console.error('切换状态失败:', err);
+    }
+  };
+
+  /** 打开改库存弹窗 */
+  const openStockDialog = (pkg: Package) => {
+    setStockTarget(pkg);
+    setStockInput(pkg.stock !== null && pkg.stock !== undefined ? String(pkg.stock) : '0');
+  };
+
+  const handleSaveStock = async () => {
+    if (!stockTarget || savingStock) return;
+    const n = Number(stockInput);
+    if (!stockInput.trim() || Number.isNaN(n) || n < 0) {
+      Taro.showToast({ title: '请输入有效库存数量', icon: 'none' });
+      return;
+    }
+    const stockValue = Math.trunc(n);
+    setSavingStock(true);
+    try {
+      await Network.request({
+        url: `/api/packages/${stockTarget.id}`,
+        method: 'PUT',
+        data: { stock: stockValue },
+      });
+      Taro.showToast({ title: '库存已更新', icon: 'success' });
+      setStockTarget(null);
+      fetchPackages();
+    } catch (err) {
+      console.error('更新库存失败:', err);
+      Taro.showToast({ title: '更新失败', icon: 'none' });
+    } finally {
+      setSavingStock(false);
+    }
+  };
+
+  /** 把 "2026/3/4" 或 "2026-03-04" 统一转成 Picker 需要的 YYYY-MM-DD */
+  const toPickerDate = (s?: string | null): string => {
+    if (!s) return '';
+    const t = new Date(s.replace(/\//g, '-'));
+    if (Number.isNaN(t.getTime())) return '';
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, '0');
+    const d = String(t.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  /** 打开改售卖时间弹窗 */
+  const openDateDialog = (pkg: Package) => {
+    setDateTarget(pkg);
+    setStartDate(toPickerDate(pkg.sale_start_date));
+    setEndDate(toPickerDate(pkg.sale_end_date));
+  };
+
+  const handleSaveDate = async () => {
+    if (!dateTarget || savingDate) return;
+    if (!startDate) {
+      Taro.showToast({ title: '请选择售卖开始日期', icon: 'none' });
+      return;
+    }
+    if (endDate && endDate < startDate) {
+      Taro.showToast({ title: '结束日期不能早于开始日期', icon: 'none' });
+      return;
+    }
+    setSavingDate(true);
+    try {
+      await Network.request({
+        url: `/api/packages/${dateTarget.id}`,
+        method: 'PUT',
+        data: { sale_start_date: startDate, sale_end_date: endDate || null },
+      });
+      Taro.showToast({ title: '售卖时间已更新', icon: 'success' });
+      setDateTarget(null);
+      fetchPackages();
+    } catch (err) {
+      console.error('更新售卖时间失败:', err);
+      Taro.showToast({ title: '更新失败', icon: 'none' });
+    } finally {
+      setSavingDate(false);
     }
   };
 
@@ -364,10 +451,10 @@ export default function ProductManagePage() {
                       )}
                     </View>
                     <View className="flex flex-row gap-2">
-                      <Button variant="outline" size="sm" className="text-xs">
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => openDateDialog(pkg)}>
                         <Text className="block">改时间</Text>
                       </Button>
-                      <Button variant="outline" size="sm" className="text-xs">
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => openStockDialog(pkg)}>
                         <Text className="block">改库存</Text>
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => Taro.redirectTo({ url: `/pages/package-admin/index?id=${pkg.id}` })}>
@@ -388,6 +475,81 @@ export default function ProductManagePage() {
           <Text className="block text-white text-sm font-bold">创建商品</Text>
         </View>
       </View>
+
+      {/* 改库存弹窗 */}
+      <Dialog open={!!stockTarget} onOpenChange={(open) => { if (!open) setStockTarget(null); }}>
+        <DialogContent className="bg-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>修改库存</DialogTitle>
+          </DialogHeader>
+          <View className="py-2">
+            <Text className="block text-sm text-gray-500 mb-3">「{stockTarget?.name}」当前库存：{stockTarget?.stock ?? 0}</Text>
+            <View className="bg-gray-50 rounded-xl px-3 py-2">
+              <Input
+                type="number"
+                value={stockInput}
+                onInput={(e) => setStockInput(e.detail.value)}
+                placeholder="请输入新的库存数量"
+                placeholderClass="text-gray-400"
+                className="w-full text-sm border-0 bg-transparent"
+              />
+            </View>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setStockTarget(null)}>
+              <Text className="block text-sm text-gray-600">取消</Text>
+            </Button>
+            <Button size="sm" className="bg-[#FF4757]" onClick={handleSaveStock} disabled={savingStock}>
+              <Text className="block text-sm text-white">{savingStock ? '保存中...' : '保存'}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 改售卖时间弹窗 */}
+      <Dialog open={!!dateTarget} onOpenChange={(open) => { if (!open) setDateTarget(null); }}>
+        <DialogContent className="bg-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>修改售卖时间</DialogTitle>
+          </DialogHeader>
+          <View className="py-2">
+            <Text className="block text-sm text-gray-500 mb-3">「{dateTarget?.name}」</Text>
+            <Text className="block text-xs text-gray-400 mb-1">售卖开始日期</Text>
+            <Picker mode="date" value={startDate} onChange={(e) => setStartDate(e.detail.value as string)}>
+              <View className="bg-gray-50 rounded-xl px-3 py-2 mb-3 flex flex-row items-center justify-between">
+                <Text className={`block text-sm ${startDate ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {startDate || '请选择开始日期'}
+                </Text>
+                <ChevronDown size={14} color="#9ca3af" />
+              </View>
+            </Picker>
+            <Text className="block text-xs text-gray-400 mb-1">售卖结束日期（不选则为长期售卖）</Text>
+            <Picker mode="date" value={endDate} start={startDate} onChange={(e) => setEndDate(e.detail.value as string)}>
+              <View className="bg-gray-50 rounded-xl px-3 py-2 flex flex-row items-center justify-between">
+                <Text className={`block text-sm ${endDate ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {endDate || '请选择结束日期'}
+                </Text>
+                <View className="flex flex-row items-center gap-2">
+                  {endDate.length > 0 && (
+                    <View onClick={(e) => { e.stopPropagation(); setEndDate(''); }}>
+                      <X size={14} color="#9ca3af" />
+                    </View>
+                  )}
+                  <ChevronDown size={14} color="#9ca3af" />
+                </View>
+              </View>
+            </Picker>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDateTarget(null)}>
+              <Text className="block text-sm text-gray-600">取消</Text>
+            </Button>
+            <Button size="sm" className="bg-[#FF4757]" onClick={handleSaveDate} disabled={savingDate}>
+              <Text className="block text-sm text-white">{savingDate ? '保存中...' : '保存'}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
