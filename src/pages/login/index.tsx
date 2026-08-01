@@ -10,8 +10,9 @@ import './index.css';
 type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
 
 interface LoginUser {
-  id: string;
-  username: string;
+  id?: string;
+  user_id?: string;
+  username?: string;
   nick_name: string;
   phone: string;
   role: UserRole;
@@ -46,16 +47,20 @@ const LoginPage: React.FC = () => {
     const body = res.data;
     if (body.code === 200) {
       const user = body.data;
-      if (!user || !user.id) {
+      // 后端返回的用户主键为 user_id（supabase snake_case），兼容 id 字段
+      const userId = user?.user_id || user?.id;
+      if (!user || !userId) {
         Taro.showToast({ title: '登录响应异常', icon: 'none' });
         return;
       }
-      Taro.setStorageSync('user_id', user.id);
+      Taro.setStorageSync('is_logged_in', true);
+      Taro.setStorageSync('user_id', userId);
       Taro.setStorageSync('user_role', user.role);
       Taro.setStorageSync('role_code', user.role_code);
       Taro.setStorageSync('merchant_id', user.merchant_id || '');
       Taro.setStorageSync('user_phone', user.phone || '');
       Taro.setStorageSync('nick_name', user.nick_name || '');
+      Taro.setStorageSync('avatar_url', user.avatar_url || '');
 
       Taro.showToast({ title: '登录成功', icon: 'success' });
       setTimeout(() => {
