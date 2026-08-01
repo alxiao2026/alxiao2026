@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text } from '@tarojs/components';
+import React, { useRef, useState } from 'react';
+import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
-import { ChevronLeft, Check, Phone, Lock, User } from 'lucide-react-taro';
+import { ChevronLeft, Check, Camera, Phone, Lock, User } from 'lucide-react-taro';
 import './index.css';
 
 type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
@@ -42,6 +43,78 @@ const LoginPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
+  // 登录成功后的资料完善弹窗（微信头像 + 昵称）
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [wxAvatar, setWxAvatar] = useState(''); // 已上传到 TOS 的头像 URL
+  const [wxAvatarLocal, setWxAvatarLocal] = useState(''); // chooseAvatar 返回的本地临时路径（预览用）
+  const [wxNickname, setWxNickname] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const finishedRef = useRef(false);
+
+  /** 登录流程收尾：提示并进入「我的」页面（防重入） */
+  const finishLogin = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    Taro.showToast({ title: '登录成功', icon: 'success' });
+    setTimeout(() => {
+      Taro.reLaunch({ url: '/pages/user-center/index' });
+    }, 500);
+  };
+
+  /** chooseAvatar 回调：拿到微信头像临时路径后立即上传 TOS */
+  const handleChooseAvatar = async (e: { detail?: { avatarUrl?: string } }) => {
+    const localPath = e.detail?.avatarUrl;
+    console.log('[Login] chooseAvatar:', localPath);
+    if (!localPath) return;
+    setWxAvatarLocal(localPath);
+    setAvatarUploading(true);
+    try {
+      const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file' });
+      console.log('[Login] avatar upload response:', res.data);
+      const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      if (data?.code === 200 && data?.data?.url) {
+        setWxAvatar(data.data.url);
+      } else {
+        Taro.showToast({ title: '头像上传失败，可稍后再试', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('[Login] avatar upload error:', err);
+      Taro.showToast({ title: '头像上传失败，可稍后再试', icon: 'none' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  /** 保存头像昵称到用户资料并收尾登录 */
+  const handleSaveProfile = async () => {
+    if (savingProfile) return;
+    const userId = Taro.getStorageSync('user_id');
+    const nickname = wxNickname.trim();
+    if (!nickname && !wxAvatar) {
+      finishLogin();
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const body: Record<string, string> = {};
+      if (nickname) body.nick_name = nickname;
+      if (wxAvatar) body.avatar_url = wxAvatar;
+      const res = await Network.request({ url: `/api/users/${userId}`, method: 'PUT', data: body });
+      console.log('[Login] update profile response:', res.data);
+      const rbody = res.data as { code?: number };
+      if (rbody?.code === 200) {
+        if (nickname) Taro.setStorageSync('nick_name', nickname);
+        if (wxAvatar) Taro.setStorageSync('avatar_url', wxAvatar);
+      }
+    } catch (err) {
+      console.error('[Login] update profile error:', err);
+    } finally {
+      setSavingProfile(false);
+    }
+    finishLogin();
+  };
+
   const handleResponse = (res: { data: ApiResponse<LoginUser> }) => {
     console.log('[Login] response raw data:', res.data);
     const body = res.data;
@@ -62,10 +135,15 @@ const LoginPage: React.FC = () => {
       Taro.setStorageSync('nick_name', user.nick_name || '');
       Taro.setStorageSync('avatar_url', user.avatar_url || '');
 
-      Taro.showToast({ title: '登录成功', icon: 'success' });
-      setTimeout(() => {
-        Taro.reLaunch({ url: '/pages/user-center/index' });
-      }, 1200);
+      // 资料缺失（无头像 / 无昵称 / 仍是系统随机昵称）时，引导完善微信头像昵称（仅微信端）
+      const needProfile =
+        isMiniApp &&
+        (!user.avatar_url || !user.nick_name || String(user.nick_name).startsWith('邻居'));
+      if (needProfile) {
+        setProfileDialogOpen(true);
+        return;
+      }
+      finishLogin();
     } else {
       Taro.showToast({ title: body.msg || '登录失败', icon: 'none' });
     }
@@ -298,6 +376,71 @@ const LoginPage: React.FC = () => {
 
       {/* 协议勾选 */}
       <View className="mt-14">{renderAgreement}</View>
+
+      {/* 登录成功后的微信资料完善弹窗（头像 + 昵称） */}
+      <Dialog
+        open={profileDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) finishLogin();
+        }}
+      >
+        <DialogContent className="rounded-3xl border-0 bg-white p-6">
+          <View className="flex flex-col items-center w-full">
+            <Text className="block text-lg font-bold text-gray-900 text-center">完善你的资料</Text>
+            <Text className="block text-xs text-gray-400 text-center mt-1">
+              头像和昵称将展示在团团活动中
+            </Text>
+
+            {/* 微信头像选择（chooseAvatar 默认提供微信头像） */}
+            <View className="mt-6 mb-5 flex flex-col items-center">
+              <Button
+                plain
+                openType="chooseAvatar"
+                onChooseAvatar={handleChooseAvatar}
+                className="w-20 h-20 rounded-full p-0 border-0 bg-transparent overflow-hidden"
+              >
+                {wxAvatarLocal ? (
+                  <Image src={wxAvatarLocal} className="w-20 h-20 rounded-full" mode="aspectFill" />
+                ) : (
+                  <View className="w-20 h-20 rounded-full bg-[#FFF0F2] border-2 border-dashed border-[#FFB3BD] flex items-center justify-center">
+                    <Camera size={28} color="#FF4757" />
+                  </View>
+                )}
+              </Button>
+              <Text className="block text-xs text-gray-400 text-center mt-2">
+                {avatarUploading ? '头像上传中...' : '点圆圈选择微信头像'}
+              </Text>
+            </View>
+
+            {/* 微信昵称输入（键盘上方可一键填入微信昵称） */}
+            <InputGroup className="rounded-full h-11 border-2 border-[#FFD6DC] bg-white w-full">
+              <InputGroupAddon align="inline-start" className="pl-3 pr-1">
+                <User size={16} color="#FF4757" />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="nickname"
+                className="text-gray-900"
+                placeholder="点我填写微信昵称"
+                placeholderClass="text-gray-400"
+                value={wxNickname}
+                onInput={(e) => setWxNickname(e.detail.value)}
+              />
+            </InputGroup>
+
+            <Button
+              className="w-full h-12 rounded-full text-base font-semibold text-white border-0 mt-5"
+              style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF8A5C 100%)' }}
+              disabled={savingProfile || avatarUploading}
+              onClick={handleSaveProfile}
+            >
+              {savingProfile ? '保存中...' : '完成'}
+            </Button>
+            <Text className="block text-xs text-gray-400 text-center mt-3" onClick={finishLogin}>
+              暂不设置，直接登录
+            </Text>
+          </View>
+        </DialogContent>
+      </Dialog>
     </View>
   );
 };

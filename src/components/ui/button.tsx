@@ -39,6 +39,8 @@ export interface ButtonProps
   asChild?: boolean
   disabled?: boolean
   className?: string
+  /** 原生 Button 的 plain 模式（镂空、去默认边框背景），仅 openType 原生渲染分支生效 */
+  plain?: boolean
   /** 小程序开放能力（如 openType="share" 触发分享面板），传入后底层自动切换为原生 Button 渲染 */
   openType?: "share" | "contact" | "getPhoneNumber" | "openSetting" | "feedback" | "chooseAvatar" | "launchApp" | "agreePrivacyAuthorization"
   onGetPhoneNumber?: (e: { detail?: { encryptedData?: string; iv?: string; code?: string; errMsg?: string } }) => void
