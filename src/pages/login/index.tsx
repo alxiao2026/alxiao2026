@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
-import { ChevronLeft, Phone, Lock, User } from 'lucide-react-taro';
+import { ChevronLeft, Check, Phone, Lock, User } from 'lucide-react-taro';
 import './index.css';
 
 type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
@@ -147,25 +146,26 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // 协议勾选区（两种视图共用）
+  // 协议勾选区（两种视图共用）：整行可点击，扩大触控区域
   const renderAgreement = (
-    <View className="flex flex-row items-start justify-center px-6">
-      <View className="mt-1 mr-2">
-        <Checkbox
-          checked={agreed}
-          onCheckedChange={(v) => setAgreed(!!v)}
-          className="rounded-full border border-gray-300 bg-white"
-        />
+    <View
+      className="flex flex-row items-center justify-center px-6 py-2"
+      onClick={() => setAgreed(!agreed)}
+    >
+      <View
+        className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 mr-2 ${
+          agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
+        }`}
+      >
+        {agreed && <Check size={10} color="#fff" strokeWidth={3} />}
       </View>
-      <View className="flex-1" onClick={() => setAgreed(!agreed)}>
-        <Text className="text-xs text-gray-500 leading-5">
-          我已阅读并同意
-          <Text className="text-[#FF4757]">《用户服务协议》</Text>
-          、
-          <Text className="text-[#FF4757]">《隐私政策》</Text>
-          ，未注册的手机号将自动创建账号
-        </Text>
-      </View>
+      <Text className="flex-1 text-xs text-gray-500 leading-5">
+        我已阅读并同意
+        <Text className="text-[#FF4757]">《用户服务协议》</Text>
+        、
+        <Text className="text-[#FF4757]">《隐私政策》</Text>
+        ，未注册的手机号将自动创建账号
+      </Text>
     </View>
   );
 

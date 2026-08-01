@@ -22,7 +22,7 @@ const Checkbox = React.forwardRef<
 
   const handleClick = (e) => {
     if (disabled) return
-    e.stopPropagation()
+    e?.stopPropagation?.()
     const newChecked = !checked
     if (!isControlled) {
       setCheckedState(newChecked)
