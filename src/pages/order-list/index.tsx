@@ -105,7 +105,9 @@ export default function OrderList() {
         ))}
       </View>
 
-      <ScrollView scrollY className="flex-1 px-4 py-3">
+      {/* 注意：小程序 scroll-view 的 padding 不会收缩滚动内容宽度，padding 必须放在内部包裹 View 上 */}
+      <ScrollView scrollY className="flex-1">
+        <View className="px-4 py-3">
         {loading ? (
           <View className="flex items-center justify-center py-20">
             <Text className="block text-gray-400">加载中...</Text>
@@ -214,6 +216,7 @@ export default function OrderList() {
           })
         )}
         <View className="h-4" />
+        </View>
       </ScrollView>
     </View>
   )
