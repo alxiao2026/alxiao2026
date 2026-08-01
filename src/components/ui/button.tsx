@@ -61,9 +61,9 @@ const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
           disabled={disabled}
           plain
           className={cls}
-          onClick={props.onClick}
           onGetPhoneNumber={onGetPhoneNumber}
           onChooseAvatar={onChooseAvatar}
+          {...props}
         >
           {children}
         </TaroButton>

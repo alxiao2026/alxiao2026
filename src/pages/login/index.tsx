@@ -3,6 +3,7 @@ import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
 import { MessageCircle, Phone, Lock, User, ShieldCheck, Camera } from 'lucide-react-taro';
 import './index.css';
@@ -227,7 +228,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // 渲染输入框
+  // 渲染带图标的输入框（InputGroup 标准方案）
   const renderInput = (
     icon: React.ReactNode,
     placeholder: string,
@@ -236,74 +237,70 @@ const LoginPage: React.FC = () => {
     type: 'text' | 'number' | 'password' = 'text',
     maxLength?: number
   ) => (
-    <View className="flex flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-200">
-      {icon}
-      <View className="flex-1 ml-3">
-        <Input
-          className="w-full bg-transparent border-0 text-base"
-          style={{ height: '44px' }}
-          placeholder={placeholder}
-          type={type === 'password' ? 'text' : type}
-          password={type === 'password'}
-          maxlength={maxLength}
-          value={value}
-          onInput={(e) => onChange(e.detail.value)}
-        />
-      </View>
-    </View>
+    <InputGroup className="h-11 rounded-2xl border-gray-200 bg-gray-50">
+      <InputGroupAddon align="inline-start" className="pl-4">
+        {icon}
+      </InputGroupAddon>
+      <InputGroupInput
+        className="text-base"
+        placeholder={placeholder}
+        type={type === 'password' ? 'text' : type}
+        password={type === 'password'}
+        maxlength={maxLength}
+        value={value}
+        onInput={(e) => onChange(e.detail.value)}
+      />
+    </InputGroup>
   );
 
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 顶部品牌区：渐变 + 漂浮装饰 */}
-      <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5F6D] to-[#FF8A5C] px-6 pt-16 pb-20 flex flex-col items-center overflow-hidden">
+      <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5F6D] to-[#FF8A5C] px-6 pt-6 pb-10 flex flex-col items-center overflow-hidden">
         {/* 漂浮 emoji 装饰 */}
-        <Text className="absolute login-float" style={{ top: '60px', left: '24px', fontSize: '28px' }}>🎈</Text>
-        <Text className="absolute login-float-delay" style={{ top: '44px', right: '30px', fontSize: '24px' }}>🎉</Text>
-        <Text className="absolute login-float-delay" style={{ bottom: '72px', left: '44px', fontSize: '20px' }}>✨</Text>
-        <Text className="absolute login-float" style={{ bottom: '88px', right: '52px', fontSize: '22px' }}>🎁</Text>
+        <Text className="absolute login-float" style={{ top: '16px', left: '24px', fontSize: '24px' }}>🎈</Text>
+        <Text className="absolute login-float-delay" style={{ top: '12px', right: '30px', fontSize: '22px' }}>🎉</Text>
+        <Text className="absolute login-float-delay" style={{ bottom: '20px', left: '44px', fontSize: '18px' }}>✨</Text>
+        <Text className="absolute login-float" style={{ bottom: '28px', right: '52px', fontSize: '20px' }}>🎁</Text>
 
-        <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-3 login-logo-breathe">
-          <Text className="text-3xl font-bold" style={{ color: '#ff6a00' }}>膨</Text>
+        <View className="w-14 h-14 rounded-full bg-white flex items-center justify-center mb-2 login-logo-breathe">
+          <Text className="text-2xl font-bold" style={{ color: '#ff6a00' }}>膨</Text>
         </View>
-        <Text className="text-white text-2xl font-bold block tracking-wider">膨胀团</Text>
-        <Text className="text-white text-sm block mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 ✨</Text>
+        <Text className="text-white text-xl font-bold block tracking-wider">膨胀团</Text>
+        <Text className="text-white text-xs block mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 ✨</Text>
       </View>
 
       {/* 登录卡片 */}
-      <View className="px-5 -mt-8">
-        <View className="bg-white rounded-3xl p-6" style={{ boxShadow: '0 8px 24px rgba(255,71,87,0.10)' }}>
-          <Text className="text-xl font-bold text-gray-900 block">Hi，团友 👋</Text>
-          <Text className="text-sm text-gray-400 block mt-1 mb-6">登录解锁抽奖 · 霸王餐 · 会员权益</Text>
+      <View className="px-5 -mt-5">
+        <View className="bg-white rounded-3xl p-4" style={{ boxShadow: '0 8px 24px rgba(255,71,87,0.10)' }}>
+          <Text className="text-lg font-bold text-gray-900 block">Hi，团友 👋</Text>
+          <Text className="text-xs text-gray-400 block mt-1 mb-4">登录解锁抽奖 · 霸王餐 · 会员权益</Text>
 
           {/* 微信资料区（小程序端）：头像 + 昵称 */}
           {isMiniApp && (
-            <View className="flex flex-row items-center gap-4 mb-5 rounded-2xl p-4" style={{ backgroundColor: '#FFF7F8' }}>
+            <View className="flex flex-row items-center gap-3 mb-4 rounded-2xl p-3" style={{ backgroundColor: '#FFF7F8' }}>
               <Button
                 openType="chooseAvatar"
                 onChooseAvatar={handleChooseAvatar}
-                className="w-16 h-16 rounded-full p-0 border-0 bg-transparent shrink-0"
+                className="w-14 h-14 rounded-full p-0 border-0 bg-transparent shrink-0"
               >
                 {wxAvatarLocal ? (
-                  <Image src={wxAvatarLocal} className="w-16 h-16 rounded-full" mode="aspectFill" />
+                  <Image src={wxAvatarLocal} className="w-14 h-14 rounded-full" mode="aspectFill" />
                 ) : (
-                  <View className="w-16 h-16 rounded-full border-2 border-dashed border-[#FF8FA3] bg-white flex flex-col items-center justify-center">
-                    <Camera size={20} color="#FF4757" />
+                  <View className="w-14 h-14 rounded-full border-2 border-dashed border-[#FF8FA3] bg-white flex flex-col items-center justify-center">
+                    <Camera size={18} color="#FF4757" />
                     <Text className="block text-xs text-[#FF4757] mt-1">头像</Text>
                   </View>
                 )}
               </Button>
               <View className="flex-1">
-                <View className="bg-white rounded-xl px-3 border border-[#FFE0E5]">
-                  <Input
-                    type="nickname"
-                    className="w-full bg-transparent text-base"
-                    style={{ height: '40px' }}
-                    placeholder="点我填写微信昵称"
-                    value={wxNickname}
-                    onInput={(e) => setWxNickname(e.detail.value)}
-                  />
-                </View>
+                <Input
+                  type="nickname"
+                  className="h-11 rounded-xl border-[#FFE0E5] bg-white text-base"
+                  placeholder="点我填写微信昵称"
+                  value={wxNickname}
+                  onInput={(e) => setWxNickname(e.detail.value)}
+                />
                 <Text className="text-xs text-gray-400 block mt-2">
                   {avatarUploading ? '头像上传中...' : '选填，头像昵称将展示在中奖名单'}
                 </Text>
@@ -313,12 +310,12 @@ const LoginPage: React.FC = () => {
 
           {/* 微信一键登录（小程序端，getPhoneNumber 授权） */}
           {isMiniApp && (
-            <View className="mb-6">
+            <View className="mb-4">
               <Button
                 openType="getPhoneNumber"
                 onGetPhoneNumber={handleWxOneTap}
                 disabled={loading || avatarUploading}
-                className="w-full rounded-2xl py-3 text-base font-semibold border-0"
+                className="w-full rounded-2xl py-2 text-base font-semibold border-0"
                 style={{ background: 'linear-gradient(90deg,#07C160,#2ee37f)', boxShadow: '0 6px 16px rgba(7,193,96,0.35)' }}
               >
                 <View className="flex flex-row items-center justify-center gap-2">
@@ -332,7 +329,7 @@ const LoginPage: React.FC = () => {
 
           {/* 分隔线 */}
           {isMiniApp && (
-            <View className="flex flex-row items-center gap-3 mb-6">
+            <View className="flex flex-row items-center gap-3 mb-4">
               <View className="flex-1 h-px bg-gray-200" />
               <Text className="text-xs text-gray-400">或使用以下方式登录</Text>
               <View className="flex-1 h-px bg-gray-200" />
@@ -340,7 +337,7 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* 登录方式切换 */}
-          <View className="flex flex-row bg-gray-100 rounded-2xl p-1 mb-6">
+          <View className="flex flex-row bg-gray-100 rounded-2xl p-1 mb-4">
             <View
               className={`flex-1 rounded-xl py-2 flex items-center justify-center ${loginTab === 'password' ? 'bg-white' : ''}`}
               style={loginTab === 'password' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : undefined}
@@ -359,7 +356,7 @@ const LoginPage: React.FC = () => {
 
           {/* 密码登录表单 */}
           {loginTab === 'password' && (
-            <View className="flex flex-col gap-4">
+            <View className="flex flex-col gap-3">
               {renderInput(
                 <Phone size={18} color="#9CA3AF" />,
                 '请输入手机号',
@@ -382,7 +379,7 @@ const LoginPage: React.FC = () => {
                 setPwdNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-2 text-base font-medium mt-1 border-0"
                 onClick={handlePasswordLogin}
                 disabled={loading}
               >
@@ -394,7 +391,7 @@ const LoginPage: React.FC = () => {
 
           {/* 验证码登录表单 */}
           {loginTab === 'sms' && (
-            <View className="flex flex-col gap-4">
+            <View className="flex flex-col gap-3">
               {renderInput(
                 <Phone size={18} color="#9CA3AF" />,
                 '请输入手机号',
@@ -404,23 +401,23 @@ const LoginPage: React.FC = () => {
                 11
               )}
               <View className="flex flex-row items-center gap-3">
-                <View className="flex-1 flex flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-200">
-                  <ShieldCheck size={18} color="#9CA3AF" />
-                  <View className="flex-1 ml-3">
-                    <Input
-                      className="w-full bg-transparent border-0 text-base"
-                      style={{ height: '44px' }}
+                <View className="flex-1">
+                  <InputGroup className="h-11 rounded-2xl border-gray-200 bg-gray-50">
+                    <InputGroupAddon align="inline-start" className="pl-4">
+                      <ShieldCheck size={18} color="#9CA3AF" />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      className="text-base"
                       placeholder="请输入验证码"
                       type="number"
                       maxlength={6}
                       value={smsCode}
                       onInput={(e) => setSmsCode(e.detail.value)}
                     />
-                  </View>
+                  </InputGroup>
                 </View>
                 <View
-                  className={`rounded-2xl px-4 flex items-center justify-center ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-[#FF4757] to-[#ff6b7a]'}`}
-                  style={{ height: '44px', minWidth: '100px' }}
+                  className={`rounded-2xl px-4 flex items-center justify-center h-11 shrink-0 ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-[#FF4757] to-[#ff6b7a]'}`}
                   onClick={countdown > 0 ? undefined : handleSendSms}
                 >
                   <Text className={`text-sm font-medium ${countdown > 0 ? 'text-gray-400' : 'text-white'}`}>
@@ -435,7 +432,7 @@ const LoginPage: React.FC = () => {
                 setSmsNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-2 text-base font-medium mt-1 border-0"
                 onClick={handleSmsLogin}
                 disabled={loading}
               >
@@ -447,7 +444,7 @@ const LoginPage: React.FC = () => {
         </View>
 
         {/* 底部说明 */}
-        <View className="mt-6 px-4">
+        <View className="mt-4 px-4 pb-6">
           <Text className="text-xs text-gray-400 block text-center">登录即代表同意《用户协议》和《隐私政策》</Text>
         </View>
       </View>
