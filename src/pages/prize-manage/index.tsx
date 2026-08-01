@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store, ShieldCheck } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store, ShieldCheck, X } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -349,22 +349,25 @@ export default function PrizeManagePage() {
       {showDialog && (
         <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <View className="bg-white rounded-2xl w-full max-w-sm" style={{ display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
-            <View className="px-6 pt-6 pb-2">
-              <Text className="block text-lg font-bold text-black">{editingPrize ? '编辑奖品' : '添加奖品'}</Text>
+            <View className="px-6 pt-5 pb-2 flex flex-row items-center justify-between">
+              <Text className="block text-lg font-bold text-gray-800">{editingPrize ? '编辑奖品' : '添加奖品'}</Text>
+              <View className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center" onClick={() => setShowDialog(false)}>
+                <X size={14} color="#6b7280" />
+              </View>
             </View>
-            <ScrollView scrollY style={{ flex: 1 }} className="px-6">
-              <View className="space-y-4">
+            <ScrollView scrollY style={{ flex: 1 }}>
+              <View className="space-y-4 px-6 pb-4">
                 <View>
-                  <Text className="block text-sm text-black mb-1">奖品名称</Text>
+                  <Text className="block text-sm text-gray-700 font-medium mb-1">奖品名称</Text>
                   <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                     <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.name} placeholder="请输入奖品名称" onInput={(e) => setPrizeForm({ ...prizeForm, name: e.detail.value })} />
                   </View>
                 </View>
                 <View>
-                  <Text className="block text-sm text-black mb-2">奖品模式</Text>
+                  <Text className="block text-sm text-gray-700 font-medium mb-2">奖品模式</Text>
                   <View className="flex flex-row gap-2">
                     {PRIZE_TYPE_OPTIONS.map((opt) => (
-                      <View key={opt.value} className={`flex-1 rounded-xl px-3 py-2 border text-center ${prizeForm.prize_type === opt.value ? 'border-[#FF4757] bg-red-50' : 'border-gray-200 bg-white'}`} onClick={() => setPrizeForm({ ...prizeForm, prize_type: opt.value })}>
+                      <View key={opt.value} className={`flex-1 min-w-0 rounded-xl px-3 py-2 border text-center ${prizeForm.prize_type === opt.value ? 'border-[#FF4757] bg-red-50' : 'border-gray-200 bg-white'}`} onClick={() => setPrizeForm({ ...prizeForm, prize_type: opt.value })}>
                         <Text className={`block text-sm ${prizeForm.prize_type === opt.value ? 'text-red-600 font-medium' : 'text-gray-600'}`}>{opt.label}</Text>
                       </View>
                     ))}
@@ -387,7 +390,7 @@ export default function PrizeManagePage() {
                 {/* 商品/霸王餐：奖品有效期（小时），留空使用全局默认 */}
                 {(prizeForm.prize_type === 'product' || prizeForm.prize_type === 'free_meal') && (
                   <View>
-                    <Text className="block text-sm text-black mb-1">奖品有效期（小时）</Text>
+                    <Text className="block text-sm text-gray-700 font-medium mb-1">奖品有效期（小时）</Text>
                     <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                       <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.validity_hours} placeholder="如 72，留空使用全局默认有效期" onInput={(e) => setPrizeForm({ ...prizeForm, validity_hours: e.detail.value })} />
                     </View>
@@ -396,7 +399,7 @@ export default function PrizeManagePage() {
                 )}
                 {/* 奖品图片 */}
                 <View>
-                  <Text className="block text-sm text-black mb-1">奖品图片（选填）</Text>
+                  <Text className="block text-sm text-gray-700 font-medium mb-1">奖品图片（选填）</Text>
                   <View className="flex flex-row gap-3 items-center">
                     <View
                       className="w-20 h-20 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center overflow-hidden"
@@ -408,22 +411,22 @@ export default function PrizeManagePage() {
                         <Plus size={24} color="#9ca3af" />
                       )}
                     </View>
-                    <Text className="block text-xs text-gray-400 flex-1">点击上传奖品图片，支持 jpg/png；建议 200×200 像素</Text>
+                    <Text className="block text-xs text-gray-400 flex-1 min-w-0">点击上传奖品图片，支持 jpg/png；建议 200×200 像素</Text>
                   </View>
                 </View>
                 {/* 可用门店 */}
                 <View>
-                  <Text className="block text-sm text-black mb-1">可用门店</Text>
+                  <Text className="block text-sm text-gray-700 font-medium mb-1">可用门店</Text>
                   {merchantId ? (
                     <View className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 flex flex-row items-center gap-2">
                       <Store size={14} color="#6b7280" />
-                      <Text className="block text-sm text-gray-600">本店{boundMerchantName ? `（${boundMerchantName}）` : ''} · 不可修改</Text>
+                      <Text className="block text-sm text-gray-600 flex-1 min-w-0 truncate">本店{boundMerchantName ? `（${boundMerchantName}）` : ''} · 不可修改</Text>
                     </View>
                   ) : (
                     <View className="bg-white rounded-xl px-3 py-2 border border-gray-200 flex flex-row items-center justify-between" onClick={() => setShowMerchantPicker(true)}>
-                      <View className="flex flex-row items-center gap-2">
+                      <View className="flex flex-row items-center gap-2 flex-1 min-w-0">
                         <Store size={14} color="#6b7280" />
-                        <Text className="block text-sm text-gray-800">{getMerchantName(formMerchantId)}</Text>
+                        <Text className="block text-sm text-gray-800 truncate">{getMerchantName(formMerchantId)}</Text>
                       </View>
                       <ChevronRight size={16} color="#9ca3af" />
                     </View>
@@ -432,14 +435,14 @@ export default function PrizeManagePage() {
                 {prizeForm.prize_type === 'coupon' && (
                   <>
                     <View className="flex flex-row gap-3">
-                      <View className="flex-1">
-                        <Text className="block text-sm text-black mb-1">折扣比例（8.0~9.5折）</Text>
+                      <View className="flex-1 min-w-0">
+                        <Text className="block text-sm text-gray-700 font-medium mb-1">折扣比例（8.0~9.5折）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                           <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_rate} placeholder="如 8.5" onInput={(e) => setPrizeForm({ ...prizeForm, discount_rate: e.detail.value })} />
                         </View>
                       </View>
-                      <View className="flex-1">
-                        <Text className="block text-sm text-black mb-1">单笔最高优惠（元）</Text>
+                      <View className="flex-1 min-w-0">
+                        <Text className="block text-sm text-gray-700 font-medium mb-1">单笔最高优惠（元）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                           <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_cap} placeholder="如 5，0为不封顶" onInput={(e) => setPrizeForm({ ...prizeForm, discount_cap: e.detail.value })} />
                         </View>
@@ -453,13 +456,13 @@ export default function PrizeManagePage() {
                 {prizeForm.prize_type === 'product' && (
                   <>
                     <View>
-                      <Text className="block text-sm text-black mb-1">商品名称</Text>
+                      <Text className="block text-sm text-gray-700 font-medium mb-1">商品名称</Text>
                       <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                         <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.product_name} placeholder="请输入商品名称" onInput={(e) => setPrizeForm({ ...prizeForm, product_name: e.detail.value })} />
                       </View>
                     </View>
                     <View>
-                      <Text className="block text-sm text-black mb-1">商品价值（元）</Text>
+                      <Text className="block text-sm text-gray-700 font-medium mb-1">商品价值（元）</Text>
                       <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                         <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.product_value} placeholder="如 99" onInput={(e) => setPrizeForm({ ...prizeForm, product_value: e.detail.value })} />
                       </View>
@@ -472,14 +475,14 @@ export default function PrizeManagePage() {
                   </View>
                 ) : (
                   <View className="flex flex-row gap-3">
-                    <View className="flex-1">
-                      <Text className="block text-sm text-black mb-1">中奖概率（%）</Text>
+                    <View className="flex-1 min-w-0">
+                      <Text className="block text-sm text-gray-700 font-medium mb-1">中奖概率（%）</Text>
                       <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                         <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.probability} placeholder="如 10" onInput={(e) => setPrizeForm({ ...prizeForm, probability: e.detail.value })} />
                       </View>
                     </View>
-                    <View className="flex-1">
-                      <Text className="block text-sm text-black mb-1">库存数量</Text>
+                    <View className="flex-1 min-w-0">
+                      <Text className="block text-sm text-gray-700 font-medium mb-1">库存数量</Text>
                       <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                         <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.stock} placeholder="如 100" onInput={(e) => setPrizeForm({ ...prizeForm, stock: e.detail.value })} />
                       </View>
@@ -487,7 +490,7 @@ export default function PrizeManagePage() {
                   </View>
                 )}
                 <View>
-                  <Text className="block text-sm text-black mb-1">奖品描述</Text>
+                  <Text className="block text-sm text-gray-700 font-medium mb-1">奖品描述</Text>
                   <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                     <Textarea style={{ width: '100%', minHeight: '60px', backgroundColor: 'transparent' }} value={prizeForm.description} placeholder="请输入奖品描述" onInput={(e) => setPrizeForm({ ...prizeForm, description: e.detail.value })} />
                   </View>
@@ -514,7 +517,8 @@ export default function PrizeManagePage() {
               <Text className="block text-base font-bold text-black">选择可用门店</Text>
               <Text className="block text-xs text-gray-400 mt-1">中奖用户仅可在所选门店核销该奖品</Text>
             </View>
-            <ScrollView scrollY style={{ maxHeight: 300 }} className="px-5 pt-2 pb-4">
+            <ScrollView scrollY style={{ maxHeight: 300 }}>
+              <View className="px-5 pt-2 pb-4">
               <View className="flex flex-row items-center justify-between py-3 border-b border-gray-50" onClick={() => { setFormMerchantId(null); setShowMerchantPicker(false); }}>
                 <Text className={`block text-sm ${formMerchantId === null ? 'text-[#FF4757] font-semibold' : 'text-gray-800'}`}>全部门店通用</Text>
                 {formMerchantId === null && <Check size={18} color="#FF4757" />}
@@ -530,6 +534,7 @@ export default function PrizeManagePage() {
                   <Text className="block text-sm text-gray-400 text-center">暂无门店，请先在「商家收录」中添加</Text>
                 </View>
               )}
+              </View>
             </ScrollView>
           </View>
         </View>
