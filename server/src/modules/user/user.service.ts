@@ -329,9 +329,48 @@ export class UserService {
     }
   }
 
-  /** 微信授权登录（有记录直接登录，无记录自动注册） */
+  /** 判断是否为手机号唯一约束冲突 */
+  private isPhoneUniqueViolation(error: unknown): boolean {
+    const e = error as { message?: string; details?: string };
+    const msg = `${e?.message || ''} ${e?.details || ''}`;
+    return msg.includes('users_phone_unique') || msg.includes('duplicate key');
+  }
+
+  /** 将微信 openId 绑定到已有手机号账号（账号合并）：返回 null 表示无该手机号账号 */
+  private async bindWechatToPhoneAccount(
+    openId: string,
+    phone: string,
+    nickName?: string,
+    avatarUrl?: string
+  ): Promise<User | null> {
+    const supabase = getSupabaseClient();
+    const { data: list } = await supabase.from('users').select('*').eq('phone', phone);
+    const target = this.pickAccountByPriority((list || []) as User[]);
+    if (!target) return null;
+
+    const updateData: Record<string, unknown> = {
+      open_id: openId,
+      last_login_at: new Date().toISOString()
+    };
+    // 昵称/头像仅在已有账号缺失时补充，不覆盖用户已设置的资料
+    if (nickName && !target.nick_name) updateData.nick_name = nickName;
+    if (avatarUrl && !target.avatar_url) updateData.avatar_url = avatarUrl;
+
+    const { data: bound, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('user_id', target.user_id)
+      .select()
+      .single();
+    if (error) throw error;
+    console.log('[UserService] 微信账号已绑定到已有手机号账号:', target.user_id);
+    return bound as User;
+  }
+
+  /** 微信授权登录（有记录直接登录，无记录自动注册；手机号已注册时自动绑定合并账号） */
   async loginByWechat(openId: string, nickName?: string, avatarUrl?: string, phone?: string): Promise<User> {
     const supabase = getSupabaseClient();
+    const now = new Date().toISOString();
     const { data: existing } = await supabase
       .from('users')
       .select('*')
@@ -339,20 +378,37 @@ export class UserService {
       .single();
 
     if (existing) {
-      const updateData: Record<string, unknown> = {
-        last_login_at: new Date().toISOString()
-      };
+      const updateData: Record<string, unknown> = { last_login_at: now };
       if (nickName) updateData.nick_name = nickName;
       if (avatarUrl) updateData.avatar_url = avatarUrl;
       if (phone) updateData.phone = phone;
-      const { data: updated, error } = await supabase
+      let { data: updated, error } = await supabase
         .from('users')
         .update(updateData)
         .eq('user_id', existing.user_id)
         .select()
         .single();
+      if (error && phone && this.isPhoneUniqueViolation(error)) {
+        // 授权手机号已被其他账号占用：忽略手机号更新，不阻塞登录
+        console.warn('[UserService] 手机号已被其他账号占用，跳过手机号更新:', phone);
+        delete updateData.phone;
+        const retry = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('user_id', existing.user_id)
+          .select()
+          .single();
+        updated = retry.data;
+        error = retry.error;
+      }
       if (error) throw error;
       return updated as User;
+    }
+
+    // open_id 未命中但手机号已注册：绑定微信到已有账号，避免手机号唯一约束冲突
+    if (phone) {
+      const bound = await this.bindWechatToPhoneAccount(openId, phone, nickName, avatarUrl);
+      if (bound) return bound;
     }
 
     const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -365,10 +421,15 @@ export class UserService {
         avatar_url: avatarUrl || null,
         phone: phone || null,
         login_type: 'wechat',
-        last_login_at: new Date().toISOString()
+        last_login_at: now
       })
       .select()
       .single();
+    if (error && phone && this.isPhoneUniqueViolation(error)) {
+      // 并发/数据原因导致注册时手机号冲突：降级为绑定已有账号
+      const bound = await this.bindWechatToPhoneAccount(openId, phone, nickName, avatarUrl);
+      if (bound) return bound;
+    }
     if (error) throw error;
     return created as User;
   }
