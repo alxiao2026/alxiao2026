@@ -134,7 +134,7 @@ export default function Lottery() {
   // 中奖后获取核销二维码（商品/霸王餐等可核销类型）
   useEffect(() => {
     const redeemableTypes = ['product', 'free_meal', 'refund']
-    if (stage === 'result' && drawResult?.prize_type && redeemableTypes.includes(drawResult.prize_type) && drawResult?.record_id && !qrCodeUrl) {
+    if (stage === 'result' && drawResult?.prize_type && redeemableTypes.includes(drawResult.prize_type) && drawResult?.record_id && !qrCodeUrl && drawResult?.refund_status !== 'voided') {
       console.log('[Lottery] 获取核销二维码', { record_id: drawResult.record_id, prize_type: drawResult.prize_type })
       Network.request({ url: `/api/lottery/qrcode/${drawResult.record_id}`, method: 'GET' })
         .then((res) => {
@@ -458,7 +458,12 @@ export default function Lottery() {
               {/* 核销二维码（未过期且未核销时显示） */}
               {!drawResult.expired && (
                 <>
-                  {drawResult.refund_status === 'redeemed' ? (
+                  {drawResult.refund_status === 'voided' ? (
+                    <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
+                      <Text className="block text-base text-gray-500 font-bold">已作废</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">关联订单已退款</Text>
+                    </View>
+                  ) : drawResult.refund_status === 'redeemed' ? (
                     <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
                       <Text className="block text-base text-green-600 font-bold">✓ 已核销</Text>
                       <Text className="block text-xs text-gray-400 mt-1">奖品已领取</Text>
@@ -482,14 +487,20 @@ export default function Lottery() {
                 </>
               )}
               {/* 核销码 */}
-              <View className="bg-amber-50 rounded-xl px-4 py-2 flex flex-row items-center justify-center gap-2">
-                <Text className="block text-xs text-amber-500">核销码</Text>
-                <Text className="block text-base font-bold text-amber-800 tracking-wider">
-                  {drawResult.redemption_code}
-                </Text>
-              </View>
+              {drawResult.refund_status === 'voided' ? (
+                <View className="bg-gray-100 rounded-xl px-4 py-2 flex flex-row items-center justify-center gap-2">
+                  <Text className="block text-xs text-gray-400">订单已退款，该奖品无法核销</Text>
+                </View>
+              ) : (
+                <View className="bg-amber-50 rounded-xl px-4 py-2 flex flex-row items-center justify-center gap-2">
+                  <Text className="block text-xs text-amber-500">核销码</Text>
+                  <Text className="block text-base font-bold text-amber-800 tracking-wider">
+                    {drawResult.redemption_code}
+                  </Text>
+                </View>
+              )}
               {/* 有效期提示 */}
-              {!drawResult.expired && (drawResult.expiry_hours ?? 0) > 0 && (
+              {drawResult.refund_status !== 'voided' && !drawResult.expired && (drawResult.expiry_hours ?? 0) > 0 && (
                 <Text className="block text-xs text-gray-400 text-center">
                   兑奖有效期 {drawResult.expiry_hours} 小时
                   {drawResult.expiry_date ? `，请于 ${formatDateTime(drawResult.expiry_date)} 前使用` : ''}

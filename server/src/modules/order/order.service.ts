@@ -942,6 +942,7 @@ export class OrderService {
       }
     }
 
+    if ((prize as any).refund_status === 'voided') throw new BadRequestException('关联订单已退款，该奖品已作废');
     if (prize.redeemed) throw new BadRequestException('该奖品已核销过');
     if (prize.expired) throw new BadRequestException('该奖品兑换已过期，无法核销');
 
@@ -1005,6 +1006,14 @@ export class OrderService {
         .update({ refund_status: 'voided' })
         .in('id', lotteryRecords.map((r: { id: string }) => r.id));
     }
+
+    // 同时作废该订单所有未交付的奖品/权益（商品奖品、霸王餐等），避免退款后仍可核销
+    // 已核销（redeemed）的记录不动：权益已交付，保留核销事实
+    await this.client
+      .from('lottery_records')
+      .update({ refund_status: 'voided' })
+      .eq('order_id', order.id)
+      .in('refund_status', ['locked', 'pending']);
   }
 
   // 批量检测超时未支付订单并自动关单：回补库存 + 作废本单抽奖折扣券

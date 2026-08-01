@@ -101,6 +101,10 @@ export default function LotteryRecordsPage() {
 
   // 打开核销码弹窗并加载二维码
   const handleViewQRCode = async (record: LotteryRecord) => {
+    if (record.refund_status === 'voided') {
+      Taro.showToast({ title: '关联订单已退款，该奖品已作废', icon: 'none' })
+      return
+    }
     setCurrentRecord(record)
     setQrCodeUrl('')
     setQrDialogOpen(true)
@@ -152,6 +156,9 @@ export default function LotteryRecordsPage() {
   const getRecordBadge = (record: LotteryRecord) => {
     if (!record.is_winner || !record.prize_id) {
       return { label: '未中奖', className: 'bg-gray-100 text-gray-500' }
+    }
+    if (record.refund_status === 'voided') {
+      return { label: '已作废', className: 'bg-gray-100 text-gray-500' }
     }
     if (record.redemption_code && record.expired && !isRedeemed(record)) {
       return { label: '已过期', className: 'bg-gray-100 text-gray-500' }

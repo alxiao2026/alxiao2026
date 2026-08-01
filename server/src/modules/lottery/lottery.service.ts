@@ -709,6 +709,10 @@ export class LotteryService {
     if (!record) throw new NotFoundException('兑换码无效');
 
     const recordData = record as LotteryRecord;
+    // 订单已退款，奖品已作废的不能兑换
+    if (recordData.refund_status === 'voided') {
+      throw new BadRequestException('关联订单已退款，该奖品已作废');
+    }
     if (recordData.refund_status === 'redeemed') {
       throw new BadRequestException('该商品已兑换过');
     }
