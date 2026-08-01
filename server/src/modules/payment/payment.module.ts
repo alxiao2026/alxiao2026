@@ -8,6 +8,6 @@ import { WechatPayService } from './wechat-pay.service';
   imports: [NotificationModule],
   controllers: [PaymentController],
   providers: [PaymentService, WechatPayService],
-  exports: [PaymentService],
+  exports: [PaymentService, WechatPayService],
 })
 export class PaymentModule {}

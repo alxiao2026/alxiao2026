@@ -899,7 +899,7 @@ export class OrderService {
       .from('lottery_records')
       .select('id, refund_amount')
       .eq('order_id', order.id)
-      .in('refund_status', ['redeemed', 'locked'])
+      .in('refund_status', ['redeemed', 'locked', 'pending'])
       .gt('refund_amount', 0);
     const discountReturned = (lotteryRecords || []).reduce(
       (sum: number, r: { refund_amount: string | null }) => sum + parseFloat(r.refund_amount || '0'),

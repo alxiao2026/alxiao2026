@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { S3Storage } from 'coze-coding-dev-sdk';
 import { NotificationService } from '../notification/notification.service';
+import { WechatPayService } from '../payment/wechat-pay.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -82,7 +83,12 @@ const DEFAULT_SETTINGS: LotterySettings = {
 export class LotteryService {
   private client = getSupabaseClient();
 
-  constructor(private readonly notificationService: NotificationService) {}
+  private readonly logger = new Logger(LotteryService.name);
+
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly wechatPay: WechatPayService,
+  ) {}
   private storage = new S3Storage({
     endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
     accessKey: '',
@@ -553,9 +559,9 @@ export class LotteryService {
         redemptionCode = `PRD-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
         refundStatus = 'pending';
       } else if (prize.prize_type === 'free_meal') {
-        // 霸王餐：本单免单，中奖即核销(redeemed)，订单金额全额返还原账户；退款则权益作废
+        // 霸王餐：本单免单，中奖后实付金额自动原路退回；同时生成核销码，用户到店出示二维码由商家核销完成履约；订单退款则权益作废
         refundAmount = orderTotal;
-        refundStatus = 'redeemed'; // 中奖即核销（全额返还）
+        refundStatus = 'pending'; // 待核销：出示二维码由商家核销
         redemptionCode = `BWC-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       }
     }
@@ -588,6 +594,11 @@ export class LotteryService {
       .select()
       .single();
     if (recordError) throw new Error(`保存抽奖记录失败: ${recordError.message}`);
+
+    // 霸王餐中奖：自动发起免单退款（订单实付金额原路返回；内部容错，失败不阻塞抽奖结果）
+    if (isWinner && resultPrize?.prize_type === 'free_meal' && refundAmount > 0) {
+      await this.autoRefundFreeMeal(record.id, orderId, refundAmount);
+    }
 
     // 11. 写入操作日志
     await this.logOperation({
@@ -630,6 +641,59 @@ export class LotteryService {
         order_total: orderTotal,
       },
     };
+  }
+
+  /**
+   * 霸王餐中奖自动退款：将订单实付金额原路退回用户支付账户
+   * 内部全容错：任何失败仅记录日志（人工介入补退），不阻塞抽奖主流程
+   */
+  private async autoRefundFreeMeal(recordId: string, orderId: string, refundAmountYuan: number): Promise<void> {
+    try {
+      if (!this.wechatPay.isEnabled()) {
+        this.logger.warn(`霸王餐中奖退款跳过：微信支付未配置 (record=${recordId})`);
+        return;
+      }
+      // 找到该订单已支付成功的微信支付单
+      const { data: payment, error: payQueryError } = await this.client
+        .from('payments')
+        .select('*')
+        .eq('order_id', orderId)
+        .eq('status', 'paid')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (payQueryError) throw new Error(`查询支付单失败: ${payQueryError.message}`);
+      if (!payment) {
+        this.logger.warn(`霸王餐中奖退款跳过：未找到已支付记录 (order=${orderId})`);
+        return;
+      }
+      const totalFen = Math.round(Number(payment.pay_amount || 0) * 100);
+      const refundFen = Math.min(Math.round(refundAmountYuan * 100), totalFen);
+      if (totalFen <= 0 || refundFen <= 0) {
+        this.logger.warn(`霸王餐中奖退款跳过：金额异常 (order=${orderId}, total=${totalFen}, refund=${refundFen})`);
+        return;
+      }
+      const outRefundNo = `FM${Date.now()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      const result = await this.wechatPay.createRefund({
+        transactionId: payment.transaction_id || undefined,
+        outTradeNo: payment.transaction_id ? undefined : payment.id.replace(/-/g, ''),
+        outRefundNo,
+        refundFen,
+        totalFen,
+        reason: '膨胀盲盒霸王餐中奖免单退款',
+      });
+      const channelRefundNo = result?.refund_id || '';
+      // 累加已退金额到支付单（用户主动退款流程会读取，防止重复全额退款）
+      await this.client
+        .from('payments')
+        .update({ refund_amount: Number(payment.refund_amount || 0) + refundFen / 100 })
+        .eq('id', payment.id);
+      this.logger.log(
+        `霸王餐中奖退款已受理：record=${recordId} order=${orderId} refund=${(refundFen / 100).toFixed(2)}元 channel=${channelRefundNo}`
+      );
+    } catch (err: any) {
+      this.logger.error(`霸王餐中奖退款失败（需人工介入补退）: record=${recordId} order=${orderId}`, err?.message || err);
+    }
   }
 
   // ========== 商品兑换码核销 ==========

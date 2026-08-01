@@ -17,6 +17,14 @@ import {
 } from 'lucide-react-taro'
 import './index.css'
 
+/** 日期时间格式化（小程序端 toLocaleString locale 参数不稳定，输出原始 toString 格式，故手动格式化） */
+const formatDateTime = (v: string | number | Date): string => {
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return String(v)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 type Stage = 'loading' | 'select' | 'opening' | 'result'
 
 interface DrawResultData {
@@ -449,7 +457,7 @@ export default function Lottery() {
                 <View className="bg-red-50 rounded-xl px-4 py-3 w-full flex flex-col items-center gap-1">
                   <Text className="block text-base font-bold text-red-600 text-center">兑奖已过期</Text>
                   <Text className="block text-xs text-red-400 text-center">
-                    兑奖有效期为 {drawResult.expiry_hours} 小时，已于 {drawResult.expiry_date ? new Date(drawResult.expiry_date).toLocaleString('zh-CN') : ''} 过期
+                    兑奖有效期为 {drawResult.expiry_hours} 小时，已于 {drawResult.expiry_date ? formatDateTime(drawResult.expiry_date) : ''} 过期
                   </Text>
                   <Text className="block text-xs text-gray-400 text-center">请联系商家处理</Text>
                 </View>
@@ -491,7 +499,7 @@ export default function Lottery() {
               {!drawResult.expired && (drawResult.expiry_hours ?? 0) > 0 && (
                 <Text className="block text-xs text-gray-400 text-center">
                   兑奖有效期 {drawResult.expiry_hours} 小时
-                  {drawResult.expiry_date ? `，请于 ${new Date(drawResult.expiry_date).toLocaleString('zh-CN')} 前使用` : ''}
+                  {drawResult.expiry_date ? `，请于 ${formatDateTime(drawResult.expiry_date)} 前使用` : ''}
                 </Text>
               )}
               {/* 核销状态 */}

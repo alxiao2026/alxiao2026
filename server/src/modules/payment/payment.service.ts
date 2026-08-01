@@ -579,7 +579,7 @@ export class PaymentService {
       .from('lottery_records')
       .update({ refund_status: 'voided' })
       .eq('order_id', order.id)
-      .in('refund_status', ['locked', 'redeemed']);
+      .in('refund_status', ['locked', 'redeemed', 'pending']);
 
     // 4. 按退款份数回补团购库存
     if (order.package_id) {
