@@ -1,0 +1,19 @@
+/* 登录页装饰动画（关键帧无法用 Tailwind 表达，按规范使用 CSS） */
+@keyframes login-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(6deg); }
+}
+.login-float {
+  animation: login-float 3s ease-in-out infinite;
+}
+.login-float-delay {
+  animation: login-float 3.6s ease-in-out 0.6s infinite;
+}
+
+@keyframes login-breathe {
+  0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(255, 255, 255, 0.45); }
+  50% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 0 0 14px rgba(255, 255, 255, 0); }
+}
+.login-logo-breathe {
+  animation: login-breathe 2.4s ease-in-out infinite;
+}

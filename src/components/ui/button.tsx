@@ -42,10 +42,11 @@ export interface ButtonProps
   /** 小程序开放能力（如 openType="share" 触发分享面板），传入后底层自动切换为原生 Button 渲染 */
   openType?: "share" | "contact" | "getPhoneNumber" | "openSetting" | "feedback" | "chooseAvatar" | "launchApp" | "agreePrivacyAuthorization"
   onGetPhoneNumber?: (e: { detail?: { encryptedData?: string; iv?: string; code?: string; errMsg?: string } }) => void
+  onChooseAvatar?: (e: { detail?: { avatarUrl?: string } }) => void
 }
 
 const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
-  ({ className, variant, size, asChild = false, disabled, openType, onGetPhoneNumber, children, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, disabled, openType, onGetPhoneNumber, onChooseAvatar, children, ...props }, ref) => {
     const tabIndex = (props as { tabIndex?: number }).tabIndex ?? (disabled ? -1 : 0)
     const cls = cn(
       buttonVariants({ variant, size, className }),
@@ -62,6 +63,7 @@ const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
           className={cls}
           onClick={props.onClick}
           onGetPhoneNumber={onGetPhoneNumber}
+          onChooseAvatar={onChooseAvatar}
         >
           {children}
         </TaroButton>

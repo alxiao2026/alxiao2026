@@ -278,8 +278,59 @@ export class UserService {
     return { openid: data.openid, unionid: data.unionid };
   }
 
+  /** 微信接口调用凭证缓存 */
+  private wxAccessTokenCache: { token: string; expiresAt: number } | null = null;
+
+  /** 获取微信接口调用凭证（内存缓存，提前 5 分钟刷新） */
+  private async getWxAccessToken(): Promise<string> {
+    const now = Date.now();
+    if (this.wxAccessTokenCache && this.wxAccessTokenCache.expiresAt > now) {
+      return this.wxAccessTokenCache.token;
+    }
+    const appid = process.env.WECHAT_APPID;
+    const secret = process.env.WECHAT_SECRET;
+    if (!appid || !secret) throw new BadRequestException('微信登录未配置');
+    const res = await fetch(
+      `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
+    );
+    const data = await res.json();
+    if (!data.access_token) {
+      console.error('[UserService] getWxAccessToken 失败:', data);
+      throw new BadRequestException(data.errmsg || '获取微信凭证失败');
+    }
+    this.wxAccessTokenCache = {
+      token: data.access_token,
+      expiresAt: now + (Number(data.expires_in || 7200) - 300) * 1000
+    };
+    return data.access_token;
+  }
+
+  /** 手机号快速验证：phoneCode 换手机号（失败返回 null，不阻塞登录） */
+  async getPhoneNumberByCode(phoneCode: string): Promise<string | null> {
+    try {
+      const token = await this.getWxAccessToken();
+      const res = await fetch(
+        `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${token}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: phoneCode })
+        }
+      );
+      const data = await res.json();
+      if (data.errcode !== 0) {
+        console.warn('[UserService] getuserphonenumber 返回错误:', data);
+        return null;
+      }
+      return data.phone_info?.purePhoneNumber || data.phone_info?.phoneNumber || null;
+    } catch (e) {
+      console.warn('[UserService] getPhoneNumberByCode 异常:', e);
+      return null;
+    }
+  }
+
   /** 微信授权登录（有记录直接登录，无记录自动注册） */
-  async loginByWechat(openId: string, nickName?: string, avatarUrl?: string): Promise<User> {
+  async loginByWechat(openId: string, nickName?: string, avatarUrl?: string, phone?: string): Promise<User> {
     const supabase = getSupabaseClient();
     const { data: existing } = await supabase
       .from('users')
@@ -293,6 +344,7 @@ export class UserService {
       };
       if (nickName) updateData.nick_name = nickName;
       if (avatarUrl) updateData.avatar_url = avatarUrl;
+      if (phone) updateData.phone = phone;
       const { data: updated, error } = await supabase
         .from('users')
         .update(updateData)
@@ -311,6 +363,7 @@ export class UserService {
         open_id: openId,
         nick_name: nickName || null,
         avatar_url: avatarUrl || null,
+        phone: phone || null,
         login_type: 'wechat',
         last_login_at: new Date().toISOString()
       })

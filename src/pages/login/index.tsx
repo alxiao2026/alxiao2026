@@ -1,63 +1,80 @@
-import { View, Text } from '@tarojs/components';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { Network } from '@/network';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { User, Phone, Lock, MessageCircle, ShieldCheck } from 'lucide-react-taro';
+import { Input } from '@/components/ui/input';
+import { Network } from '@/network';
+import { MessageCircle, Phone, Lock, User, ShieldCheck, Camera } from 'lucide-react-taro';
+import './index.css';
 
-type LoginTab = 'password' | 'sms';
+type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
 
-const LoginPage = () => {
-  const env = Taro.getEnv();
-  const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
+interface LoginUser {
+  id: string;
+  username: string;
+  nick_name: string;
+  phone: string;
+  role: UserRole;
+  role_code: number;
+  merchant_id: string | null;
+  open_id?: string | null;
+  avatar_url?: string | null;
+}
 
-  // 当前登录方式 tab
-  const [loginTab, setLoginTab] = useState<LoginTab>('password');
+interface ApiResponse<T> {
+  code: number;
+  msg: string;
+  data: T;
+}
 
-  // 手机号密码登录
+const LoginPage: React.FC = () => {
+  const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
+  const [loginTab, setLoginTab] = useState<'password' | 'sms'>('password');
+
+  // 密码登录
   const [pwdPhone, setPwdPhone] = useState('');
   const [password, setPassword] = useState('');
   const [pwdNickName, setPwdNickName] = useState('');
 
-  // 手机验证码登录
+  // 验证码登录
   const [smsPhone, setSmsPhone] = useState('');
   const [smsCode, setSmsCode] = useState('');
   const [smsNickName, setSmsNickName] = useState('');
   const [countdown, setCountdown] = useState(0);
 
+  // 微信资料（chooseAvatar 头像 + nickname 昵称）
+  const [wxAvatar, setWxAvatar] = useState('');          // 已上传的永久 URL（提交用）
+  const [wxAvatarLocal, setWxAvatarLocal] = useState(''); // 本地临时路径（预览用）
+  const [wxNickname, setWxNickname] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
-  const saveAndGoBack = (uid: string, name: string, avatar: string, role?: string, merchantId?: number, roleCode?: number) => {
-    Taro.setStorageSync('user_id', uid);
-    Taro.setStorageSync('is_logged_in', true);
-    Taro.setStorageSync('nick_name', name);
-    Taro.setStorageSync('avatar_url', avatar);
-    if (role) Taro.setStorageSync('user_role', role);
-    if (roleCode !== undefined) Taro.setStorageSync('role_code', roleCode);
-    if (merchantId) Taro.setStorageSync('merchant_id', merchantId);
-    Taro.showToast({ title: '登录成功', icon: 'success' });
-    setTimeout(() => {
-      if (roleCode === 1 || roleCode === 2) {
-        Taro.reLaunch({ url: '/pages/admin/index' });
-      } else {
-        // 普通用户登录成功直接进入个人中心（navigateBack 在页面栈为空时会失败，导致停留在登录页）
-        Taro.reLaunch({ url: '/pages/user-center/index' });
+  const handleResponse = (res: { data: ApiResponse<LoginUser> }) => {
+    console.log('[Login] response raw data:', res.data);
+    const body = res.data;
+    if (body.code === 200) {
+      const user = body.data;
+      if (!user || !user.id) {
+        Taro.showToast({ title: '登录响应异常', icon: 'none' });
+        return;
       }
-    }, 800);
-  };
+      Taro.setStorageSync('user_id', user.id);
+      Taro.setStorageSync('user_role', user.role);
+      Taro.setStorageSync('role_code', user.role_code);
+      Taro.setStorageSync('merchant_id', user.merchant_id || '');
+      Taro.setStorageSync('user_phone', user.phone || '');
+      Taro.setStorageSync('nick_name', user.nick_name || '');
 
-  const handleResponse = (res: { data?: { code?: number; data?: { user_id: string; nick_name: string; avatar_url: string; role?: string; merchant_id?: number; role_code?: number } } }) => {
-    console.log('[Login] response:', JSON.stringify(res.data));
-    if (res.data?.code === 200 && res.data?.data) {
-      const user = res.data.data;
-      saveAndGoBack(user.user_id, user.nick_name || '', user.avatar_url || '', user.role, user.merchant_id, user.role_code);
+      Taro.showToast({ title: '登录成功', icon: 'success' });
+      setTimeout(() => {
+        Taro.reLaunch({ url: '/pages/user-center/index' });
+      }, 1200);
     } else {
-      Taro.showToast({ title: '登录失败，请重试', icon: 'none' });
+      Taro.showToast({ title: body.msg || '登录失败', icon: 'none' });
     }
   };
 
-  // ===== 手机号+密码登录 =====
   const handlePasswordLogin = async () => {
     if (!pwdPhone.trim()) {
       Taro.showToast({ title: '请输入手机号', icon: 'none' });
@@ -67,11 +84,11 @@ const LoginPage = () => {
       Taro.showToast({ title: '手机号格式不正确', icon: 'none' });
       return;
     }
-    if (!password.trim()) {
+    if (!password) {
       Taro.showToast({ title: '请输入密码', icon: 'none' });
       return;
     }
-    if (password.trim().length < 6) {
+    if (password.length < 6) {
       Taro.showToast({ title: '密码至少6位', icon: 'none' });
       return;
     }
@@ -82,7 +99,7 @@ const LoginPage = () => {
         method: 'POST',
         data: {
           phone: pwdPhone.trim(),
-          password: password.trim(),
+          password,
           nick_name: pwdNickName.trim() || undefined
         }
       });
@@ -96,13 +113,11 @@ const LoginPage = () => {
     }
   };
 
-  // ===== 手机验证码登录 =====
   const handleSendSms = () => {
     if (!smsPhone.trim() || !/^1\d{10}$/.test(smsPhone.trim())) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' });
       return;
     }
-    // 模拟发送验证码
     setCountdown(60);
     const timer = setInterval(() => {
       setCountdown(prev => {
@@ -147,30 +162,64 @@ const LoginPage = () => {
     }
   };
 
-  // ===== 微信授权登录：Taro.login 获取 code → 后端 code2session 换取 openid =====
-  const handleWxLogin = async () => {
-    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
-      Taro.showToast({ title: '微信登录仅支持微信小程序', icon: 'none' });
-      return;
+  // ===== 微信头像选择（chooseAvatar 原生能力）：选完即上传换永久 URL =====
+  const handleChooseAvatar = async (e: { detail?: { avatarUrl?: string } }) => {
+    const tempPath = e?.detail?.avatarUrl;
+    if (!tempPath) return;
+    setWxAvatarLocal(tempPath);
+    setAvatarUploading(true);
+    try {
+      const res = await Network.uploadFile({
+        url: '/api/upload',
+        filePath: tempPath,
+        name: 'file'
+      });
+      // uploadFile 的 data 是字符串，需要解析
+      const parsed = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      const url = parsed?.data?.url;
+      console.log('[Login] 头像上传结果:', url);
+      if (url) {
+        setWxAvatar(url);
+      } else {
+        Taro.showToast({ title: '头像上传失败，可登录后更换', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('[Login] 头像上传异常:', err);
+      Taro.showToast({ title: '头像上传失败，可登录后更换', icon: 'none' });
+    } finally {
+      setAvatarUploading(false);
     }
+  };
+
+  // ===== 微信一键登录：getPhoneNumber 授权（拒绝时降级为纯 code 静默登录）=====
+  const handleWxOneTap = async (e: { detail?: { code?: string; errMsg?: string } }) => {
+    const phoneCode = e?.detail?.code;
+    console.log(
+      '[Login] getPhoneNumber 回调:',
+      phoneCode ? '已授权手机号' : `未授权（${e?.detail?.errMsg || '未知'}），降级静默登录`
+    );
     setLoading(true);
     try {
       const wxLoginRes = await Taro.login();
       if (!wxLoginRes.code) {
         throw new Error('未获取到微信登录凭证');
       }
-      console.log('[Login] wx.login success, code 获取成功，换取 openid...');
       const res = await Network.request({
         url: '/api/users/login/wechat',
         method: 'POST',
-        data: { code: wxLoginRes.code }
+        data: {
+          code: wxLoginRes.code,
+          phone_code: phoneCode || undefined,
+          nick_name: wxNickname.trim() || undefined,
+          avatar_url: wxAvatar || undefined
+        }
       });
       handleResponse(res);
-    } catch (e) {
-      console.error('[Login] wx login error:', e);
+    } catch (err) {
+      console.error('[Login] wx login error:', err);
       const errMsg =
-        (e as { data?: { message?: string } })?.data?.message ||
-        (e as Error)?.message ||
+        (err as { data?: { message?: string } })?.data?.message ||
+        (err as Error)?.message ||
         '微信登录失败，请重试';
       Taro.showToast({ title: errMsg, icon: 'none' });
     } finally {
@@ -187,7 +236,7 @@ const LoginPage = () => {
     type: 'text' | 'number' | 'password' = 'text',
     maxLength?: number
   ) => (
-    <View className="flex flex-row items-center bg-gray-50 rounded-xl px-4 border border-gray-200">
+    <View className="flex flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-200">
       {icon}
       <View className="flex-1 ml-3">
         <Input
@@ -206,36 +255,78 @@ const LoginPage = () => {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 顶部品牌区 */}
-      <View className="bg-gradient-to-br from-[#FF4757] to-[#ff6b7a] px-6 pt-20 pb-16 flex flex-col items-center">
-        <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-4" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+      {/* 顶部品牌区：渐变 + 漂浮装饰 */}
+      <View className="relative bg-gradient-to-br from-[#FF4757] via-[#FF5F6D] to-[#FF8A5C] px-6 pt-16 pb-20 flex flex-col items-center overflow-hidden">
+        {/* 漂浮 emoji 装饰 */}
+        <Text className="absolute login-float" style={{ top: '60px', left: '24px', fontSize: '28px' }}>🎈</Text>
+        <Text className="absolute login-float-delay" style={{ top: '44px', right: '30px', fontSize: '24px' }}>🎉</Text>
+        <Text className="absolute login-float-delay" style={{ bottom: '72px', left: '44px', fontSize: '20px' }}>✨</Text>
+        <Text className="absolute login-float" style={{ bottom: '88px', right: '52px', fontSize: '22px' }}>🎁</Text>
+
+        <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-3 login-logo-breathe">
           <Text className="text-3xl font-bold" style={{ color: '#ff6a00' }}>膨</Text>
         </View>
-        <Text className="text-white text-xl font-bold block">膨胀团</Text>
-        <Text className="text-white text-sm block mt-1" style={{ opacity: 0.7 }}>本地生活 · 有奖销售</Text>
+        <Text className="text-white text-2xl font-bold block tracking-wider">膨胀团</Text>
+        <Text className="text-white text-sm block mt-1" style={{ opacity: 0.85 }}>给生活来点小惊喜 ✨</Text>
       </View>
 
-      {/* 登录区域 */}
-      <View className="px-5 -mt-6">
-        <View className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-          <Text className="text-lg font-bold text-gray-900 block text-center mb-1">登录 / 注册</Text>
-          <Text className="text-sm text-gray-400 block text-center mb-6">登录后查看订单和会员权益</Text>
+      {/* 登录卡片 */}
+      <View className="px-5 -mt-8">
+        <View className="bg-white rounded-3xl p-6" style={{ boxShadow: '0 8px 24px rgba(255,71,87,0.10)' }}>
+          <Text className="text-xl font-bold text-gray-900 block">Hi，团友 👋</Text>
+          <Text className="text-sm text-gray-400 block mt-1 mb-6">登录解锁抽奖 · 霸王餐 · 会员权益</Text>
 
-          {/* 微信授权登录（小程序端） */}
+          {/* 微信资料区（小程序端）：头像 + 昵称 */}
+          {isMiniApp && (
+            <View className="flex flex-row items-center gap-4 mb-5 rounded-2xl p-4" style={{ backgroundColor: '#FFF7F8' }}>
+              <Button
+                openType="chooseAvatar"
+                onChooseAvatar={handleChooseAvatar}
+                className="w-16 h-16 rounded-full p-0 border-0 bg-transparent shrink-0"
+              >
+                {wxAvatarLocal ? (
+                  <Image src={wxAvatarLocal} className="w-16 h-16 rounded-full" mode="aspectFill" />
+                ) : (
+                  <View className="w-16 h-16 rounded-full border-2 border-dashed border-[#FF8FA3] bg-white flex flex-col items-center justify-center">
+                    <Camera size={20} color="#FF4757" />
+                    <Text className="block text-xs text-[#FF4757] mt-1">头像</Text>
+                  </View>
+                )}
+              </Button>
+              <View className="flex-1">
+                <View className="bg-white rounded-xl px-3 border border-[#FFE0E5]">
+                  <Input
+                    type="nickname"
+                    className="w-full bg-transparent text-base"
+                    style={{ height: '40px' }}
+                    placeholder="点我填写微信昵称"
+                    value={wxNickname}
+                    onInput={(e) => setWxNickname(e.detail.value)}
+                  />
+                </View>
+                <Text className="text-xs text-gray-400 block mt-2">
+                  {avatarUploading ? '头像上传中...' : '选填，头像昵称将展示在中奖名单'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* 微信一键登录（小程序端，getPhoneNumber 授权） */}
           {isMiniApp && (
             <View className="mb-6">
               <Button
-                className="w-full rounded-xl py-3 text-base font-medium"
-                style={{ backgroundColor: '#07C160', color: '#fff' }}
-                onClick={handleWxLogin}
-                disabled={loading}
+                openType="getPhoneNumber"
+                onGetPhoneNumber={handleWxOneTap}
+                disabled={loading || avatarUploading}
+                className="w-full rounded-2xl py-3 text-base font-semibold border-0"
+                style={{ background: 'linear-gradient(90deg,#07C160,#2ee37f)', boxShadow: '0 6px 16px rgba(7,193,96,0.35)' }}
               >
                 <View className="flex flex-row items-center justify-center gap-2">
                   <MessageCircle size={20} color="#fff" />
-                  <Text className="text-white font-medium">{loading ? '登录中...' : '微信一键登录'}</Text>
+                  <Text className="text-white font-semibold">{loading ? '登录中...' : '微信一键登录'}</Text>
                 </View>
               </Button>
-              <Text className="text-xs text-gray-400 block text-center mt-2">一键登录，新用户自动注册</Text>
+              <Text className="text-xs text-gray-400 block text-center mt-2">授权手机号一键登录，新用户自动注册</Text>
             </View>
           )}
 
@@ -249,16 +340,16 @@ const LoginPage = () => {
           )}
 
           {/* 登录方式切换 */}
-          <View className="flex flex-row bg-gray-100 rounded-xl p-1 mb-6">
+          <View className="flex flex-row bg-gray-100 rounded-2xl p-1 mb-6">
             <View
-              className={`flex-1 rounded-lg py-2 flex items-center justify-center ${loginTab === 'password' ? 'bg-white' : ''}`}
+              className={`flex-1 rounded-xl py-2 flex items-center justify-center ${loginTab === 'password' ? 'bg-white' : ''}`}
               style={loginTab === 'password' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : undefined}
               onClick={() => setLoginTab('password')}
             >
               <Text className={`text-sm font-medium ${loginTab === 'password' ? 'text-[#FF4757]' : 'text-gray-500'}`}>密码登录</Text>
             </View>
             <View
-              className={`flex-1 rounded-lg py-2 flex items-center justify-center ${loginTab === 'sms' ? 'bg-white' : ''}`}
+              className={`flex-1 rounded-xl py-2 flex items-center justify-center ${loginTab === 'sms' ? 'bg-white' : ''}`}
               style={loginTab === 'sms' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : undefined}
               onClick={() => setLoginTab('sms')}
             >
@@ -291,7 +382,7 @@ const LoginPage = () => {
                 setPwdNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-3 text-base font-medium mt-2 border-0"
                 onClick={handlePasswordLogin}
                 disabled={loading}
               >
@@ -312,9 +403,8 @@ const LoginPage = () => {
                 'number',
                 11
               )}
-              {/* 验证码输入 */}
               <View className="flex flex-row items-center gap-3">
-                <View className="flex-1 flex flex-row items-center bg-gray-50 rounded-xl px-4 border border-gray-200">
+                <View className="flex-1 flex flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-200">
                   <ShieldCheck size={18} color="#9CA3AF" />
                   <View className="flex-1 ml-3">
                     <Input
@@ -329,7 +419,7 @@ const LoginPage = () => {
                   </View>
                 </View>
                 <View
-                  className={`rounded-xl px-4 flex items-center justify-center ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-[#FF4757] to-[#ff6b7a]'}`}
+                  className={`rounded-2xl px-4 flex items-center justify-center ${countdown > 0 ? 'bg-gray-200' : 'bg-gradient-to-r from-[#FF4757] to-[#ff6b7a]'}`}
                   style={{ height: '44px', minWidth: '100px' }}
                   onClick={countdown > 0 ? undefined : handleSendSms}
                 >
@@ -345,7 +435,7 @@ const LoginPage = () => {
                 setSmsNickName
               )}
               <Button
-                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-xl py-3 text-base font-medium mt-2 border-0"
+                className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b7a] text-white rounded-2xl py-3 text-base font-medium mt-2 border-0"
                 onClick={handleSmsLogin}
                 disabled={loading}
               >

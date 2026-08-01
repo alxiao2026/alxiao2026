@@ -35,7 +35,7 @@ export class UserController {
   /** 微信授权登录：小程序端传 code（Taro.login 获取，后端换 openid）；开发态兼容直传 open_id */
   @Post('login/wechat')
   @HttpCode(200)
-  async loginByWechat(@Body() body: { code?: string; open_id?: string; nick_name?: string; avatar_url?: string }) {
+  async loginByWechat(@Body() body: { code?: string; open_id?: string; nick_name?: string; avatar_url?: string; phone_code?: string }) {
     let openId = body.open_id;
     if (body.code) {
       console.log('[UserController] loginByWechat: code2session');
@@ -45,8 +45,14 @@ export class UserController {
     if (!openId) {
       throw new BadRequestException('缺少 code 或 open_id');
     }
+    // 手机号快速验证（可选）：用 phone_code 换手机号；失败不阻塞登录
+    let phone: string | null = null;
+    if (body.phone_code) {
+      phone = await this.userService.getPhoneNumberByCode(body.phone_code);
+      console.log('[UserController] loginByWechat 手机号:', phone ? '绑定成功' : '获取失败(降级为仅登录)');
+    }
     console.log('[UserController] loginByWechat:', openId);
-    const user = await this.userService.loginByWechat(openId, body.nick_name, body.avatar_url);
+    const user = await this.userService.loginByWechat(openId, body.nick_name, body.avatar_url, phone || undefined);
     return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
