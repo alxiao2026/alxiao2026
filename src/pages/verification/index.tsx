@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { formatDateTime } from '@/lib/utils';
 import { ScanLine, ClipboardList, FileText, RotateCcw, MessageSquare, Store, Search, ChevronRight, ListOrdered } from 'lucide-react-taro';
 
 interface OrderItem {
@@ -433,7 +434,7 @@ export default function VerificationPage() {
                 <CardContent className="p-4">
                   <View className="flex flex-row items-center justify-between mb-2">
                     <Text className="block text-xs text-gray-400">
-                      下单于 {new Date(order.created_at).toLocaleString('zh-CN')}
+                      下单于 {formatDateTime(order.created_at)}
                     </Text>
                     <Badge variant={badge.variant}>{badge.text}</Badge>
                   </View>

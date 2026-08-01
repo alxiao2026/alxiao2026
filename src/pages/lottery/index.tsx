@@ -15,15 +15,8 @@ import {
   PartyPopper,
   Sparkles,
 } from 'lucide-react-taro'
+import { formatDateTime } from '@/lib/utils'
 import './index.css'
-
-/** 日期时间格式化（小程序端 toLocaleString locale 参数不稳定，输出原始 toString 格式，故手动格式化） */
-const formatDateTime = (v: string | number | Date): string => {
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
-}
 
 type Stage = 'loading' | 'select' | 'opening' | 'result'
 

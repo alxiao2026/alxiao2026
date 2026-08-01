@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Trophy, Package, Clock, Gift, QrCode } from 'lucide-react-taro'
+import { formatDateTime, formatShortDateTime } from '@/lib/utils'
 
 interface LotteryRecord {
   id: string
@@ -173,15 +174,7 @@ export default function LotteryRecordsPage() {
     Taro.navigateTo({ url: `/pages/lottery/index?orderId=${order.id}` })
   }
 
-  const formatExpiryDate = (dateStr?: string) => {
-    if (!dateStr) return ''
-    return new Date(dateStr).toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatExpiryDate = (dateStr?: string) => formatShortDateTime(dateStr)
 
   return (
     <View className="min-h-screen bg-gray-50">
@@ -268,7 +261,7 @@ export default function LotteryRecordsPage() {
                             )}
                             <View className="flex items-center gap-1 mt-2">
                               <Clock size={12} color="#9ca3af" />
-                              <Text className="text-xs text-gray-400">{new Date(record.created_at).toLocaleString('zh-CN')}</Text>
+                              <Text className="text-xs text-gray-400">{formatDateTime(record.created_at)}</Text>
                             </View>
                           </View>
                           <Badge className={statusBadge.className}>
@@ -314,7 +307,7 @@ export default function LotteryRecordsPage() {
                           </View>
                           <View className="flex items-center gap-1 mt-1">
                             <Clock size={12} color="#9ca3af" />
-                            <Text className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('zh-CN')}</Text>
+                            <Text className="text-xs text-gray-400">{formatDateTime(order.created_at)}</Text>
                           </View>
                         </View>
                       </View>

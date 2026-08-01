@@ -34,3 +34,24 @@ export function formatPrice(price: string | number): string {
   if (Number.isNaN(num)) return String(price)
   return num % 1 === 0 ? String(num) : num.toFixed(1)
 }
+
+/**
+ * 日期时间格式化（跨端安全）：小程序端 toLocaleString(locale) 不可用会输出原始格式，
+ * 这里手动拼接，输出 "YYYY-MM-DD HH:mm"。
+ */
+export function formatDateTime(value?: string | number | Date): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** 短日期时间格式化（跨端安全）：输出 "MM-DD HH:mm"，用于有效期等紧凑展示 */
+export function formatShortDateTime(value?: string | number | Date): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
