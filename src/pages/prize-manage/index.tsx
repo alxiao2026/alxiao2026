@@ -347,7 +347,7 @@ export default function PrizeManagePage() {
 
       {/* 编辑弹窗 */}
       {showDialog && (
-        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <View style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <View className="bg-white rounded-2xl w-full max-w-sm" style={{ display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
             <View className="px-6 pt-5 pb-2 flex flex-row items-center justify-between">
               <Text className="block text-lg font-bold text-gray-800">{editingPrize ? '编辑奖品' : '添加奖品'}</Text>
@@ -355,7 +355,7 @@ export default function PrizeManagePage() {
                 <X size={14} color="#6b7280" />
               </View>
             </View>
-            <ScrollView scrollY style={{ flex: 1 }}>
+            <ScrollView scrollY style={{ height: '60vh' }}>
               <View className="space-y-4 px-6 pb-4">
                 <View>
                   <Text className="block text-sm text-gray-700 font-medium mb-1">奖品名称</Text>
