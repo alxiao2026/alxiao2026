@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store, ShieldCheck, X } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, Gift, Check, ChevronRight, Store, ShieldCheck, X, Search } from 'lucide-react-taro';
 
 interface Prize {
   id: string;
@@ -56,6 +56,7 @@ export default function PrizeManagePage() {
   const [boundMerchantName, setBoundMerchantName] = useState('');
   const [formMerchantId, setFormMerchantId] = useState<number | null>(null);
   const [showMerchantPicker, setShowMerchantPicker] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     initMerchantAndFetch();
@@ -222,8 +223,38 @@ export default function PrizeManagePage() {
     }
   };
 
+  // 搜索过滤：匹配奖品标题或门店名称（忽略大小写）
+  const filteredPrizes = prizes.filter((prize) => {
+    const keyword = searchText.trim().toLowerCase();
+    if (!keyword) return true;
+    if (prize.name.toLowerCase().includes(keyword)) return true;
+    if (getMerchantName(prize.merchant_id).toLowerCase().includes(keyword)) return true;
+    return false;
+  });
+
   return (
     <View className="min-h-screen bg-gray-50">
+      {/* 搜索框：支持门店名或奖品标题 */}
+      <View className="px-4 mt-3">
+        <View className="flex flex-row items-center bg-white rounded-full border border-gray-200 px-3 py-1">
+          <Search size={16} color="#9ca3af" />
+          <View className="flex-1 ml-2">
+            <Input
+              value={searchText}
+              onInput={(e) => setSearchText(e.detail.value)}
+              placeholder="搜索门店或奖品标题"
+              placeholderClass="text-gray-400"
+              className="w-full text-sm border-0 bg-transparent"
+            />
+          </View>
+          {searchText.length > 0 && (
+            <View className="ml-1" onClick={() => setSearchText('')}>
+              <X size={14} color="#9ca3af" />
+            </View>
+          )}
+        </View>
+      </View>
+
       {/* 总概率提示 */}
       <View className="px-4 mt-3">
         <View className="bg-red-50 border border-red-200 rounded-xl p-3">
@@ -240,13 +271,15 @@ export default function PrizeManagePage() {
           <View className="flex items-center justify-center py-20">
             <Text className="block text-gray-400">加载中...</Text>
           </View>
-        ) : prizes.length === 0 ? (
+        ) : filteredPrizes.length === 0 ? (
           <View className="flex items-center justify-center py-20">
             <Gift size={48} color="#d1d5db" />
-            <Text className="block text-gray-400 mt-3">暂无奖品，点击上方按钮添加</Text>
+            <Text className="block text-gray-400 mt-3">
+              {searchText.trim() ? '没有匹配的奖品' : '暂无奖品，点击上方按钮添加'}
+            </Text>
           </View>
         ) : (
-          prizes.map((prize) => (
+          filteredPrizes.map((prize) => (
             <Card key={prize.id} className="mb-3">
               <CardContent className="p-4">
                 {/* 奖品图片（有则展示） */}
