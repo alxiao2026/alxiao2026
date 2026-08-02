@@ -426,9 +426,17 @@ export class LotteryService {
       throw new BadRequestException('无权操作该订单');
     }
 
-    // 2.5 订单状态门槛：仅已支付(paid)/已核销(used)订单可抽奖
-    // 先付后抽：必须支付成功才能抽奖，中奖的折扣券/霸王餐即时返还原账户
-    if (!['paid', 'used'].includes(orderData.status)) {
+    // 2.5 订单状态门槛：已支付(paid)/已核销(used)订单可抽奖；
+    // 部分退款结清(refunded)的订单，只要仍有未退款份数（留一份没退款）也可参加抽奖，抽到的奖品都可正常使用
+    const totalQty = Number(orderData.quantity || 1);
+    const refundedQty = Number(orderData.refunded_quantity || 0);
+    const effectiveQty = Math.max(0, totalQty - refundedQty);
+    if (effectiveQty <= 0) {
+      throw new BadRequestException('订单已全部退款，无法参与抽奖');
+    }
+    const statusOk = ['paid', 'used'].includes(orderData.status);
+    const refundedButRemaining = orderData.status === 'refunded' && effectiveQty > 0;
+    if (!statusOk && !refundedButRemaining) {
       throw new BadRequestException('订单支付成功后才可参与抽奖');
     }
 
@@ -468,7 +476,8 @@ export class LotteryService {
     const { data: prizes, error: prizesError } = await prizesQuery;
     if (prizesError) throw new Error(`查询奖品失败: ${prizesError.message}`);
 
-    const orderTotal = parseFloat(orderData.price || '0') * (orderData.quantity || 1);
+    // 按剩余未退款份数计算订单总额：已退款份数不参与霸王餐返款与折扣券返额计算
+    const orderTotal = parseFloat(orderData.price || '0') * effectiveQty;
 
     // 5a. 奖池分类：兜底奖（永远有货，承接兜底区间）与常规奖
     const pool = (prizes as Prize[]) || [];
@@ -668,7 +677,10 @@ export class LotteryService {
         return;
       }
       const totalFen = Math.round(Number(payment.pay_amount || 0) * 100);
-      const refundFen = Math.min(Math.round(refundAmountYuan * 100), totalFen);
+      // 封顶需扣除已退款金额：部分退款后，霸王餐返款 = min(剩余份数总额, 实付 - 已退)
+      const alreadyRefundedFen = Math.round(Number(payment.refund_amount || 0) * 100);
+      const availableFen = Math.max(0, totalFen - alreadyRefundedFen);
+      const refundFen = Math.min(Math.round(refundAmountYuan * 100), availableFen);
       if (totalFen <= 0 || refundFen <= 0) {
         this.logger.warn(`霸王餐中奖退款跳过：金额异常 (order=${orderId}, total=${totalFen}, refund=${refundFen})`);
         return;

@@ -83,32 +83,67 @@ export default function OrderDetailsPage() {
   };
 
   // 撤销核销
+  const doRevoke = async (order: OrderItem, revokeCount: number) => {
+    setRevokingId(order.id);
+    try {
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+      const res = await Network.request({
+        url: `/api/orders/${order.id}/revoke-verify`,
+        method: 'POST',
+        data: { merchant_user_id: userId, revoke_count: revokeCount },
+      });
+      const body = res.data as any;
+      if (res.statusCode >= 400 || (body?.code !== undefined && body.code !== 200)) {
+        throw new Error(body?.message || body?.msg || '撤销失败');
+      }
+      Taro.showToast({ title: `已撤销 ${revokeCount} 份`, icon: 'success' });
+      if (merchantInfo) {
+        fetchOrders(merchantInfo.id, activeTab);
+      }
+    } catch (err: any) {
+      console.error('撤销核销失败:', err);
+      const msg = err?.message || err?.data?.message || '撤销失败，请重试';
+      Taro.showToast({ title: msg, icon: 'none' });
+    } finally {
+      setRevokingId('');
+    }
+  };
+
   const handleRevoke = (order: OrderItem) => {
+    const verifiedCount = order.verified_count || 0;
+    // 多份核销：先选撤销份数（ActionSheet 上限 6 项）
+    if (verifiedCount > 1) {
+      const items: string[] = [];
+      const maxSingle = Math.min(verifiedCount - 1, 4);
+      for (let i = 1; i <= maxSingle; i++) items.push(`撤销 ${i} 份`);
+      items.push(`全部撤销（${verifiedCount} 份）`);
+      Taro.showActionSheet({
+        itemList: items,
+        success: (sheetRes) => {
+          const revokeCount = sheetRes.tapIndex < maxSingle ? sheetRes.tapIndex + 1 : verifiedCount;
+          const remain = verifiedCount - revokeCount;
+          Taro.showModal({
+            title: '撤销核销',
+            content: remain > 0
+              ? `撤销 ${revokeCount} 份后，该 ${revokeCount} 份恢复待使用（可重新核销或退款），剩余 ${remain} 份保持已核销。确定撤销吗？`
+              : `撤销后订单「${order.package_name}」将全部恢复为待使用状态，顾客需重新出示核销码。确定撤销吗？`,
+            confirmText: '确定撤销',
+            confirmColor: '#FF4757',
+            success: (modalRes) => {
+              if (modalRes.confirm) doRevoke(order, revokeCount);
+            },
+          });
+        },
+      });
+      return;
+    }
     Taro.showModal({
       title: '撤销核销',
       content: `撤销后订单「${order.package_name}」将恢复为待使用状态，顾客需重新出示核销码。确定撤销吗？`,
       confirmText: '确定撤销',
       confirmColor: '#FF4757',
-      success: async (modalRes) => {
-        if (!modalRes.confirm) return;
-        setRevokingId(order.id);
-        try {
-          const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
-          await Network.request({
-            url: `/api/orders/${order.id}/revoke-verify`,
-            method: 'POST',
-            data: { merchant_user_id: userId },
-          });
-          Taro.showToast({ title: '已撤销核销', icon: 'success' });
-          if (merchantInfo) {
-            fetchOrders(merchantInfo.id, activeTab);
-          }
-        } catch (err: any) {
-          console.error('撤销核销失败:', err);
-          Taro.showToast({ title: err?.data?.message || '撤销失败，请重试', icon: 'none' });
-        } finally {
-          setRevokingId('');
-        }
+      success: (modalRes) => {
+        if (modalRes.confirm) doRevoke(order, 1);
       },
     });
   };
@@ -293,7 +328,7 @@ export default function OrderDetailsPage() {
                     <View className="text-right">
                       <Text className="block text-base font-bold text-gray-800">¥{order.price}</Text>
                       <Text className="block text-xs text-gray-400">{order.quantity || 1}份</Text>
-                      {order.status === 'used' && order.verified_count !== undefined && (
+                      {(order.verified_count || 0) > 0 && (
                         <Text className="block text-xs text-green-500 mt-1">
                           已核销{order.verified_count}份
                         </Text>

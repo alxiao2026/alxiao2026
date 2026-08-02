@@ -748,33 +748,72 @@ export class SettlementService {
   }
 
   /**
-   * 回滚订单结算：将该订单结算记录标记为 revoked（撤销核销）并扣回商家余额
-   * 撤销核销时调用，容错设计不影响撤销主流程
-   * 保留记录用于佣金明细展示"撤销核销"标签，金额清零不结算佣金；幂等，重复调用不重复扣余额
+   * 回滚订单结算：撤销核销时调用，容错设计不影响撤销主流程
+   * - 全部撤销（revokeCount >= verifiedCountBefore 或未传）：记录标记 revoked、金额清零、全额扣回商家余额（幂等）
+   * - 部分撤销（revokeCount < verifiedCountBefore）：按份数比例回滚佣金/结算额并扣回对应余额，记录保持 settled
    */
-  async rollbackOrderSettlement(orderId: string): Promise<void> {
+  async rollbackOrderSettlement(
+    orderId: string,
+    revokeCount?: number,
+    verifiedCountBefore?: number,
+  ): Promise<void> {
     try {
       const { data: records } = await this.supabase
         .from('settlement_records')
-        .select('merchant_id, settlement_amount')
+        .select('id, merchant_id, order_amount, commission_amount, settlement_amount')
         .eq('order_id', orderId)
         .neq('status', 'revoked');
       if (!records || records.length === 0) return;
 
-      const merchantId = Number((records[0] as any).merchant_id);
-      const totalSettlement = records.reduce(
-        (sum, r: any) => sum + (Number(r.settlement_amount) || 0),
-        0,
-      );
+      const record = records[0] as any;
+      const merchantId = Number(record.merchant_id);
+      const recordCommission = Number(record.commission_amount) || 0;
+      const recordSettlement = Number(record.settlement_amount) || 0;
+      const recordOrderAmount = Number(record.order_amount) || 0;
 
-      // 标记撤销：保留历史轨迹，佣金与结算额清零（不结算佣金）
-      await this.supabase
-        .from('settlement_records')
-        .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0 })
-        .eq('order_id', orderId)
-        .neq('status', 'revoked');
+      // 是否部分回滚
+      const isPartial =
+        !!revokeCount &&
+        !!verifiedCountBefore &&
+        revokeCount > 0 &&
+        revokeCount < verifiedCountBefore;
 
-      if (totalSettlement > 0) {
+      let rollbackSettlement = recordSettlement;
+
+      if (isPartial) {
+        // 按撤销份数占撤销前核销份数的比例回滚
+        const ratio = revokeCount / (verifiedCountBefore as number);
+        const rbCommission = Math.round(recordCommission * ratio * 100) / 100;
+        const rbSettlement = Math.round(recordSettlement * ratio * 100) / 100;
+        const rbOrderAmount = Math.round(recordOrderAmount * ratio * 100) / 100;
+        rollbackSettlement = rbSettlement;
+
+        const newCommission = Math.round((recordCommission - rbCommission) * 100) / 100;
+        const newSettlement = Math.round((recordSettlement - rbSettlement) * 100) / 100;
+        const newOrderAmount = Math.round((recordOrderAmount - rbOrderAmount) * 100) / 100;
+        const newRate = newOrderAmount > 0
+          ? Math.round((newCommission / newOrderAmount) * 10000) / 100
+          : 0;
+
+        await this.supabase
+          .from('settlement_records')
+          .update({
+            order_amount: newOrderAmount,
+            commission_amount: newCommission,
+            settlement_amount: newSettlement,
+            commission_rate: newRate,
+          })
+          .eq('id', record.id);
+      } else {
+        // 全部撤销：标记 revoked，佣金与结算额清零（不结算佣金），保留历史轨迹
+        await this.supabase
+          .from('settlement_records')
+          .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0 })
+          .eq('order_id', orderId)
+          .neq('status', 'revoked');
+      }
+
+      if (rollbackSettlement > 0) {
         const { data: balanceRow } = await this.supabase
           .from('merchant_balances')
           .select('*')
@@ -783,11 +822,11 @@ export class SettlementService {
         if (balanceRow) {
           const newBalance = Math.max(
             0,
-            Math.round((Number((balanceRow as any).balance) - totalSettlement) * 100) / 100,
+            Math.round((Number((balanceRow as any).balance) - rollbackSettlement) * 100) / 100,
           );
           const newTotalSettled = Math.max(
             0,
-            Math.round((Number((balanceRow as any).total_settled) - totalSettlement) * 100) / 100,
+            Math.round((Number((balanceRow as any).total_settled) - rollbackSettlement) * 100) / 100,
           );
           await this.supabase
             .from('merchant_balances')

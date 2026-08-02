@@ -803,8 +803,8 @@ export class OrderService {
     };
   }
 
-  /** 撤销核销：核销后30分钟内可撤销，订单恢复待使用状态 */
-  async revokeVerify(orderId: string, merchantUserId?: string): Promise<Order> {
+  /** 撤销核销：核销后30分钟内可撤销；支持部分份数撤销，撤销的份数恢复待使用（可重新核销或退款） */
+  async revokeVerify(orderId: string, merchantUserId?: string, revokeCount?: number): Promise<Order> {
     const { data: order, error: findError } = await this.client
       .from('orders')
       .select('*')
@@ -818,6 +818,16 @@ export class OrderService {
     const verifiedCount = order.verified_count || 0;
     if (verifiedCount <= 0 || !order.verified_at) {
       throw new BadRequestException('订单未核销，无需撤销');
+    }
+
+    // 撤销份数：默认全部撤销；指定时必须为 1 ~ verifiedCount 的整数
+    let revokeQty = verifiedCount;
+    if (revokeCount !== undefined && revokeCount !== null) {
+      const qty = Math.floor(Number(revokeCount));
+      if (!Number.isFinite(qty) || qty < 1 || qty > verifiedCount) {
+        throw new BadRequestException(`撤销份数无效，最多可撤销 ${verifiedCount} 份`);
+      }
+      revokeQty = qty;
     }
 
     // 仅允许撤销30分钟内的核销
@@ -846,22 +856,30 @@ export class OrderService {
       }
     }
 
+    // 撤销的份数恢复待使用；全部撤销时清空核销时间，仍有核销份数时保留（时限继续流逝）
+    const newVerifiedCount = verifiedCount - revokeQty;
+    const totalQty = order.quantity || 1;
+    const updatePayload: Record<string, any> = {
+      verified_count: newVerifiedCount,
+      // 与 verify 流程口径一致：全部份数处于已核销状态才算 used，否则回到 paid（可继续核销/退款）
+      status: newVerifiedCount >= totalQty ? 'used' : 'paid',
+      updated_at: new Date().toISOString(),
+    };
+    if (newVerifiedCount === 0) {
+      updatePayload.verified_at = null;
+    }
+
     const { data, error } = await this.client
       .from('orders')
-      .update({
-        verified_count: 0,
-        status: 'paid',
-        verified_at: null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', orderId)
       .select()
       .single();
 
     if (error) throw new Error(`撤销核销失败: ${error.message}`);
 
-    // 回滚该订单的结算记录与商家余额（容错，不影响撤销主流程）
-    await this.settlementService.rollbackOrderSettlement(orderId);
+    // 回滚该订单的结算记录与商家余额（全部撤销：记录作废全额回滚；部分撤销：按份数比例回滚；容错，不影响撤销主流程）
+    await this.settlementService.rollbackOrderSettlement(orderId, revokeQty, verifiedCount);
 
     // 通知用户核销已被撤销（容错，不影响主流程）
     try {
