@@ -6,30 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RevokeDialog } from '@/components/revoke-dialog';
-import { Badge } from '@/components/ui/badge';
-import { formatDateTime } from '@/lib/utils';
 import { ScanLine, ClipboardList, FileText, RotateCcw, MessageSquare, Store, Search, ChevronRight, ListOrdered } from 'lucide-react-taro';
-
-interface OrderItem {
-  id: string;
-  package_name: string;
-  price: string;
-  quantity: number;
-  status: string;
-  created_at: string;
-  verified_at: string | null;
-  verification_code: string;
-  nick_name: string | null;
-  phone: string | null;
-  verify_warning?: string;
-  verified_count?: number;
-}
 
 export default function VerificationPage() {
   const [merchantInfo, setMerchantInfo] = useState<{ id: number; name: string } | null>(null);
   const [searchCode, setSearchCode] = useState('');
-  const [orders, setOrders] = useState<OrderItem[]>([]);
-  const [, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('verify');
   const [verifyCode, setVerifyCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -103,22 +84,6 @@ export default function VerificationPage() {
       if (merchant) setMerchantInfo(merchant);
     } catch (err) {
       console.log('当前用户非商家或未绑定门店');
-    }
-  };
-
-  const fetchOrders = async (status?: string) => {
-    setLoading(true);
-    try {
-      const params: Record<string, string> = {};
-      if (status) params.status = status;
-      if (merchantInfo) params.merchant_id = String(merchantInfo.id);
-      const res = await Network.request({ url: '/api/orders', data: params });
-      const data = (res.data as any)?.data || res.data;
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('获取订单失败:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -239,7 +204,6 @@ export default function VerificationPage() {
       } else {
         setVerifyResult({ success: true, message: '核销成功！', order: result });
       }
-      fetchOrders();
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || '核销失败';
       setVerifyFailReason(msg);
@@ -268,21 +232,12 @@ export default function VerificationPage() {
     doVerify(verifyTarget.verification_code, verifyCount);
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid': return { text: '待使用', variant: 'default' as const };
-      case 'used': return { text: '已完成', variant: 'secondary' as const };
-      case 'refunded': return { text: '已退款', variant: 'outline' as const };
-      case 'expired': return { text: '已过期', variant: 'outline' as const };
-      default: return { text: status, variant: 'outline' as const };
-    }
-  };
 
   const menuItems = [
     { icon: ListOrdered, label: '订单明细', color: '#FF4757', bg: '#fef2f2', action: () => Taro.navigateTo({ url: '/pages/order-details/index' }) },
-    { icon: ClipboardList, label: '预约处理', color: '#FF4757', bg: '#fef2f2', action: () => fetchOrders('paid') },
-    { icon: FileText, label: '核销明细', color: '#FF4757', bg: '#fef2f2', action: () => fetchOrders('used') },
-    { icon: RotateCcw, label: '处理售后', color: '#f59e0b', bg: '#fffbeb', action: () => fetchOrders('refunded') },
+    { icon: ClipboardList, label: '预约处理', color: '#FF4757', bg: '#fef2f2', action: () => Taro.navigateTo({ url: '/pages/order-details/index?tab=paid' }) },
+    { icon: FileText, label: '核销明细', color: '#FF4757', bg: '#fef2f2', action: () => Taro.navigateTo({ url: '/pages/order-details/index?tab=used' }) },
+    { icon: RotateCcw, label: '处理售后', color: '#f59e0b', bg: '#fffbeb', action: () => Taro.navigateTo({ url: '/pages/order-details/index?tab=refunded' }) },
     { icon: RotateCcw, label: '发起退款', color: '#f59e0b', bg: '#fffbeb', action: () => { Taro.showToast({ title: '退款功能开发中', icon: 'none' }); } },
     { icon: MessageSquare, label: '评价管理', color: '#f59e0b', bg: '#fffbeb', action: () => { Taro.showToast({ title: '评价功能开发中', icon: 'none' }); } },
   ];
@@ -487,38 +442,6 @@ export default function VerificationPage() {
       )}
 
       {/* 订单列表 */}
-      {orders.length > 0 && (
-        <View className="px-4 mt-3 mb-20">
-          <Text className="block text-sm font-semibold text-gray-600 mb-2">订单列表</Text>
-          {orders.map((order) => {
-            const badge = getStatusBadge(order.status);
-            return (
-              <Card key={order.id} className="mb-2">
-                <CardContent className="p-4">
-                  <View className="flex flex-row items-center justify-between mb-2">
-                    <Text className="block text-xs text-gray-400">
-                      下单于 {formatDateTime(order.created_at)}
-                    </Text>
-                    <Badge variant={badge.variant}>{badge.text}</Badge>
-                  </View>
-                  <View className="flex flex-row items-center gap-3">
-                    <View className="flex-1">
-                      <Text className="block text-base font-semibold text-gray-800">{order.package_name}</Text>
-                      <Text className="block text-xs text-gray-500 mt-1">
-                        用户：{order.nick_name || '匿名用户'} · {order.quantity || 1}份
-                      </Text>
-                    </View>
-                    <View className="text-right">
-                      <Text className="block text-base font-bold text-gray-800">¥{order.price}</Text>
-                      <Text className="block text-xs text-gray-400">{order.quantity || 1}份</Text>
-                    </View>
-                  </View>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </View>
-      )}
 
       <RevokeDialog
         visible={!!revokeDialog}

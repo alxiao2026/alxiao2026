@@ -1,6 +1,6 @@
 import { View, Text, Picker } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useRouter } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,13 +26,15 @@ interface OrderItem {
   order_no: string | null;
 }
 
-type TabType = 'all' | 'pending' | 'used';
+type TabType = 'all' | 'paid' | 'used' | 'refunded';
 
 export default function OrderDetailsPage() {
   const [merchantInfo, setMerchantInfo] = useState<{ id: number; name: string } | null>(null);
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const { params } = useRouter();
+  const initialTab: TabType = ['paid', 'used', 'refunded'].includes(params.tab || '') ? (params.tab as TabType) : 'all';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [showFilter, setShowFilter] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -64,10 +66,10 @@ export default function OrderDetailsPage() {
   const fetchOrders = async (merchantId: number, status: string) => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { merchant_id: String(merchantId) };
-      if (status !== 'all') params.status = status;
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
+      const queryParams: Record<string, string> = { merchant_id: String(merchantId) };
+      if (status !== 'all') queryParams.status = status;
+      if (startDate) queryParams.start_date = startDate;
+      if (endDate) queryParams.end_date = endDate;
       const res = await Network.request({ url: '/api/orders', data: params });
       const data = (res.data as any)?.data || res.data;
       setOrders(Array.isArray(data) ? data : []);
@@ -266,11 +268,14 @@ export default function OrderDetailsPage() {
             <TabsTrigger value="all" className="flex-1">
               <Text className="text-sm">全部</Text>
             </TabsTrigger>
-            <TabsTrigger value="pending" className="flex-1">
+            <TabsTrigger value="paid" className="flex-1">
               <Text className="text-sm">待核销</Text>
             </TabsTrigger>
             <TabsTrigger value="used" className="flex-1">
               <Text className="text-sm">已核销</Text>
+            </TabsTrigger>
+            <TabsTrigger value="refunded" className="flex-1">
+              <Text className="text-sm">已退款</Text>
             </TabsTrigger>
           </TabsList>
         </Tabs>
