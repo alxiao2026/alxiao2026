@@ -104,9 +104,17 @@ export class SettlementController {
   /** 管理员确认打款（提现已到账） */
   @Post('withdrawals/:id/mark-paid')
   @HttpCode(200)
-  async markWithdrawalPaid(@Param('id') id: string) {
-    const data = await this.settlementService.markWithdrawalPaid(id);
+  async markWithdrawalPaid(@Param('id') id: string, @Body() body: { admin_user_id?: string }) {
+    const data = await this.settlementService.markWithdrawalPaid(id, body?.admin_user_id || '');
     return { code: 200, msg: '已确认打款', data };
+  }
+
+  /** 管理员拒绝提现（金额退回商家余额） */
+  @Post('withdrawals/:id/reject')
+  @HttpCode(200)
+  async rejectWithdrawal(@Param('id') id: string, @Body() body: { admin_user_id?: string; reason?: string }) {
+    const data = await this.settlementService.rejectWithdrawal(id, body?.admin_user_id || '', body?.reason);
+    return { code: 200, msg: '已拒绝，金额已退回商家余额', data };
   }
 
   /** 申请提现 */
@@ -120,10 +128,11 @@ export class SettlementController {
   /** 获取提现记录列表 */
   @Get('withdrawals')
   async getWithdrawals(
-    @Query('merchant_id') merchantId: string,
+    @Query('merchant_id') merchantId?: string,
     @Query('status') status?: string,
+    @Query('admin_user_id') adminUserId?: string,
   ) {
-    const data = await this.settlementService.getWithdrawals({ merchantId, status });
+    const data = await this.settlementService.getWithdrawals({ merchantId, status, adminUserId });
     return { code: 200, msg: 'success', data };
   }
 

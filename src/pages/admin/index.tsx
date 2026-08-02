@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -221,6 +221,7 @@ const AdminPage = () => {
             { icon: 'store', label: '商家管理', color: '#10b981', bg: '#ecfdf5', page: '/pages/merchant-admin/index', adminOnly: true },
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
             { icon: 'wallet', label: '平台佣金', color: '#f59e0b', bg: '#fffbeb', page: '/pages/platform-commission/index', adminOnly: true },
+            { icon: 'banknote', label: '提现审核', color: '#0ea5e9', bg: '#f0f9ff', page: '/pages/withdrawal-review/index', adminOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
           ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
@@ -238,6 +239,7 @@ const AdminPage = () => {
                 {item.icon === 'store' && <Store size={28} color={item.color} />}
                 {item.icon === 'settings' && <Settings size={28} color={item.color} />}
                 {item.icon === 'wallet' && <Wallet size={28} color={item.color} />}
+                {item.icon === 'banknote' && <Banknote size={28} color={item.color} />}
                 {item.icon === 'piggy' && <PiggyBank size={28} color={item.color} />}
                 {item.icon === 'receipt' && <Receipt size={28} color={item.color} />}
               </View>

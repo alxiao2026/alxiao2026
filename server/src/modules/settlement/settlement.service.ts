@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { NotificationService } from '../notification/notification.service';
@@ -309,7 +309,8 @@ export class SettlementService {
   }
 
   /** 管理员确认打款：提现已到账（通知1：商户资金提现到账通知） */
-  async markWithdrawalPaid(withdrawalId: string) {
+  async markWithdrawalPaid(withdrawalId: string, adminUserId: string) {
+    await this.assertAdmin(adminUserId);
     const { data: record, error: findError } = await this.supabase
       .from('withdrawal_records')
       .select('*')
@@ -340,14 +341,89 @@ export class SettlementService {
   }
 
   /** 获取提现记录列表 */
-  async getWithdrawals(options: { merchantId: string; status?: string }) {
-    const { merchantId, status } = options;
+  /** 拒绝提现申请（超管）：状态置 rejected，金额退回商家余额 */
+  async rejectWithdrawal(withdrawalId: string, adminUserId: string, reason?: string) {
+    await this.assertAdmin(adminUserId);
+    const { data: record, error: findError } = await this.supabase
+      .from('withdrawal_records')
+      .select('*')
+      .eq('id', withdrawalId)
+      .single();
+
+    if (findError || !record) throw new NotFoundException('提现记录不存在');
+    if (record.status !== 'pending') {
+      throw new BadRequestException('该提现申请已处理，请勿重复操作');
+    }
+
+    const { data, error } = await this.supabase
+      .from('withdrawal_records')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', withdrawalId)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // 退回余额：balance 加回、total_withdrawn 扣回
+    const { data: balanceRow } = await this.supabase
+      .from('merchant_balances')
+      .select('balance, total_withdrawn')
+      .eq('merchant_id', record.merchant_id)
+      .maybeSingle();
+    const currentBalance = Number(balanceRow?.balance || 0);
+    const currentWithdrawn = Number(balanceRow?.total_withdrawn || 0);
+    const refundAmount = Number(record.amount || 0);
+    await this.supabase.from('merchant_balances').upsert(
+      {
+        merchant_id: record.merchant_id,
+        balance: Math.round((currentBalance + refundAmount) * 100) / 100,
+        total_withdrawn: Math.max(0, Math.round((currentWithdrawn - refundAmount) * 100) / 100),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'merchant_id' },
+    );
+
+    // 通知商户：提现被拒绝，金额已退回
+    try {
+      await this.notificationService.notifyMerchant(record.merchant_id, 'withdraw_rejected', {
+        amount: record.amount,
+        reason: reason || '',
+      });
+    } catch (e) {
+      console.warn('[rejectWithdrawal] 通知发送失败:', (e as Error)?.message);
+    }
+
+    return data;
+  }
+
+  /** 超管权限校验（users.role === 'admin'） */
+  private async assertAdmin(adminUserId: string) {
+    if (!adminUserId) throw new ForbiddenException('缺少管理员身份');
+    const { data: adminUser } = await this.supabase
+      .from('users')
+      .select('role')
+      .eq('user_id', adminUserId)
+      .maybeSingle();
+    const roleText = String((adminUser as any)?.role || '').toLowerCase();
+    if (!adminUser || roleText !== 'admin') {
+      throw new ForbiddenException('仅平台管理员可执行此操作');
+    }
+  }
+
+  async getWithdrawals(options: { merchantId?: string; status?: string; adminUserId?: string }) {
+    const { merchantId, status, adminUserId } = options;
 
     let query = this.supabase
       .from('withdrawal_records')
       .select('*')
-      .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false });
+
+    if (adminUserId) {
+      // 平台管理员：查看全部提现申请
+      await this.assertAdmin(adminUserId);
+    } else {
+      if (!merchantId) throw new BadRequestException('缺少 merchant_id');
+      query = query.eq('merchant_id', merchantId);
+    }
 
     if (status) {
       query = query.eq('status', status);
@@ -356,7 +432,25 @@ export class SettlementService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data;
+    const rows = data || [];
+
+    // 关联门店名称
+    const merchantIds = [...new Set(rows.map((r: any) => Number(r.merchant_id)).filter(Boolean))];
+    const nameMap: Record<number, string> = {};
+    if (merchantIds.length > 0) {
+      const { data: merchants } = await this.supabase
+        .from('merchants')
+        .select('id, name')
+        .in('id', merchantIds);
+      (merchants || []).forEach((m: any) => {
+        nameMap[Number(m.id)] = m.name;
+      });
+    }
+
+    return rows.map((r: any) => ({
+      ...r,
+      merchant_name: nameMap[Number(r.merchant_id)] || '',
+    }));
   }
 
   // ==================== 平台佣金 ====================

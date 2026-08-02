@@ -20,6 +20,7 @@
 export type NotificationType =
   | 'withdraw_arrived'
   | 'withdraw_submitted'
+  | 'withdraw_rejected'
   | 'order_created'
   | 'coupon_expiring'
   | 'order_paid'
@@ -56,6 +57,11 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationType, NotificationTempla
   withdraw_submitted: {
     title: '提现申请提交成功',
     render: (d) => `您的提现申请 ¥${fmtAmount(d.amount)} 已提交成功，平台将在审核后打款，请耐心等待。`,
+    wechatTemplateId: '',
+  },
+  withdraw_rejected: {
+    title: '提现申请未通过审核',
+    render: (d) => `您的提现申请 ¥${fmtAmount(d.amount)} 未通过审核${d.reason ? `，原因：${d.reason}` : ''}，提现金额已退回您的账户余额。`,
     wechatTemplateId: '',
   },
   order_created: {

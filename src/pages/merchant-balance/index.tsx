@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wallet, Clock } from 'lucide-react-taro';
+import { Wallet, Clock, CircleX } from 'lucide-react-taro';
 
 interface Balance {
   balance: number;
@@ -110,6 +110,7 @@ export default function MerchantBalancePage() {
     const map: Record<string, string> = {
       pending: '处理中',
       success: '成功',
+      rejected: '已拒绝',
       failed: '失败',
     };
     return map[status] || status;
@@ -119,6 +120,7 @@ export default function MerchantBalancePage() {
     const map: Record<string, string> = {
       pending: 'text-yellow-600',
       success: 'text-green-600',
+      rejected: 'text-red-600',
       failed: 'text-red-600',
     };
     return map[status] || 'text-gray-600';
@@ -188,6 +190,7 @@ export default function MerchantBalancePage() {
                   <View key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <View className="flex items-center">
                       {record.status === 'pending' && <Clock size={16} color="#F59E0B" className="mr-2" />}
+                      {record.status === 'rejected' && <CircleX size={16} color="#DC2626" className="mr-2" />}
                       <View>
                         <Text className="block text-sm font-semibold text-gray-800">¥{record.amount.toFixed(2)}</Text>
                         <Text className="block text-xs text-gray-500">{record.requested_at}</Text>

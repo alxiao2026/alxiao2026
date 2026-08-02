@@ -25,6 +25,7 @@ export default defineAppConfig({
     'pages/package-settlement-config/index',
     'pages/merchant-balance/index',
     'pages/settlement-records/index',
+    'pages/withdrawal-review/index',
     'pages/platform-commission/index',
     'pages/notification-center/index'
   ],
