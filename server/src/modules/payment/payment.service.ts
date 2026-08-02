@@ -502,7 +502,9 @@ export class PaymentService {
     // 累计已退金额（此前部分退款）
     const alreadyRefunded = parseFloat(payment?.refund_amount || '0') || 0;
 
-    const isFullRefund = refundQty === refundableQty;
+    // 全额退款判定：仅在无任何已核销份数时，才允许"退剩余全部金额"（扣除已返还折扣）；
+    // 存在已核销份数时一律按实付均价退，确保已消费部分的金额不会被退掉
+    const isFullRefund = verifiedCount === 0 && refundQty === refundableQty;
     const unitPay = Math.round((paidAmount / quantity) * 100) / 100;
     let refundAmount: number;
     if (isFullRefund) {

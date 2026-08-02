@@ -79,8 +79,9 @@ export default function RefundApplyPage() {
   /** 退款金额预览（与后端金额引擎一致） */
   const calcPreview = () => {
     if (!refundable) return { amount: 0, note: '' }
-    const { pay_amount, unit_pay, rebate_amount, already_refunded, refundable_quantity } = refundable
-    const isFullRefund = refundQty === refundable_quantity
+    const { pay_amount, unit_pay, rebate_amount, already_refunded, refundable_quantity, verified_count } = refundable
+    // 与后端一致：有已核销份数时一律按均价退，已消费金额不可退
+    const isFullRefund = verified_count === 0 && refundQty === refundable_quantity
     let amount: number
     if (isFullRefund) {
       amount = Math.round(Math.max(pay_amount - rebate_amount - already_refunded, 0) * 100) / 100

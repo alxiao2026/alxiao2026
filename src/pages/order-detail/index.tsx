@@ -363,7 +363,11 @@ export default function OrderDetail() {
   const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.paid
   const isCreated = order.status === 'created'
   const isPaid = order.status === 'paid'
-  const canRefund = isPaid && (order.verified_count || 0) === 0
+  const verifiedCount = order.verified_count || 0
+  const totalQty = order.quantity || 1
+  // 可退条件：已支付且仍有未核销份数（已核销的份数不可退）
+  const refundableQty = Math.max(totalQty - verifiedCount, 0)
+  const canRefund = isPaid && refundableQty > 0
 
   // 金额明细：优先用 prepay 返回（含券抵扣），否则用订单字段兜底
   const originalAmount = prepayInfo
@@ -713,7 +717,7 @@ export default function OrderDetail() {
           </View>
         </View>
 
-        {/* 退款入口：已支付未核销 */}
+        {/* 退款入口：已支付且有未核销份数（已核销份数不可退） */}
         {canRefund && (
           <View className="mx-4 mt-3">
             <Button
@@ -722,7 +726,7 @@ export default function OrderDetail() {
 
               onClick={handleRefund}
             >
-              <Text>申请退款（未消费随时退）</Text>
+              <Text>{verifiedCount > 0 ? `申请退款（已核销${verifiedCount}份，剩余${refundableQty}份可退）` : '申请退款（未消费随时退）'}</Text>
             </Button>
           </View>
         )}
