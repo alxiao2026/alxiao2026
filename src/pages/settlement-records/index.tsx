@@ -40,9 +40,7 @@ export default function SettlementRecordsPage() {
         method: 'GET',
       });
       const data = (res.data as any)?.data;
-      if (data) {
-        setRecords(data);
-      }
+      setRecords(data?.list || []);
     } catch (error) {
       console.error('获取结算记录失败:', error);
     } finally {
@@ -66,14 +64,39 @@ export default function SettlementRecordsPage() {
           ...data.map((row: any) => headers.map(h => `"${row[h] || ''}"`).join(','))
         ].join('\n');
 
-        // 创建下载链接
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `商家结算明细_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
-        
-        Taro.showToast({ title: '导出成功', icon: 'success' });
+        const fileName = `商家结算明细_${new Date().toISOString().split('T')[0]}.csv`;
+        if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
+          // H5：Blob 下载
+          const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = fileName;
+          link.click();
+          Taro.showToast({ title: '导出成功', icon: 'success' });
+        } else {
+          // 小程序：写入本地文件后打开预览（可转发分享）
+          const fs = Taro.getFileSystemManager();
+          const filePath = `${(Taro as any).env?.USER_DATA_PATH || 'wxfile://tmp'}/${fileName}`;
+          fs.writeFile({
+            filePath,
+            data: '\ufeff' + csvContent,
+            encoding: 'utf8',
+            success: () => {
+              Taro.openDocument({
+                filePath,
+                showMenu: true,
+                fail: () => {
+                  Taro.setClipboardData({ data: csvContent });
+                  Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
+                },
+              });
+            },
+            fail: () => {
+              Taro.setClipboardData({ data: csvContent });
+              Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
+            },
+          });
+        }
       } else {
         Taro.showToast({ title: '暂无数据可导出', icon: 'none' });
       }
