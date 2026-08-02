@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getWechatCredentials } from '../user/wechat-config';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { NotificationType, NOTIFICATION_TEMPLATES } from './notification.templates';
 
@@ -119,8 +120,7 @@ export class WechatNotifyService {
 
   /** 获取微信接口调用凭证 access_token；未配置 AppSecret 时返回 null */
   private async getAccessToken(): Promise<string | null> {
-    const appid = process.env.WECHAT_APPID || '';
-    const secret = process.env.WECHAT_SECRET || '';
+    const { appid, secret } = await getWechatCredentials();
     if (!appid || !secret) return null;
 
     if (this.tokenCache && Date.now() < this.tokenCache.expiresAt) {

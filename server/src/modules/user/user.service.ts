@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getWechatCredentials, saveWechatCredentials, getWechatConfigForAdmin } from './wechat-config';
 
 // 角色编码：0=普通消费者，1=商家用户，2=系统管理员
 export const ROLE_CONSUMER = 0;
@@ -256,14 +257,55 @@ export class UserService {
    * https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
    * 需在 server/.env 配置 WECHAT_APPID / WECHAT_SECRET
    */
+  /** 超管权限校验 */
+  private async assertAdminUser(adminUserId: string) {
+    if (!adminUserId) throw new BadRequestException('缺少管理员身份');
+    const supabase = getSupabaseClient();
+    const { data: adminUser } = await supabase
+      .from('users')
+      .select('role')
+      .eq('user_id', adminUserId)
+      .maybeSingle();
+    if (!adminUser || String((adminUser as any)?.role || '').toLowerCase() !== 'admin') {
+      throw new BadRequestException('仅平台管理员可执行此操作');
+    }
+  }
+
+  /** 管理后台：查看微信配置（secret 打码） */
+  async getWechatConfig(adminUserId: string) {
+    await this.assertAdminUser(adminUserId);
+    return getWechatConfigForAdmin();
+  }
+
+  /** 管理后台：保存微信配置（AppID/AppSecret 入库，作为环境变量的兜底；secret 留空则保留已有值） */
+  async updateWechatConfig(adminUserId: string, appid: string, secret: string) {
+    await this.assertAdminUser(adminUserId);
+    if (!appid?.trim()) throw new BadRequestException('请填写 AppID');
+    let finalSecret = secret?.trim() || '';
+    if (!finalSecret) {
+      // 未填 secret：保留数据库已有值
+      const supabase = getSupabaseClient();
+      const { data } = await supabase
+        .from('wechat_config')
+        .select('secret')
+        .eq('id', 1)
+        .maybeSingle();
+      finalSecret = (data as any)?.secret || '';
+      if (!finalSecret) throw new BadRequestException('首次配置请填写 AppSecret');
+    }
+    await saveWechatCredentials(appid, finalSecret);
+    return getWechatConfigForAdmin();
+  }
+
   async code2Session(code: string): Promise<{ openid: string; unionid?: string }> {
     const logger = new Logger('UserService.code2Session');
-    const appid = process.env.WECHAT_APPID || '';
-    const secret = process.env.WECHAT_SECRET || '';
     if (!code) throw new BadRequestException('缺少微信登录 code');
+    const { appid, secret, source } = await getWechatCredentials();
     if (!appid || !secret) {
-      throw new BadRequestException('微信登录未配置（缺少 WECHAT_APPID/WECHAT_SECRET）');
+      logger.error('code2session: 未找到微信配置（环境变量与数据库 wechat_config 均为空）');
+      throw new BadRequestException('微信登录未配置，请联系管理员在后台配置微信 AppID/AppSecret');
     }
+    logger.log(`code2session 配置来源: ${source}`);
     const url =
       `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}` +
       `&secret=${secret}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
@@ -287,9 +329,8 @@ export class UserService {
     if (this.wxAccessTokenCache && this.wxAccessTokenCache.expiresAt > now) {
       return this.wxAccessTokenCache.token;
     }
-    const appid = process.env.WECHAT_APPID;
-    const secret = process.env.WECHAT_SECRET;
-    if (!appid || !secret) throw new BadRequestException('微信登录未配置');
+    const { appid, secret } = await getWechatCredentials();
+    if (!appid || !secret) throw new BadRequestException('微信登录未配置，请联系管理员在后台配置微信 AppID/AppSecret');
     const res = await fetch(
       `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
     );

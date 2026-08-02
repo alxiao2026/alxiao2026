@@ -147,7 +147,9 @@ const LoginPage: React.FC = () => {
       }
       finishLogin();
     } else {
-      Taro.showToast({ title: body.msg || '登录失败', icon: 'none' });
+      // 透传后端真实错误（NestJS HTTP 错误返回 message 字段，业务信封返回 msg 字段）
+      const errMsg = body?.msg || (body as { message?: string })?.message || '登录失败';
+      Taro.showToast({ title: String(errMsg).slice(0, 30), icon: 'none' });
     }
   };
 

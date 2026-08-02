@@ -27,6 +27,7 @@ export default defineAppConfig({
     'pages/settlement-records/index',
     'pages/withdrawal-review/index',
     'pages/notify-template-config/index',
+    'pages/wechat-config/index',
     'pages/platform-commission/index',
     'pages/notification-center/index'
   ],

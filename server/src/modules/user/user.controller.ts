@@ -32,6 +32,25 @@ export class UserController {
     return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
+  /** 管理后台：查看微信配置（AppSecret 打码回显） */
+  @Get('admin/wechat-config')
+  async getWechatConfig(@Query('admin_user_id') adminUserId: string) {
+    const data = await this.userService.getWechatConfig(adminUserId || '');
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 管理后台：保存微信配置 */
+  @Post('admin/wechat-config')
+  @HttpCode(200)
+  async saveWechatConfig(@Body() body: { admin_user_id?: string; appid?: string; secret?: string }) {
+    const data = await this.userService.updateWechatConfig(
+      body?.admin_user_id || '',
+      body?.appid || '',
+      body?.secret || '',
+    );
+    return { code: 200, msg: '保存成功', data };
+  }
+
   /** 微信授权登录：小程序端传 code（Taro.login 获取，后端换 openid）；开发态兼容直传 open_id */
   @Post('login/wechat')
   @HttpCode(200)
