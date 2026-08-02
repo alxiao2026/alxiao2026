@@ -366,7 +366,8 @@ export class SettlementService {
   async getCommissionSummary() {
     const { data, error } = await this.supabase
       .from('settlement_records')
-      .select('commission_amount, settlement_amount');
+      .select('commission_amount, settlement_amount')
+      .neq('status', 'revoked');
 
     if (error) throw error;
 
@@ -394,7 +395,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at),
+        orders:order_id (id, order_no, created_at, paid_at, verified_at),
         packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
@@ -434,7 +435,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at),
+        orders:order_id (id, order_no, created_at, paid_at, verified_at),
         packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
@@ -459,7 +460,8 @@ export class SettlementService {
 
     let query = this.supabase
       .from('settlement_records')
-      .select('commission_amount, settlement_amount, status');
+      .select('commission_amount, settlement_amount, status')
+      .neq('status', 'revoked');
 
     if (startDate) {
       query = query.gte('settlement_date', startDate);
@@ -679,22 +681,40 @@ export class SettlementService {
         }
       }
 
-      // 创建结算记录
+      // 创建/更新结算记录（order_id 有唯一约束）：
+      // 1) 同一订单分多次部分核销 → 在原记录上累计金额
+      // 2) 撤销核销后重新核销 → 复活原记录（revoked → settled，按本次金额重新计算）
       const now = new Date();
-      const { error: insertError } = await this.supabase.from('settlement_records').insert({
+      const { data: existing } = await this.supabase
+        .from('settlement_records')
+        .select('id, status, order_amount, commission_amount, settlement_amount')
+        .eq('order_id', order.id)
+        .maybeSingle();
+
+      let finalOrderAmount = orderAmount;
+      let finalCommission = commissionAmount;
+      let finalSettlement = settlementAmount;
+      if (existing && (existing as any).status !== 'revoked') {
+        finalOrderAmount = Math.round((Number((existing as any).order_amount) + orderAmount) * 100) / 100;
+        finalCommission = Math.round((Number((existing as any).commission_amount) + commissionAmount) * 100) / 100;
+        finalSettlement = Math.round((Number((existing as any).settlement_amount) + settlementAmount) * 100) / 100;
+      }
+      const finalRate = finalOrderAmount > 0 ? Math.round((finalCommission / finalOrderAmount) * 10000) / 100 : 0;
+
+      const { error: saveError } = await this.supabase.from('settlement_records').upsert({
         order_id: order.id,
         merchant_id: merchantId,
         package_id: order.package_id,
-        order_amount: orderAmount,
+        order_amount: finalOrderAmount,
         settlement_type: settlementType,
-        commission_rate: commissionRate,
-        commission_amount: commissionAmount,
-        settlement_amount: settlementAmount,
+        commission_rate: finalRate,
+        commission_amount: finalCommission,
+        settlement_amount: finalSettlement,
         settlement_date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
         status: 'settled',
         settled_at: now.toISOString(),
-      });
-      if (insertError) throw new Error(insertError.message);
+      }, { onConflict: 'order_id' });
+      if (saveError) throw new Error(saveError.message);
 
       // 更新商家余额（不存在则创建）
       const { data: balanceRow } = await this.supabase
@@ -728,15 +748,17 @@ export class SettlementService {
   }
 
   /**
-   * 回滚订单结算：删除该订单全部结算记录并扣回商家余额
+   * 回滚订单结算：将该订单结算记录标记为 revoked（撤销核销）并扣回商家余额
    * 撤销核销时调用，容错设计不影响撤销主流程
+   * 保留记录用于佣金明细展示"撤销核销"标签，金额清零不结算佣金；幂等，重复调用不重复扣余额
    */
   async rollbackOrderSettlement(orderId: string): Promise<void> {
     try {
       const { data: records } = await this.supabase
         .from('settlement_records')
         .select('merchant_id, settlement_amount')
-        .eq('order_id', orderId);
+        .eq('order_id', orderId)
+        .neq('status', 'revoked');
       if (!records || records.length === 0) return;
 
       const merchantId = Number((records[0] as any).merchant_id);
@@ -745,7 +767,12 @@ export class SettlementService {
         0,
       );
 
-      await this.supabase.from('settlement_records').delete().eq('order_id', orderId);
+      // 标记撤销：保留历史轨迹，佣金与结算额清零（不结算佣金）
+      await this.supabase
+        .from('settlement_records')
+        .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0 })
+        .eq('order_id', orderId)
+        .neq('status', 'revoked');
 
       if (totalSettlement > 0) {
         const { data: balanceRow } = await this.supabase
