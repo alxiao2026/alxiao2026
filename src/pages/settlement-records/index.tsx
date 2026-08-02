@@ -22,7 +22,7 @@ interface SettlementRecord {
 
 export default function SettlementRecordsPage() {
   const router = useRouter();
-  const merchantId = router.params.merchant_id || '';
+  const merchantId = router.params.merchant_id || Taro.getStorageSync('merchant_id') || '';
   const [records, setRecords] = useState<SettlementRecord[]>([]);
   const [exporting, setExporting] = useState(false);
   const [, setLoading] = useState(false);

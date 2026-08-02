@@ -22,7 +22,7 @@ interface WithdrawalRecord {
 
 export default function MerchantBalancePage() {
   const router = useRouter();
-  const merchantId = router.params.merchant_id || '';
+  const merchantId = router.params.merchant_id || Taro.getStorageSync('merchant_id') || '';
   const [balance, setBalance] = useState<Balance>({
     balance: 0,
     total_settled: 0,
