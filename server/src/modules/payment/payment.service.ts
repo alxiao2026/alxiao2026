@@ -107,11 +107,24 @@ export class PaymentService {
   }
 
   /**
-   * 发起支付预下单（Mock 通道；接入微信后此处生成真实 prepay_id）
+   * Mock 支付通道总开关：仅显式配置 PAYMENT_MOCK_ENABLED=true 时可用。
+   * 生产环境默认禁用，防止"未真实付款却出核销码"的资金风险。
+   */
+  private isMockEnabled(): boolean {
+    return String(process.env.PAYMENT_MOCK_ENABLED || '').trim().toLowerCase() === 'true';
+  }
+
+  /**
+   * 发起支付预下单（真实微信用户强制微信支付；Mock 通道仅供开发测试且需显式开启）
    */
   async prepay(body: { order_id: string; user_id: string }) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
+    }
+
+    // 支付通道预检：微信支付未配置且 Mock 未显式开启时，拒绝下单（线上止血，杜绝免单漏洞）
+    if (!this.wechatPay.isEnabled() && !this.isMockEnabled()) {
+      throw new BadRequestException('微信支付暂未开通，请联系平台完成商户配置后再购买');
     }
 
     const { data: order } = await this.client
@@ -255,8 +268,16 @@ export class PaymentService {
         }
         this.logger.log(`用户 ${body.user_id} 未绑定微信 open_id，回退 Mock 支付通道`);
       } catch (err: any) {
+        if (!this.isMockEnabled()) {
+          this.logger.error(`微信下单失败且 Mock 通道已禁用: ${err?.message}`);
+          throw new BadRequestException('微信支付下单失败，请稍后重试');
+        }
         this.logger.error(`微信下单失败，回退 Mock 通道: ${err?.message}`);
       }
+    }
+
+    if (!this.isMockEnabled()) {
+      throw new BadRequestException('支付通道未配置，请联系平台');
     }
 
     return {
@@ -275,6 +296,9 @@ export class PaymentService {
    * 原则：以回调为准变更订单状态，前端不参与状态判断
    */
   async mockNotify(body: { prepay_id: string; result?: 'success' | 'fail' }) {
+    if (!this.isMockEnabled()) {
+      throw new BadRequestException('模拟支付通道已禁用');
+    }
     if (!body.prepay_id) throw new BadRequestException('缺少 prepay_id');
     return this.handlePaidNotify(body.prepay_id, body.result || 'success');
   }

@@ -127,7 +127,7 @@ export default function OrderDetail() {
   // 待支付：加载支付金额明细 + 启动倒计时
   useEffect(() => {
     if (order?.status === 'created') {
-      loadPrepay()
+      loadPrepay(true)
       startCountdown(order.pay_expire_at)
     }
   }, [order?.status, order?.pay_expire_at])
@@ -177,7 +177,7 @@ export default function OrderDetail() {
   }
 
   /** 预下单：后端金额引擎计算实付（含抽奖券抵扣），前端只展示 */
-  const loadPrepay = async (): Promise<PrepayInfo | null> => {
+  const loadPrepay = async (silent = false): Promise<PrepayInfo | null> => {
     try {
       const userId = Taro.getStorageSync('user_id')
       if (!userId) return null
@@ -192,6 +192,11 @@ export default function OrderDetail() {
       if (data?.prepay_id) {
         setPrepayInfo(data)
         return data as PrepayInfo
+      }
+      // prepay 失败（如支付通道未配置）：透传后端真实错误，避免静默无反应；自动预取时静默
+      if (!silent) {
+        const errMsg = (res.data as { message?: string })?.message
+        Taro.showToast({ title: errMsg ? String(errMsg).slice(0, 30) : '获取支付信息失败', icon: 'none' })
       }
     } catch (err: any) {
       console.error('[OrderDetail] 预下单失败:', err)
@@ -301,7 +306,8 @@ export default function OrderDetail() {
         await loadOrder()
         setShowPaySuccess(true)
       } else {
-        Taro.showToast({ title: '支付未完成，请重试', icon: 'none' })
+        const errMsg = (res.data as { message?: string })?.message
+        Taro.showToast({ title: errMsg ? String(errMsg).slice(0, 30) : '支付未完成，请重试', icon: 'none' })
       }
     } catch (err: any) {
       console.error('[OrderDetail] 支付失败:', err)
