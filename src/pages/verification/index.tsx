@@ -5,6 +5,7 @@ import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { RevokeDialog } from '@/components/revoke-dialog';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/lib/utils';
 import { ScanLine, ClipboardList, FileText, RotateCcw, MessageSquare, Store, Search, ChevronRight, ListOrdered } from 'lucide-react-taro';
@@ -34,6 +35,8 @@ export default function VerificationPage() {
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; order?: any; prize?: any } | null>(null);
   const [revoking, setRevoking] = useState(false);
+  const [revokeDialog, setRevokeDialog] = useState<{ orderId: string; max: number } | null>(null);
+  const [revokeQty, setRevokeQty] = useState(1);
 
   // 撤销核销执行（核销后30分钟内），支持指定撤销份数
   const doRevokeVerify = async (orderId: string, revokeCount: number) => {
@@ -60,6 +63,7 @@ export default function VerificationPage() {
         message: remain > 0 ? `已撤销 ${revokeCount} 份，剩余 ${remain} 份保持已核销` : '核销已撤销，订单恢复待使用',
         order: revokeResult,
       });
+      setRevokeDialog(null);
       Taro.showToast({ title: '已撤销核销', icon: 'success' });
     } catch (err: any) {
       console.error('[Verification] 撤销核销失败:', err);
@@ -70,45 +74,14 @@ export default function VerificationPage() {
     }
   };
 
-  // 撤销核销入口：多份核销时先选择撤销份数
-  const handleRevokeVerify = (orderId: string, verifiedCount: number) => {
-    if (verifiedCount > 1) {
-      const items: string[] = [];
-      if (verifiedCount > 4) {
-        for (let i = 1; i <= 3; i++) items.push(`撤销 ${i} 份`);
-        items.push(`全部撤销（${verifiedCount} 份）`);
-      } else {
-        for (let i = 1; i < verifiedCount; i++) items.push(`撤销 ${i} 份`);
-        items.push(`全部撤销（${verifiedCount} 份）`);
-      }
-      Taro.showActionSheet({
-        itemList: items,
-        success: (sheetRes) => {
-          const revokeCount = verifiedCount > 4
-            ? (sheetRes.tapIndex < 3 ? sheetRes.tapIndex + 1 : verifiedCount)
-            : (sheetRes.tapIndex < verifiedCount - 1 ? sheetRes.tapIndex + 1 : verifiedCount);
-          Taro.showModal({
-            title: '撤销核销',
-            content: `撤销 ${revokeCount} 份后，该 ${revokeCount} 份将恢复待使用（可重新核销或退款），剩余 ${verifiedCount - revokeCount} 份保持已核销。确定撤销吗？`,
-            confirmText: '确定撤销',
-            confirmColor: '#FF4757',
-            success: (modalRes) => {
-              if (modalRes.confirm) doRevokeVerify(orderId, revokeCount);
-            },
-          });
-        },
-      });
+  // 撤销核销入口：弹出自定义弹窗，加减选择撤销份数
+  const handleRevokeVerify = (orderId: string) => {
+    const verifiedCount = Number(verifyResult?.order?.verified_count || 0);
+    if (verifiedCount <= 0) {
+      Taro.showToast({ title: '该订单未核销', icon: 'none' });
       return;
     }
-    Taro.showModal({
-      title: '撤销核销',
-      content: '撤销后该订单将恢复为待使用状态，确定撤销吗？',
-      confirmText: '确定撤销',
-      confirmColor: '#FF4757',
-      success: (modalRes) => {
-        if (modalRes.confirm) doRevokeVerify(orderId, 1);
-      },
-    });
+    setRevokeDialog({ orderId, max: verifiedCount });
   };
   const [verifyTarget, setVerifyTarget] = useState<any>(null);
   const [verifyCount, setVerifyCount] = useState(1);
@@ -412,7 +385,7 @@ export default function VerificationPage() {
                         variant="outline"
                         size="sm"
                         disabled={revoking}
-                        onClick={() => handleRevokeVerify(verifyResult.order!.id, verifyResult.order!.verified_count || 1)}
+                        onClick={() => handleRevokeVerify(verifyResult.order!.id)}
                       >
                         <Text className="block text-xs">{revoking ? '撤销中' : '撤销核销'}</Text>
                       </Button>
@@ -546,6 +519,18 @@ export default function VerificationPage() {
           })}
         </View>
       )}
+
+      <RevokeDialog
+        visible={!!revokeDialog}
+        maxQty={revokeDialog?.max || 1}
+        qty={revokeQty}
+        loading={revoking}
+        onQtyChange={setRevokeQty}
+        onCancel={() => setRevokeDialog(null)}
+        onConfirm={() => {
+          if (revokeDialog) doRevokeVerify(revokeDialog.orderId, revokeQty);
+        }}
+      />
     </View>
   );
 }

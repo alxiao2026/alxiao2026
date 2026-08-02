@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { RevokeDialog } from '@/components/revoke-dialog';
 import { Calendar, Funnel } from 'lucide-react-taro';
 
 const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv());
@@ -36,6 +37,9 @@ export default function OrderDetailsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [revokingId, setRevokingId] = useState('');
+  const [revokeDialogVisible, setRevokeDialogVisible] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<OrderItem | null>(null);
+  const [revokeQty, setRevokeQty] = useState(1);
 
   useEffect(() => {
     const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
@@ -109,43 +113,25 @@ export default function OrderDetailsPage() {
     }
   };
 
+  // 打开撤销份数选择弹窗（加减步进器，默认全部撤销可减）
   const handleRevoke = (order: OrderItem) => {
     const verifiedCount = order.verified_count || 0;
-    // 多份核销：先选撤销份数（ActionSheet 上限 6 项）
-    if (verifiedCount > 1) {
-      const items: string[] = [];
-      const maxSingle = Math.min(verifiedCount - 1, 4);
-      for (let i = 1; i <= maxSingle; i++) items.push(`撤销 ${i} 份`);
-      items.push(`全部撤销（${verifiedCount} 份）`);
-      Taro.showActionSheet({
-        itemList: items,
-        success: (sheetRes) => {
-          const revokeCount = sheetRes.tapIndex < maxSingle ? sheetRes.tapIndex + 1 : verifiedCount;
-          const remain = verifiedCount - revokeCount;
-          Taro.showModal({
-            title: '撤销核销',
-            content: remain > 0
-              ? `撤销 ${revokeCount} 份后，该 ${revokeCount} 份恢复待使用（可重新核销或退款），剩余 ${remain} 份保持已核销。确定撤销吗？`
-              : `撤销后订单「${order.package_name}」将全部恢复为待使用状态，顾客需重新出示核销码。确定撤销吗？`,
-            confirmText: '确定撤销',
-            confirmColor: '#FF4757',
-            success: (modalRes) => {
-              if (modalRes.confirm) doRevoke(order, revokeCount);
-            },
-          });
-        },
-      });
-      return;
-    }
-    Taro.showModal({
-      title: '撤销核销',
-      content: `撤销后订单「${order.package_name}」将恢复为待使用状态，顾客需重新出示核销码。确定撤销吗？`,
-      confirmText: '确定撤销',
-      confirmColor: '#FF4757',
-      success: (modalRes) => {
-        if (modalRes.confirm) doRevoke(order, 1);
-      },
-    });
+    if (verifiedCount < 1) return;
+    setRevokeTarget(order);
+    setRevokeQty(verifiedCount);
+    setRevokeDialogVisible(true);
+  };
+
+  const closeRevokeDialog = () => {
+    setRevokeDialogVisible(false);
+    setRevokeTarget(null);
+  };
+
+  const confirmRevoke = () => {
+    if (!revokeTarget) return;
+    const target = revokeTarget;
+    closeRevokeDialog();
+    doRevoke(target, revokeQty);
   };
 
   const handleTabChange = (tab: string) => {
@@ -364,6 +350,18 @@ export default function OrderDetailsPage() {
           })
         )}
       </View>
+
+      {/* 撤销份数选择弹窗（加减步进器） */}
+      <RevokeDialog
+        visible={revokeDialogVisible}
+        maxQty={revokeTarget?.verified_count || 1}
+        qty={revokeQty}
+        packageName={revokeTarget?.package_name}
+        loading={!!revokingId}
+        onQtyChange={setRevokeQty}
+        onCancel={closeRevokeDialog}
+        onConfirm={confirmRevoke}
+      />
     </View>
   );
 }
