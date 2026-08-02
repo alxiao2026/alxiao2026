@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
+import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subscribe-message'
 import { navigateToTabBar } from '@/utils/navigate'
 import { Button } from '@/components/ui/button'
 import AppTabBar from '@/components/app-tab-bar'
@@ -132,6 +133,10 @@ export default function Lottery() {
   })
 
   // 中奖后获取核销二维码（商品/霸王餐等可核销类型）
+  useEffect(() => {
+    preloadSubscribeTemplates()
+  }, [])
+
   useEffect(() => {
     const redeemableTypes = ['product', 'free_meal', 'refund']
     if (stage === 'result' && drawResult?.prize_type && redeemableTypes.includes(drawResult.prize_type) && drawResult?.record_id && !qrCodeUrl && drawResult?.refund_status !== 'voided') {
@@ -331,6 +336,8 @@ export default function Lottery() {
   // 点击盲盒直接开奖（分享仅用于提升霸王餐概率，不再强制）
   const handleBoxClick = (index: number) => {
     if (drawing || stage !== 'select') return
+    // 点击抽奖瞬间同步请求订阅授权（中奖/奖品核销/优惠券到期通知），不阻断抽奖流程
+    requestSubscribeByScene('lottery')
     setSelectedBox(index)
     void startDraw(index)
   }

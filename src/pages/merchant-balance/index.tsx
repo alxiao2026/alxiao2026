@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import { Network } from '@/network';
+import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subscribe-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,7 @@ export default function MerchantBalancePage() {
   const [, setLoading] = useState(false);
 
   useEffect(() => {
+    preloadSubscribeTemplates();
     fetchBalance();
     fetchWithdrawalRecords();
   }, []);
@@ -71,6 +73,12 @@ export default function MerchantBalancePage() {
     } catch (error) {
       console.error('获取提现记录失败:', error);
     }
+  };
+
+  const handleWithdrawClick = () => {
+    // 点击申请提现瞬间同步请求订阅授权（提现提交/到账/拒绝通知），不阻断提交流程
+    requestSubscribeByScene('withdraw');
+    requestWithdrawal();
   };
 
   const requestWithdrawal = async () => {
@@ -169,7 +177,7 @@ export default function MerchantBalancePage() {
             />
             <Button
               className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-full h-12 text-base font-semibold"
-              onClick={requestWithdrawal}
+              onClick={handleWithdrawClick}
               disabled={withdrawing || !withdrawAmount}
             >
               {withdrawing ? '申请中...' : '申请提现'}

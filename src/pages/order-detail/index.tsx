@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
+import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subscribe-message'
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -101,6 +102,7 @@ export default function OrderDetail() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    preloadSubscribeTemplates()
     if (id) {
       loadOrder()
     }
@@ -239,6 +241,8 @@ export default function OrderDetail() {
   /** 立即支付：微信通道（小程序真实支付）/ Mock 通道（H5、开发态） */
   const handlePay = async () => {
     if (paying) return
+    // 支付点击瞬间同步请求订阅授权（订单付款/核销/退款结果通知），不阻断支付流程
+    requestSubscribeByScene('order')
     setPaying(true)
     try {
       let prepay = prepayInfo
