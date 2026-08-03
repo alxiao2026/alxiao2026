@@ -6,12 +6,8 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get()
-  async findAll(@Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string, @Query('verified_by') verifiedBy?: string, @Query('keyword') keyword?: string): Promise<{ code: number; data: Order[] }> {
-    if (merchantId) {
-      const data = await this.orderService.findByMerchant(merchantId, status, startDate, endDate, verifiedBy, keyword);
-      return { code: 200, data };
-    }
-    const data = await this.orderService.findAll({ status, startDate, endDate, verifiedBy, keyword });
+  async findAll(@Query('user_id') userId: string, @Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string, @Query('verified_by') verifiedBy?: string, @Query('keyword') keyword?: string): Promise<{ code: number; data: Order[] }> {
+    const data = await this.orderService.findAllForUser(userId, { merchantId, status, startDate, endDate, verifiedBy, keyword });
     return { code: 200, data };
   }
 
@@ -51,10 +47,10 @@ export class OrderController {
     return { code: 200, data };
   }
 
-  /** 统一核销查询（自动识别团购订单码/奖品兑换码） */
+  /** 统一核销查询（自动识别团购订单码/奖品兑换码，商户账号仅可查询本店） */
   @Get('unified-verify/:code')
-  async unifiedLookup(@Param('code') code: string) {
-    const result = await this.orderService.unifiedLookup(code);
+  async unifiedLookup(@Param('code') code: string, @Query('merchant_user_id') merchantUserId?: string) {
+    const result = await this.orderService.unifiedLookup(code, merchantUserId);
     if (!result) throw new NotFoundException('未找到该核销码对应的订单或奖品');
     return { code: 200, data: result, msg: 'success' };
   }

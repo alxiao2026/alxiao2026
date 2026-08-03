@@ -114,7 +114,8 @@ export default function VerificationPage() {
     setVerifyTarget(null);
     setVerifyFailReason(null);
     try {
-      const res = await Network.request({ url: `/api/orders/unified-verify/${code}`, method: 'GET' });
+      const query = currentUserId ? `?merchant_user_id=${encodeURIComponent(currentUserId)}` : '';
+      const res = await Network.request({ url: `/api/orders/unified-verify/${code}${query}`, method: 'GET' });
       const body = res.data as any;
       // Taro.request 对 HTTP 4xx/5xx 不会 reject，必须手动检查状态码
       if (res.statusCode !== 200) {

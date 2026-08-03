@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import * as QRCode from 'qrcode';
 import { NotificationService } from '../notification/notification.service';
@@ -896,8 +896,33 @@ export class OrderService {
     return data as Order;
   }
 
-  /** 统一核销查询：自动识别团购订单码或奖品兑换码 */
-  async unifiedLookup(code: string): Promise<
+  /** 订单列表（按用户身份强制过滤：管理员看全平台，商户仅本店，其他角色拒绝） */
+  async findAllForUser(
+    userId: string,
+    filters: { merchantId?: string; status?: string; startDate?: string; endDate?: string; verifiedBy?: string; keyword?: string },
+  ): Promise<Order[]> {
+    if (!userId) throw new ForbiddenException('请先登录');
+    const { data: user } = await this.client
+      .from('users')
+      .select('role, merchant_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!user) throw new ForbiddenException('用户不存在');
+    const { merchantId, status, startDate, endDate, verifiedBy, keyword } = filters;
+    if (user.role === 'admin') {
+      if (merchantId) return this.findByMerchant(merchantId, status, startDate, endDate, verifiedBy, keyword);
+      return this.findAll({ status, startDate, endDate, verifiedBy, keyword });
+    }
+    if (user.role === 'merchant') {
+      if (!user.merchant_id) throw new ForbiddenException('账号未绑定门店');
+      // 强制本店，忽略前端传入的 merchant_id
+      return this.findByMerchant(String(user.merchant_id), status, startDate, endDate, verifiedBy, keyword);
+    }
+    throw new ForbiddenException('无权查看订单列表');
+  }
+
+  /** 统一核销查询：自动识别团购订单码或奖品兑换码（商户账号仅可查询本店订单/奖品） */
+  async unifiedLookup(code: string, merchantUserId?: string): Promise<
     | { type: 'order'; order: Order }
     | { type: 'prize'; prize: NonNullable<Awaited<ReturnType<OrderService['findPrizeByRedemptionCode']>>> }
     | null
@@ -908,12 +933,61 @@ export class OrderService {
     } catch {
       order = null;
     }
-    if (order) return { type: 'order', order };
+    if (order) {
+      await this.assertMerchantOwnsOrder(order, merchantUserId);
+      return { type: 'order', order };
+    }
 
     const prize = await this.findPrizeByRedemptionCode(code);
-    if (prize) return { type: 'prize', prize };
+    if (prize) {
+      await this.assertMerchantOwnsPrize(prize, merchantUserId);
+      return { type: 'prize', prize };
+    }
 
     return null;
+  }
+
+  /** 商户归属校验：商户角色仅可查询本店订单，管理员及其他角色不拦截 */
+  private async assertMerchantOwnsOrder(order: Order, merchantUserId?: string): Promise<void> {
+    if (!merchantUserId) return;
+    const { data: user } = await this.client
+      .from('users')
+      .select('role, merchant_id')
+      .eq('user_id', merchantUserId)
+      .maybeSingle();
+    if (!user || user.role !== 'merchant') return;
+    if (!order.package_id) return;
+    const { data: pkg } = await this.client
+      .from('packages')
+      .select('merchant_id')
+      .eq('id', order.package_id)
+      .maybeSingle();
+    if (pkg && Number(pkg.merchant_id) !== Number(user.merchant_id)) {
+      throw new BadRequestException('该订单属于其他门店，您只能查询本店订单');
+    }
+  }
+
+  /** 商户归属校验：商户角色仅可查询本店奖品，管理员及其他角色不拦截 */
+  private async assertMerchantOwnsPrize(
+    prize: NonNullable<Awaited<ReturnType<OrderService['findPrizeByRedemptionCode']>>>,
+    merchantUserId?: string,
+  ): Promise<void> {
+    if (!merchantUserId) return;
+    const { data: user } = await this.client
+      .from('users')
+      .select('role, merchant_id')
+      .eq('user_id', merchantUserId)
+      .maybeSingle();
+    if (!user || user.role !== 'merchant') return;
+    if (!prize.prize_id) return;
+    const { data: prizeRow } = await this.client
+      .from('prizes')
+      .select('merchant_id')
+      .eq('id', prize.prize_id)
+      .maybeSingle();
+    if (prizeRow?.merchant_id && Number(prizeRow.merchant_id) !== Number(user.merchant_id)) {
+      throw new BadRequestException('该奖品属于其他门店，您只能查询本店奖品');
+    }
   }
 
   /** 统一核销：自动识别团购订单码或奖品兑换码并执行核销 */

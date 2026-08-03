@@ -73,6 +73,7 @@ export default function AdminOrders() {
   const [verifierIndex, setVerifierIndex] = useState(0) // 0 = 全部账号
   const [searchInput, setSearchInput] = useState('') // 搜索框受控值
   const [keyword, setKeyword] = useState('') // 实际生效的搜索关键词
+  const [currentUserId, setCurrentUserId] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useDidShow(() => {
@@ -89,6 +90,7 @@ export default function AdminOrders() {
       setAuthorized(false)
       return
     }
+    setCurrentUserId(userId)
     try {
       const res = await Network.request({
         url: `/api/users/${encodeURIComponent(userId)}/permissions`,
@@ -103,7 +105,7 @@ export default function AdminOrders() {
       setAuthorized(true)
       void fetchMerchants()
       void fetchVerifiers()
-      void fetchOrders()
+      void fetchOrders({ userId })
     } catch (e) {
       console.error('[AdminOrders] 权限校验失败', e)
       Taro.showToast({ title: '权限校验失败', icon: 'none' })
@@ -176,6 +178,7 @@ export default function AdminOrders() {
     customStart?: string
     customEnd?: string
     keyword?: string
+    userId?: string
   }) => {
     const tr = override?.timeRange ?? timeRange
     const mi = override?.merchantIndex ?? merchantIndex
@@ -183,6 +186,7 @@ export default function AdminOrders() {
     const cs = override?.customStart ?? customStart
     const ce = override?.customEnd ?? customEnd
     const kw = override?.keyword ?? keyword
+    const uid = override?.userId ?? currentUserId
 
     const today = new Date()
     let start: string | undefined
@@ -210,7 +214,7 @@ export default function AdminOrders() {
       end = ce || undefined
     }
 
-    const params: string[] = []
+    const params: string[] = [`user_id=${encodeURIComponent(uid)}`]
     if (mi > 0 && merchants[mi - 1]) params.push(`merchant_id=${merchants[mi - 1].id}`)
     if (vi > 0 && verifiers[vi - 1]) params.push(`verified_by=${encodeURIComponent(verifiers[vi - 1].user_id)}`)
     if (start) params.push(`start_date=${start}`)
