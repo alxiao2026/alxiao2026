@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Taro, { useRouter, useDidShow } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
@@ -106,6 +106,20 @@ export default function PackageDetail() {
       loadPackage()
     }
   })
+
+  // 转发给朋友
+  useShareAppMessage(() => ({
+    title: pkg ? `${pkg.name}，下单抽霸王餐！` : '膨胀团超值套餐，下单抽霸王餐！',
+    path: `/pages/package-detail/index?id=${id || ''}`,
+    imageUrl: pkg?.cover_image || '',
+  }))
+
+  // 分享到朋友圈
+  useShareTimeline(() => ({
+    title: pkg ? `${pkg.name}，下单抽霸王餐！` : '膨胀团超值套餐，下单抽霸王餐！',
+    query: `id=${id || ''}`,
+    imageUrl: pkg?.cover_image || '',
+  }))
 
   const loadPackage = async () => {
     try {

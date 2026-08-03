@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import { formatPrice } from '@/lib/utils'
@@ -164,6 +164,13 @@ export default function MerchantPage() {
   useShareAppMessage(() => ({
     title: merchant ? `${merchant.name} 邀你来抽霸王餐！` : '膨胀团幸运盲盒，快来抽霸王餐！',
     path: `/pages/merchant/index?id=${merchantId}`,
+    imageUrl: merchant?.images?.[0] || '',
+  }))
+
+  // 分享到朋友圈
+  useShareTimeline(() => ({
+    title: merchant ? `${merchant.name} 邀你来抽霸王餐！` : '膨胀团幸运盲盒，快来抽霸王餐！',
+    query: `id=${merchantId}`,
     imageUrl: merchant?.images?.[0] || '',
   }))
 

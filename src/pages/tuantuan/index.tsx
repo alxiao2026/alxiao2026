@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage, useShareTimeline } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,18 @@ const STEPS = [
 export default function TuantuanPage() {
   const [rankShops, setRankShops] = useState<RankShop[]>([]);
   const [topPrizes, setTopPrizes] = useState<Prize[]>([]);
+
+  // 转发给朋友
+  useShareAppMessage(() => ({
+    title: '霸王餐人气榜，看看谁家手气最旺！',
+    path: '/pages/tuantuan/index',
+  }));
+
+  // 分享到朋友圈
+  useShareTimeline(() => ({
+    title: '霸王餐人气榜，看看谁家手气最旺！',
+    query: '',
+  }));
 
   useEffect(() => {
     fetchRankShops();

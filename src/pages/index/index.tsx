@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useShareTimeline, useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -183,11 +183,19 @@ const IndexPage = () => {
     }
   };
 
-  // 设置分享
+  // 设置分享（转发给朋友）
   useShareAppMessage(() => {
     return {
       title: '膨胀团！下单套餐，分享好友抽大奖！',
       path: '/pages/index/index',
+    };
+  });
+
+  // 分享到朋友圈
+  useShareTimeline(() => {
+    return {
+      title: '膨胀团！下单套餐抽霸王餐，每单都有好运！',
+      query: '',
     };
   });
 

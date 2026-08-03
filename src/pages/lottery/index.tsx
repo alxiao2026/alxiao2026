@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subscribe-message'
@@ -129,6 +129,14 @@ export default function Lottery() {
     return {
       title: '膨胀团幸运盲盒，快来帮我开出霸王餐！',
       path: '/pages/index/index',
+    }
+  })
+
+  // 分享到朋友圈
+  useShareTimeline(() => {
+    return {
+      title: '膨胀团幸运盲盒，快来帮我开出霸王餐！',
+      query: '',
     }
   })
 
