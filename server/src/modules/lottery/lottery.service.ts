@@ -695,6 +695,23 @@ export class LotteryService {
         this.logger.warn(`中奖返现跳过：金额异常 (order=${orderId}, total=${totalFen}, refund=${refundFen})`);
         return;
       }
+      // Mock 通道：测试单未真实收款，跳过微信退款，直接落库模拟退款（与主动退款的 mock 行为保持一致）
+      if (payment.channel === 'mock' || String(payment.transaction_id || '').startsWith('mock_')) {
+        const { error: mockErr } = await this.client
+          .from('payments')
+          .update({
+            refund_amount: Math.round((Number(payment.refund_amount || 0) + refundFen / 100) * 100) / 100,
+            refunded_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', payment.id);
+        if (mockErr) {
+          this.logger.error(`Mock 中奖返现存档失败 record=${recordId}: ${mockErr.message}`);
+          return;
+        }
+        this.logger.log(`Mock 通道中奖返现 ¥${(refundFen / 100).toFixed(2)}（测试单模拟退款）record=${recordId}`);
+        return;
+      }
       const outRefundNo = `${outRefundPrefix}${Date.now()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
       const result = await this.wechatPay.createRefund({
         transactionId: payment.transaction_id || undefined,
