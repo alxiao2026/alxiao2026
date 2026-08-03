@@ -70,7 +70,8 @@ export class PackageService {
         .from('orders')
         .select('quantity')
         .eq('package_id', pkg.id)
-        .in('status', ['pending', 'used', 'refunded']);
+        // 销量 = 累计成功支付份数：已支付/已核销均计入；已退款不回扣（用户需求）
+        .in('status', ['paid', 'used', 'refunded']);
       (pkg as any).sales_count = (orders || []).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
     }
     return packages;
@@ -127,7 +128,8 @@ export class PackageService {
         .from('orders')
         .select('quantity')
         .eq('package_id', pkg.id)
-        .in('status', ['pending', 'used', 'refunded']);
+        // 销量 = 累计成功支付份数：已支付/已核销均计入；已退款不回扣（用户需求）
+        .in('status', ['paid', 'used', 'refunded']);
       const totalSales = (orders || []).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
       (pkg as any).sales_count = totalSales;
     }
