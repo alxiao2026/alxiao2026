@@ -101,6 +101,8 @@ export default defineConfig<'vite'>(async (merge, _env) => {
       patterns: [
         // 自定义 tabBar 占位组件（静态四件套，不参与编译）：实际导航 UI 由页面内 AppTabBar 渲染
         { from: 'src/custom-tab-bar/', to: `${outputRoot}/custom-tab-bar/` },
+        // 微信小程序索引配置（避免 DevTools 导入时 sitemap.json 缺失告警）
+        { from: 'src/sitemap.json', to: `${outputRoot}/sitemap.json` },
       ],
       options: {},
     },
