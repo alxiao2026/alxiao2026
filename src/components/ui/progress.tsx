@@ -7,8 +7,10 @@ const Progress = React.forwardRef<
   React.ElementRef<typeof View>,
   React.ComponentPropsWithoutRef<typeof View> & {
       value?: number | null
+      /** 指示器自定义类名（默认 bg-primary） */
+      indicatorClassName?: string
   }
->(({ className, value, ...props }, ref) => (
+>(({ className, value, indicatorClassName, ...props }, ref) => (
   <View
     ref={ref}
     className={cn(
@@ -18,7 +20,7 @@ const Progress = React.forwardRef<
     {...props}
   >
     <View
-      className="h-full w-full flex-1 bg-primary transition-all"
+      className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     />
   </View>
