@@ -323,6 +323,7 @@ export default function WechatConfigPage() {
                 style={{ minHeight: '80px' }}
                 placeholder={info?.pay?.private_key_masked ? `当前：${info.pay.private_key_masked}` : '粘贴 -----BEGIN PRIVATE KEY----- 开头的私钥全文'}
                 value={payForm.private_key}
+                maxlength={-1}
                 onInput={(e) => setPayField('private_key', e.detail.value)}
               />
             </View>
@@ -333,6 +334,7 @@ export default function WechatConfigPage() {
                 style={{ minHeight: '64px' }}
                 placeholder={info?.pay?.pay_public_key_masked ? `当前：${info.pay.pay_public_key_masked}` : '粘贴 -----BEGIN PUBLIC KEY----- 开头的公钥全文（可选）'}
                 value={payForm.pay_public_key}
+                maxlength={-1}
                 onInput={(e) => setPayField('pay_public_key', e.detail.value)}
               />
             </View>
