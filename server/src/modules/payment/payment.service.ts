@@ -123,7 +123,7 @@ export class PaymentService {
     }
 
     // 支付通道预检：微信支付未配置且 Mock 未显式开启时，拒绝下单（线上止血，杜绝免单漏洞）
-    if (!this.wechatPay.isEnabled() && !this.isMockEnabled()) {
+    if (!await this.wechatPay.isEnabled() && !this.isMockEnabled()) {
       throw new BadRequestException('微信支付暂未开通，请联系平台完成商户配置后再购买');
     }
 
@@ -207,7 +207,7 @@ export class PaymentService {
     }
 
     // ===== 微信通道：支付配置齐全且用户已微信授权（有 open_id）时走真实下单 =====
-    if (this.wechatPay.isEnabled()) {
+    if (await this.wechatPay.isEnabled()) {
       try {
         const { data: userRow } = await this.client
           .from('users')
@@ -258,7 +258,7 @@ export class PaymentService {
           return {
             prepay_id: prepayId,
             channel: 'wechat',
-            wechat_pay: this.wechatPay.buildMiniProgramPayParams(prepayId),
+            wechat_pay: await this.wechatPay.buildMiniProgramPayParams(prepayId),
             original_amount: calc.originalAmount,
             discount_amount: calc.discountAmount,
             pay_amount: calc.payAmount,
@@ -311,7 +311,7 @@ export class PaymentService {
     headers: Record<string, string | string[] | undefined>,
     rawBody: string,
   ) {
-    if (!this.wechatPay.isEnabled()) {
+    if (!await this.wechatPay.isEnabled()) {
       throw new BadRequestException('微信支付未配置');
     }
     const result = await this.wechatPay.verifyAndDecryptNotify(headers, rawBody);
@@ -547,7 +547,7 @@ export class PaymentService {
     const totalRefundedAmount = Math.round((alreadyRefunded + refundAmount) * 100) / 100;
 
     // ===== 微信通道：真实支付单先发起微信退款，受理成功后才落库 =====
-    if (payment?.channel === 'wechat' && this.wechatPay.isEnabled() && refundAmount > 0) {
+    if (payment?.channel === 'wechat' && await this.wechatPay.isEnabled() && refundAmount > 0) {
       const outRefundNo = `R${payment.id.replace(/-/g, '')}${refundQty}${Date.now().toString(36)}`.slice(0, 64);
       try {
         await this.wechatPay.createRefund({

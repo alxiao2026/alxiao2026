@@ -51,6 +51,22 @@ export class UserController {
     return { code: 200, msg: '保存成功', data };
   }
 
+  /** 管理后台：保存微信支付商户配置 */
+  @Post('admin/wechat-pay-config')
+  @HttpCode(200)
+  async saveWechatPayConfig(@Body() body: { admin_user_id?: string } & Record<string, string>) {
+    const data = await this.userService.updateWechatPayConfig(body?.admin_user_id || '', {
+      mch_id: body?.mch_id || '',
+      mch_serial_no: body?.mch_serial_no || '',
+      private_key: body?.private_key || '',
+      api_v3_key: body?.api_v3_key || '',
+      pay_public_key: body?.pay_public_key || '',
+      pay_public_key_id: body?.pay_public_key_id || '',
+      pay_notify_url: body?.pay_notify_url || '',
+    });
+    return { code: 200, msg: '保存成功', data };
+  }
+
   /** 微信授权登录：小程序端传 code（Taro.login 获取，后端换 openid）；开发态兼容直传 open_id */
   @Post('login/wechat')
   @HttpCode(200)

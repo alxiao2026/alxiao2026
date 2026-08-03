@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getWechatPayCredentials } from '../user/wechat-config';
 import * as crypto from 'crypto';
 
 /**
@@ -20,28 +21,54 @@ import * as crypto from 'crypto';
 export class WechatPayService {
   private readonly logger = new Logger(WechatPayService.name);
 
-  private readonly appid = process.env.WECHAT_APPID || '';
-  private readonly mchId = process.env.WECHAT_MCH_ID || '';
-  private readonly apiV3Key = process.env.WECHAT_API_V3_KEY || '';
-  private readonly serialNo = process.env.WECHAT_MCH_SERIAL_NO || '';
-  // 微信支付公钥（新商户号官方默认验签方式，回调 serial 形如 PUB_KEY_ID_...）
-  private readonly payPublicKeyId = process.env.WECHAT_PAY_PUBLIC_KEY_ID || '';
-  private readonly payPublicKey = (process.env.WECHAT_PAY_PUBLIC_KEY || '').replace(
-    /\\n/g,
-    '\n',
-  );
-  private readonly privateKey = (process.env.WECHAT_PRIVATE_KEY || '').replace(
-    /\\n/g,
-    '\n',
-  );
-  private readonly notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
+  private appid = '';
+  private mchId = '';
+  private apiV3Key = '';
+  private serialNo = '';
+  private payPublicKeyId = '';
+  /** 微信支付公钥 PEM（新模式，回调验签用，可替代平台证书） */
+  private payPublicKey = '';
+  private privateKey = '';
+  private notifyUrl = '';
+  /** 动态配置缓存时间戳（配置来源：环境变量优先，数据库 wechat_config 兜底，60s 刷新） */
+  private configLoadedAt = 0;
+
+  /** 加载支付配置（env 优先、DB 兜底，60s 缓存；回调地址缺省时按当前运行环境动态拼接） */
+  private async ensureConfig(): Promise<void> {
+    const now = Date.now();
+    if (this.configLoadedAt && now - this.configLoadedAt < 60_000) return;
+    const pay = await getWechatPayCredentials();
+    this.appid = pay.appid;
+    this.mchId = pay.mchId;
+    this.apiV3Key = pay.apiV3Key;
+    this.serialNo = pay.mchSerialNo;
+    this.payPublicKeyId = pay.payPublicKeyId;
+    this.payPublicKey = pay.payPublicKey;
+    this.privateKey = pay.privateKey;
+    this.notifyUrl = pay.payNotifyUrl || this.buildDefaultNotifyUrl();
+    this.configLoadedAt = now;
+    if (pay.source !== 'none') {
+      this.logger.log(`微信支付配置来源: ${pay.source}`);
+    }
+  }
+
+  /** 回调地址兜底：按平台注入的项目域名拼接（适配开发/生产环境） */
+  private buildDefaultNotifyUrl(): string {
+    const domain = (
+      process.env.COZE_PROJECT_DOMAIN_DEFAULT ||
+      process.env.PROJECT_DOMAIN ||
+      ''
+    ).replace(/\/+$/, '');
+    return domain ? `${domain}/api/payment/wechat-notify` : '';
+  }
 
   /** 微信平台证书缓存：serial_no -> 证书 PEM（平台证书会轮换，缓存 1 小时） */
   private platformCerts = new Map<string, string>();
   private certsLoadedAt = 0;
 
   /** 支付配置是否齐全（齐全则启用真实微信通道，否则调用方回退 Mock） */
-  isEnabled(): boolean {
+  async isEnabled(): Promise<boolean> {
+    await this.ensureConfig();
     return Boolean(
       this.appid &&
         this.mchId &&
@@ -64,6 +91,7 @@ export class WechatPayService {
     totalFen: number;
     openId: string;
   }): Promise<string> {
+    await this.ensureConfig();
     const body = {
       appid: this.appid,
       mchid: this.mchId,
@@ -82,6 +110,7 @@ export class WechatPayService {
 
   /** 关闭订单（金额变更需要重新下单时调用，忽略失败） */
   async closeOrder(outTradeNo: string): Promise<void> {
+    await this.ensureConfig();
     try {
       await this.requestWechat(
         'POST',
@@ -97,7 +126,8 @@ export class WechatPayService {
    * 生成小程序 Taro.requestPayment 调起参数（二次签名）
    * 签名串：appId\ntimeStamp\nnonceStr\npackage\n
    */
-  buildMiniProgramPayParams(prepayId: string) {
+  async buildMiniProgramPayParams(prepayId: string) {
+    await this.ensureConfig();
     const timeStamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = crypto.randomBytes(16).toString('hex');
     const pkg = `prepay_id=${prepayId}`;
@@ -125,6 +155,7 @@ export class WechatPayService {
     headers: Record<string, string | string[] | undefined>,
     rawBody: string,
   ): Promise<any> {
+    await this.ensureConfig();
     const timestamp = this.pickHeader(headers, 'wechatpay-timestamp');
     const nonce = this.pickHeader(headers, 'wechatpay-nonce');
     const signature = this.pickHeader(headers, 'wechatpay-signature');
@@ -197,6 +228,7 @@ export class WechatPayService {
     totalFen: number;
     reason?: string;
   }): Promise<any> {
+    await this.ensureConfig();
     const body: Record<string, any> = {
       out_refund_no: params.outRefundNo,
       amount: { refund: params.refundFen, total: params.totalFen, currency: 'CNY' },

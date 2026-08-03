@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { getWechatCredentials, saveWechatCredentials, getWechatConfigForAdmin } from './wechat-config';
+import { getWechatCredentials, saveWechatCredentials, getWechatConfigForAdmin, saveWechatPayCredentials, WechatPayConfigInput } from './wechat-config';
 
 // 角色编码：0=普通消费者，1=商家用户，2=系统管理员
 export const ROLE_CONSUMER = 0;
@@ -294,6 +294,32 @@ export class UserService {
       if (!finalSecret) throw new BadRequestException('首次配置请填写 AppSecret');
     }
     await saveWechatCredentials(appid, finalSecret);
+    return getWechatConfigForAdmin();
+  }
+
+  /** 管理后台：保存微信支付商户配置（私钥留空则保留已有值） */
+  async updateWechatPayConfig(adminUserId: string, input: WechatPayConfigInput) {
+    await this.assertAdminUser(adminUserId);
+    if (!input.mch_id?.trim()) throw new BadRequestException('请填写商户号（mch_id）');
+    if (!input.mch_serial_no?.trim()) throw new BadRequestException('请填写商户证书序列号');
+    if (!input.api_v3_key?.trim()) throw new BadRequestException('请填写 APIv3 密钥');
+
+    // 私钥/公钥留空 → 保留数据库已有值（避免每次保存重填）
+    const supabase = getSupabaseClient();
+    const { data: existing } = await supabase
+      .from('wechat_config')
+      .select('private_key, pay_public_key')
+      .eq('id', 1)
+      .maybeSingle();
+    const privateKey = input.private_key?.trim() || (existing as any)?.private_key || '';
+    if (!privateKey) throw new BadRequestException('首次配置请填写商户 API 证书私钥');
+    const payPublicKey = input.pay_public_key?.trim() || (existing as any)?.pay_public_key || '';
+
+    await saveWechatPayCredentials({
+      ...input,
+      private_key: privateKey,
+      pay_public_key: payPublicKey,
+    });
     return getWechatConfigForAdmin();
   }
 
