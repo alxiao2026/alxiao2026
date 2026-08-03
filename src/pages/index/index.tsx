@@ -445,8 +445,8 @@ const IndexPage = () => {
                         <View className="flex flex-row items-baseline gap-1">
                           <Text className="block text-xs text-[#FF4757] font-bold">¥</Text>
                           <Text className="block text-xl font-bold text-[#FF4757]">{formatPrice(pkg.price)}</Text>
-                          {pkg.original_price && (
-                            <Text className="block text-xs text-gray-300 line-through ml-1">¥{formatPrice(pkg.original_price)}</Text>
+                          {Number(pkg.original_price) > Number(pkg.price) && (
+                            <Text className="block text-xs text-gray-300 line-through ml-1">¥{formatPrice(pkg.original_price || 0)}</Text>
                           )}
                         </View>
                         <View className="flex flex-row items-center gap-1">

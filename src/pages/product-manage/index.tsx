@@ -428,7 +428,7 @@ export default function ProductManagePage() {
                   {/* 价格行 */}
                   <View className="flex flex-row items-baseline gap-2 mt-3 mb-3">
                     <Text className="block text-xl font-bold text-[#FF4757]">¥{pkg.price}</Text>
-                    {pkg.original_price && (
+                    {Number(pkg.original_price) > Number(pkg.price) && (
                       <Text className="block text-sm text-gray-400 line-through">¥{pkg.original_price}</Text>
                     )}
                   </View>
