@@ -162,8 +162,8 @@ export default function PrizeManagePage() {
     }
     if (prizeForm.prize_type === 'coupon') {
       const rate = Number(prizeForm.discount_rate);
-      if (!(rate >= 8 && rate <= 9.5)) {
-        Taro.showToast({ title: '折扣比例需在 8.0~9.5 折之间', icon: 'none' }); return;
+      if (!(rate > 0 && rate < 10)) {
+        Taro.showToast({ title: '折扣比例需在 0.1~9.9 折之间', icon: 'none' }); return;
       }
     }
     try {
@@ -493,7 +493,7 @@ export default function PrizeManagePage() {
                   <>
                     <View className="flex flex-row gap-3">
                       <View className="flex-1 min-w-0">
-                        <Text className="block text-sm text-gray-700 font-medium mb-1">折扣比例（8.0~9.5折）</Text>
+                        <Text className="block text-sm text-gray-700 font-medium mb-1">折扣比例（0.1~9.9折）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                           <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_rate} placeholder="如 8.5" onInput={(e) => setPrizeForm({ ...prizeForm, discount_rate: e.detail.value })} />
                         </View>

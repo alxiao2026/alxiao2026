@@ -604,9 +604,13 @@ export class LotteryService {
       .single();
     if (recordError) throw new Error(`保存抽奖记录失败: ${recordError.message}`);
 
-    // 霸王餐中奖：自动发起免单退款（订单实付金额原路返回；内部容错，失败不阻塞抽奖结果）
-    if (isWinner && resultPrize?.prize_type === 'free_meal' && refundAmount > 0) {
-      await this.autoRefundFreeMeal(record.id, orderId, refundAmount);
+    // 中奖自动返现：霸王餐退全款 / 折扣券退折扣差额（原路退回；内部容错，失败不阻塞抽奖结果）
+    if (isWinner && refundAmount > 0 && (resultPrize?.prize_type === 'free_meal' || resultPrize?.prize_type === 'coupon')) {
+      const refundReason = resultPrize.prize_type === 'coupon'
+        ? `膨胀团折扣券中奖返现（${resultPrize.discount_rate}折）`
+        : '膨胀盲盒霸王餐中奖免单退款';
+      const refundPrefix = resultPrize.prize_type === 'coupon' ? 'CP' : 'FM';
+      await this.autoRefundPrize(record.id, orderId, refundAmount, refundReason, refundPrefix);
     }
 
     // 11. 写入操作日志
@@ -653,13 +657,19 @@ export class LotteryService {
   }
 
   /**
-   * 霸王餐中奖自动退款：将订单实付金额原路退回用户支付账户
+   * 中奖自动返现：将返现金额原路退回用户支付账户（霸王餐退全款、折扣券退折扣差额）
    * 内部全容错：任何失败仅记录日志（人工介入补退），不阻塞抽奖主流程
    */
-  private async autoRefundFreeMeal(recordId: string, orderId: string, refundAmountYuan: number): Promise<void> {
+  private async autoRefundPrize(
+    recordId: string,
+    orderId: string,
+    refundAmountYuan: number,
+    reason: string,
+    outRefundPrefix: string,
+  ): Promise<void> {
     try {
       if (!this.wechatPay.isEnabled()) {
-        this.logger.warn(`霸王餐中奖退款跳过：微信支付未配置 (record=${recordId})`);
+        this.logger.warn(`中奖返现跳过：微信支付未配置 (record=${recordId})`);
         return;
       }
       // 找到该订单已支付成功的微信支付单
@@ -682,17 +692,17 @@ export class LotteryService {
       const availableFen = Math.max(0, totalFen - alreadyRefundedFen);
       const refundFen = Math.min(Math.round(refundAmountYuan * 100), availableFen);
       if (totalFen <= 0 || refundFen <= 0) {
-        this.logger.warn(`霸王餐中奖退款跳过：金额异常 (order=${orderId}, total=${totalFen}, refund=${refundFen})`);
+        this.logger.warn(`中奖返现跳过：金额异常 (order=${orderId}, total=${totalFen}, refund=${refundFen})`);
         return;
       }
-      const outRefundNo = `FM${Date.now()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      const outRefundNo = `${outRefundPrefix}${Date.now()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
       const result = await this.wechatPay.createRefund({
         transactionId: payment.transaction_id || undefined,
         outTradeNo: payment.transaction_id ? undefined : payment.id.replace(/-/g, ''),
         outRefundNo,
         refundFen,
         totalFen,
-        reason: '膨胀盲盒霸王餐中奖免单退款',
+        reason,
       });
       const channelRefundNo = result?.refund_id || '';
       // 累加已退金额到支付单（用户主动退款流程会读取，防止重复全额退款）
@@ -701,10 +711,10 @@ export class LotteryService {
         .update({ refund_amount: Number(payment.refund_amount || 0) + refundFen / 100 })
         .eq('id', payment.id);
       this.logger.log(
-        `霸王餐中奖退款已受理：record=${recordId} order=${orderId} refund=${(refundFen / 100).toFixed(2)}元 channel=${channelRefundNo}`
+        `中奖返现已受理：record=${recordId} order=${orderId} refund=${(refundFen / 100).toFixed(2)}元 reason=${reason} channel=${channelRefundNo}`
       );
     } catch (err: any) {
-      this.logger.error(`霸王餐中奖退款失败（需人工介入补退）: record=${recordId} order=${orderId}`, err?.message || err);
+      this.logger.error(`中奖返现失败（需人工介入补退）: record=${recordId} order=${orderId} reason=${reason}`, err?.message || err);
     }
   }
 
