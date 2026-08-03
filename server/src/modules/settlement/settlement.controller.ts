@@ -104,8 +104,20 @@ export class SettlementController {
   /** 管理员确认打款（提现已到账） */
   @Post('withdrawals/:id/mark-paid')
   @HttpCode(200)
-  async markWithdrawalPaid(@Param('id') id: string, @Body() body: { admin_user_id?: string }) {
-    const data = await this.settlementService.markWithdrawalPaid(id, body?.admin_user_id || '');
+  async markWithdrawalPaid(
+    @Param('id') id: string,
+    @Body() body: {
+      admin_user_id?: string;
+      payment_proof_image?: string;
+      payment_transaction_no?: string;
+      payment_proof_note?: string;
+    },
+  ) {
+    const data = await this.settlementService.markWithdrawalPaid(id, body?.admin_user_id || '', {
+      payment_proof_image: body?.payment_proof_image,
+      payment_transaction_no: body?.payment_transaction_no,
+      payment_proof_note: body?.payment_proof_note,
+    });
     return { code: 200, msg: '已确认打款', data };
   }
 

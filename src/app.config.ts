@@ -7,6 +7,7 @@ export default defineAppConfig({
     'pages/package-detail/index',
     'pages/package-admin/index',
     'pages/merchant-admin/index',
+    'pages/merchant-qualification/index',
     'pages/order-list/index',
     'pages/order-detail/index',
     'pages/refund-apply/index',

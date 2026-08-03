@@ -9,7 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { MerchantService, CreateMerchantDto, UpdateMerchantDto } from './merchant.service';
+import { MerchantService, CreateMerchantDto, UpdateMerchantDto, SaveQualificationDto } from './merchant.service';
 
 @Controller('merchants')
 export class MerchantController {
@@ -39,6 +39,22 @@ export class MerchantController {
       return { code: 404, msg: '商家不存在', data: null };
     }
     return { code: 200, msg: 'success', data };
+  }
+
+  /** 商家资质与收款银行卡信息查询 */
+  @Get(':id/qualification')
+  @HttpCode(HttpStatus.OK)
+  async getQualification(@Param('id') id: string) {
+    const data = await this.merchantService.getQualification(Number(id));
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 商家资质与收款银行卡信息保存（覆盖更新） */
+  @Post(':id/qualification')
+  @HttpCode(HttpStatus.OK)
+  async saveQualification(@Param('id') id: string, @Body() body: SaveQualificationDto) {
+    const data = await this.merchantService.saveQualification(Number(id), body || {});
+    return { code: 200, msg: '保存成功', data };
   }
 
   @Get(':id')

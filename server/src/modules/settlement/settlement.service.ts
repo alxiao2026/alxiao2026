@@ -308,9 +308,22 @@ export class SettlementService {
     return record;
   }
 
-  /** 管理员确认打款：提现已到账（通知1：商户资金提现到账通知） */
-  async markWithdrawalPaid(withdrawalId: string, adminUserId: string) {
+  /** 管理员确认打款：提现已到账（通知1：商户资金提现到账通知）。强制要求打款凭证 */
+  async markWithdrawalPaid(
+    withdrawalId: string,
+    adminUserId: string,
+    proof: { payment_proof_image?: string; payment_transaction_no?: string; payment_proof_note?: string } = {},
+  ) {
     await this.assertAdmin(adminUserId);
+
+    // 强制打款凭证关卡：凭证图片 / 打款单号 / 文字说明，至少提供一项
+    const proofImage = (proof.payment_proof_image || '').trim();
+    const transactionNo = (proof.payment_transaction_no || '').trim();
+    const proofNote = (proof.payment_proof_note || '').trim();
+    if (!proofImage && !transactionNo && !proofNote) {
+      throw new BadRequestException('请先上传打款凭证（凭证图片、打款单号或文字说明，至少提供一项）');
+    }
+
     const { data: record, error: findError } = await this.supabase
       .from('withdrawal_records')
       .select('*')
@@ -325,7 +338,14 @@ export class SettlementService {
 
     const { data, error } = await this.supabase
       .from('withdrawal_records')
-      .update({ status: 'success', updated_at: new Date().toISOString() })
+      .update({
+        status: 'success',
+        payment_proof_image: proofImage || null,
+        payment_transaction_no: transactionNo || null,
+        payment_proof_note: proofNote || null,
+        processed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', withdrawalId)
       .select()
       .single();
@@ -434,9 +454,10 @@ export class SettlementService {
     if (error) throw error;
     const rows = data || [];
 
-    // 关联门店名称
+    // 关联门店名称 + 商家收款银行卡信息（管理员打款时使用）
     const merchantIds = [...new Set(rows.map((r: any) => Number(r.merchant_id)).filter(Boolean))];
     const nameMap: Record<number, string> = {};
+    const bankMap: Record<number, { bank_account_name?: string; bank_card_no?: string; bank_name?: string; bank_branch?: string }> = {};
     if (merchantIds.length > 0) {
       const { data: merchants } = await this.supabase
         .from('merchants')
@@ -445,12 +466,30 @@ export class SettlementService {
       (merchants || []).forEach((m: any) => {
         nameMap[Number(m.id)] = m.name;
       });
+
+      const { data: quals, error: qualError } = await this.supabase
+        .from('merchant_qualifications')
+        .select('merchant_id, bank_account_name, bank_card_no, bank_name, bank_branch')
+        .in('merchant_id', merchantIds);
+      if (qualError) {
+        console.warn('[getWithdrawals] 查询商家收款信息失败:', qualError.message);
+      }
+      (quals || []).forEach((q: any) => {
+        bankMap[Number(q.merchant_id)] = q;
+      });
     }
 
-    return rows.map((r: any) => ({
-      ...r,
-      merchant_name: nameMap[Number(r.merchant_id)] || '',
-    }));
+    return rows.map((r: any) => {
+      const bank = bankMap[Number(r.merchant_id)] || {};
+      return {
+        ...r,
+        merchant_name: nameMap[Number(r.merchant_id)] || '',
+        bank_account_name: bank.bank_account_name || '',
+        bank_card_no: bank.bank_card_no || '',
+        bank_name: bank.bank_name || '',
+        bank_branch: bank.bank_branch || '',
+      };
+    });
   }
 
   // ==================== 平台佣金 ====================

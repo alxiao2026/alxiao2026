@@ -697,6 +697,16 @@ export default function MerchantAdmin() {
                     <View className="flex items-center gap-2 ml-4">
                       <View
                         className="p-2 rounded-lg bg-red-50"
+                        onClick={() =>
+                          Taro.navigateTo({
+                            url: `/pages/merchant-qualification/index?merchant_id=${merchant.id}`,
+                          })
+                        }
+                      >
+                        <ShieldCheck size={16} color="#FF4757" />
+                      </View>
+                      <View
+                        className="p-2 rounded-lg bg-red-50"
                         onClick={() => handleEdit(merchant)}
                       >
                         <Pencil size={16} color="#FF4757" />

@@ -74,9 +74,78 @@ export interface Merchant {
   updated_at?: string;
 }
 
+export interface SaveQualificationDto {
+  business_license_url?: string;
+  food_license_url?: string;
+  other_license_urls?: string[];
+  bank_account_name?: string;
+  bank_card_no?: string;
+  bank_name?: string;
+  bank_branch?: string;
+}
+
 @Injectable()
 export class MerchantService {
   private client = getSupabaseClient();
+
+  // ==================== 商家资质与收款信息 ====================
+
+  /** 获取商家资质与收款银行卡信息 */
+  async getQualification(merchantId: number) {
+    if (!merchantId || Number.isNaN(merchantId)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data, error } = await this.client
+      .from('merchant_qualifications')
+      .select('*')
+      .eq('merchant_id', merchantId)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
+
+  /** 保存/更新商家资质与收款银行卡信息（按 merchant_id 覆盖更新） */
+  async saveQualification(merchantId: number, body: SaveQualificationDto) {
+    if (!merchantId || Number.isNaN(merchantId)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    // 确认商家存在
+    const { data: merchant } = await this.client
+      .from('merchants')
+      .select('id')
+      .eq('id', merchantId)
+      .maybeSingle();
+    if (!merchant) {
+      throw new NotFoundException('商家不存在');
+    }
+
+    const bankCardNo = (body.bank_card_no || '').replace(/\s+/g, '');
+    if (bankCardNo && !/^\d{8,32}$/.test(bankCardNo)) {
+      throw new BadRequestException('银行卡号格式不正确（8-32 位数字）');
+    }
+
+    const payload = {
+      merchant_id: merchantId,
+      business_license_url: (body.business_license_url || '').trim() || null,
+      food_license_url: (body.food_license_url || '').trim() || null,
+      other_license_urls: Array.isArray(body.other_license_urls)
+        ? body.other_license_urls.filter((u) => typeof u === 'string' && u.trim()).map((u) => u.trim())
+        : [],
+      bank_account_name: (body.bank_account_name || '').trim() || null,
+      bank_card_no: bankCardNo || null,
+      bank_name: (body.bank_name || '').trim() || null,
+      bank_branch: (body.bank_branch || '').trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await this.client
+      .from('merchant_qualifications')
+      .upsert(payload, { onConflict: 'merchant_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
 
   async findAll(): Promise<Merchant[]> {
     const { data, error } = await this.client

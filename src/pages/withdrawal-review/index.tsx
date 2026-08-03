@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
-import { Banknote, CircleCheck, CircleX, Store, Clock } from 'lucide-react-taro'
+import { Banknote, CircleCheck, CircleX, Store, Clock, CreditCard, Upload, X } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 
 interface WithdrawalRecord {
   id: string
@@ -24,6 +25,13 @@ interface WithdrawalRecord {
   status: string
   requested_at: string
   updated_at: string
+  bank_account_name?: string
+  bank_card_no?: string
+  bank_name?: string
+  bank_branch?: string
+  payment_proof_image?: string
+  payment_transaction_no?: string
+  payment_proof_note?: string
 }
 
 type TabType = 'pending' | 'all'
@@ -35,6 +43,12 @@ export default function WithdrawalReview() {
   const [processing, setProcessing] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<WithdrawalRecord | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  // 打款凭证弹窗
+  const [payTarget, setPayTarget] = useState<WithdrawalRecord | null>(null)
+  const [proofImage, setProofImage] = useState('')
+  const [transactionNo, setTransactionNo] = useState('')
+  const [proofNote, setProofNote] = useState('')
+  const [uploadingProof, setUploadingProof] = useState(false)
 
   const getAdminUserId = () =>
     Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || ''
@@ -72,27 +86,60 @@ export default function WithdrawalReview() {
     // 记录量小，暂不分页
   })
 
-  const handleMarkPaid = async (record: WithdrawalRecord) => {
-    const confirm = await Taro.showModal({
-      title: '确认打款',
-      content: `确认已向「${record.merchant_name || `商家${record.merchant_id}`}」打款 ¥${Number(record.amount).toFixed(2)} 吗？`,
-      confirmText: '已打款',
-      cancelText: '再想想',
-    })
-    if (!confirm.confirm) return
+  /** 打开打款凭证弹窗（强制上传打款记录后才能确认） */
+  const handleMarkPaid = (record: WithdrawalRecord) => {
+    setPayTarget(record)
+    setProofImage('')
+    setTransactionNo('')
+    setProofNote('')
+  }
 
+  /** 上传打款凭证图片 */
+  const pickProofImage = async () => {
+    try {
+      const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
+      const filePath = res.tempFilePaths?.[0]
+      if (!filePath) return
+      setUploadingProof(true)
+      const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath, name: 'file' })
+      const body = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+      console.log('[withdrawal-review] 凭证上传响应:', body)
+      const url = body?.data?.url
+      if (!url) throw new Error(body?.msg || body?.message || '上传失败')
+      setProofImage(url)
+    } catch (e: any) {
+      if (e?.errMsg?.includes('cancel')) return
+      Taro.showToast({ title: e?.message || '上传失败，请重试', icon: 'none' })
+    } finally {
+      setUploadingProof(false)
+    }
+  }
+
+  /** 提交确认打款（强制凭证关卡） */
+  const submitMarkPaid = async () => {
+    if (!payTarget) return
+    if (!proofImage && !transactionNo.trim() && !proofNote.trim()) {
+      Taro.showToast({ title: '请上传凭证图片，或填写打款单号/说明', icon: 'none' })
+      return
+    }
     setProcessing(true)
     try {
       const res = await Network.request({
-        url: `/api/settlement/withdrawals/${record.id}/mark-paid`,
+        url: `/api/settlement/withdrawals/${payTarget.id}/mark-paid`,
         method: 'POST',
-        data: { admin_user_id: getAdminUserId() },
+        data: {
+          admin_user_id: getAdminUserId(),
+          payment_proof_image: proofImage || undefined,
+          payment_transaction_no: transactionNo.trim() || undefined,
+          payment_proof_note: proofNote.trim() || undefined,
+        },
       })
       const body = res.data as any
       if (res.statusCode >= 400 || body?.code !== 200) {
         throw new Error(body?.message || body?.msg || '操作失败')
       }
       Taro.showToast({ title: '已确认打款', icon: 'success' })
+      setPayTarget(null)
       fetchRecords(activeTab)
     } catch (e: any) {
       Taro.showToast({ title: e?.message || '操作失败', icon: 'none' })
@@ -211,6 +258,59 @@ export default function WithdrawalReview() {
                   </Text>
                 </View>
 
+                {/* 商家收款银行卡（打款参照） */}
+                {record.bank_card_no ? (
+                  <View className="bg-gray-50 rounded-xl p-3 mb-3">
+                    <View className="flex flex-row items-center mb-1">
+                      <CreditCard size={14} color="#FF4757" />
+                      <Text className="text-xs font-medium text-gray-700 ml-1">收款银行卡</Text>
+                    </View>
+                    <Text className="block text-sm text-gray-800">
+                      {record.bank_name || '银行卡'}{record.bank_branch ? ` · ${record.bank_branch}` : ''}
+                    </Text>
+                    <Text className="block text-sm text-gray-800 mt-1">
+                      {record.bank_card_no}（{record.bank_account_name || '未填写户名'}）
+                    </Text>
+                  </View>
+                ) : record.status === 'pending' ? (
+                  <View className="bg-yellow-50 rounded-xl p-3 mb-3">
+                    <Text className="block text-xs text-yellow-700">
+                      该商家暂未填写收款银行卡，请先联系商家在「商家管理 → 资质与收款」中完善
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* 已到账：展示打款凭证 */}
+                {record.status === 'success' &&
+                  (record.payment_proof_image || record.payment_transaction_no || record.payment_proof_note) && (
+                    <View className="bg-green-50 rounded-xl p-3 mb-3">
+                      <Text className="block text-xs font-medium text-green-700 mb-1">打款凭证</Text>
+                      {record.payment_proof_image ? (
+                        <Image
+                          src={record.payment_proof_image}
+                          className="w-20 h-20 rounded-lg bg-white"
+                          mode="aspectFill"
+                          onClick={() =>
+                            Taro.previewImage({
+                              urls: [record.payment_proof_image as string],
+                              current: record.payment_proof_image,
+                            })
+                          }
+                        />
+                      ) : null}
+                      {record.payment_transaction_no ? (
+                        <Text className="block text-xs text-gray-600 mt-1">
+                          打款单号：{record.payment_transaction_no}
+                        </Text>
+                      ) : null}
+                      {record.payment_proof_note ? (
+                        <Text className="block text-xs text-gray-600 mt-1">
+                          说明：{record.payment_proof_note}
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
+
                 {record.status === 'pending' && (
                   <View className="flex flex-row gap-3 pt-3 border-t border-gray-100">
                     <View className="flex-1">
@@ -244,6 +344,121 @@ export default function WithdrawalReview() {
           ))
         )}
       </View>
+
+      {/* 打款凭证弹窗（强制关卡：先上传打款记录，再确认打款） */}
+      <Dialog open={!!payTarget} onOpenChange={(open) => !open && setPayTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认打款</DialogTitle>
+          </DialogHeader>
+          <View className="py-2">
+            <Text className="block text-sm text-gray-600 mb-3">
+              向「{payTarget?.merchant_name || `商家${payTarget?.merchant_id}`}」打款 ¥
+              {Number(payTarget?.amount || 0).toFixed(2)}，请先上传打款记录
+            </Text>
+
+            {/* 收款银行卡参照 */}
+            {payTarget?.bank_card_no ? (
+              <View className="bg-gray-50 rounded-xl p-3 mb-3">
+                <View className="flex flex-row items-center mb-1">
+                  <CreditCard size={14} color="#FF4757" />
+                  <Text className="text-xs font-medium text-gray-700 ml-1">收款银行卡</Text>
+                </View>
+                <Text className="block text-sm text-gray-800">
+                  {payTarget.bank_name || '银行卡'}
+                  {payTarget.bank_branch ? ` · ${payTarget.bank_branch}` : ''}
+                </Text>
+                <Text className="block text-sm text-gray-800 mt-1">
+                  {payTarget.bank_card_no}（{payTarget.bank_account_name || '未填写户名'}）
+                </Text>
+              </View>
+            ) : (
+              <View className="bg-yellow-50 rounded-xl p-3 mb-3">
+                <Text className="block text-xs text-yellow-700">
+                  商家未填写收款银行卡，请线下确认收款方式后再打款
+                </Text>
+              </View>
+            )}
+
+            {/* 凭证图片上传 */}
+            <Text className="block text-sm font-medium text-gray-700 mb-2">打款凭证截图</Text>
+            {proofImage ? (
+              <View className="relative mb-3">
+                <Image
+                  src={proofImage}
+                  className="w-full h-40 rounded-xl bg-gray-100"
+                  mode="aspectFit"
+                  onClick={() => Taro.previewImage({ urls: [proofImage], current: proofImage })}
+                />
+                <View
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black bg-opacity-50 flex items-center justify-center"
+                  onClick={() => setProofImage('')}
+                >
+                  <X size={14} color="#ffffff" />
+                </View>
+              </View>
+            ) : (
+              <View
+                className="h-28 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center mb-3"
+                onClick={pickProofImage}
+              >
+                {uploadingProof ? (
+                  <Text className="block text-sm text-gray-400">上传中...</Text>
+                ) : (
+                  <>
+                    <Upload size={24} color="#9ca3af" />
+                    <Text className="block text-xs text-gray-400 mt-1">上传转账截图</Text>
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* 打款单号 */}
+            <Text className="block text-sm font-medium text-gray-700 mb-2">打款单号</Text>
+            <View className="mb-3">
+              <Input
+                className="w-full"
+                placeholder="银行转账流水号 / 微信转账单号"
+                value={transactionNo}
+                onInput={(e) => setTransactionNo(e.detail.value)}
+              />
+            </View>
+
+            {/* 文字说明 */}
+            <Text className="block text-sm font-medium text-gray-700 mb-2">文字说明</Text>
+            <View className="bg-gray-50 rounded-xl p-3 mb-2">
+              <Textarea
+                style={{ width: '100%', minHeight: '60px', backgroundColor: 'transparent' }}
+                placeholder="如：已于 14:30 通过招行转账至商家工行卡"
+                value={proofNote}
+                onInput={(e) => setProofNote(e.detail.value)}
+                maxlength={200}
+              />
+            </View>
+            <Text className="block text-xs text-gray-400">
+              凭证截图、打款单号、文字说明至少提供一项，提交后状态将变为「已到账」
+            </Text>
+          </View>
+          <DialogFooter>
+            <View className="flex flex-row gap-3 w-full">
+              <View className="flex-1">
+                <Button variant="outline" className="w-full" onClick={() => setPayTarget(null)}>
+                  <Text>取消</Text>
+                </Button>
+              </View>
+              <View className="flex-1">
+                <Button
+                  className="w-full"
+                  disabled={processing || uploadingProof}
+                  onClick={submitMarkPaid}
+                >
+                  <Text>{processing ? '提交中...' : '确认打款'}</Text>
+                </Button>
+              </View>
+            </View>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 拒绝原因弹窗 */}
       <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
