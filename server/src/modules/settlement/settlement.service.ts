@@ -780,12 +780,36 @@ export class SettlementService {
       if (!pkg || (pkg as any).merchant_id === null || (pkg as any).merchant_id === undefined) return;
       const merchantId = Number((pkg as any).merchant_id);
 
-      // 查结算配置
-      const { data: config } = await this.supabase
+      // 查结算配置（套餐级优先，商家级兜底）
+      let config: any = null;
+      const { data: pkgConfig } = await this.supabase
         .from('package_settlement_configs')
         .select('*')
         .eq('package_id', order.package_id)
         .maybeSingle();
+      config = pkgConfig;
+
+      if (!config) {
+        // 套餐级无配置 → 回退读商家级配置（merchants 表）
+        const { data: merchantCfg } = await this.supabase
+          .from('merchants')
+          .select('settlement_type, commission_rate, settlement_method, rebate_ratio')
+          .eq('id', merchantId)
+          .maybeSingle();
+        if (merchantCfg) {
+          const mType = Number((merchantCfg as any).settlement_type);
+          const mRate = Number((merchantCfg as any).commission_rate);
+          const legacyMethod = String((merchantCfg as any).settlement_method || '');
+          const legacyRatio = Number((merchantCfg as any).rebate_ratio);
+          if (mType === 1 && !Number.isNaN(mRate) && mRate > 0) {
+            config = { settlement_type: 1, commission_rate: mRate };
+          } else if (mType === 2) {
+            config = { settlement_type: 2, settlement_price: null, commission_rate: 0 };
+          } else if (legacyMethod === 'commission' && !Number.isNaN(legacyRatio) && legacyRatio > 0) {
+            config = { settlement_type: 1, commission_rate: legacyRatio };
+          }
+        }
+      }
 
       // 本次核销份数对应的订单金额（按实付均摊到每份）
       const payAmount = Number(order.pay_amount ?? order.price ?? 0);
