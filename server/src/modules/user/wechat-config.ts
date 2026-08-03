@@ -120,12 +120,23 @@ export async function getWechatPayCredentials(): Promise<WechatPayCredentials> {
   return normalizePayPem({ ...db, source: 'none' });
 }
 
+/**
+ * PEM 还原：字面 \n 转真实换行、剔除 \r（防 Windows 换行污染）、保证末尾换行。
+ * 末尾换行必须补齐：部分 OpenSSL 3.0.x 版本对无尾换行的 PEM 直接报
+ * "DECODER routines::unsupported"，导致线上私钥解析失败。
+ */
+function restorePem(value: string): string {
+  if (!value) return '';
+  const restored = value.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+  return restored.endsWith('\n') ? restored : `${restored}\n`;
+}
+
 /** PEM 规范化：.env/DB 中可能以字面 \n 存储私钥换行，统一还原（对真实换行幂等） */
 function normalizePayPem(pay: WechatPayCredentials): WechatPayCredentials {
   return {
     ...pay,
-    privateKey: (pay.privateKey || '').replace(/\\n/g, '\n'),
-    payPublicKey: (pay.payPublicKey || '').replace(/\\n/g, '\n'),
+    privateKey: restorePem(pay.privateKey),
+    payPublicKey: restorePem(pay.payPublicKey),
   };
 }
 

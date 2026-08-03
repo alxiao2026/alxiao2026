@@ -29,6 +29,8 @@ export class WechatPayService {
   /** 微信支付公钥 PEM（新模式，回调验签用，可替代平台证书） */
   private payPublicKey = '';
   private privateKey = '';
+  /** 预解析的私钥对象（避免每次签名重复解析 PEM，且能在加载时前置暴露格式问题） */
+  private privateKeyObj: crypto.KeyObject | null = null;
   private notifyUrl = '';
   /** 动态配置缓存时间戳（配置来源：环境变量优先，数据库 wechat_config 兜底，60s 刷新） */
   private configLoadedAt = 0;
@@ -46,10 +48,26 @@ export class WechatPayService {
     this.payPublicKey = pay.payPublicKey;
     this.privateKey = pay.privateKey;
     this.notifyUrl = pay.payNotifyUrl || this.buildDefaultNotifyUrl();
+    this.privateKeyObj = null;
+    if (this.privateKey) {
+      try {
+        this.privateKeyObj = crypto.createPrivateKey(this.privateKey);
+      } catch (err: any) {
+        this.logger.error(
+          `商户私钥 PEM 无法解析（来源 ${pay.source}，请检查后台「微信配置」中的私钥是否完整粘贴）: ${err?.message}`,
+        );
+      }
+    }
     this.configLoadedAt = now;
     if (pay.source !== 'none') {
       this.logger.log(`微信支付配置来源: ${pay.source}`);
     }
+  }
+
+  /** RSA-SHA256 签名（优先用预解析的 KeyObject，兼容性与性能更好） */
+  private signRsa(message: string): string {
+    const key: crypto.KeyLike = this.privateKeyObj || this.privateKey;
+    return crypto.createSign('RSA-SHA256').update(message).sign(key, 'base64');
   }
 
   /** 回调地址兜底：按平台注入的项目域名拼接（适配开发/生产环境） */
@@ -132,10 +150,7 @@ export class WechatPayService {
     const nonceStr = crypto.randomBytes(16).toString('hex');
     const pkg = `prepay_id=${prepayId}`;
     const message = `${this.appid}\n${timeStamp}\n${nonceStr}\n${pkg}\n`;
-    const paySign = crypto
-      .createSign('RSA-SHA256')
-      .update(message)
-      .sign(this.privateKey, 'base64');
+    const paySign = this.signRsa(message);
     return {
       timeStamp,
       nonceStr,
@@ -248,10 +263,7 @@ export class WechatPayService {
     const nonce = crypto.randomBytes(16).toString('hex');
     const bodyStr = body ? JSON.stringify(body) : '';
     const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyStr}\n`;
-    const signature = crypto
-      .createSign('RSA-SHA256')
-      .update(message)
-      .sign(this.privateKey, 'base64');
+    const signature = this.signRsa(message);
     const authorization =
       `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonce}",` +
       `timestamp="${timestamp}",serial_no="${this.serialNo}",signature="${signature}"`;
