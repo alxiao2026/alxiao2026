@@ -513,6 +513,34 @@ export class UserService {
     return data as User;
   }
 
+  /**
+   * 已登录账号绑定微信 open_id（支付场景就地绑定）
+   * 用于商户/超管/手机号注册账号在小程序内自助绑定当前微信号
+   */
+  async bindWechatToUser(userId: string, code: string): Promise<User> {
+    const session = await this.code2Session(code);
+    const openId = session?.openid ? String(session.openid) : '';
+    if (!openId) throw new BadRequestException('微信授权失败，请重试');
+    const supabase = getSupabaseClient();
+    const { data: existing } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('open_id', openId)
+      .maybeSingle();
+    if (existing && existing.user_id !== userId) {
+      throw new BadRequestException('该微信已绑定其他账号，请直接使用微信授权登录');
+    }
+    const { data, error } = await supabase
+      .from('users')
+      .update({ open_id: openId, last_login_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error || !data) throw new NotFoundException('用户不存在');
+    new Logger('UserService.bindWechat').log(`账号 ${userId} 已绑定微信 open_id`);
+    return data as User;
+  }
+
   /** 更新用户资料 */
   async update(userId: string, body: UpdateUserBody): Promise<User> {
     const supabase = getSupabaseClient();

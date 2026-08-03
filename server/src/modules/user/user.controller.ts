@@ -91,6 +91,17 @@ export class UserController {
     return { code: 200, msg: 'success', data: { ...user, role_code: roleToCode(user.role) } };
   }
 
+  /** 已登录账号绑定微信：小程序端传 code（Taro.login 获取），绑定后可发起微信支付 */
+  @Post('bind-wechat')
+  @HttpCode(200)
+  async bindWechat(@Body() body: { user_id?: string; code?: string }) {
+    if (!body?.user_id || !body?.code) {
+      throw new BadRequestException('参数不完整：需要 user_id 和 code');
+    }
+    const user = await this.userService.bindWechatToUser(body.user_id, body.code);
+    return { code: 200, msg: '绑定成功', data: { ...user, role_code: roleToCode(user.role) } };
+  }
+
   /** 用户列表（管理后台，分页 + 关键词搜索） */
   @Get()
   async listUsers(

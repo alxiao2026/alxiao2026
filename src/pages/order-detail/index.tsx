@@ -176,6 +176,43 @@ export default function OrderDetail() {
     }
   }
 
+  /** 未绑定微信时：引导微信授权绑定，成功后返回 true（调用方应重试支付） */
+  const promptBindWechat = async (): Promise<boolean> => {
+    const env = Taro.getEnv()
+  const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
+    if (!isMiniApp) {
+      Taro.showToast({ title: '请在微信小程序中打开完成绑定', icon: 'none' })
+      return false
+    }
+    const modal = await Taro.showModal({
+      title: '绑定微信支付',
+      content: '当前账号未绑定微信，无法发起微信支付。是否立即绑定当前微信号？',
+      confirmText: '立即绑定',
+      cancelText: '取消'
+    })
+    if (!modal.confirm) return false
+    try {
+      const loginRes = await Taro.login()
+      if (!loginRes.code) throw new Error('未获取到微信授权码')
+      const userId = Taro.getStorageSync('user_id')
+      const res = await Network.request({
+        url: '/api/users/bind-wechat',
+        method: 'POST',
+        data: { user_id: userId, code: loginRes.code }
+      })
+      console.log('[订单详情] 绑定微信响应:', JSON.stringify(res.data))
+      const body = res.data as { code?: number; msg?: string; message?: string }
+      if (res.statusCode >= 400 || (body?.code !== undefined && body.code !== 200)) {
+        throw new Error(body?.msg || body?.message || '绑定失败')
+      }
+      Taro.showToast({ title: '绑定成功', icon: 'none' })
+      return true
+    } catch (err: any) {
+      Taro.showToast({ title: err?.message || '绑定失败，请重试', icon: 'none' })
+      return false
+    }
+  }
+
   /** 预下单：后端金额引擎计算实付（含抽奖券抵扣），前端只展示 */
   const loadPrepay = async (silent = false): Promise<PrepayInfo | null> => {
     try {
@@ -196,11 +233,22 @@ export default function OrderDetail() {
       // prepay 失败（如支付通道未配置）：透传后端真实错误，避免静默无反应；自动预取时静默
       if (!silent) {
         const errMsg = (res.data as { message?: string })?.message
+        if (errMsg && String(errMsg).includes('未绑定微信')) {
+          const bound = await promptBindWechat()
+          if (bound) return loadPrepay()
+          return null
+        }
         Taro.showToast({ title: errMsg ? String(errMsg).slice(0, 30) : '获取支付信息失败', icon: 'none' })
       }
     } catch (err: any) {
       console.error('[OrderDetail] 预下单失败:', err)
-      Taro.showToast({ title: err?.data?.message || '获取支付信息失败', icon: 'none' })
+      const errMsg = err?.data?.message
+      if (errMsg && String(errMsg).includes('未绑定微信')) {
+        const bound = await promptBindWechat()
+        if (bound) return loadPrepay()
+        return null
+      }
+      Taro.showToast({ title: errMsg || '获取支付信息失败', icon: 'none' })
     }
     return null
   }
@@ -311,7 +359,13 @@ export default function OrderDetail() {
       }
     } catch (err: any) {
       console.error('[OrderDetail] 支付失败:', err)
-      Taro.showToast({ title: err?.data?.message || '支付失败，请重试', icon: 'none' })
+      const errMsg = err?.data?.message
+      if (errMsg && String(errMsg).includes('未绑定微信')) {
+        const bound = await promptBindWechat()
+        if (bound) return handlePay()
+        return
+      }
+      Taro.showToast({ title: errMsg || '支付失败，请重试', icon: 'none' })
     } finally {
       setPaying(false)
     }

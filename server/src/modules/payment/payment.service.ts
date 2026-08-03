@@ -266,8 +266,14 @@ export class PaymentService {
             pay_expire_at: order.pay_expire_at,
           };
         }
+        if (!openId && !this.isMockEnabled()) {
+          // 账号未绑定微信 open_id 时给出明确指引，避免被误判为"通道未配置"
+          throw new BadRequestException('当前账号未绑定微信，请使用微信授权登录后再支付');
+        }
         this.logger.log(`用户 ${body.user_id} 未绑定微信 open_id，回退 Mock 支付通道`);
       } catch (err: any) {
+        // 业务性错误（如未绑定微信）直接透传，不包装为"下单失败"
+        if (err instanceof BadRequestException) throw err;
         if (!this.isMockEnabled()) {
           this.logger.error(`微信下单失败且 Mock 通道已禁用: ${err?.message}`);
           throw new BadRequestException('微信支付下单失败，请稍后重试');
