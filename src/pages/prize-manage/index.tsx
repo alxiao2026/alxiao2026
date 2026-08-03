@@ -112,9 +112,19 @@ export default function PrizeManagePage() {
     }
   };
 
+  // 已被其他奖品占用的概率（不含兜底奖、不含正在编辑的奖品自身）
+  const usedProbability = () =>
+    prizes
+      .filter((p) => p.is_active && !p.is_fallback && p.id !== editingPrize?.id)
+      .reduce((s, p) => s + (parseFloat(p.probability) || 0), 0);
+
+  // 剩余可分配概率（保留两位小数，最低为 0）
+  const remainingProbability = () => Math.max(0, Math.round((100 - usedProbability()) * 100) / 100);
+
   const openCreatePrize = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: '', description: '', probability: '10', stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', image_url: '', is_fallback: false });
+    // 自动填入剩余可分配概率，填完一个下一个自动递减
+    setPrizeForm({ name: '', description: '', probability: String(remainingProbability()), stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', image_url: '', is_fallback: false });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -136,6 +146,20 @@ export default function PrizeManagePage() {
 
   const handleSavePrize = async () => {
     if (!prizeForm.name) { Taro.showToast({ title: '请输入奖品名称', icon: 'none' }); return; }
+    if (!prizeForm.is_fallback) {
+      const prob = parseFloat(prizeForm.probability) || 0;
+      const remaining = remainingProbability();
+      if (prob > remaining + 1e-9) {
+        Taro.showModal({
+          title: '概率超标',
+          content: `全部奖品概率之和不能超过 100%\n当前剩余可分配 ${remaining}%，建议填 ${remaining}%`,
+          showCancel: false,
+          confirmText: '知道了',
+          confirmColor: '#FF4757',
+        });
+        return;
+      }
+    }
     if (prizeForm.prize_type === 'coupon') {
       const rate = Number(prizeForm.discount_rate);
       if (!(rate >= 8 && rate <= 9.5)) {
@@ -513,6 +537,16 @@ export default function PrizeManagePage() {
                       <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                         <Input className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.probability} placeholder="如 10" onInput={(e) => setPrizeForm({ ...prizeForm, probability: e.detail.value })} />
                       </View>
+                      {(() => {
+                        const prob = parseFloat(prizeForm.probability) || 0;
+                        const remaining = remainingProbability();
+                        const over = prob > remaining + 1e-9;
+                        return over ? (
+                          <Text className="block text-xs mt-1 text-[#FF4757] font-medium">概率超标：剩余可分配 {remaining}%，建议填 {remaining}%</Text>
+                        ) : (
+                          <Text className="block text-xs mt-1 text-gray-400">剩余可分配概率 {remaining}%</Text>
+                        );
+                      })()}
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="block text-sm text-gray-700 font-medium mb-1">库存数量</Text>
