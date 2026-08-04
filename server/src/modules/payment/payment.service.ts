@@ -530,7 +530,10 @@ export class PaymentService {
     );
 
     // 累计已退金额（此前部分退款）
-    const alreadyRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+    // 注意：payments.refund_amount 含「中奖返现」与「消费者主动退款」两笔钱（返现由抽奖模块打款时写入），
+    // 中奖返现已由 rebateAmount 单独扣除，此处仅取消费者主动退款部分，避免返现被重复扣减
+    const paymentRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+    const alreadyRefunded = Math.round(Math.max(paymentRefunded - rebateAmount, 0) * 100) / 100;
 
     // 全额退款判定：仅在无任何已核销份数时，才允许"退剩余全部金额"（扣除已返还折扣）；
     // 存在已核销份数时一律按实付均价退，确保已消费部分的金额不会被退掉
@@ -543,14 +546,18 @@ export class PaymentService {
     } else {
       // 部分退：按实付均价退
       refundAmount = Math.round(unitPay * refundQty * 100) / 100;
-      const remainRefundable = Math.round((paidAmount - alreadyRefunded) * 100) / 100;
+      // 剩余可退资金 = 实付 − 中奖返现 − 消费者已主动退款
+      const remainRefundable = Math.round((paidAmount - rebateAmount - alreadyRefunded) * 100) / 100;
       refundAmount = Math.min(refundAmount, remainRefundable);
     }
 
     const now = new Date().toISOString();
     const newRefundedQty = refundedQty + refundQty;
     const fullyRefunded = verifiedCount + newRefundedQty >= quantity;
-    const totalRefundedAmount = Math.round((alreadyRefunded + refundAmount) * 100) / 100;
+    // payments：累计退款总额（含中奖返现），与支付渠道实际退款总额对账一致
+    const totalRefundedAmount = Math.round((paymentRefunded + refundAmount) * 100) / 100;
+    // orders：仅累计消费者主动退款（不含中奖返现），与过期自动退款口径一致
+    const orderRefundedAmount = Math.round((alreadyRefunded + refundAmount) * 100) / 100;
 
     // ===== 微信通道：真实支付单先发起微信退款，受理成功后才落库 =====
     if (payment?.channel === 'wechat' && await this.wechatPay.isEnabled() && refundAmount > 0) {
@@ -590,7 +597,7 @@ export class PaymentService {
     // 2. 订单：累计退款份数/金额；全退 → refunded
     const orderUpdate: Record<string, any> = {
       refunded_quantity: newRefundedQty,
-      refund_amount: totalRefundedAmount,
+      refund_amount: orderRefundedAmount,
       updated_at: now,
     };
     if (fullyRefunded) {
@@ -708,7 +715,10 @@ export class PaymentService {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    const alreadyRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+    // payments.refund_amount 含中奖返现（抽奖模块打款时写入），此处仅返回消费者主动退款部分，
+    // 与 rebate_amount 分开展示/扣除，避免返现被重复计算
+    const paymentRefunded = parseFloat(payment?.refund_amount || '0') || 0;
+    const alreadyRefunded = Math.round(Math.max(paymentRefunded - rebateAmount, 0) * 100) / 100;
 
     return {
       order_status: order.status,

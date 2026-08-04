@@ -87,7 +87,8 @@ export default function RefundApplyPage() {
       amount = Math.round(Math.max(pay_amount - rebate_amount - already_refunded, 0) * 100) / 100
     } else {
       amount = Math.round(unit_pay * refundQty * 100) / 100
-      amount = Math.min(amount, Math.round((pay_amount - already_refunded) * 100) / 100)
+      // 剩余可退资金 = 实付 − 中奖返现 − 消费者已主动退款（与后端金额引擎一致）
+      amount = Math.min(amount, Math.round((pay_amount - rebate_amount - already_refunded) * 100) / 100)
     }
 
     const lines: string[] = []
