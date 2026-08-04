@@ -107,6 +107,7 @@ export default function MerchantPage() {
   const [winStats, setWinStats] = useState<{ totalWins: number; freeMealWins: number }>({ totalWins: 0, freeMealWins: 0 })
   const [winners, setWinners] = useState<WinnerRecord[]>([])
   const [distanceText, setDistanceText] = useState('')
+  const [locationDenied, setLocationDenied] = useState(false)
 
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
@@ -171,10 +172,11 @@ export default function MerchantPage() {
     }
   }, [merchant?.name])
 
-  // 商家有坐标时，获取消费者定位并计算与门店的距离（拒绝定位则静默不显示）
-  useEffect(() => {
+  // 商家有坐标时，获取消费者定位并计算与门店的距离
+  const fetchDistance = useCallback(() => {
     if (!merchant?.latitude || !merchant?.longitude) {
       setDistanceText('')
+      setLocationDenied(false)
       return
     }
     console.log('[Merchant] 获取用户定位以计算距离')
@@ -190,12 +192,36 @@ export default function MerchantPage() {
         const text = d < 1000 ? `距您约 ${Math.round(d)}m` : `距您约 ${(d / 1000).toFixed(1)}km`
         console.log('[Merchant] 距离计算完成', { meters: Math.round(d), text })
         setDistanceText(text)
+        setLocationDenied(false)
       },
       fail: (e) => {
-        console.log('[Merchant] 用户定位获取失败（可能拒绝授权）', e)
+        // 常见失败：用户拒绝授权 auth deny / 隐私协议未声明 / H5 预览环境无定位
+        console.error('[Merchant] 获取用户定位失败:', (e as any)?.errMsg || e)
+        setDistanceText('')
+        setLocationDenied(true)
       },
     })
   }, [merchant?.latitude, merchant?.longitude])
+
+  useEffect(() => {
+    fetchDistance()
+  }, [fetchDistance])
+
+  /** 定位被拒时引导用户打开设置页授权，成功后重新计算距离 */
+  const handleEnableLocation = () => {
+    if (!isMiniApp) {
+      Taro.showToast({ title: 'H5 预览不支持定位，请在小程序中查看距离', icon: 'none' })
+      return
+    }
+    Taro.openSetting({
+      success: (res) => {
+        if (res.authSetting?.['scope.userLocation']) {
+          setLocationDenied(false)
+          fetchDistance()
+        }
+      },
+    }).catch((e) => console.error('[Merchant] 打开设置页失败', e))
+  }
 
   // 分享：小程序端触发原生分享面板（Button openType="share"），H5 端复制链接
   useShareAppMessage(() => ({
@@ -414,6 +440,17 @@ export default function MerchantPage() {
                       <Text className="text-sm text-gray-900 leading-5">{merchant.address}</Text>
                       {!!distanceText && (
                         <Text className="block text-xs text-orange-500 mt-1">{distanceText} · 点击导航到店</Text>
+                      )}
+                      {!distanceText && locationDenied && !!merchant.latitude && !!merchant.longitude && (
+                        <Text
+                          className="block text-xs text-blue-500 mt-1"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEnableLocation()
+                          }}
+                        >
+                          定位未授权 · 点击开启后查看距离
+                        </Text>
                       )}
                     </View>
                   </View>
