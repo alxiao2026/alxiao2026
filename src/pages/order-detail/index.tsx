@@ -23,6 +23,7 @@ interface Order {
   shop_name: string | null
   quantity: number
   verified_count: number
+  refunded_quantity?: number
   created_at: string
   pay_amount?: string | null
   original_amount?: string | null
@@ -465,7 +466,7 @@ export default function OrderDetail() {
           {isPaid && (
             <Text className="block text-xs text-white opacity-80 mt-1">
               {order.quantity > 1
-                ? '共' + order.quantity + '份，已核销' + (order.verified_count || 0) + '份，剩余' + (order.quantity - (order.verified_count || 0)) + '份'
+                ? '共' + order.quantity + '份，已核销' + (order.verified_count || 0) + '份' + ((order.refunded_quantity || 0) > 0 ? '，已退款' + order.refunded_quantity + '份' : '') + '，剩余' + (order.quantity - (order.verified_count || 0) - (order.refunded_quantity || 0)) + '份'
                 : '请在有效期内到店使用'}
             </Text>
           )}
@@ -745,6 +746,15 @@ export default function OrderDetail() {
                 {order.verified_count || 0} / {order.quantity || 1} 已核销
               </Text>
             </View>
+            {(order.refunded_quantity || 0) > 0 && (
+              <>
+                <Separator />
+                <View className="flex flex-row justify-between items-center py-2">
+                  <Text className="block text-sm text-gray-400">已退款份数</Text>
+                  <Text className="block text-sm font-semibold text-orange-500">{order.refunded_quantity} 份已退款</Text>
+                </View>
+              </>
+            )}
             {order.verification_code && (order.status === 'paid' || order.status === 'used') && (
               <>
                 <Separator />
