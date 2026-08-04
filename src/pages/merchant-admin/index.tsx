@@ -598,6 +598,20 @@ export default function MerchantAdmin() {
         return;
       }
 
+      // 佣金百分比模式：清除该商家所有套餐的套餐级结算配置，
+      // 避免残留的套餐级配置（如按结算价）优先级更高，导致商家级百分比不生效
+      if (formData.settlement_type === 1 && editingMerchant) {
+        try {
+          const clearRes = await Network.request({
+            url: `/api/settlement/config/merchant/${editingMerchant.id}`,
+            method: 'DELETE',
+          });
+          console.log('清除套餐级结算配置响应:', clearRes.statusCode, clearRes.data);
+        } catch (e) {
+          console.error('清除套餐级结算配置失败:', e);
+        }
+      }
+
       // 结算价模式：商家保存成功后，逐套餐写入结算价配置
       if (formData.settlement_type === 2 && packagePrices.length > 0) {
         const merchantId = editingMerchant?.id ?? (res.data as any)?.data?.id;

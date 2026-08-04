@@ -49,6 +49,14 @@ export class SettlementController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 清除商家名下所有套餐的套餐级结算配置（佣金百分比模式统一全店生效） */
+  @Delete('config/merchant/:merchantId')
+  @HttpCode(HttpStatus.OK)
+  async clearConfigsByMerchant(@Param('merchantId') merchantId: string) {
+    const data = await this.settlementService.clearConfigsByMerchant(merchantId);
+    return { code: 200, msg: 'success', data };
+  }
+
   // ==================== 商家余额 ====================
 
   /** 获取商家余额 */

@@ -16,6 +16,7 @@ interface SettlementRecord {
   settled_at?: string;
   withdrawn_at?: string;
   created_at: string;
+  verified_qty?: number;
   orders?: any;
   packages?: any;
 }
@@ -164,6 +165,20 @@ export default function SettlementRecordsPage() {
 
                   <View className="space-y-2">
                     <View className="flex justify-between">
+                      <Text className="block text-xs text-gray-500">核销份数</Text>
+                      <Text className="block text-sm text-gray-800">{record.verified_qty ?? 0} 份</Text>
+                    </View>
+                    <View className="flex justify-between">
+                      <Text className="block text-xs text-gray-500">核销码</Text>
+                      <Text className="block text-sm text-gray-800">{record.orders?.verification_code || '—'}</Text>
+                    </View>
+                    <View className="flex justify-between">
+                      <Text className="block text-xs text-gray-500">核销时间</Text>
+                      <Text className="block text-sm text-gray-800">
+                        {record.orders?.verified_at ? new Date(record.orders.verified_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </Text>
+                    </View>
+                    <View className="flex justify-between border-t border-gray-100 pt-2">
                       <Text className="block text-xs text-gray-500">订单金额</Text>
                       <Text className="block text-sm font-semibold text-gray-800">¥{record.order_amount.toFixed(2)}</Text>
                     </View>
@@ -175,6 +190,12 @@ export default function SettlementRecordsPage() {
                       <Text className="block text-xs text-gray-500">商家应得</Text>
                       <Text className="block text-sm font-bold text-green-600">¥{record.settlement_amount.toFixed(2)}</Text>
                     </View>
+                    {/* 商家应得金额来源备注 */}
+                    <Text className="block text-xs text-gray-400 leading-relaxed">
+                      {Number(record.commission_amount) > 0
+                        ? `来源：订单金额 ¥${record.order_amount.toFixed(2)} − 平台佣金 ¥${record.commission_amount.toFixed(2)}（抽佣 ${(Number(record.commission_amount) / Number(record.order_amount) * 100).toFixed(1).replace(/\.0$/, '')}%）= 商家应得`
+                        : '来源：订单金额全额结算（平台未抽佣）= 商家应得'}
+                    </Text>
                   </View>
 
                   <View className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">

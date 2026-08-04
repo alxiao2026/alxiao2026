@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { NotificationService } from '../notification/notification.service';
@@ -32,6 +32,33 @@ export class SettlementService {
     }
 
     return data;
+  }
+
+  /**
+   * 清除某商家名下所有套餐的套餐级结算配置。
+   * 用于商家在门店设置中选择"佣金百分比"模式后，使商家级配置对全店套餐统一生效，
+   * 避免残留的套餐级配置（如按结算价）优先级更高而覆盖商家级百分比。
+   */
+  async clearConfigsByMerchant(merchantId: string) {
+    const { data: pkgs, error: pkgError } = await this.supabase
+      .from('packages')
+      .select('id')
+      .eq('merchant_id', merchantId);
+    if (pkgError) {
+      throw new InternalServerErrorException('查询商家套餐失败');
+    }
+    const packageIds = (pkgs || []).map((p: any) => p.id);
+    if (packageIds.length === 0) {
+      return { cleared: 0 };
+    }
+    const { error } = await this.supabase
+      .from('package_settlement_configs')
+      .delete()
+      .in('package_id', packageIds);
+    if (error) {
+      throw new InternalServerErrorException('清除套餐结算配置失败');
+    }
+    return { cleared: packageIds.length };
   }
 
   /** 保存套餐结算配置 */
@@ -157,7 +184,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at),
+        orders:order_id (id, order_no, created_at, verification_code, verified_at),
         packages:package_id (id, name, price, cover_image)
       `, { count: 'exact' })
       .order('created_at', { ascending: false });
@@ -241,7 +268,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at, pay_time),
+        orders:order_id (id, order_no, created_at, pay_time, verification_code, verified_at),
         packages:package_id (id, name, price)
       `)
       .eq('merchant_id', merchantId)
@@ -844,17 +871,19 @@ export class SettlementService {
       const now = new Date();
       const { data: existing } = await this.supabase
         .from('settlement_records')
-        .select('id, status, order_amount, commission_amount, settlement_amount')
+        .select('id, status, order_amount, commission_amount, settlement_amount, verified_qty')
         .eq('order_id', order.id)
         .maybeSingle();
 
       let finalOrderAmount = orderAmount;
       let finalCommission = commissionAmount;
       let finalSettlement = settlementAmount;
+      let finalVerifiedQty = verifyCount;
       if (existing && (existing as any).status !== 'revoked') {
         finalOrderAmount = Math.round((Number((existing as any).order_amount) + orderAmount) * 100) / 100;
         finalCommission = Math.round((Number((existing as any).commission_amount) + commissionAmount) * 100) / 100;
         finalSettlement = Math.round((Number((existing as any).settlement_amount) + settlementAmount) * 100) / 100;
+        finalVerifiedQty = (Number((existing as any).verified_qty) || 0) + verifyCount;
       }
       const finalRate = finalOrderAmount > 0 ? Math.round((finalCommission / finalOrderAmount) * 10000) / 100 : 0;
 
@@ -867,6 +896,7 @@ export class SettlementService {
         commission_rate: finalRate,
         commission_amount: finalCommission,
         settlement_amount: finalSettlement,
+        verified_qty: finalVerifiedQty,
         settlement_date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
         status: 'settled',
         settled_at: now.toISOString(),
@@ -917,7 +947,7 @@ export class SettlementService {
     try {
       const { data: records } = await this.supabase
         .from('settlement_records')
-        .select('id, merchant_id, order_amount, commission_amount, settlement_amount')
+        .select('id, merchant_id, order_amount, commission_amount, settlement_amount, verified_qty')
         .eq('order_id', orderId)
         .neq('status', 'revoked');
       if (!records || records.length === 0) return;
@@ -952,6 +982,11 @@ export class SettlementService {
           ? Math.round((newCommission / newOrderAmount) * 10000) / 100
           : 0;
 
+        const newVerifiedQty = Math.max(
+          0,
+          (Number(record.verified_qty) || 0) - (revokeCount as number),
+        );
+
         await this.supabase
           .from('settlement_records')
           .update({
@@ -959,13 +994,14 @@ export class SettlementService {
             commission_amount: newCommission,
             settlement_amount: newSettlement,
             commission_rate: newRate,
+            verified_qty: newVerifiedQty,
           })
           .eq('id', record.id);
       } else {
         // 全部撤销：标记 revoked，佣金与结算额清零（不结算佣金），保留历史轨迹
         await this.supabase
           .from('settlement_records')
-          .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0 })
+          .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0, verified_qty: 0 })
           .eq('order_id', orderId)
           .neq('status', 'revoked');
       }
