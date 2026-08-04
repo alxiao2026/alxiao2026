@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -83,16 +83,6 @@ function getBusinessStatus(hours?: string): { open: boolean; text: string } {
     open,
     text: open ? `营业中 · ${match[3]}:${match[4]}打烊` : `休息中 · ${match[1]}:${match[2]}开始营业`,
   }
-}
-
-/** Haversine 公式：计算两个经纬度坐标（gcj02）之间的直线距离，单位米 */
-function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const rad = (d: number) => (d * Math.PI) / 180
-  const R = 6371000
-  const dLat = rad(lat2 - lat1)
-  const dLng = rad(lng2 - lng1)
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(a))
 }
 
 export default function MerchantPage() {
@@ -189,7 +179,7 @@ export default function MerchantPage() {
           Number(merchant.latitude),
           Number(merchant.longitude)
         )
-        const text = d < 1000 ? `距您约 ${Math.round(d)}m` : `距您约 ${(d / 1000).toFixed(1)}km`
+        const text = formatDistanceText(d)
         console.log('[Merchant] 距离计算完成', { meters: Math.round(d), text })
         setDistanceText(text)
         setLocationDenied(false)

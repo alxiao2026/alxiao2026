@@ -35,6 +35,21 @@ export function formatPrice(price: string | number): string {
   return num % 1 === 0 ? String(num) : num.toFixed(1)
 }
 
+/** Haversine 公式：计算两个经纬度坐标（gcj02）之间的直线距离，单位米 */
+export function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const R = 6371000
+  const dLat = rad(lat2 - lat1)
+  const dLng = rad(lng2 - lng1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+/** 距离文案格式化：<1km 显示 "距您约 XXm"，否则 "距您约 X.Xkm" */
+export function formatDistanceText(meters: number): string {
+  return meters < 1000 ? `距您约 ${Math.round(meters)}m` : `距您约 ${(meters / 1000).toFixed(1)}km`
+}
+
 /**
  * 日期时间格式化（跨端安全）：小程序端 toLocaleString(locale) 不可用会输出原始格式，
  * 这里手动拼接，输出 "YYYY-MM-DD HH:mm"。

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
 import {
   Phone,
   Clock,
@@ -78,6 +78,8 @@ interface Merchant {
   images?: string[]
   avg_price?: string
   has_private_room?: boolean
+  latitude?: string | number
+  longitude?: string | number
 }
 
 interface Prize {
@@ -99,6 +101,9 @@ export default function PackageDetail() {
   const [merchant, setMerchant] = useState<Merchant | null>(null)
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [loading, setLoading] = useState(true)
+  const [distanceText, setDistanceText] = useState('')
+  const [locationDenied, setLocationDenied] = useState(false)
+  const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
 
   // 每次页面显示时重新加载，确保门店等后台数据变更后展示最新内容
   useDidShow(() => {
@@ -163,6 +168,56 @@ export default function PackageDetail() {
     } catch (err) {
       console.error('加载商家失败:', err)
     }
+  }
+
+  // 商家有坐标时，获取消费者定位并计算与门店的距离
+  const fetchDistance = useCallback(() => {
+    if (!merchant?.latitude || !merchant?.longitude) {
+      setDistanceText('')
+      setLocationDenied(false)
+      return
+    }
+    console.log('[PackageDetail] 获取用户定位以计算距离')
+    Taro.getLocation({
+      type: 'gcj02',
+      success: (loc) => {
+        const d = calcDistanceMeters(
+          Number(loc.latitude),
+          Number(loc.longitude),
+          Number(merchant.latitude),
+          Number(merchant.longitude)
+        )
+        const text = formatDistanceText(d)
+        console.log('[PackageDetail] 距离计算完成', { meters: Math.round(d), text })
+        setDistanceText(text)
+        setLocationDenied(false)
+      },
+      fail: (e) => {
+        console.error('[PackageDetail] 获取用户定位失败:', (e as any)?.errMsg || e)
+        setDistanceText('')
+        setLocationDenied(true)
+      },
+    })
+  }, [merchant?.latitude, merchant?.longitude])
+
+  useEffect(() => {
+    fetchDistance()
+  }, [fetchDistance])
+
+  /** 定位被拒时引导用户打开设置页授权，成功后重新计算距离 */
+  const handleEnableLocation = () => {
+    if (!isMiniApp) {
+      Taro.showToast({ title: 'H5 预览不支持定位，请在小程序中查看距离', icon: 'none' })
+      return
+    }
+    Taro.openSetting({
+      success: (res) => {
+        if (res.authSetting?.['scope.userLocation']) {
+          setLocationDenied(false)
+          fetchDistance()
+        }
+      },
+    }).catch((e) => console.error('[PackageDetail] 打开设置页失败', e))
   }
 
   const [buying, setBuying] = useState(false)
@@ -431,7 +486,14 @@ export default function PackageDetail() {
             <View className="flex flex-row items-center gap-2 py-2">
               <Text className="block text-xs text-gray-400 w-10">门店</Text>
               <View className="flex flex-row items-center gap-2 flex-1">
-                <Text className="block text-xs text-gray-600">最近9.4公里</Text>
+                {!!distanceText && (
+                  <Text className="block text-xs text-gray-600">{distanceText}</Text>
+                )}
+                {!distanceText && locationDenied && !!merchant.latitude && !!merchant.longitude && (
+                  <Text className="block text-xs text-blue-500" onClick={handleEnableLocation}>
+                    定位未授权 · 点击开启后查看距离
+                  </Text>
+                )}
                 <Text className="block text-xs text-gray-700 font-medium">{merchant.name}</Text>
               </View>
             </View>
