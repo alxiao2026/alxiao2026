@@ -66,11 +66,14 @@ export default function OrderDetailsPage() {
   const fetchOrders = async (merchantId: number, status: string) => {
     setLoading(true);
     try {
-      const queryParams: Record<string, string> = { merchant_id: String(merchantId) };
+      const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+      const queryParams: Record<string, string> = { merchant_id: String(merchantId), user_id: userId };
       if (status !== 'all') queryParams.status = status;
       if (startDate) queryParams.start_date = startDate;
       if (endDate) queryParams.end_date = endDate;
-      const res = await Network.request({ url: '/api/orders', data: params });
+      console.log('[OrderDetails] 请求订单明细', { url: '/api/orders', params: queryParams });
+      const res = await Network.request({ url: '/api/orders', data: queryParams });
+      console.log('[OrderDetails] 订单明细响应', res.data);
       const data = (res.data as any)?.data || res.data;
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
