@@ -190,6 +190,15 @@ export default function SettlementRecordsPage() {
                       <Text className="block text-xs text-gray-500">商家应得</Text>
                       <Text className="block text-sm font-bold text-green-600">¥{record.settlement_amount.toFixed(2)}</Text>
                     </View>
+                    {/* 退款标记：退款份数为未核销部分，未计入本账单，仅作标记 */}
+                    {Number(record.orders?.refunded_quantity ?? 0) > 0 && (
+                      <View className="flex justify-between bg-orange-50 rounded-lg px-2 py-2">
+                        <Text className="block text-xs text-orange-600">退款标记</Text>
+                        <Text className="block text-xs text-orange-600">
+                          已退款 {record.orders.refunded_quantity} 份 · ¥{(Number(record.orders.refunded_quantity) * Number(record.orders.price ?? 0)).toFixed(2)}（未核销份数，未计入本账单）
+                        </Text>
+                      </View>
+                    )}
                     {/* 商家应得金额来源备注 */}
                     <Text className="block text-xs text-gray-400 leading-relaxed">
                       {Number(record.commission_amount) > 0

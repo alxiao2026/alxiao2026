@@ -184,7 +184,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at, verification_code, verified_at),
+        orders:order_id (id, order_no, created_at, verification_code, verified_at, quantity, price, refunded_quantity),
         packages:package_id (id, name, price, cover_image)
       `, { count: 'exact' })
       .order('created_at', { ascending: false });

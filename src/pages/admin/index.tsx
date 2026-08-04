@@ -12,6 +12,7 @@ const AdminPage = () => {
     todaySales: 0, todayOrders: 0, todayRevenue: '0.00',
     todayVerifiedAmount: '0.00', todayVerifiedCount: 0,
     todayLotteryUsers: 0, todayRefundAmount: '0.00', todayFreeMealWinners: 0,
+    totalRefundedQty: 0, totalRefundAmount: '0.00', todayRefundedQty: 0, rangeRefundedQty: 0,
     rangeSales: 0, rangeOrders: 0, rangeRevenue: '0.00',
     rangeVerifiedCount: 0, rangeVerifiedAmount: '0.00',
     rangeLotteryUsers: 0, rangeRefundAmount: '0.00', rangeFreeMealWinners: 0
@@ -202,9 +203,9 @@ const AdminPage = () => {
             <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.verifiedCount}份</Text>
           </View>
           <View className="flex-1">
-            <Text className="block text-red-100 text-xs mb-1">成交金额</Text>
+            <Text className="block text-red-100 text-xs mb-1">成交金额（已扣退款）</Text>
             <Text className="block text-white text-2xl font-bold">{merchantStats.todayRevenue}</Text>
-            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.totalRevenue}</Text>
+            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.totalRevenue} · 今日退款¥{merchantStats.todayRefundAmount}（{merchantStats.todayRefundedQty}份）</Text>
           </View>
         </View>
       </View>
@@ -341,7 +342,7 @@ const AdminPage = () => {
               <Text className="block text-xs text-[#FF4757]">销售金额</Text>
             </View>
             <Text className="block text-lg font-bold text-[#FF4757]">{merchantStats.rangeRevenue}</Text>
-            <Text className="block text-xs text-red-300 mt-1">{merchantStats.rangeOrders}笔订单</Text>
+            <Text className="block text-xs text-red-300 mt-1">{merchantStats.rangeOrders}笔订单 · 已扣退款份数</Text>
           </View>
           <View className="flex-1 bg-red-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
@@ -373,10 +374,10 @@ const AdminPage = () => {
           <View className="flex-1 bg-amber-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">
               <Coins size={14} color="#f59e0b" />
-              <Text className="block text-xs text-amber-600">返还金额</Text>
+              <Text className="block text-xs text-amber-600">退款/返现</Text>
             </View>
             <Text className="block text-lg font-bold text-amber-600">{merchantStats.rangeRefundAmount}</Text>
-            <Text className="block text-xs text-amber-400 mt-1">元</Text>
+            <Text className="block text-xs text-amber-400 mt-1">退款{merchantStats.rangeRefundedQty}份已扣除</Text>
           </View>
           <View className="flex-1 bg-orange-50 rounded-xl p-3">
             <View className="flex flex-row items-center gap-2 mb-1">

@@ -672,7 +672,10 @@ export class UserService {
     todayVerifiedCount: number;
     todayLotteryUsers: number;
     todayRefundAmount: string;
+    todayRefundedQty: number;
     todayFreeMealWinners: number;
+    totalRefundedQty: number;
+    totalRefundAmount: string;
     rangeSales: number;
     rangeOrders: number;
     rangeRevenue: string;
@@ -680,6 +683,7 @@ export class UserService {
     rangeVerifiedAmount: string;
     rangeLotteryUsers: number;
     rangeRefundAmount: string;
+    rangeRefundedQty: number;
     rangeFreeMealWinners: number;
   }> {
     const supabase = getSupabaseClient();
@@ -706,7 +710,7 @@ export class UserService {
       if (packageIds.length > 0) {
         const { data: allOrders } = await supabase
           .from('orders')
-          .select('id, status, price, quantity, verified_count, verified_at, created_at')
+          .select('id, status, price, quantity, verified_count, refunded_quantity, verified_at, created_at')
           .in('package_id', packageIds);
         orders = allOrders || [];
         merchantOrderIds = new Set(orders.map(o => o.id));
@@ -717,25 +721,38 @@ export class UserService {
       // 系统管理员：返回全平台统计数据
       const { data: allOrders } = await supabase
         .from('orders')
-        .select('status, price, quantity, verified_count, verified_at, created_at');
+        .select('status, price, quantity, verified_count, refunded_quantity, verified_at, created_at');
       orders = allOrders || [];
     } else {
       // 普通消费者：无权限查看商家统计，返回空数据
       orders = [];
     }
 
+    // 财务口径工具：
+    // - 有效份数 = 购买份数 − 退款份数（退款的份数不计入流水/营收）
+    // - 核销金额 = 单价 × 实际核销份数（核销一份记一份，部分核销也计入；已撤销的核销 verified_count 已回减，天然不计入）
+    const effQty = (o: any) => Math.max((Number(o.quantity) || 0) - (Number(o.refunded_quantity) || 0), 0);
+    const verAmt = (o: any) => Number(o.price || 0) * (Number(o.verified_count) || 0);
+    const refAmt = (o: any) => Number(o.price || 0) * (Number(o.refunded_quantity) || 0);
+    const isVerifiedActive = (o: any) =>
+      (Number(o.verified_count) || 0) > 0 && !['refunded', 'cancelled'].includes(o.status);
+
     // 总售卖数据（金额 = 单价 × 份数）
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
+    // 总流水：扣除已退款份数（净成交口径）
     const totalRevenue = orders
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .reduce((sum, o) => sum + Number(o.price || 0) * effQty(o), 0)
       .toFixed(2);
+    // 累计退款金额（按退款份数 × 单价，用于"标记退款并扣除"的展示）
+    const totalRefundAmount = orders.reduce((sum, o) => sum + refAmt(o), 0).toFixed(2);
+    const totalRefundedQty = orders.reduce((sum, o) => sum + (Number(o.refunded_quantity) || 0), 0);
 
-    // 核销数据（核销金额 = 单价 × 实际核销份数，仅统计已核销未退款的订单）
+    // 核销数据（核销金额 = 单价 × 实际核销份数，含部分核销的订单）
     const verifiedCount = orders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
     const verifiedAmount = orders
-      .filter(o => o.status === 'used')
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .filter(isVerifiedActive)
+      .reduce((sum, o) => sum + verAmt(o), 0)
       .toFixed(2);
 
     // 奖品发放数量（从 orders 中统计 shared=true 的）
@@ -756,16 +773,20 @@ export class UserService {
     const todayOrders = todayOrdersList.length;
     const todaySales = todayOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
     const todayRevenue = todayOrdersList
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .reduce((sum, o) => sum + Number(o.price || 0) * effQty(o), 0)
       .toFixed(2);
+    // 今日退款（消费者申请退款份数 × 单价）
+    const todayRefundOrdersList = orders.filter(o => (Number(o.refunded_quantity) || 0) > 0 && toCnDateStr(o.created_at) === todayStr);
+    const todayConsumerRefund = todayRefundOrdersList.reduce((sum, o) => sum + refAmt(o), 0);
+    const todayRefundedQty = todayRefundOrdersList.reduce((sum, o) => sum + (Number(o.refunded_quantity) || 0), 0);
     // 今日核销：按「核销发生时间」统计（而非下单时间），昨天买今天核销的也计入今日
     const todayVerifiedOrders = orders.filter(
       o => (Number(o.verified_count) || 0) > 0 && toCnDateStr(o.verified_at || o.created_at) === todayStr,
     );
     const todayVerifiedCount = todayVerifiedOrders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
     const todayVerifiedAmount = todayVerifiedOrders
-      .filter(o => o.status === 'used')
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .filter(isVerifiedActive)
+      .reduce((sum, o) => sum + verAmt(o), 0)
       .toFixed(2);
 
     // 经营概况时间范围（默认今日；单传 start_date 时结束日期默认为今天，兼容"近7天/近30天"只传起点的场景）
@@ -780,16 +801,19 @@ export class UserService {
     const rangeOrders = rangeOrdersList.length;
     const rangeSales = rangeOrdersList.reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
     const rangeRevenue = rangeOrdersList
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.quantity) || 1), 0)
+      .reduce((sum, o) => sum + Number(o.price || 0) * effQty(o), 0)
       .toFixed(2);
+    // 范围退款（消费者申请退款份数 × 单价）
+    const rangeConsumerRefund = rangeOrdersList.reduce((sum, o) => sum + refAmt(o), 0);
+    const rangeRefundedQty = rangeOrdersList.reduce((sum, o) => sum + (Number(o.refunded_quantity) || 0), 0);
     // 范围核销数据（按核销发生时间）
     const rangeVerifiedOrders = orders.filter(
       o => (Number(o.verified_count) || 0) > 0 && inRange(o.verified_at || o.created_at),
     );
     const rangeVerifiedCount = rangeVerifiedOrders.reduce((sum, o) => sum + (Number(o.verified_count) || 0), 0);
     const rangeVerifiedAmount = rangeVerifiedOrders
-      .filter(o => o.status === 'used')
-      .reduce((sum, o) => sum + Number(o.price || 0) * (Number(o.verified_count) || 0), 0)
+      .filter(isVerifiedActive)
+      .reduce((sum, o) => sum + verAmt(o), 0)
       .toFixed(2);
 
     // 抽奖统计（查询窗口取今日起点与范围起点中较早者，同时支撑今日与范围口径；日期边界显式按 UTC+8）
@@ -817,21 +841,24 @@ export class UserService {
     const todayFreeMealRecords = todayLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     // 中奖人数按去重用户统计（同一用户多次中奖只算 1 人）
     const todayFreeMealWinners = new Set(todayFreeMealRecords.map((r: any) => r.user_id)).size;
-    const todayRefundAmount = todayFreeMealRecords
-      .reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
-      .toFixed(2);
+    // 退款金额 = 消费者申请退款金额 + 霸王餐中奖返现金额（均为退回消费者的钱）
+    const todayRefundAmount = (
+      todayFreeMealRecords.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + todayConsumerRefund
+    ).toFixed(2);
     // 范围抽奖统计（与今日口径相同的计算逻辑）
     const rangeLotteryUsers = new Set(rangeLotteryRecords.map((r: any) => r.user_id)).size;
     const rangeFreeMealRecords = rangeLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     const rangeFreeMealWinners = new Set(rangeFreeMealRecords.map((r: any) => r.user_id)).size;
-    const rangeRefundAmount = rangeFreeMealRecords
-      .reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
-      .toFixed(2);
+    const rangeRefundAmount = (
+      rangeFreeMealRecords.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + rangeConsumerRefund
+    ).toFixed(2);
 
     return {
       totalSales,
       totalOrders,
       totalRevenue,
+      totalRefundedQty,
+      totalRefundAmount,
       verifiedAmount,
       verifiedCount,
       prizeCount,
@@ -842,6 +869,7 @@ export class UserService {
       todayVerifiedCount,
       todayLotteryUsers,
       todayRefundAmount,
+      todayRefundedQty,
       todayFreeMealWinners,
       rangeSales,
       rangeOrders,
@@ -850,6 +878,7 @@ export class UserService {
       rangeVerifiedAmount,
       rangeLotteryUsers,
       rangeRefundAmount,
+      rangeRefundedQty,
       rangeFreeMealWinners
     };
   }
