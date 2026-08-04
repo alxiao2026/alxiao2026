@@ -85,6 +85,16 @@ function getBusinessStatus(hours?: string): { open: boolean; text: string } {
   }
 }
 
+/** Haversine 公式：计算两个经纬度坐标（gcj02）之间的直线距离，单位米 */
+function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const R = 6371000
+  const dLat = rad(lat2 - lat1)
+  const dLng = rad(lng2 - lng1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
 export default function MerchantPage() {
   const router = useRouter()
   const merchantId = Number(router.params.id || 2)
@@ -96,6 +106,7 @@ export default function MerchantPage() {
   const [swiperIndex, setSwiperIndex] = useState(0)
   const [winStats, setWinStats] = useState<{ totalWins: number; freeMealWins: number }>({ totalWins: 0, freeMealWins: 0 })
   const [winners, setWinners] = useState<WinnerRecord[]>([])
+  const [distanceText, setDistanceText] = useState('')
 
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
@@ -159,6 +170,32 @@ export default function MerchantPage() {
       Taro.setNavigationBarTitle({ title: merchant.name }).catch(() => {})
     }
   }, [merchant?.name])
+
+  // 商家有坐标时，获取消费者定位并计算与门店的距离（拒绝定位则静默不显示）
+  useEffect(() => {
+    if (!merchant?.latitude || !merchant?.longitude) {
+      setDistanceText('')
+      return
+    }
+    console.log('[Merchant] 获取用户定位以计算距离')
+    Taro.getLocation({
+      type: 'gcj02',
+      success: (loc) => {
+        const d = calcDistanceMeters(
+          Number(loc.latitude),
+          Number(loc.longitude),
+          Number(merchant.latitude),
+          Number(merchant.longitude)
+        )
+        const text = d < 1000 ? `距您约 ${Math.round(d)}m` : `距您约 ${(d / 1000).toFixed(1)}km`
+        console.log('[Merchant] 距离计算完成', { meters: Math.round(d), text })
+        setDistanceText(text)
+      },
+      fail: (e) => {
+        console.log('[Merchant] 用户定位获取失败（可能拒绝授权）', e)
+      },
+    })
+  }, [merchant?.latitude, merchant?.longitude])
 
   // 分享：小程序端触发原生分享面板（Button openType="share"），H5 端复制链接
   useShareAppMessage(() => ({
@@ -371,9 +408,14 @@ export default function MerchantPage() {
               {/* 分隔线 + 地址行（右侧导航/联系圆形按钮） */}
               {merchant.address && (
                 <View className="flex flex-row items-center mt-3 pt-3 border-t border-gray-100">
-                  <View className="flex-1 flex flex-row items-start gap-2 pr-3">
+                  <View className="flex-1 flex flex-row items-start gap-2 pr-3" onClick={handleNavigate}>
                     <MapPin size={16} color="#FF4757" className="mt-1 shrink-0" />
-                    <Text className="flex-1 text-sm text-gray-900 leading-5">{merchant.address}</Text>
+                    <View className="flex-1">
+                      <Text className="text-sm text-gray-900 leading-5">{merchant.address}</Text>
+                      {!!distanceText && (
+                        <Text className="block text-xs text-orange-500 mt-1">{distanceText} · 点击导航到店</Text>
+                      )}
+                    </View>
                   </View>
                   <View className="flex flex-row gap-4 shrink-0">
                     {!!merchant.latitude && !!merchant.longitude && (

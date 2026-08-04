@@ -64,5 +64,11 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/user-active.png'
       }
     ]
-  }
+  },
+  permission: {
+    'scope.userLocation': {
+      desc: '用于展示您与门店的距离并提供到店导航服务'
+    }
+  },
+  requiredPrivateInfos: ['getLocation', 'chooseLocation']
 })

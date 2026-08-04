@@ -316,6 +316,8 @@ export class MerchantService {
         business_hours: body.business_hours,
         category: body.category,
         description: body.description,
+        latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null,
         settlement_type: body.settlement_type,
         commission_rate: body.settlement_type === 1 ? Number(body.commission_rate) : 0,
         settlement_price: 0,
