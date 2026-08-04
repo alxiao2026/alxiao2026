@@ -23,6 +23,7 @@ interface OrderItem {
   nick_name: string | null;
   phone: string | null;
   verified_count: number;
+  refunded_quantity?: number | null;
   order_no: string | null;
 }
 
@@ -325,6 +326,11 @@ export default function OrderDetailsPage() {
                       {(order.verified_count || 0) > 0 && (
                         <Text className="block text-xs text-green-500 mt-1">
                           已核销{order.verified_count}份
+                        </Text>
+                      )}
+                      {(order.refunded_quantity || 0) > 0 && (
+                        <Text className="block text-xs text-orange-500 mt-1">
+                          已退款{order.refunded_quantity}份
                         </Text>
                       )}
                     </View>

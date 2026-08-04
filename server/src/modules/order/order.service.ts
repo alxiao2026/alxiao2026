@@ -17,6 +17,8 @@ export interface Order {
   shared: boolean;
   quantity: number;
   verified_count: number;
+  refunded_quantity?: number | null;
+  refund_amount?: string | null;
   verification_code: string | null;
   verified_at: string | null;
   expire_at: string | null;
@@ -685,13 +687,20 @@ export class OrderService {
 
     const totalQty = order.quantity || 1;
     const currentVerified = order.verified_count || 0;
-    const remaining = totalQty - currentVerified;
+    const refundedQty = order.refunded_quantity || 0;
+    // 可核销剩余需扣除已退款份数，与消费者订单详情口径一致
+    const remaining = totalQty - currentVerified - refundedQty;
 
-    if (remaining <= 0) throw new BadRequestException('该订单已全部核销');
-    if (verifyCount > remaining) throw new BadRequestException(`剩余可核销份数为 ${remaining}，不能超过`);
+    if (remaining <= 0) {
+      throw new BadRequestException(refundedQty > 0 ? '该订单无可核销份数（已全部核销或退款）' : '该订单已全部核销');
+    }
+    if (verifyCount > remaining) {
+      throw new BadRequestException(`剩余可核销份数为 ${remaining}（共${totalQty}份，已核销${currentVerified}份，已退款${refundedQty}份），不能超过`);
+    }
 
     const newVerifiedCount = currentVerified + verifyCount;
-    const isAllVerified = newVerifiedCount >= totalQty;
+    // 已核销 + 已退款覆盖全部份数即视为整单核销完成
+    const isAllVerified = newVerifiedCount + refundedQty >= totalQty;
 
     const { data, error } = await this.client
       .from('orders')

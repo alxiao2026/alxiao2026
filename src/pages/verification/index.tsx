@@ -139,9 +139,10 @@ export default function VerificationPage() {
           setVerifyFailReason('该订单已过期，无法核销');
           return;
         }
-        const remaining = (order.quantity || 1) - (order.verified_count || 0);
+        const refundedQty = order.refunded_quantity || 0;
+        const remaining = (order.quantity || 1) - (order.verified_count || 0) - refundedQty;
         if (remaining <= 0) {
-          setVerifyFailReason('该订单已全部核销，无法重复核销');
+          setVerifyFailReason(refundedQty > 0 ? '该订单无可核销份数（已全部核销或退款）' : '该订单已全部核销，无法重复核销');
           return;
         }
         if (order.verify_warning) {
@@ -391,10 +392,10 @@ export default function VerificationPage() {
             <View className="p-4">
               <Text className="block text-sm font-semibold text-gray-800">{verifyTarget.package_name}</Text>
               <Text className="block text-xs text-gray-500 mt-1">
-                用户：{verifyTarget.nick_name || '匿名用户'} · 共{verifyTarget.quantity || 1}份 · 已核销{verifyTarget.verified_count || 0}份
+                用户：{verifyTarget.nick_name || '匿名用户'} · 共{verifyTarget.quantity || 1}份 · 已核销{verifyTarget.verified_count || 0}份{(verifyTarget.refunded_quantity || 0) > 0 ? ` · 已退款${verifyTarget.refunded_quantity}份` : ''}
               </Text>
               <Text className="block text-xs text-[#FF4757] mt-1 font-semibold">
-                剩余 {(verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0)} 份可核销
+                剩余 {(verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) - (verifyTarget.refunded_quantity || 0)} 份可核销
               </Text>
               <View className="flex flex-row items-center justify-between mt-4 bg-gray-50 rounded-xl px-4 py-3">
                 <Text className="block text-sm text-gray-600">本次核销份数</Text>
@@ -403,8 +404,8 @@ export default function VerificationPage() {
                     <Text className={`text-base font-bold ${verifyCount <= 1 ? 'text-gray-400' : 'text-[#FF4757]'}`}>-</Text>
                   </View>
                   <Text className="text-lg font-bold text-gray-800 w-8 text-center">{verifyCount}</Text>
-                  <View className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'bg-gray-200' : 'bg-red-100'}`} onClick={() => { const max = (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0); if (verifyCount < max) setVerifyCount(verifyCount + 1); }}>
-                    <Text className={`text-base font-bold ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) ? 'text-gray-400' : 'text-[#FF4757]'}`}>+</Text>
+                  <View className={`w-8 h-8 rounded-full flex items-center justify-center ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) - (verifyTarget.refunded_quantity || 0) ? 'bg-gray-200' : 'bg-red-100'}`} onClick={() => { const max = (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) - (verifyTarget.refunded_quantity || 0); if (verifyCount < max) setVerifyCount(verifyCount + 1); }}>
+                    <Text className={`text-base font-bold ${verifyCount >= (verifyTarget.quantity || 1) - (verifyTarget.verified_count || 0) - (verifyTarget.refunded_quantity || 0) ? 'text-gray-400' : 'text-[#FF4757]'}`}>+</Text>
                   </View>
                 </View>
               </View>
