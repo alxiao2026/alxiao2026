@@ -4,6 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Download, Clock, Package } from 'lucide-react-taro';
+import { buildSettlementCsv, downloadCsvFile, SettlementRevocation } from '@/lib/settlement-export';
 
 interface SettlementRecord {
   id: string;
@@ -17,9 +18,18 @@ interface SettlementRecord {
   withdrawn_at?: string;
   created_at: string;
   verified_qty?: number;
+  revocations?: SettlementRevocation[];
   orders?: any;
   packages?: any;
 }
+
+const formatTime = (v?: string | null) => {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '—';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 export default function SettlementRecordsPage() {
   const router = useRouter();
@@ -57,50 +67,14 @@ export default function SettlementRecordsPage() {
         method: 'GET',
       });
       const data = (res.data as any)?.data;
-      if (data && data.length > 0) {
-        // 生成 CSV 内容
-        const headers = Object.keys(data[0]);
-        const csvContent = [
-          headers.join(','),
-          ...data.map((row: any) => headers.map(h => `"${row[h] || ''}"`).join(','))
-        ].join('\n');
-
-        const fileName = `商家结算明细_${new Date().toISOString().split('T')[0]}.csv`;
-        if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
-          // H5：Blob 下载
-          const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = fileName;
-          link.click();
-          Taro.showToast({ title: '导出成功', icon: 'success' });
-        } else {
-          // 小程序：写入本地文件后打开预览（可转发分享）
-          const fs = Taro.getFileSystemManager();
-          const filePath = `${(Taro as any).env?.USER_DATA_PATH || 'wxfile://tmp'}/${fileName}`;
-          fs.writeFile({
-            filePath,
-            data: '\ufeff' + csvContent,
-            encoding: 'utf8',
-            success: () => {
-              Taro.openDocument({
-                filePath,
-                showMenu: true,
-                fail: () => {
-                  Taro.setClipboardData({ data: csvContent });
-                  Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
-                },
-              });
-            },
-            fail: () => {
-              Taro.setClipboardData({ data: csvContent });
-              Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
-            },
-          });
-        }
-      } else {
+      if (!data || data.length === 0) {
         Taro.showToast({ title: '暂无数据可导出', icon: 'none' });
+        return;
       }
+      // 与平台端导出共用同一套表头与数据行（含撤销核销冲销行），维度完全一致
+      const csvContent = buildSettlementCsv(data);
+      const fileName = `商家结算明细_${new Date().toISOString().split('T')[0]}.csv`;
+      downloadCsvFile(fileName, csvContent);
     } catch (error) {
       console.error('导出失败:', error);
       Taro.showToast({ title: '导出失败', icon: 'none' });
@@ -114,6 +88,7 @@ export default function SettlementRecordsPage() {
       pending: '待结算',
       settled: '已结算',
       withdrawn: '已提现',
+      revoked: '撤销核销',
     };
     return map[status] || status;
   };
@@ -123,6 +98,7 @@ export default function SettlementRecordsPage() {
       pending: 'text-yellow-600',
       settled: 'text-blue-600',
       withdrawn: 'text-green-600',
+      revoked: 'text-red-600',
     };
     return map[status] || 'text-gray-600';
   };
@@ -199,6 +175,22 @@ export default function SettlementRecordsPage() {
                         </Text>
                       </View>
                     )}
+                    {/* 撤销核销红字记录：撤销份数/扣回金额/撤销时间/操作人，独立成行醒目展示 */}
+                    {(record.revocations || []).map((rv, idx) => (
+                      <View key={`rev-${idx}`} className="bg-red-50 rounded-lg px-2 py-2">
+                        <View className="flex justify-between">
+                          <Text className="block text-xs text-red-600 font-medium">
+                            撤销核销 {rv.revoke_count} 份
+                          </Text>
+                          <Text className="block text-xs text-red-600 font-medium">
+                            -¥{Number(rv.rollback_amount || 0).toFixed(2)}
+                          </Text>
+                        </View>
+                        <Text className="block text-xs text-red-400 mt-1">
+                          {formatTime(rv.created_at)} · 操作人：{rv.operator_name || '—'}
+                        </Text>
+                      </View>
+                    ))}
                     {/* 商家应得金额来源备注 */}
                     <Text className="block text-xs text-gray-400 leading-relaxed">
                       {Number(record.commission_amount) > 0

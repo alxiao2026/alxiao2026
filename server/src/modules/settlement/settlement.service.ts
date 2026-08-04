@@ -169,6 +169,31 @@ export class SettlementService {
 
   // ==================== 结算记录 ====================
 
+  /** 为结算记录列表附加撤销流水（结算明细页红字行展示与导出对账依据，容错不阻断主流程） */
+  private async attachRevocations(records: any[]): Promise<any[]> {
+    if (!records || records.length === 0) return records || [];
+    const orderIds = Array.from(new Set(records.map((r: any) => r.order_id).filter(Boolean)));
+    if (orderIds.length === 0) return records.map((r: any) => ({ ...r, revocations: [] }));
+
+    const { data: revs, error } = await this.supabase
+      .from('settlement_revocations')
+      .select('order_id, revoke_count, rollback_amount, rollback_commission, operator_name, created_at')
+      .in('order_id', orderIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[attachRevocations] 撤销流水查询失败:', error.message);
+      return records.map((r: any) => ({ ...r, revocations: [] }));
+    }
+
+    const map: Record<string, any[]> = {};
+    (revs || []).forEach((rv: any) => {
+      if (!map[rv.order_id]) map[rv.order_id] = [];
+      map[rv.order_id].push(rv);
+    });
+    return records.map((r: any) => ({ ...r, revocations: map[r.order_id] || [] }));
+  }
+
   /** 获取商家结算记录列表 */
   async getRecords(options: {
     merchantId?: string;
@@ -231,8 +256,10 @@ export class SettlementService {
       }
     });
 
+    const list = await this.attachRevocations(this.stripConfigFields(data) || []);
+
     return {
-      list: this.stripConfigFields(data),
+      list,
       total: count || 0,
       page,
       pageSize,
@@ -268,8 +295,9 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at, pay_time, verification_code, verified_at),
-        packages:package_id (id, name, price)
+        orders:order_id (id, order_no, created_at, paid_at, verification_code, verified_at),
+        packages:package_id (id, name, price),
+        merchants:merchant_id (id, name)
       `)
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false });
@@ -284,7 +312,8 @@ export class SettlementService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return this.stripConfigFields(data);
+    // 导出保留完整字段（含 commission_rate，与平台端导出维度一致）并附带撤销流水，撤销记录有据可循
+    return this.attachRevocations(data || []);
   }
 
   // ==================== 提现 ====================
@@ -555,7 +584,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at, paid_at, verified_at),
+        orders:order_id (id, order_no, created_at, paid_at, verified_at, verification_code),
         packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
@@ -577,7 +606,7 @@ export class SettlementService {
     if (error) throw error;
 
     return {
-      list: data,
+      list: await this.attachRevocations(data || []),
       total: count || 0,
       page,
       pageSize,
@@ -595,7 +624,7 @@ export class SettlementService {
       .from('settlement_records')
       .select(`
         *,
-        orders:order_id (id, order_no, created_at, paid_at, verified_at),
+        orders:order_id (id, order_no, created_at, paid_at, verified_at, verification_code),
         packages:package_id (id, name),
         merchants:merchant_id (id, name)
       `)
@@ -611,7 +640,8 @@ export class SettlementService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data;
+    // 导出附带撤销流水，与商家端导出维度保持一致
+    return this.attachRevocations(data || []);
   }
 
   /** 获取平台佣金统计 */
@@ -943,11 +973,12 @@ export class SettlementService {
     orderId: string,
     revokeCount?: number,
     verifiedCountBefore?: number,
+    operatorId?: string,
   ): Promise<void> {
     try {
       const { data: records } = await this.supabase
         .from('settlement_records')
-        .select('id, merchant_id, order_amount, commission_amount, settlement_amount, verified_qty')
+        .select('id, merchant_id, order_amount, commission_amount, settlement_amount, verified_qty, package_id')
         .eq('order_id', orderId)
         .neq('status', 'revoked');
       if (!records || records.length === 0) return;
@@ -966,6 +997,7 @@ export class SettlementService {
         revokeCount < verifiedCountBefore;
 
       let rollbackSettlement = recordSettlement;
+      let rollbackCommission = recordCommission;
 
       if (isPartial) {
         // 按撤销份数占撤销前核销份数的比例回滚
@@ -974,6 +1006,7 @@ export class SettlementService {
         const rbSettlement = Math.round(recordSettlement * ratio * 100) / 100;
         const rbOrderAmount = Math.round(recordOrderAmount * ratio * 100) / 100;
         rollbackSettlement = rbSettlement;
+        rollbackCommission = rbCommission;
 
         const newCommission = Math.round((recordCommission - rbCommission) * 100) / 100;
         const newSettlement = Math.round((recordSettlement - rbSettlement) * 100) / 100;
@@ -1030,6 +1063,35 @@ export class SettlementService {
             })
             .eq('merchant_id', merchantId);
         }
+      }
+
+      // 写入撤销流水（结算明细页红字行与导出对账依据；容错，流水失败不影响回滚结果）
+      try {
+        let operatorName = '系统';
+        if (operatorId) {
+          const { data: opUsers } = await this.supabase
+            .from('users')
+            .select('nick_name')
+            .eq('user_id', operatorId)
+            .limit(1);
+          const opUser = (opUsers && opUsers[0]) as any;
+          operatorName = opUser?.nick_name || '商家';
+        }
+        const { error: revError } = await this.supabase
+          .from('settlement_revocations')
+          .insert({
+            order_id: orderId,
+            merchant_id: merchantId,
+            package_id: (record as any).package_id || null,
+            revoke_count: Math.max(0, Number(revokeCount) || 0),
+            rollback_amount: Math.round(rollbackSettlement * 100) / 100,
+            rollback_commission: Math.round(rollbackCommission * 100) / 100,
+            operator_id: operatorId || null,
+            operator_name: operatorName,
+          });
+        if (revError) console.error('[rollbackOrderSettlement] 撤销流水写入失败:', revError.message);
+      } catch (e) {
+        console.error('[rollbackOrderSettlement] 撤销流水写入异常:', e);
       }
     } catch (e) {
       console.error('[rollbackOrderSettlement] 结算回滚失败:', e);

@@ -5,6 +5,7 @@ import { Network } from '@/network';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, TrendingUp, DollarSign } from 'lucide-react-taro';
+import { buildSettlementCsv, downloadCsvFile, SettlementRevocation } from '@/lib/settlement-export';
 
 interface CommissionSummary {
   total_commission: number;
@@ -26,12 +27,15 @@ interface CommissionRecord {
   status: string;
   settled_at?: string;
   created_at: string;
+  verified_qty?: number;
+  revocations?: SettlementRevocation[];
   orders?: {
     id: string;
     order_no?: string | null;
     created_at?: string | null;
     paid_at?: string | null;
     verified_at?: string | null;
+    verification_code?: string | null;
   } | null;
   merchants?: { id: string | number; name?: string } | null;
   packages?: { id: string; name?: string } | null;
@@ -116,67 +120,10 @@ export default function PlatformCommissionPage() {
         Taro.showToast({ title: '暂无数据可导出', icon: 'none' });
         return;
       }
-
-      // 生成 CSV（中文表头，含订单号与时间字段）
-      const headers = ['订单号', '商家', '套餐', '订单金额', '佣金率(%)', '平台佣金', '商家应得', '状态', '下单时间', '支付时间', '核销时间', '结算日期'];
-      const statusTextMap: Record<string, string> = {
-        settled: '已结算',
-        pending: '待结算',
-        withdrawn: '已提现',
-        revoked: '撤销核销',
-      };
-      const rows = data.map((r: CommissionRecord) => [
-        r.orders?.order_no || r.order_id,
-        r.merchants?.name || '',
-        r.packages?.name || '',
-        Number(r.order_amount || 0).toFixed(2),
-        r.commission_rate ?? 0,
-        Number(r.commission_amount || 0).toFixed(2),
-        Number(r.settlement_amount || 0).toFixed(2),
-        statusTextMap[r.status] || r.status || '',
-        formatTime(r.orders?.created_at),
-        formatTime(r.orders?.paid_at),
-        formatTime(r.orders?.verified_at || r.settled_at),
-        r.settlement_date || '',
-      ]);
-      const escapeCell = (cell: unknown) => `"${String(cell ?? '').replace(/"/g, '""')}"`;
-      const csvContent = '﻿' + [headers, ...rows].map((row) => row.map(escapeCell).join(',')).join('\n');
+      // 与商家端导出共用同一套表头与数据行（含撤销核销冲销行），维度完全一致
+      const csvContent = buildSettlementCsv(data);
       const fileName = `平台佣金明细_${new Date().toISOString().split('T')[0]}.csv`;
-
-      if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
-        // H5：Blob 下载
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-        Taro.showToast({ title: '导出成功', icon: 'success' });
-      } else {
-        // 小程序：写入本地文件后打开预览（showMenu 支持转发），失败降级为复制剪贴板
-        const fs = Taro.getFileSystemManager();
-        const userDataPath = (Taro as any).env?.USER_DATA_PATH || 'wxfile://tmp';
-        const filePath = `${userDataPath}/${fileName}`;
-        fs.writeFile({
-          filePath,
-          data: csvContent,
-          encoding: 'utf8',
-          success: () => {
-            Taro.openDocument({
-              filePath,
-              showMenu: true,
-              fail: () => {
-                Taro.setClipboardData({ data: csvContent });
-                Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
-              },
-            });
-          },
-          fail: (err) => {
-            console.error('写入导出文件失败:', err);
-            Taro.setClipboardData({ data: csvContent });
-            Taro.showToast({ title: '已复制到剪贴板', icon: 'none' });
-          },
-        });
-      }
+      downloadCsvFile(fileName, csvContent);
     } catch (error) {
       console.error('导出失败:', error);
       Taro.showToast({ title: '导出失败', icon: 'none' });
@@ -277,6 +224,22 @@ export default function PlatformCommissionPage() {
                       {isRevoked && (
                         <Text className="block text-xs text-red-400">该订单已撤销核销，不结算佣金</Text>
                       )}
+                      {/* 撤销核销红字记录：撤销份数/冲销佣金与应得/撤销时间/操作人，独立成行醒目展示 */}
+                      {(record.revocations || []).map((rv, idx) => (
+                        <View key={`rev-${idx}`} className="bg-red-50 rounded-lg px-2 py-2">
+                          <View className="flex justify-between">
+                            <Text className="block text-xs text-red-600 font-medium">
+                              撤销核销 {rv.revoke_count} 份
+                            </Text>
+                            <Text className="block text-xs text-red-600 font-medium">
+                              佣金 -¥{Number(rv.rollback_commission || 0).toFixed(2)} · 应得 -¥{Number(rv.rollback_amount || 0).toFixed(2)}
+                            </Text>
+                          </View>
+                          <Text className="block text-xs text-red-400 mt-1">
+                            {formatTime(rv.created_at)} · 操作人：{rv.operator_name || '—'}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
 
                     <View className="mt-3 pt-3 border-t border-gray-100 space-y-1">

@@ -888,7 +888,8 @@ export class OrderService {
     if (error) throw new Error(`撤销核销失败: ${error.message}`);
 
     // 回滚该订单的结算记录与商家余额（全部撤销：记录作废全额回滚；部分撤销：按份数比例回滚；容错，不影响撤销主流程）
-    await this.settlementService.rollbackOrderSettlement(orderId, revokeQty, verifiedCount);
+    // 同时写入撤销流水（撤销时间/操作人/份数/扣回金额），供结算明细页红字行与导出对账
+    await this.settlementService.rollbackOrderSettlement(orderId, revokeQty, verifiedCount, merchantUserId);
 
     // 通知用户核销已被撤销（容错，不影响主流程）
     try {

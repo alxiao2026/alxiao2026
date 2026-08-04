@@ -89,14 +89,10 @@ export class SettlementController {
     return { code: 200, msg: 'success', data };
   }
 
-  /** 获取结算记录详情 */
-  @Get('records/:id')
-  async getRecordById(@Param('id') id: string) {
-    const data = await this.settlementService.getRecordById(id);
-    return { code: 200, msg: 'success', data };
-  }
-
-  /** 导出商家结算记录 */
+  /**
+   * 导出商家结算记录
+   * 注意：必须声明在 records/:id 之前，否则 /records/export 会被 :id 路由拦截导致 500
+   */
   @Get('records/export')
   async exportRecords(
     @Query('merchant_id') merchantId: string,
@@ -104,6 +100,13 @@ export class SettlementController {
     @Query('end_date') endDate?: string,
   ) {
     const data = await this.settlementService.exportRecords({ merchantId, startDate, endDate });
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 获取结算记录详情 */
+  @Get('records/:id')
+  async getRecordById(@Param('id') id: string) {
+    const data = await this.settlementService.getRecordById(id);
     return { code: 200, msg: 'success', data };
   }
 
