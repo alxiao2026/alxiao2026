@@ -847,23 +847,25 @@ export class SettlementService {
       config = pkgConfig;
 
       if (!config) {
-        // 套餐级无配置 → 回退读商家级配置（merchants 表）
-        const { data: merchantCfg } = await this.supabase
+        // 套餐级无配置 → 回退读商家级配置（merchants 表；百分比模式下该门店所有套餐统一按此费率抽佣）
+        // 注意：仅 select 真实存在的列（settlement_type / commission_rate），
+        // 引用不存在的列会导致 PostgREST 整查报错 → 配置静默丢失 → 佣金被错算为 0
+        const { data: merchantCfg, error: merchantCfgError } = await this.supabase
           .from('merchants')
-          .select('settlement_type, commission_rate, settlement_method, rebate_ratio')
+          .select('settlement_type, commission_rate')
           .eq('id', merchantId)
           .maybeSingle();
+        if (merchantCfgError) {
+          console.error('[settleOrder] 读取商家级结算配置失败:', merchantCfgError.message);
+        }
         if (merchantCfg) {
           const mType = Number((merchantCfg as any).settlement_type);
           const mRate = Number((merchantCfg as any).commission_rate);
-          const legacyMethod = String((merchantCfg as any).settlement_method || '');
-          const legacyRatio = Number((merchantCfg as any).rebate_ratio);
           if (mType === 1 && !Number.isNaN(mRate) && mRate > 0) {
             config = { settlement_type: 1, commission_rate: mRate };
           } else if (mType === 2) {
+            // 商家级无协议价载体，按平台不抽佣全额结算
             config = { settlement_type: 2, settlement_price: null, commission_rate: 0 };
-          } else if (legacyMethod === 'commission' && !Number.isNaN(legacyRatio) && legacyRatio > 0) {
-            config = { settlement_type: 1, commission_rate: legacyRatio };
           }
         }
       }

@@ -151,7 +151,7 @@ export default function SettlementRecordsPage() {
                     <View className="flex justify-between">
                       <Text className="block text-xs text-gray-500">核销时间</Text>
                       <Text className="block text-sm text-gray-800">
-                        {record.orders?.verified_at ? new Date(record.orders.verified_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        {formatTime(record.orders?.verified_at)}
                       </Text>
                     </View>
                     <View className="flex justify-between border-t border-gray-100 pt-2">
