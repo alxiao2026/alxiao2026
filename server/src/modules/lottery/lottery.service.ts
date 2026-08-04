@@ -709,6 +709,10 @@ export class LotteryService {
           this.logger.error(`Mock 中奖返现存档失败 record=${recordId}: ${mockErr.message}`);
           return;
         }
+        await this.client
+          .from('lottery_records')
+          .update({ refunded_at: new Date().toISOString() })
+          .eq('id', recordId);
         this.logger.log(`Mock 通道中奖返现 ¥${(refundFen / 100).toFixed(2)}（测试单模拟退款）record=${recordId}`);
         return;
       }
@@ -727,6 +731,11 @@ export class LotteryService {
         .from('payments')
         .update({ refund_amount: Number(payment.refund_amount || 0) + refundFen / 100 })
         .eq('id', payment.id);
+      // 回写中奖记录返现时间（消费者端"已返现"状态与到账时间据此展示）
+      await this.client
+        .from('lottery_records')
+        .update({ refunded_at: new Date().toISOString() })
+        .eq('id', recordId);
       this.logger.log(
         `中奖返现已受理：record=${recordId} order=${orderId} refund=${(refundFen / 100).toFixed(2)}元 reason=${reason} channel=${channelRefundNo}`
       );

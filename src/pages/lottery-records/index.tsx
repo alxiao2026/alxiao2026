@@ -168,6 +168,10 @@ export default function LotteryRecordsPage() {
         ? { label: '已返现', className: 'bg-green-100 text-green-700' }
         : { label: '返现中', className: 'bg-yellow-100 text-yellow-700' }
     }
+    if (record.prize_type === 'coupon') {
+      // 折扣券：中奖即按折扣差额原路返现到支付账户，无需到店核销
+      return { label: '已返现', className: 'bg-green-100 text-green-700' }
+    }
     if (record.prize_type === 'product') {
       return isRedeemed(record)
         ? { label: '已核销', className: 'bg-green-100 text-green-700' }
@@ -240,8 +244,10 @@ export default function LotteryRecordsPage() {
                                 )}
                               </View>
                             )}
-                            {record.prize_type === 'free_meal' && record.refund_amount && (
-                              <Text className="block text-sm text-green-500 font-medium">返现金额：¥{record.refund_amount}</Text>
+                            {(record.prize_type === 'free_meal' || record.prize_type === 'coupon') && Number(record.refund_amount) > 0 && (
+                              <Text className="block text-sm text-green-500 font-medium">
+                                返现金额：¥{record.refund_amount}{record.prize_type === 'coupon' ? '（已原路退回支付账户）' : ''}
+                              </Text>
                             )}
                             {/* 兑换码与有效期 */}
                             {record.redemption_code && (

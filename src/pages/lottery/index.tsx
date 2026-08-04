@@ -480,8 +480,8 @@ export default function Lottery() {
                     </View>
                   ) : drawResult.refund_status === 'redeemed' ? (
                     <View className="bg-gray-50 rounded-2xl p-4 flex flex-col items-center" style={{ width: '180px', height: '180px', justifyContent: 'center' }}>
-                      <Text className="block text-base text-green-600 font-bold">✓ 已核销</Text>
-                      <Text className="block text-xs text-gray-400 mt-1">奖品已领取</Text>
+                      <Text className="block text-base text-green-600 font-bold">{drawResult.prize_type === 'coupon' ? '✓ 已返现' : '✓ 已核销'}</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">{drawResult.prize_type === 'coupon' ? '返现金额已原路退回' : '奖品已领取'}</Text>
                     </View>
                   ) : (
                     <View className="bg-white rounded-2xl p-4 flex flex-col items-center" style={{ boxShadow: '0 4rpx 16rpx rgba(0,0,0,0.08)' }}>
@@ -527,7 +527,7 @@ export default function Lottery() {
                   <View className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
                     <Text className="text-white text-xs">✓</Text>
                   </View>
-                  <Text className="block text-sm text-green-600 font-medium">已核销</Text>
+                  <Text className="block text-sm text-green-600 font-medium">{drawResult.prize_type === 'coupon' ? '已返现' : '已核销'}</Text>
                 </View>
               )}
             </View>

@@ -86,7 +86,8 @@ const AdminLotteryRecordsPage = () => {
   const renderRedemptionBadge = (record: MerchantLotteryRecord) => {
     if (!record.is_winner || !record.redemption_code) return null;
     if (record.refund_status === 'redeemed') {
-      return <Text className="block text-xs text-green-600 mt-1">✓ 已核销{record.redeemed_at ? ` ${formatTime(record.redeemed_at)}` : ''}</Text>;
+      const isCoupon = record.prize_type === 'coupon';
+      return <Text className="block text-xs text-green-600 mt-1">{isCoupon ? '✓ 已返现（原路退回）' : '✓ 已核销'}{record.redeemed_at ? ` ${formatTime(record.redeemed_at)}` : ''}</Text>;
     }
     if (record.expired) {
       return <Text className="block text-xs text-red-500 mt-1">已过期未核销</Text>;
