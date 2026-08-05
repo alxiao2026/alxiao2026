@@ -538,13 +538,15 @@ export class PaymentService {
     // 全额退款判定：仅在无任何已核销份数时，才允许"退剩余全部金额"（扣除已返还折扣）；
     // 存在已核销份数时一律按实付均价退，确保已消费部分的金额不会被退掉
     const isFullRefund = verifiedCount === 0 && refundQty === refundableQty;
-    const unitPay = Math.round((paidAmount / quantity) * 100) / 100;
+    // 每份均价 =（实付 − 中奖返现）÷ 总份数：中奖返现已按份均摊提前退回消费者，
+    // 部分退款按实际出资均价退，与全退公式口径一致，否则平台每笔中奖订单都多亏返现分摊
+    const unitPay = Math.round(((paidAmount - rebateAmount) / quantity) * 100) / 100;
     let refundAmount: number;
     if (isFullRefund) {
       // 全退：退剩余全部（扣除已返还折扣与累计已退）
       refundAmount = Math.round(Math.max(paidAmount - rebateAmount - alreadyRefunded, 0) * 100) / 100;
     } else {
-      // 部分退：按实付均价退
+      // 部分退：按实际出资均价退
       refundAmount = Math.round(unitPay * refundQty * 100) / 100;
       // 剩余可退资金 = 实付 − 中奖返现 − 消费者已主动退款
       const remainRefundable = Math.round((paidAmount - rebateAmount - alreadyRefunded) * 100) / 100;
@@ -727,7 +729,8 @@ export class PaymentService {
       refunded_quantity: refundedQty,
       refundable_quantity: Math.max(quantity - verifiedCount - refundedQty, 0),
       pay_amount: paidAmount,
-      unit_pay: Math.round((paidAmount / quantity) * 100) / 100,
+      // 与退款金额引擎一致：每份实际出资均价 =（实付 − 中奖返现）÷ 总份数
+      unit_pay: Math.round(((paidAmount - rebateAmount) / quantity) * 100) / 100,
       rebate_amount: rebateAmount,
       already_refunded: alreadyRefunded,
     };

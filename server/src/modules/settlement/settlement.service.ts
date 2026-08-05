@@ -875,25 +875,47 @@ export class SettlementService {
       const qty = Math.max(Number(order.quantity) || 1, 1);
       const orderAmount = Math.round((payAmount / qty) * verifyCount * 100) / 100;
 
+      // 中奖返现分摊：该订单的中奖返现（折扣券/霸王餐）已即时退回消费者，平台实收资金减少，
+      // 按订单总份数均摊到每份，本次核销从商家应得中扣除对应分摊（否则返现成本由平台默默承担）
+      let rebateShare = 0;
+      try {
+        const { data: rebateRows } = await this.supabase
+          .from('lottery_records')
+          .select('refund_amount')
+          .eq('order_id', order.id)
+          .eq('is_winner', true)
+          .gt('refund_amount', 0);
+        const totalRebate = (rebateRows || []).reduce((s: number, r: any) => s + (Number(r.refund_amount) || 0), 0);
+        if (totalRebate > 0) {
+          rebateShare = Math.min(orderAmount, Math.round((totalRebate / qty) * verifyCount * 100) / 100);
+        }
+      } catch (e) {
+        console.error('[settleOrder] 查询中奖返现失败（按0处理）:', e);
+      }
+
+      // 有效结算基数 = 核销金额 − 中奖返现分摊
+      const effectiveAmount = Math.round((orderAmount - rebateShare) * 100) / 100;
+
       let settlementType = 1;
       let commissionRate = 0;
       let commissionAmount = 0;
-      let settlementAmount = orderAmount;
+      let settlementAmount = effectiveAmount;
 
       if (config) {
         settlementType = Number((config as any).settlement_type) || 1;
         const settlementPrice = (config as any).settlement_price;
         if (settlementType === 2 && settlementPrice !== null && settlementPrice !== undefined) {
-          // 协议结算价模式：商家按协议价结算，实付与协议价的差额为平台佣金
-          settlementAmount = Math.round(Number(settlementPrice) * verifyCount * 100) / 100;
-          commissionAmount = Math.round((orderAmount - settlementAmount) * 100) / 100;
+          // 协议结算价模式：商家按协议价结算并扣除返现分摊，实付与协议价的差额为平台佣金
+          const baseAmount = Math.round(Number(settlementPrice) * verifyCount * 100) / 100;
+          settlementAmount = Math.max(0, Math.round((baseAmount - rebateShare) * 100) / 100);
+          commissionAmount = Math.round((orderAmount - baseAmount) * 100) / 100;
           if (commissionAmount < 0) commissionAmount = 0; // 协议价高于实付时平台不倒贴
           commissionRate = orderAmount > 0 ? Math.round((commissionAmount / orderAmount) * 10000) / 100 : 0;
         } else {
-          // 佣金比例模式（百分比）
+          // 佣金比例模式（按扣除返现后的实收资金抽佣）
           commissionRate = Number((config as any).commission_rate) || 0;
-          commissionAmount = Math.round(orderAmount * commissionRate) / 100;
-          settlementAmount = Math.round((orderAmount - commissionAmount) * 100) / 100;
+          commissionAmount = Math.round(effectiveAmount * commissionRate) / 100;
+          settlementAmount = Math.round((effectiveAmount - commissionAmount) * 100) / 100;
         }
       }
 
@@ -903,7 +925,7 @@ export class SettlementService {
       const now = new Date();
       const { data: existing } = await this.supabase
         .from('settlement_records')
-        .select('id, status, order_amount, commission_amount, settlement_amount, verified_qty')
+        .select('id, status, order_amount, commission_amount, settlement_amount, verified_qty, rebate_amount')
         .eq('order_id', order.id)
         .maybeSingle();
 
@@ -911,11 +933,13 @@ export class SettlementService {
       let finalCommission = commissionAmount;
       let finalSettlement = settlementAmount;
       let finalVerifiedQty = verifyCount;
+      let finalRebate = rebateShare;
       if (existing && (existing as any).status !== 'revoked') {
         finalOrderAmount = Math.round((Number((existing as any).order_amount) + orderAmount) * 100) / 100;
         finalCommission = Math.round((Number((existing as any).commission_amount) + commissionAmount) * 100) / 100;
         finalSettlement = Math.round((Number((existing as any).settlement_amount) + settlementAmount) * 100) / 100;
         finalVerifiedQty = (Number((existing as any).verified_qty) || 0) + verifyCount;
+        finalRebate = Math.round((Number((existing as any).rebate_amount || 0) + rebateShare) * 100) / 100;
       }
       const finalRate = finalOrderAmount > 0 ? Math.round((finalCommission / finalOrderAmount) * 10000) / 100 : 0;
 
@@ -929,6 +953,7 @@ export class SettlementService {
         commission_amount: finalCommission,
         settlement_amount: finalSettlement,
         verified_qty: finalVerifiedQty,
+        rebate_amount: finalRebate,
         settlement_date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
         status: 'settled',
         settled_at: now.toISOString(),
@@ -980,7 +1005,7 @@ export class SettlementService {
     try {
       const { data: records } = await this.supabase
         .from('settlement_records')
-        .select('id, merchant_id, order_amount, commission_amount, settlement_amount, verified_qty, package_id')
+        .select('id, merchant_id, order_amount, commission_amount, settlement_amount, verified_qty, package_id, rebate_amount')
         .eq('order_id', orderId)
         .neq('status', 'revoked');
       if (!records || records.length === 0) return;
@@ -990,6 +1015,7 @@ export class SettlementService {
       const recordCommission = Number(record.commission_amount) || 0;
       const recordSettlement = Number(record.settlement_amount) || 0;
       const recordOrderAmount = Number(record.order_amount) || 0;
+      const recordRebate = Number(record.rebate_amount) || 0;
 
       // 是否部分回滚
       const isPartial =
@@ -1021,6 +1047,8 @@ export class SettlementService {
           0,
           (Number(record.verified_qty) || 0) - (revokeCount as number),
         );
+        // 中奖返现分摊同比例回减
+        const newRebate = Math.round((recordRebate - Math.round(recordRebate * ratio * 100) / 100) * 100) / 100;
 
         await this.supabase
           .from('settlement_records')
@@ -1030,13 +1058,14 @@ export class SettlementService {
             settlement_amount: newSettlement,
             commission_rate: newRate,
             verified_qty: newVerifiedQty,
+            rebate_amount: newRebate,
           })
           .eq('id', record.id);
       } else {
         // 全部撤销：标记 revoked，佣金与结算额清零（不结算佣金），保留历史轨迹
         await this.supabase
           .from('settlement_records')
-          .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0, verified_qty: 0 })
+          .update({ status: 'revoked', commission_amount: 0, settlement_amount: 0, verified_qty: 0, rebate_amount: 0 })
           .eq('order_id', orderId)
           .neq('status', 'revoked');
       }

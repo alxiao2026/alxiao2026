@@ -97,9 +97,11 @@ export default function RefundApplyPage() {
       lines.push('中奖金额已退至原账户，全额退款时扣除')
       lines.push('中奖折扣权益随退款作废，不可恢复')
     } else {
-      lines.push(`按实付均价退款：¥${unit_pay.toFixed(2)} × ${refundQty} 份`)
       if (rebate_amount > 0) {
+        lines.push(`按实际出资均价退款：¥${unit_pay.toFixed(2)} × ${refundQty} 份（实付 ¥${pay_amount.toFixed(2)} − 中奖返现 ¥${rebate_amount.toFixed(2)} 均摊）`)
         lines.push('中奖折扣权益随退款作废，不可恢复')
+      } else {
+        lines.push(`按实付均价退款：¥${unit_pay.toFixed(2)} × ${refundQty} 份`)
       }
     }
     return { amount, note: lines.join('\n') }

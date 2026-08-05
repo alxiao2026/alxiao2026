@@ -20,6 +20,8 @@ export interface SettlementRevocation {
 export interface SettlementExportRecord {
   order_id: string;
   order_amount: number;
+  /** 中奖返现（已从商家应得中扣除） */
+  rebate_amount?: number;
   commission_rate?: number | null;
   commission_amount: number;
   settlement_amount: number;
@@ -39,9 +41,9 @@ export interface SettlementExportRecord {
   packages?: { name?: string } | null;
 }
 
-/** 双端统一导出表头（共 17 列，顺序固定） */
+/** 双端统一导出表头（共 18 列，顺序固定） */
 export const SETTLEMENT_EXPORT_HEADERS = [
-  '记录类型', '订单号', '商家', '套餐', '核销份数', '订单金额', '佣金率(%)',
+  '记录类型', '订单号', '商家', '套餐', '核销份数', '订单金额', '中奖返现', '佣金率(%)',
   '平台佣金', '商家应得', '核销码', '状态', '下单时间', '支付时间', '核销时间',
   '结算日期', '撤销时间', '操作人',
 ];
@@ -70,7 +72,7 @@ export function buildSettlementExportRows(records: SettlementExportRecord[]): (s
     const packageName = r.packages?.name || '';
     const verificationCode = r.orders?.verification_code || '';
 
-    // 结算入账行
+    // 结算入账行（中奖返现已从商家应得中扣除，单独成列便于对账）
     rows.push([
       '结算入账',
       orderNo,
@@ -78,6 +80,7 @@ export function buildSettlementExportRows(records: SettlementExportRecord[]): (s
       packageName,
       r.verified_qty ?? 0,
       Number(r.order_amount || 0).toFixed(2),
+      Number(r.rebate_amount || 0).toFixed(2),
       r.commission_rate ?? 0,
       Number(r.commission_amount || 0).toFixed(2),
       Number(r.settlement_amount || 0).toFixed(2),
@@ -91,7 +94,7 @@ export function buildSettlementExportRows(records: SettlementExportRecord[]): (s
       '',
     ]);
 
-    // 撤销核销冲销行（红字记录：份数与金额取负，撤销时间与操作人独立成列）
+    // 撤销核销冲销行（红字记录：份数与金额取负，撤销时间与操作人独立成列；回冲金额为已扣返现后的净值，返现列留空）
     (r.revocations || []).forEach((rv) => {
       rows.push([
         '撤销核销',
@@ -99,6 +102,7 @@ export function buildSettlementExportRows(records: SettlementExportRecord[]): (s
         merchantName,
         packageName,
         -Math.abs(Number(rv.revoke_count) || 0),
+        '',
         '',
         '',
         (-Math.abs(Number(rv.rollback_commission) || 0)).toFixed(2),

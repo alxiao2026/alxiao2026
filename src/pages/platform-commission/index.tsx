@@ -23,6 +23,7 @@ interface CommissionRecord {
   commission_rate: number;
   commission_amount: number;
   settlement_amount: number;
+  rebate_amount?: number;
   settlement_date: string;
   status: string;
   settled_at?: string;
@@ -209,6 +210,15 @@ export default function PlatformCommissionPage() {
                         <Text className="block text-xs text-gray-500">佣金率</Text>
                         <Text className="block text-sm text-gray-600">{record.commission_rate}%</Text>
                       </View>
+                      {/* 中奖返现：已从商家应得中扣除（消费者中奖后平台即时返还） */}
+                      {Number(record.rebate_amount ?? 0) > 0 && (
+                        <View className="flex justify-between">
+                          <Text className="block text-xs text-orange-500">中奖返现</Text>
+                          <Text className={`block text-sm ${isRevoked ? 'text-gray-400' : 'text-orange-500'}`}>
+                            -¥{Number(record.rebate_amount).toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
                       <View className="flex justify-between border-t border-gray-100 pt-2">
                         <Text className="block text-xs text-gray-500">平台佣金</Text>
                         <Text className={`block text-sm font-bold ${isRevoked ? 'text-gray-400' : 'text-purple-600'}`}>

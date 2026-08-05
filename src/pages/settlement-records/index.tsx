@@ -12,6 +12,7 @@ interface SettlementRecord {
   order_amount: number;
   commission_amount: number;
   settlement_amount: number;
+  rebate_amount?: number;
   settlement_date: string;
   status: string;
   settled_at?: string;
@@ -158,6 +159,13 @@ export default function SettlementRecordsPage() {
                       <Text className="block text-xs text-gray-500">订单金额</Text>
                       <Text className="block text-sm font-semibold text-gray-800">¥{record.order_amount.toFixed(2)}</Text>
                     </View>
+                    {/* 中奖返现：消费者中奖后平台已即时返还的金额，从商家应得中扣除 */}
+                    {Number(record.rebate_amount ?? 0) > 0 && (
+                      <View className="flex justify-between">
+                        <Text className="block text-xs text-orange-500">中奖返现</Text>
+                        <Text className="block text-sm text-orange-500">-¥{Number(record.rebate_amount).toFixed(2)}</Text>
+                      </View>
+                    )}
                     <View className="flex justify-between">
                       <Text className="block text-xs text-gray-500">平台佣金</Text>
                       <Text className="block text-sm text-gray-600">¥{record.commission_amount.toFixed(2)}</Text>
@@ -191,11 +199,21 @@ export default function SettlementRecordsPage() {
                         </Text>
                       </View>
                     ))}
-                    {/* 商家应得金额来源备注 */}
+                    {/* 商家应得金额来源备注（含中奖返现扣减链路） */}
                     <Text className="block text-xs text-gray-400 leading-relaxed">
-                      {Number(record.commission_amount) > 0
-                        ? `来源：订单金额 ¥${record.order_amount.toFixed(2)} − 平台佣金 ¥${record.commission_amount.toFixed(2)}（抽佣 ${(Number(record.commission_amount) / Number(record.order_amount) * 100).toFixed(1).replace(/\.0$/, '')}%）= 商家应得`
-                        : '来源：订单金额全额结算（平台未抽佣）= 商家应得'}
+                      {(() => {
+                        const orderAmt = Number(record.order_amount) || 0;
+                        const rebate = Number(record.rebate_amount) || 0;
+                        const commission = Number(record.commission_amount) || 0;
+                        const parts: string[] = [`订单金额 ¥${orderAmt.toFixed(2)}`];
+                        if (rebate > 0) parts.push(`中奖返现 ¥${rebate.toFixed(2)}`);
+                        if (commission > 0) {
+                          const base = Math.max(orderAmt - rebate, 0.01);
+                          parts.push(`平台佣金 ¥${commission.toFixed(2)}（抽佣 ${(commission / base * 100).toFixed(1).replace(/\.0$/, '')}%）`);
+                        }
+                        if (parts.length === 1) return '来源：订单金额全额结算（平台未抽佣）= 商家应得';
+                        return `来源：${parts.join(' − ')} = 商家应得`;
+                      })()}
                     </Text>
                   </View>
 
