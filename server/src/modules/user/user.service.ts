@@ -744,8 +744,8 @@ export class UserService {
     const totalRevenue = orders
       .reduce((sum, o) => sum + Number(o.price || 0) * effQty(o), 0)
       .toFixed(2);
-    // 累计退款金额（按退款份数 × 单价，用于"标记退款并扣除"的展示）
-    const totalRefundAmount = orders.reduce((sum, o) => sum + refAmt(o), 0).toFixed(2);
+    // 消费者退款金额（按退款份数 × 单价；中奖返现在下方统一合并为累计退款金额）
+    const totalConsumerRefundAmount = orders.reduce((sum, o) => sum + refAmt(o), 0);
     const totalRefundedQty = orders.reduce((sum, o) => sum + (Number(o.refunded_quantity) || 0), 0);
 
     // 核销数据（核销金额 = 单价 × 实际核销份数，含部分核销的订单）
@@ -834,23 +834,47 @@ export class UserService {
     const todayLotteryRecords = scopeLotteryRecords.filter((r: any) => toCnDateStr(r.created_at) === todayStr);
     const rangeLotteryRecords = scopeLotteryRecords.filter((r: any) => inRange(r.created_at));
     const todayLotteryUsers = new Set(todayLotteryRecords.map((r: any) => r.user_id)).size;
-    const isFreeMeal = (r: any) => {
-      const prizeType = Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type;
-      return prizeType === 'free_meal';
-    };
+    const getPrizeType = (r: any) => (Array.isArray(r.prizes) ? r.prizes[0]?.prize_type : r.prizes?.prize_type);
+    const isFreeMeal = (r: any) => getPrizeType(r) === 'free_meal';
+    // 中奖返现记录（霸王餐免单返现 + 折扣券差额返现，均为即时退回消费者的钱）
+    const isCashBack = (r: any) => ['free_meal', 'coupon'].includes(getPrizeType(r));
     const todayFreeMealRecords = todayLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     // 中奖人数按去重用户统计（同一用户多次中奖只算 1 人）
     const todayFreeMealWinners = new Set(todayFreeMealRecords.map((r: any) => r.user_id)).size;
-    // 退款金额 = 消费者申请退款金额 + 霸王餐中奖返现金额（均为退回消费者的钱）
+    // 退款金额 = 消费者申请退款金额 + 中奖返现金额（霸王餐免单 + 折扣券差额，均为退回消费者的钱）
     const todayRefundAmount = (
-      todayFreeMealRecords.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + todayConsumerRefund
+      todayLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + todayConsumerRefund
     ).toFixed(2);
     // 范围抽奖统计（与今日口径相同的计算逻辑）
     const rangeLotteryUsers = new Set(rangeLotteryRecords.map((r: any) => r.user_id)).size;
     const rangeFreeMealRecords = rangeLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     const rangeFreeMealWinners = new Set(rangeFreeMealRecords.map((r: any) => r.user_id)).size;
     const rangeRefundAmount = (
-      rangeFreeMealRecords.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + rangeConsumerRefund
+      rangeLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + rangeConsumerRefund
+    ).toFixed(2);
+    // 累计中奖返现（无时间窗：商家按门店订单过滤，平台管理员统计全平台）
+    let totalCashBackRows: any[] = [];
+    if (merchantOrderIds) {
+      if (merchantOrderIds.size > 0) {
+        const { data } = await supabase
+          .from('lottery_records')
+          .select('refund_amount')
+          .in('order_id', Array.from(merchantOrderIds))
+          .eq('is_winner', true)
+          .gt('refund_amount', 0);
+        totalCashBackRows = data || [];
+      }
+    } else {
+      const { data } = await supabase
+        .from('lottery_records')
+        .select('refund_amount')
+        .eq('is_winner', true)
+        .gt('refund_amount', 0);
+      totalCashBackRows = data || [];
+    }
+    // 累计退款金额 = 消费者退款 + 全部中奖返现（霸王餐 + 折扣券）
+    const totalRefundAmount = (
+      totalConsumerRefundAmount + totalCashBackRows.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
     ).toFixed(2);
 
     return {
