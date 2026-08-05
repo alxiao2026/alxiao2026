@@ -676,6 +676,8 @@ export class UserService {
     todayFreeMealWinners: number;
     totalRefundedQty: number;
     totalRefundAmount: string;
+    todayCommissionAmount: string;
+    totalCommissionAmount: string;
     rangeSales: number;
     rangeOrders: number;
     rangeRevenue: string;
@@ -697,10 +699,12 @@ export class UserService {
 
     let orders: any[] = [];
     let merchantOrderIds: Set<string> | null = null;
+    let statsMerchantId: number | null = null;
 
     if (user && user.role === 'merchant' && user.merchant_id) {
       // 商家用户：只统计关联门店的数据
       const merchantId = user.merchant_id;
+      statsMerchantId = merchantId;
       const { data: packages } = await supabase
         .from('packages')
         .select('id')
@@ -734,8 +738,10 @@ export class UserService {
     const effQty = (o: any) => Math.max((Number(o.quantity) || 0) - (Number(o.refunded_quantity) || 0), 0);
     const verAmt = (o: any) => Number(o.price || 0) * (Number(o.verified_count) || 0);
     const refAmt = (o: any) => Number(o.price || 0) * (Number(o.refunded_quantity) || 0);
-    const isVerifiedActive = (o: any) =>
-      (Number(o.verified_count) || 0) > 0 && !['refunded', 'cancelled'].includes(o.status);
+    // 已核销口径：已核销份数的金额永远计入——已核销份数不可退款，与订单后续状态无关。
+    // 「部分核销 + 剩余份数退款」的订单状态会变为 refunded，若按状态排除会把已核销金额整单消减（BUG），
+    // cancelled 订单未支付不可能有核销份数，verified_count>0 天然将其排除。
+    const isVerifiedActive = (o: any) => (Number(o.verified_count) || 0) > 0;
 
     // 总售卖数据（金额 = 单价 × 份数）
     const totalOrders = orders.length;
@@ -877,12 +883,40 @@ export class UserService {
       totalConsumerRefundAmount + totalCashBackRows.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
     ).toFixed(2);
 
+    // 平台佣金（管理员后台顶部展示）：按结算记录佣金汇总，排除已撤销记录；
+    // 今日按记录最近结算时间（updated_at，团购订单多为一次核销完，与逐次核销口径基本一致）
+    let commissionQuery = supabase
+      .from('settlement_records')
+      .select('commission_amount, settled_at, created_at')
+      .neq('status', 'revoked');
+    if (statsMerchantId) {
+      commissionQuery = commissionQuery.eq('merchant_id', statsMerchantId);
+    }
+    const { data: commissionRows, error: commissionError } = await commissionQuery;
+    if (commissionError) {
+      console.error('[getMerchantStats] 佣金统计查询失败:', commissionError.message);
+    }
+    const validCommissionRows = commissionRows || [];
+    const todayStartStr = todayStart.toISOString();
+    const todayCommissionAmount = validCommissionRows
+      .filter((r: any) => {
+        const settledAt = r.settled_at || r.created_at;
+        return settledAt && settledAt >= todayStartStr;
+      })
+      .reduce((s: number, r: any) => s + (Number(r.commission_amount) || 0), 0)
+      .toFixed(2);
+    const totalCommissionAmount = validCommissionRows
+      .reduce((s: number, r: any) => s + (Number(r.commission_amount) || 0), 0)
+      .toFixed(2);
+
     return {
       totalSales,
       totalOrders,
       totalRevenue,
       totalRefundedQty,
       totalRefundAmount,
+      todayCommissionAmount,
+      totalCommissionAmount,
       verifiedAmount,
       verifiedCount,
       prizeCount,

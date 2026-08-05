@@ -15,7 +15,8 @@ const AdminPage = () => {
     totalRefundedQty: 0, totalRefundAmount: '0.00', todayRefundedQty: 0, rangeRefundedQty: 0,
     rangeSales: 0, rangeOrders: 0, rangeRevenue: '0.00',
     rangeVerifiedCount: 0, rangeVerifiedAmount: '0.00',
-    rangeLotteryUsers: 0, rangeRefundAmount: '0.00', rangeFreeMealWinners: 0
+    rangeLotteryUsers: 0, rangeRefundAmount: '0.00', rangeFreeMealWinners: 0,
+    todayCommissionAmount: '0.00', totalCommissionAmount: '0.00'
   });
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
@@ -193,9 +194,19 @@ const AdminPage = () => {
         {/* 数据统计行 */}
         <View className="flex flex-row">
           <View className="flex-1">
-            <Text className="block text-red-100 text-xs mb-1">核销金额</Text>
-            <Text className="block text-white text-2xl font-bold">{merchantStats.todayVerifiedAmount}</Text>
-            <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.verifiedAmount}</Text>
+            {roleCode === 2 ? (
+              <>
+                <Text className="block text-red-100 text-xs mb-1">平台佣金</Text>
+                <Text className="block text-white text-2xl font-bold">{merchantStats.todayCommissionAmount}</Text>
+                <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.totalCommissionAmount}</Text>
+              </>
+            ) : (
+              <>
+                <Text className="block text-red-100 text-xs mb-1">核销金额</Text>
+                <Text className="block text-white text-2xl font-bold">{merchantStats.todayVerifiedAmount}</Text>
+                <Text className="block text-red-200 text-xs mt-1">累计{merchantStats.verifiedAmount}</Text>
+              </>
+            )}
           </View>
           <View className="flex-1">
             <Text className="block text-red-100 text-xs mb-1">核销券数</Text>
