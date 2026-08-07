@@ -146,7 +146,9 @@ export default function PrizeManagePage() {
 
   const handleSavePrize = async () => {
     if (!prizeForm.name) { Taro.showToast({ title: '请输入奖品名称', icon: 'none' }); return; }
-    if (!prizeForm.is_fallback) {
+    // 概率总和校验仅约束商家账号（单门店奖品池合计不超 100%）；
+    // 系统账户（超管）面向多门店投放平台奖品，不受 100% 上限限制，否则平台侧将无法新增任何奖品
+    if (merchantId && !prizeForm.is_fallback) {
       const prob = parseFloat(prizeForm.probability) || 0;
       const remaining = remainingProbability();
       if (prob > remaining + 1e-9) {

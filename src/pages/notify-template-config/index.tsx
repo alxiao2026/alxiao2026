@@ -70,7 +70,7 @@ export default function NotifyTemplateConfigPage() {
     setLoading(true)
     try {
       const res = await Network.request<{ code: number; data: { list: TemplateItem[] } }>({
-        url: '/api/notification/admin/template-configs',
+        url: '/api/notifications/admin/template-configs',
         method: 'GET',
         data: { admin_user_id: 'admin_13819627027' }
       })
@@ -105,7 +105,7 @@ export default function NotifyTemplateConfigPage() {
     setSaving(true)
     try {
       const res = await Network.request<{ code: number; msg?: string }>({
-        url: '/api/notification/admin/template-configs',
+        url: '/api/notifications/admin/template-configs',
         method: 'POST',
         data: {
           admin_user_id: 'admin_13819627027',
