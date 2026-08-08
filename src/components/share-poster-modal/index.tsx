@@ -17,10 +17,10 @@ interface SharePosterModalProps {
   subtitle?: string
   /** 价格文案（可空） */
   priceText?: string | null
-  /** 太阳码 scene（如 merchantId=5） */
-  scene: string
-  /** 太阳码落地页路径（如 pages/merchant/index） */
+  /** 真实落地页路径（如 pages/package-detail/index） */
   page: string
+  /** 落地参数（如 { id, inviter }），后端转短码，支持超长参数 */
+  pageParams?: Record<string, any>
 }
 
 let canvasSeq = 0
@@ -32,8 +32,8 @@ export default function SharePosterModal({
   title,
   subtitle,
   priceText,
-  scene,
   page,
+  pageParams,
 }: SharePosterModalProps) {
   const [canvasId] = useState(() => `sharePoster_${++canvasSeq}`)
   const [drawing, setDrawing] = useState(false)
@@ -51,11 +51,11 @@ export default function SharePosterModal({
     const generate = async () => {
       setDrawing(true)
       try {
-        console.log('[SharePoster] 请求太阳码:', { scene, page })
+        console.log('[SharePoster] 请求太阳码:', { page, pageParams })
         const res = await Network.request({
           url: '/api/share/qrcode',
           method: 'POST',
-          data: { scene, page },
+          data: { page, params: pageParams || {} },
         })
         console.log('[SharePoster] 太阳码响应:', res.data)
         const qrUrl = res.data?.data?.url || res.data?.url

@@ -132,31 +132,61 @@ const IndexPage = () => {
     }
   }, []);
 
-  // 分销裂变：识别分享链接/太阳码中的 inviter 参数，绑定上下级关系
+  // 分销裂变：识别分享链接/太阳码中的 inviter 参数，绑定上下级关系；解析海报太阳码短码并中转跳转
   useLoad((options) => {
-    // 太阳码进入时参数在 scene（如 inviter=xxx），分享卡片进入时在 query.inviter
+    // 太阳码进入时参数在 scene（如 inviter=xxx 或 10 位短码），分享卡片进入时在 query.inviter
     let inviterId = typeof options?.inviter === 'string' ? options.inviter : '';
     const sceneRaw = typeof options?.scene === 'string' ? decodeURIComponent(options.scene) : '';
     if (!inviterId && sceneRaw) {
       const m = sceneRaw.match(/inviter=([^&]+)/);
       if (m) inviterId = m[1];
     }
-    if (!inviterId) return;
-    const tryBind = () => {
-      const myId = Taro.getStorageSync('user_id');
-      if (!myId || myId === inviterId) return;
-      Network.request({
-        url: '/api/distribution/bind',
-        method: 'POST',
-        data: { user_id: myId, inviter_id: inviterId }
-      }).then((res) => {
-        console.log('[分销绑定]', JSON.stringify(res.data));
-      }).catch((err) => {
-        console.log('[分销绑定] 失败（可忽略）:', err);
-      });
+
+    const doBind = (inviter: string) => {
+      if (!inviter) return;
+      // 等 user_id 初始化完成后再绑定（首次进入时 user_id 是异步生成的）
+      setTimeout(() => {
+        const myId = Taro.getStorageSync('user_id');
+        if (!myId || myId === inviter) return;
+        Network.request({
+          url: '/api/distribution/bind',
+          method: 'POST',
+          data: { user_id: myId, inviter_id: inviter }
+        }).then((res) => {
+          console.log('[分销绑定]', JSON.stringify(res.data));
+        }).catch((err) => {
+          console.log('[分销绑定] 失败（可忽略）:', err);
+        });
+      }, 800);
     };
-    // 等 user_id 初始化完成后再绑定（首次进入时 user_id 是异步生成的）
-    setTimeout(tryBind, 800);
+
+    // 短码太阳码：scene 为 10 位短码（不含 = 且不是 inviter= 开头），需解析成真实目标页
+    const isShortCode = /^[a-zA-Z0-9]{8,16}$/.test(sceneRaw) && !sceneRaw.includes('=');
+    if (isShortCode) {
+      Network.request({ url: `/api/share/resolve/${sceneRaw}` })
+        .then((res) => {
+          const payload = (res.data as any)?.data;
+          console.log('[太阳码短码解析]', sceneRaw, JSON.stringify(payload));
+          if (!payload?.page) return;
+          const params = payload.params || {};
+          if (params.inviter) doBind(String(params.inviter));
+          const qs = Object.keys(params)
+            .filter((k) => k !== 'inviter')
+            .map((k) => `${k}=${encodeURIComponent(String(params[k]))}`)
+            .join('&');
+          const target = `/${payload.page}${qs ? `?${qs}` : ''}`;
+          // 目标页为 Tab 页用 switchTab，否则 reLaunch（海报太阳码冷启动需 reLaunch）
+          setTimeout(() => {
+            Taro.reLaunch({ url: target }).catch(() => {
+              Taro.navigateTo({ url: target }).catch((e) => console.log('[太阳码跳转] 失败:', e));
+            });
+          }, 300);
+        })
+        .catch((err) => console.log('[太阳码短码解析] 失败:', err));
+      return;
+    }
+
+    if (inviterId) doBind(inviterId);
   });
 
   // 获取数据

@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { S3Storage } from 'coze-coding-dev-sdk';
+import { randomBytes } from 'crypto';
 import { getWechatCredentials } from '../user/wechat-config';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * 分享海报太阳码服务：
@@ -112,5 +114,65 @@ export class ShareService {
     this.qrCache.set(cacheKey, { url, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
     this.logger.log(`太阳码已生成: page=${page} scene=${scene}`);
     return { url };
+  }
+
+  /**
+   * 生成海报太阳码（短码映射方案）。
+   * 真实 page 与参数（可能含超长 UUID、inviter 等）存入 share_qr_codes，
+   * 太阳码统一落地首页 pages/index/index，scene 使用 10 位短码。
+   * 首页 useLoad 解析短码 → resolveShortCode 取回真实目标页与参数后跳转。
+   */
+  async createPosterQrCode(
+    targetPage: string,
+    params: Record<string, any>,
+  ): Promise<{ url: string; code: string }> {
+    if (!targetPage) throw new BadRequestException('targetPage 不能为空');
+    const code = await this.generateShortCode();
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from('share_qr_codes')
+      .insert({ code, page: targetPage, params: params || {} });
+    if (error) {
+      this.logger.error(`写入太阳码短码映射失败: ${error.message}`);
+      throw new BadRequestException('生成太阳码失败，请稍后重试');
+    }
+    // 统一落地首页，由首页中转（首页必然已发布，避免目标页未发布导致生成失败）
+    const { url } = await this.getMiniProgramQrCode('pages/index/index', code);
+    return { url, code };
+  }
+
+  /** 根据短码取回真实目标页与参数 */
+  async resolveShortCode(code: string): Promise<{ page: string; params: Record<string, any> } | null> {
+    if (!code) return null;
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('share_qr_codes')
+      .select('page, params')
+      .eq('code', code)
+      .maybeSingle();
+    if (error) {
+      this.logger.warn(`解析太阳码短码失败 code=${code}: ${error.message}`);
+      return null;
+    }
+    if (!data) return null;
+    return { page: data.page, params: (data.params as Record<string, any>) || {} };
+  }
+
+  /** 生成 10 位短码（去易混淆字符），碰撞时重试 */
+  private async generateShortCode(): Promise<string> {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const supabase = getSupabaseClient();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const bytes = randomBytes(10);
+      let code = '';
+      for (let i = 0; i < 10; i++) code += chars[bytes[i] % chars.length];
+      const { data } = await supabase
+        .from('share_qr_codes')
+        .select('id')
+        .eq('code', code)
+        .maybeSingle();
+      if (!data) return code;
+    }
+    return `q${Date.now().toString(36)}`.slice(0, 16);
   }
 }

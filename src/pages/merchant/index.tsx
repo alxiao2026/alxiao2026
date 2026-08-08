@@ -310,8 +310,8 @@ export default function MerchantPage() {
                   <SwiperItem key={i}>
                     <Image
                       src={url}
-                      className="w-full h-72"
-                      mode="aspectFit"
+                      className="w-full h-64"
+                      mode="aspectFill"
                       onClick={() => Taro.previewImage({ current: url, urls: gallery })}
                     />
                   </SwiperItem>
@@ -513,7 +513,7 @@ export default function MerchantPage() {
                       >
                         <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                           {prize.image_url ? (
-                            <Image src={prize.image_url} className="w-full h-full" mode="aspectFit" />
+                            <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
                           ) : (
                             <Gift size={24} color="#FF6B9D" />
                           )}
@@ -641,10 +641,10 @@ export default function MerchantPage() {
           <SharePosterModal
             visible={showPoster}
             onClose={() => setShowPoster(false)}
-            coverUrl={merchant?.images?.[0] || null}
+            coverUrl={merchant?.images?.[0] || merchant?.logo || null}
             title={merchant?.name || ''}
             subtitle={merchant?.address || ''}
-            scene={`merchantId=${merchantId}`}
+            pageParams={{ id: String(merchantId), inviter: Taro.getStorageSync('user_id') || '' }}
             page="pages/merchant/index"
           />
 

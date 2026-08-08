@@ -24,6 +24,7 @@ interface DistConfig {
   level2_rate: number
   level3_rate: number
   min_withdraw: number
+  bind_expire_days: number
 }
 
 const fmt = (n: number) => (Math.round(Number(n) * 100) / 100).toFixed(2)
@@ -40,7 +41,7 @@ export default function DistributionAudit() {
   const [list, setList] = useState<WithdrawItem[]>([])
   const [loading, setLoading] = useState(true)
   const [config, setConfig] = useState<DistConfig | null>(null)
-  const [configForm, setConfigForm] = useState({ level1: '10', level2: '5', level3: '2', minWithdraw: '10' })
+  const [configForm, setConfigForm] = useState({ level1: '10', level2: '5', level3: '2', minWithdraw: '10', bindExpireDays: '0' })
   const [savingConfig, setSavingConfig] = useState(false)
 
   const fetchList = async (status?: string) => {
@@ -70,6 +71,7 @@ export default function DistributionAudit() {
           level2: String(Number(c.level2_rate)),
           level3: String(Number(c.level3_rate)),
           minWithdraw: String(Number(c.min_withdraw)),
+          bindExpireDays: String(Number(c.bind_expire_days ?? 0)),
         })
       }
     } catch (err) {
@@ -126,24 +128,29 @@ export default function DistributionAudit() {
     const l2 = parseFloat(configForm.level2) || 0
     const l3 = parseFloat(configForm.level3) || 0
     const minW = parseFloat(configForm.minWithdraw) || 0
+    const bindDays = parseInt(configForm.bindExpireDays, 10) || 0
     if (l1 < 0 || l2 < 0 || l3 < 0 || l1 > 100 || l2 > 100 || l3 > 100) {
       Taro.showToast({ title: '佣金比例需在 0-100 之间', icon: 'none' })
       return
     }
-    if (l1 + l2 + l3 > 50) {
-      Taro.showModal({ title: '提示', content: `三级佣金合计 ${l1 + l2 + l3}%，超过 50% 可能导致亏损，确认保存？`, success: (r) => { if (r.confirm) doSave(l1, l2, l3, minW) } })
+    if (bindDays < 0) {
+      Taro.showToast({ title: '绑定有效天数不能为负数', icon: 'none' })
       return
     }
-    doSave(l1, l2, l3, minW)
+    if (l1 + l2 + l3 > 50) {
+      Taro.showModal({ title: '提示', content: `三级佣金合计 ${l1 + l2 + l3}%，超过 50% 可能导致亏损，确认保存？`, success: (r) => { if (r.confirm) doSave(l1, l2, l3, minW, bindDays) } })
+      return
+    }
+    doSave(l1, l2, l3, minW, bindDays)
   }
 
-  const doSave = async (l1: number, l2: number, l3: number, minW: number) => {
+  const doSave = async (l1: number, l2: number, l3: number, minW: number, bindDays: number) => {
     setSavingConfig(true)
     try {
       const res = await Network.request({
         url: '/api/distribution/config',
         method: 'PUT',
-        data: { level1_rate: l1, level2_rate: l2, level3_rate: l3, min_withdraw: minW },
+        data: { level1_rate: l1, level2_rate: l2, level3_rate: l3, min_withdraw: minW, bind_expire_days: bindDays },
       })
       console.log('[分销配置] 保存:', res.data)
       Taro.showToast({ title: '配置已保存', icon: 'success' })
@@ -271,10 +278,26 @@ export default function DistributionAudit() {
                   </View>
                 </View>
 
+                {/* 绑定有效天数 */}
+                <View className="flex items-center gap-3 mb-2">
+                  <Text className="text-sm text-gray-700 w-24">绑定有效期</Text>
+                  <View className="flex-1 bg-gray-50 rounded-lg">
+                    <Input
+                      type="number"
+                      value={configForm.bindExpireDays}
+                      onInput={(e) => setConfigForm({ ...configForm, bindExpireDays: e.detail.value })}
+                      placeholder="0 表示永久"
+                      className="w-full px-3 py-2 text-sm bg-transparent"
+                    />
+                  </View>
+                  <Text className="text-sm text-gray-500">天</Text>
+                </View>
+                <Text className="block text-xs text-gray-400 mb-4">下级绑定关系超过该天数后自动失效，不再参与分佣；填 0 表示永久有效</Text>
+
                 {config && (
                   <View className="bg-blue-50 rounded-lg p-3 mb-4">
                     <Text className="block text-xs text-blue-700">
-                      当前：一级 {Number(config.level1_rate)}% · 二级 {Number(config.level2_rate)}% · 三级 {Number(config.level3_rate)}% · 最低提现 ¥{Number(config.min_withdraw)}
+                      当前：一级 {Number(config.level1_rate)}% · 二级 {Number(config.level2_rate)}% · 三级 {Number(config.level3_rate)}% · 最低提现 ¥{Number(config.min_withdraw)} · 绑定 {Number(config.bind_expire_days) === 0 ? '永久' : `${Number(config.bind_expire_days)} 天`}
                     </Text>
                   </View>
                 )}

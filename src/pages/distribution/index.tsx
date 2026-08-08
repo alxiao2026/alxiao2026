@@ -383,7 +383,7 @@ export default function DistributionCenter() {
         title="膨胀团 · 邀你吃喝玩乐赚佣金"
         subtitle="扫码下单，你我都有奖励"
         priceText="下单抽霸王餐"
-        scene={`inviter=${userId}`}
+        pageParams={{ inviter: userId }}
         page="pages/index/index"
       />
     </View>

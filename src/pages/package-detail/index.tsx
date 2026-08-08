@@ -400,13 +400,13 @@ export default function PackageDetail() {
   return (
     <View className="min-h-screen bg-gray-50 pb-24">
       <ScrollView scrollY className="h-screen">
-        {/* 头图：完整展示不裁切，深色底衬托，点击可放大预览 */}
-        <View className="w-full h-72 bg-gray-900 relative">
+        {/* 头图：点击可放大预览 */}
+        <View className="w-full h-72 bg-gray-100 relative">
           {allImages.length > 0 ? (
             <Image
               src={allImages[0]}
               className="w-full h-full"
-              mode="aspectFit"
+              mode="aspectFill"
               onClick={() => Taro.previewImage({ current: allImages[0], urls: allImages })}
             />
           ) : (
@@ -536,7 +536,7 @@ export default function PackageDetail() {
                     >
                       <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                         {prize.image_url ? (
-                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFit" />
+                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
                         ) : (
                           <Gift size={24} color="#FF6B9D" />
                         )}
@@ -599,11 +599,11 @@ export default function PackageDetail() {
             <Text className="block text-base font-bold text-gray-800 mb-4">图片详情</Text>
             <View className="flex flex-col gap-3">
               {allImages.map((img: string, idx: number) => (
-                <View key={idx} className="w-full h-52 rounded-lg bg-gray-50 overflow-hidden">
+                <View key={idx} className="w-full h-52 rounded-lg bg-gray-100 overflow-hidden">
                   <Image
                     src={img}
                     className="w-full h-full"
-                    mode="aspectFit"
+                    mode="aspectFill"
                     onClick={() => Taro.previewImage({ current: img, urls: allImages })}
                   />
                 </View>
@@ -942,14 +942,14 @@ export default function PackageDetail() {
           <View
             onClick={() => {
               if (!isMiniApp) {
-                Taro.showToast({ title: '请在小程序中生成分享海报', icon: 'none' })
+                Taro.showToast({ title: '请在小程序中分享', icon: 'none' })
                 return
               }
               setShowPoster(true)
             }}
             className="px-4 py-3 rounded-full border border-[#FF4757]"
           >
-            <Text className="block text-sm font-semibold text-[#FF4757]">海报</Text>
+            <Text className="block text-sm font-semibold text-[#FF4757]">分享</Text>
           </View>
           <View
             onClick={handleBuy}
@@ -971,7 +971,7 @@ export default function PackageDetail() {
           title={pkg.name}
           subtitle={merchant?.name || ''}
           priceText={`¥${formatPrice(currentPrice)}`}
-          scene={`packageId=${pkg.id}`}
+          pageParams={{ id: String(pkg.id), inviter: Taro.getStorageSync('user_id') || '' }}
           page="pages/package-detail/index"
         />
       )}

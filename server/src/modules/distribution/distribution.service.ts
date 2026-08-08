@@ -27,7 +27,7 @@ export class DistributionService {
     const supabase = getSupabaseClient();
     const { data } = await supabase
       .from('distribution_configs')
-      .select('id, enabled, level1_rate, level2_rate, level3_rate, min_withdraw')
+      .select('id, enabled, level1_rate, level2_rate, level3_rate, min_withdraw, bind_expire_days')
       .order('id', { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -37,14 +37,18 @@ export class DistributionService {
       level2_rate: Number(data?.level2_rate ?? 5),
       level3_rate: Number(data?.level3_rate ?? 2),
       min_withdraw: Number(data?.min_withdraw ?? 10),
+      bind_expire_days: Number(data?.bind_expire_days ?? 0),
     };
   }
 
-  async updateConfig(body: { enabled?: boolean; level1_rate?: number; level2_rate?: number; level3_rate?: number; min_withdraw?: number }) {
+  async updateConfig(body: { enabled?: boolean; level1_rate?: number; level2_rate?: number; level3_rate?: number; min_withdraw?: number; bind_expire_days?: number }) {
     const supabase = getSupabaseClient();
     const rates = [body.level1_rate, body.level2_rate, body.level3_rate].filter((v) => v !== undefined);
     if (rates.some((v) => isNaN(Number(v)) || Number(v) < 0 || Number(v) > 100)) {
       throw new BadRequestException('佣金比例必须在 0-100 之间');
+    }
+    if (body.bind_expire_days !== undefined && (isNaN(Number(body.bind_expire_days)) || Number(body.bind_expire_days) < 0)) {
+      throw new BadRequestException('绑定有效天数必须为不小于 0 的整数（0 表示永久有效）');
     }
     const current = await this.getConfig();
     const merged = { ...current, ...body, updated_at: new Date().toISOString() };
@@ -62,25 +66,37 @@ export class DistributionService {
     const supabase = getSupabaseClient();
     const { data } = await supabase
       .from('distribution_members')
-      .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission')
+      .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission, bound_at')
       .eq('user_id', userId)
       .maybeSingle();
     if (data) return data;
     const { data: created, error } = await supabase
       .from('distribution_members')
-      .insert({ user_id: userId, inviter_id: inviterId || null })
-      .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission')
+      .insert({ user_id: userId, inviter_id: inviterId || null, bound_at: inviterId ? new Date().toISOString() : null })
+      .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission, bound_at')
       .single();
     if (error) {
       // 并发下唯一冲突 → 重查
       const { data: again } = await supabase
         .from('distribution_members')
-        .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission')
+        .select('id, user_id, inviter_id, status, total_commission, available_commission, withdrawn_commission, bound_at')
         .eq('user_id', userId)
         .maybeSingle();
       return again;
     }
     return created;
+  }
+
+  /**
+   * 判断绑定关系是否在有效期内
+   * @param boundAt 绑定时间（null 兼容历史数据，视为有效）
+   * @param expireDays 有效天数（0 表示永久有效）
+   */
+  private isBindingActive(boundAt: string | null | undefined, expireDays: number): boolean {
+    if (!expireDays || expireDays <= 0) return true;
+    if (!boundAt) return true;
+    const expireMs = new Date(boundAt).getTime() + expireDays * 86400000;
+    return Date.now() < expireMs;
   }
 
   /**
@@ -93,7 +109,12 @@ export class DistributionService {
 
     const existing = await this.ensureMember(userId);
     if (existing?.inviter_id) {
-      return { bound: false, inviter_id: existing.inviter_id, message: '已绑定过邀请人，不可更改' };
+      // 已绑定且在有效期内 → 幂等返回；已过期 → 允许重新绑定新上级
+      const config = await this.getConfig();
+      if (this.isBindingActive((existing as any).bound_at, config.bind_expire_days)) {
+        return { bound: false, inviter_id: existing.inviter_id, message: '已绑定过邀请人，不可更改' };
+      }
+      this.logger.log(`绑定已过期(${config.bind_expire_days}天)，允许重新绑定: ${userId}`);
     }
 
     // 环检测：沿 inviter 向上最多走 3 级，遇到自己则拒绝
@@ -113,25 +134,32 @@ export class DistributionService {
     await this.ensureMember(inviterId);
     await supabase
       .from('distribution_members')
-      .update({ inviter_id: inviterId, updated_at: new Date().toISOString() })
+      .update({ inviter_id: inviterId, bound_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('user_id', userId);
     this.logger.log(`分销绑定: ${userId} ← ${inviterId}`);
     return { bound: true, inviter_id: inviterId };
   }
 
   /** 向上取三级上级链 */
+  /**
+   * 向上取三级有效上级链。绑定已过期（超过 bind_expire_days）则断链，不再向上分佣。
+   */
   private async getUplineChain(userId: string): Promise<{ level: number; userId: string }[]> {
     const supabase = getSupabaseClient();
+    const config = await this.getConfig();
+    const expireDays = config.bind_expire_days;
     const chain: { level: number; userId: string }[] = [];
     let cursor: string | null = userId;
     for (let level = 1; level <= 3; level++) {
       const { data: node } = await supabase
         .from('distribution_members')
-        .select('inviter_id')
+        .select('inviter_id, bound_at')
         .eq('user_id', cursor)
         .maybeSingle();
       const up: string | null = node?.inviter_id || null;
       if (!up) break;
+      // 该级绑定已过期 → 断链，本级及以上均不再分佣
+      if (!this.isBindingActive(node?.bound_at || null, expireDays)) break;
       chain.push({ level, userId: up });
       cursor = up;
     }

@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch'
 import { Calendar } from '@/components/ui/calendar'
 import { Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
+import { ImageCropper } from '@/components/image-cropper'
+import { dataUrlToFile } from '@/lib/upload-image'
 import { format } from 'date-fns'
 
 interface Package {
@@ -247,6 +249,13 @@ export default function PackageAdmin() {
     imagePath: string
     fileSize: number
   }>({ visible: false, imagePath: '', fileSize: 0 })
+  // 可调节裁剪窗状态（封面/环境图共用，H5 端带原始 File）
+  const [cropTarget, setCropTarget] = useState<{
+    imagePath: string
+    fileSize: number
+    target: 'cover' | 'env'
+    h5File?: File
+  } | null>(null)
 
   // 用 ref 追踪最新状态，确保选图/页面隐藏时能拿到最新值（避免闭包捕获过期状态）
   const stateRef = useRef({
@@ -801,21 +810,6 @@ export default function PackageAdmin() {
     return null
   }
 
-  // 裁切图片为 4:3（仅小程序端支持，H5 直接返回原图）
-  const cropImageTo4x3 = async (filePath: string): Promise<string | null> => {
-    const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
-    if (!isMiniApp) return filePath
-    try {
-      const res = await Taro.cropImage({ src: filePath, cropScale: '4:3' })
-      return res.tempFilePath
-    } catch (e) {
-      const errMsg = (e as { errMsg?: string })?.errMsg || ''
-      if (errMsg.includes('cancel')) return null
-      console.error('[PackageAdmin] cropImage failed, use original:', e)
-      return filePath
-    }
-  }
-
   // H5 端通过 FormData 上传文件（Taro.uploadFile 不支持 File 对象）
   const h5UploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData()
@@ -833,7 +827,7 @@ export default function PackageAdmin() {
     const isMiniApp = [Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)
 
     if (!isMiniApp) {
-      // H5 端使用文件选择 + FormData 上传
+      // H5 端：选择文件后弹可调节裁剪窗
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = 'image/*'
@@ -844,21 +838,8 @@ export default function PackageAdmin() {
         input.remove()
         if (!file) return
         if (!checkImageSize(file.size)) return
-        setUploadingCover(true)
-        try {
-          const url = await h5UploadFile(file)
-          if (url) {
-            updateFormData('cover_image', url)
-            Taro.showToast({ title: '上传成功', icon: 'success' })
-          } else {
-            Taro.showToast({ title: '上传失败', icon: 'error' })
-          }
-        } catch (error) {
-          console.error('Upload failed:', error)
-          Taro.showToast({ title: '上传失败', icon: 'error' })
-        } finally {
-          setUploadingCover(false)
-        }
+        const localUrl = URL.createObjectURL(file)
+        setCropTarget({ imagePath: localUrl, fileSize: file.size, target: 'cover', h5File: file })
       }
       input.click()
       return
@@ -877,20 +858,10 @@ export default function PackageAdmin() {
 
       const tempFile = res.tempFiles[0]
       if (!tempFile) return
+      if (!checkImageSize(tempFile.size)) return
 
-      // 自动裁切为 4:3
-      const croppedPath = await cropImageTo4x3(tempFile.tempFilePath)
-      if (!croppedPath) return // 用户取消裁切
-
-      // 获取裁切后文件大小
-      let croppedSize = tempFile.size
-      try {
-        const fileInfo = await Taro.getFileInfo({ filePath: croppedPath })
-        croppedSize = (fileInfo as { size?: number }).size || tempFile.size
-      } catch { /* 忽略，用原始大小 */ }
-
-      // 显示预览效果图，确认后再上传
-      setCropPreview({ visible: true, imagePath: croppedPath, fileSize: croppedSize })
+      // 弹可调节裁剪窗（4:3），用户拖动/缩放调整显示区域
+      setCropTarget({ imagePath: tempFile.tempFilePath, fileSize: tempFile.size, target: 'cover' })
     } catch (error) {
       const errMsg = (error as { errMsg?: string })?.errMsg || ''
       // 用户取消选择不提示
@@ -898,6 +869,41 @@ export default function PackageAdmin() {
       console.error('[PackageAdmin] upload cover failed:', error)
       Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
     }
+  }
+
+  // 可调节裁剪确认（封面图）：进入效果预览，再上传
+  const handleCropConfirm = async (croppedPath: string) => {
+    if (!cropTarget) return
+    const { h5File, fileSize } = cropTarget
+    setCropTarget(null)
+    // H5 端裁剪结果为 dataURL，转 File 后直接上传
+    if (![Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(Taro.getEnv() as any)) {
+      const file = dataUrlToFile(croppedPath, h5File?.name || 'cropped.png')
+      if (!file) return
+      setUploadingCover(true)
+      try {
+        const url = await h5UploadFile(file)
+        if (url) {
+          updateFormData('cover_image', url)
+          Taro.showToast({ title: '上传成功', icon: 'success' })
+        } else {
+          Taro.showToast({ title: '上传失败', icon: 'error' })
+        }
+      } catch (error) {
+        console.error('Upload failed:', error)
+        Taro.showToast({ title: '上传失败', icon: 'error' })
+      } finally {
+        setUploadingCover(false)
+      }
+      return
+    }
+    // 小程序端：获取裁剪后文件大小，进入效果预览确认后上传
+    let croppedSize = fileSize
+    try {
+      const fileInfo = await Taro.getFileInfo({ filePath: croppedPath })
+      croppedSize = (fileInfo as { size?: number }).size || fileSize
+    } catch { /* 忽略，用原始大小 */ }
+    setCropPreview({ visible: true, imagePath: croppedPath, fileSize: croppedSize })
   }
 
   // 确认裁切预览后上传封面图
@@ -3696,6 +3702,17 @@ export default function PackageAdmin() {
           )}
         </View>
       </View>
+
+      {/* 可调节裁剪窗（封面图，拖动/双指缩放调整显示区域） */}
+      {cropTarget && (
+        <ImageCropper
+          visible={!!cropTarget}
+          imagePath={cropTarget.imagePath}
+          aspectRatio={4 / 3}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropTarget(null)}
+        />
+      )}
 
       {/* 封面图裁切预览弹窗 */}
       {cropPreview.visible && (

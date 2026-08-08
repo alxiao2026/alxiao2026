@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Network } from '@/network';
 import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
+import { ImageCropper } from '@/components/image-cropper';
+import { isMiniAppEnv, chooseImageH5, uploadLocalImage } from '@/lib/upload-image';
 
 interface Merchant {
   id: number;
@@ -45,6 +47,12 @@ export default function MerchantAdmin() {
   const [packagePrices, setPackagePrices] = useState<Array<{ id: string; name: string; price: number; settlement_price: string }>>([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 图片裁剪状态：选择图片后先弹裁剪窗调节显示区域，确认后再上传
+  const [cropTarget, setCropTarget] = useState<{
+    imagePath: string;
+    h5File?: File;
+    target: 'logo' | 'env';
+  } | null>(null);
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -197,232 +205,57 @@ export default function MerchantAdmin() {
     setFormData({ ...formData, phone: cleaned });
   };
 
-  // 上传首图（Logo）
-  const handleUploadLogo = async () => {
-    const env = Taro.getEnv();
-    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
-    
-    if (uploadingLogo) return;
-    
+  // 选择图片（首图/环境图统一入口），选择后弹裁剪窗调节显示区域
+  const pickImage = async (target: 'logo' | 'env') => {
+    if (uploadingLogo || uploadingImages) return;
     try {
-      setUploadingLogo(true);
-      
-      if (isMiniApp) {
+      if (isMiniAppEnv()) {
         const res = await Taro.chooseMedia({
           count: 1,
           mediaType: ['image'],
           sourceType: ['album', 'camera'],
         });
-        
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-        const fileSize = res.tempFiles[0].size;
-        
-        // 检查文件大小（5M限制）
-        if (fileSize > 5 * 1024 * 1024) {
+        const file = res.tempFiles[0];
+        if (file.size > 5 * 1024 * 1024) {
           Taro.showToast({ title: '图片不能超过5M', icon: 'none' });
           return;
         }
-        
-        Taro.showLoading({ title: '上传中...' });
-        
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload',
-          filePath: tempFilePath,
-          name: 'file',
-        });
-        
-        Taro.hideLoading();
-        
-        if (uploadRes.statusCode === 200) {
-          const data = JSON.parse(uploadRes.data);
-          if (data.code === 200 && data.data?.url) {
-            setFormData({ ...formData, logo: data.data.url });
-            Taro.showToast({ title: '上传成功', icon: 'success' });
-          } else {
-            Taro.showToast({ title: '上传失败', icon: 'none' });
-          }
-        } else {
-          Taro.showToast({ title: '上传失败', icon: 'none' });
-        }
+        setCropTarget({ imagePath: file.tempFilePath, target });
       } else {
-        // H5端使用input选择文件
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.style.display = 'none';
-        document.body.appendChild(input);
-        input.onchange = async (e: any) => {
-          const file = e.target.files[0];
-          input.remove();
-          if (!file) return;
-          
-          if (file.size > 5 * 1024 * 1024) {
-            Taro.showToast({ title: '图片不能超过5M', icon: 'none' });
-            return;
-          }
-          
-          const formDataUpload = new FormData();
-          formDataUpload.append('file', file);
-          
-          Taro.showLoading({ title: '上传中...' });
-          
-          try {
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              body: formDataUpload,
-            });
-            
-            const data = await response.json();
-            Taro.hideLoading();
-            
-            if (data.code === 200 && data.data?.url) {
-              setFormData({ ...formData, logo: data.data.url });
-              Taro.showToast({ title: '上传成功', icon: 'success' });
-            } else {
-              Taro.showToast({ title: '上传失败', icon: 'none' });
-            }
-          } catch (error) {
-            Taro.hideLoading();
-            Taro.showToast({ title: '上传失败', icon: 'none' });
-          }
-        };
-        input.click();
+        const picked = await chooseImageH5();
+        if (!picked) return;
+        if (picked.file.size > 5 * 1024 * 1024) {
+          Taro.showToast({ title: '图片不能超过5M', icon: 'none' });
+          return;
+        }
+        setCropTarget({ imagePath: picked.localUrl, h5File: picked.file, target });
       }
     } catch (error) {
-      console.error('上传首图失败:', error);
-      Taro.hideLoading();
-      Taro.showToast({ title: '上传失败', icon: 'none' });
-    } finally {
-      setUploadingLogo(false);
+      console.error('选择图片失败:', error);
     }
   };
 
-  // 上传环境图
-  const handleUploadEnvImage = async () => {
-    const env = Taro.getEnv();
-    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT;
-    
-    if (uploadingImages) return;
-    
-    try {
-      setUploadingImages(true);
-      
-      if (isMiniApp) {
-        const res = await Taro.chooseMedia({
-          count: 9,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
-        });
-        
-        const newImages: string[] = [];
-        let successCount = 0;
-        let failCount = 0;
-        
-        for (const file of res.tempFiles) {
-          if (file.size > 5 * 1024 * 1024) {
-            failCount++;
-            continue;
-          }
-          
-          try {
-            const uploadRes = await Network.uploadFile({
-              url: '/api/upload',
-              filePath: file.tempFilePath,
-              name: 'file',
-            });
-            
-            if (uploadRes.statusCode === 200) {
-              const data = JSON.parse(uploadRes.data);
-              if (data.code === 200 && data.data?.url) {
-                newImages.push(data.data.url);
-                successCount++;
-              } else {
-                failCount++;
-              }
-            } else {
-              failCount++;
-            }
-          } catch (error) {
-            failCount++;
-          }
-        }
-        
-        if (successCount > 0) {
-          setFormData({ ...formData, images: [...formData.images, ...newImages] });
-        }
-        
-        if (failCount > 0) {
-          Taro.showToast({ 
-            title: `${successCount}张成功，${failCount}张失败`, 
-            icon: 'none' 
-          });
-        } else {
-          Taro.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
-        }
+  const handleUploadLogo = () => pickImage('logo');
+  const handleUploadEnvImage = () => pickImage('env');
+
+  // 裁剪确认：上传裁剪后的图片并写入表单
+  const handleCropConfirm = async (croppedPath: string) => {
+    if (!cropTarget) return;
+    const { target } = cropTarget;
+    setCropTarget(null);
+    if (target === 'logo') setUploadingLogo(true);
+    else setUploadingImages(true);
+    const url = await uploadLocalImage(croppedPath, undefined);
+    if (url) {
+      if (target === 'logo') {
+        setFormData((prev) => ({ ...prev, logo: url }));
       } else {
-        // H5端
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.multiple = true;
-        input.style.display = 'none';
-        document.body.appendChild(input);
-        input.onchange = async (e: any) => {
-          const files = Array.from(e.target.files) as File[];
-          input.remove();
-          const newImages: string[] = [];
-          let successCount = 0;
-          let failCount = 0;
-          
-          for (const file of files) {
-            if (file.size > 5 * 1024 * 1024) {
-              failCount++;
-              continue;
-            }
-            
-            const formDataUpload = new FormData();
-            formDataUpload.append('file', file);
-            
-            try {
-              const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formDataUpload,
-              });
-              
-              const data = await response.json();
-              
-              if (data.code === 200 && data.data?.url) {
-                newImages.push(data.data.url);
-                successCount++;
-              } else {
-                failCount++;
-              }
-            } catch (error) {
-              failCount++;
-            }
-          }
-          
-          if (successCount > 0) {
-            setFormData({ ...formData, images: [...formData.images, ...newImages] });
-          }
-          
-          if (failCount > 0) {
-            Taro.showToast({ 
-              title: `${successCount}张成功，${failCount}张失败`, 
-              icon: 'none' 
-            });
-          } else {
-            Taro.showToast({ title: `成功上传${successCount}张`, icon: 'success' });
-          }
-        };
-        input.click();
+        setFormData((prev) => ({ ...prev, images: [...prev.images, url] }));
       }
-    } catch (error) {
-      console.error('上传环境图失败:', error);
-      Taro.showToast({ title: '上传失败', icon: 'none' });
-    } finally {
-      setUploadingImages(false);
+      Taro.showToast({ title: '上传成功', icon: 'success' });
     }
+    setUploadingLogo(false);
+    setUploadingImages(false);
   };
 
   // 删除图片
@@ -1240,6 +1073,16 @@ export default function MerchantAdmin() {
           </View>
         </View>
       )}
+
+      {/* 图片裁剪预览：选择图片后调节显示区域 */}
+      <ImageCropper
+        visible={!!cropTarget}
+        imagePath={cropTarget?.imagePath || ''}
+        aspectRatio={3 / 2}
+        title={cropTarget?.target === 'logo' ? '调整首图显示区域（3:2）' : '调整环境图显示区域（3:2）'}
+        onConfirm={handleCropConfirm}
+        onCancel={() => setCropTarget(null)}
+      />
     </View>
   );
 }

@@ -27,7 +27,6 @@ export interface SharePosterOptions {
 
 const POSTER_W = 300
 const POSTER_H = 480
-const COVER_H = 250
 
 /** 下载远程图片为本地临时路径（canvas drawImage 需要本地路径） */
 async function downloadImage(url: string): Promise<string | null> {
@@ -92,89 +91,158 @@ function drawTitleLines(ctx: Taro.CanvasContext, text: string, x: number, y: num
   return lines.length
 }
 
-/** 绘制分享海报到指定 canvas */
+/** 多角星/爆炸贴路径（spikes 角数，outerR 外半径，innerR 内半径） */
+function starPath(ctx: Taro.CanvasContext, cx: number, cy: number, spikes: number, outerR: number, innerR: number) {
+  let rot = (Math.PI / 2) * 3
+  const step = Math.PI / spikes
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - outerR)
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR)
+    rot += step
+    ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR)
+    rot += step
+  }
+  ctx.lineTo(cx, cy - outerR)
+  ctx.closePath()
+}
+
+/** 圆角矩形路径 */
+function roundRect(ctx: Taro.CanvasContext, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+/** 绘制分享海报到指定 canvas（年轻化活力风） */
 export async function drawSharePoster(opts: SharePosterOptions): Promise<boolean> {
   const { canvasId, coverUrl, title, subtitle, priceText, qrUrl, brandName = '膨胀团' } = opts
   const ctx = Taro.createCanvasContext(canvasId)
 
-  // 1. 白底
-  ctx.setFillStyle('#ffffff')
+  // 1. 活力渐变背景（粉 → 橙）
+  const bg = ctx.createLinearGradient(0, 0, POSTER_W, POSTER_H)
+  bg.addColorStop(0, '#FF5E8A')
+  bg.addColorStop(0.55, '#FF7A59')
+  bg.addColorStop(1, '#FFA53B')
+  ctx.setFillStyle(bg as any)
   ctx.fillRect(0, 0, POSTER_W, POSTER_H)
 
-  // 2. 封面图（cover 填充顶部区域）
-  if (coverUrl) {
-    const coverPath = await downloadImage(coverUrl)
-    if (coverPath) {
-      try {
-        const info = await Taro.getImageInfo({ src: coverPath })
-        drawCover(ctx, coverPath, info.width, info.height, 0, 0, POSTER_W, COVER_H)
-      } catch {
-        ctx.drawImage(coverPath, 0, 0, POSTER_W, COVER_H)
-      }
-    } else {
-      // 封面下载失败 → 品牌渐变底
-      const grad = ctx.createLinearGradient(0, 0, POSTER_W, COVER_H)
-      grad.addColorStop(0, '#FF6B81')
-      grad.addColorStop(1, '#FF4757')
-      ctx.setFillStyle(grad as any)
-      ctx.fillRect(0, 0, POSTER_W, COVER_H)
+  // 2. 装饰元素：半透明圆斑 + 小星星（年轻化点缀）
+  ctx.setFillStyle('rgba(255,255,255,0.14)')
+  ctx.beginPath(); ctx.arc(POSTER_W - 30, 40, 46, 0, 2 * Math.PI); ctx.fill()
+  ctx.beginPath(); ctx.arc(24, 300, 34, 0, 2 * Math.PI); ctx.fill()
+  ctx.beginPath(); ctx.arc(POSTER_W - 16, 360, 20, 0, 2 * Math.PI); ctx.fill()
+  ctx.setFillStyle('rgba(255,255,255,0.5)')
+  starPath(ctx, 44, 60, 5, 7, 3); ctx.fill()
+  starPath(ctx, POSTER_W - 52, 210, 5, 6, 2.5); ctx.fill()
+  starPath(ctx, 30, 390, 5, 5, 2); ctx.fill()
+
+  // 3. 顶部品牌条：闪电 + 品牌名
+  ctx.setFillStyle('#FFD93D')
+  starPath(ctx, 24, 30, 4, 9, 3.5); ctx.fill()
+  ctx.setFillStyle('#ffffff')
+  ctx.setFontSize(15)
+  ctx.setTextAlign('left')
+  ctx.fillText(brandName, 40, 36)
+  ctx.setFillStyle('rgba(255,255,255,0.85)')
+  ctx.setFontSize(10)
+  ctx.fillText('年轻就要省着玩', 40, 50)
+
+  // 4. 封面圆角卡片（白边 + 圆角）
+  const covX = 16, covY = 64, covW = POSTER_W - 32, covH = 168
+  ctx.setFillStyle('#ffffff')
+  roundRect(ctx, covX - 4, covY - 4, covW + 8, covH + 8, 16); ctx.fill()
+  const coverPath = coverUrl ? await downloadImage(coverUrl) : null
+  ctx.save()
+  roundRect(ctx, covX, covY, covW, covH, 12); ctx.clip()
+  if (coverPath) {
+    try {
+      const info = await Taro.getImageInfo({ src: coverPath })
+      drawCover(ctx, coverPath, info.width, info.height, covX, covY, covW, covH)
+    } catch {
+      ctx.drawImage(coverPath, covX, covY, covW, covH)
     }
   } else {
-    const grad = ctx.createLinearGradient(0, 0, POSTER_W, COVER_H)
-    grad.addColorStop(0, '#FF6B81')
-    grad.addColorStop(1, '#FF4757')
-    ctx.setFillStyle(grad as any)
-    ctx.fillRect(0, 0, POSTER_W, COVER_H)
-    // 品牌水印字
+    const cg = ctx.createLinearGradient(covX, covY, covX + covW, covY + covH)
+    cg.addColorStop(0, '#FF9A9E'); cg.addColorStop(1, '#FECFEF')
+    ctx.setFillStyle(cg as any)
+    ctx.fillRect(covX, covY, covW, covH)
     ctx.setFillStyle('rgba(255,255,255,0.9)')
-    ctx.setFontSize(28)
+    ctx.setFontSize(24); ctx.setTextAlign('center')
+    ctx.fillText(brandName, covX + covW / 2, covY + covH / 2)
+    ctx.setTextAlign('left')
+  }
+  ctx.restore()
+
+  // 5. 旋转撞色标签「一起薅羊毛」（盖在封面卡片右下）
+  ctx.save()
+  ctx.translate(covX + covW - 74, covY + covH - 10)
+  ctx.rotate((-4 * Math.PI) / 180)
+  ctx.setFillStyle('#FFD93D')
+  roundRect(ctx, 0, 0, 92, 26, 13); ctx.fill()
+  ctx.setFillStyle('#D4380D')
+  ctx.setFontSize(12)
+  ctx.setTextAlign('center')
+  ctx.fillText('一起薅羊毛', 46, 17)
+  ctx.restore()
+  ctx.setTextAlign('left')
+
+  // 6. 主标题（白色粗体，最多两行）
+  ctx.setFillStyle('#ffffff')
+  ctx.setFontSize(19)
+  const titleLines = drawTitleLines(ctx, title, 18, covY + covH + 34, POSTER_W - 36)
+
+  // 7. 副标题（半透明白）
+  let cursorY = covY + covH + 34 + (titleLines - 1) * 24 + 22
+  if (subtitle) {
+    ctx.setFillStyle('rgba(255,255,255,0.85)')
+    ctx.setFontSize(12)
+    const sub = String(subtitle)
+    const subText = ctx.measureText(sub).width > POSTER_W - 36 ? sub.slice(0, 18) + '…' : sub
+    ctx.fillText(subText, 18, cursorY)
+    cursorY += 20
+  }
+
+  // 8. 底部白色圆角卡片（太阳码 + 引导文案 + 价格徽章）
+  const cardY = POSTER_H - 108, cardH = 86
+  ctx.setFillStyle('#ffffff')
+  roundRect(ctx, 14, cardY, POSTER_W - 28, cardH, 14); ctx.fill()
+
+  // 价格爆炸贴（黄色星形徽章 + 红字）
+  if (priceText) {
+    ctx.save()
+    ctx.translate(52, cardY + cardH / 2)
+    ctx.rotate((-8 * Math.PI) / 180)
+    ctx.setFillStyle('#FFD93D')
+    starPath(ctx, 0, 0, 12, 34, 27); ctx.fill()
+    ctx.setFillStyle('#FF2E4D')
+    ctx.setFontSize(15)
     ctx.setTextAlign('center')
-    ctx.fillText(brandName, POSTER_W / 2, COVER_H / 2)
+    ctx.fillText(String(priceText), 0, 5)
+    ctx.restore()
     ctx.setTextAlign('left')
   }
 
-  // 3. 品牌标签
-  ctx.setFillStyle('#FF4757')
-  ctx.setFontSize(12)
-  ctx.fillText(`「${brandName}」`, 16, COVER_H + 28)
-
-  // 4. 主标题（最多两行）
+  // 引导文案
+  const textX = priceText ? 100 : 26
   ctx.setFillStyle('#1f2937')
-  ctx.setFontSize(17)
-  const titleLines = drawTitleLines(ctx, title, 16, COVER_H + 54, POSTER_W - 32)
+  ctx.setFontSize(14)
+  ctx.fillText('扫码一起嗨抢', textX, cardY + 32)
+  ctx.setFillStyle('#9ca3af')
+  ctx.setFontSize(11)
+  ctx.fillText('长按识别小程序码', textX, cardY + 52)
+  ctx.fillText('手慢无，速来～', textX, cardY + 68)
 
-  // 5. 副标题
-  let cursorY = COVER_H + 54 + (titleLines - 1) * 24 + 26
-  if (subtitle) {
-    ctx.setFillStyle('#6b7280')
-    ctx.setFontSize(12)
-    const sub = String(subtitle)
-    const subText = ctx.measureText(sub).width > POSTER_W - 32 ? sub.slice(0, 20) + '…' : sub
-    ctx.fillText(subText, 16, cursorY)
-    cursorY += 22
-  }
-
-  // 6. 价格
-  if (priceText) {
-    ctx.setFillStyle('#FF4757')
-    ctx.setFontSize(20)
-    ctx.fillText(priceText, 16, POSTER_H - 78)
-  }
-
-  // 7. 分隔线
-  ctx.setStrokeStyle('#f3f4f6')
-  ctx.setLineWidth(1)
-  ctx.beginPath()
-  ctx.moveTo(16, POSTER_H - 62)
-  ctx.lineTo(POSTER_W - 16, POSTER_H - 62)
-  ctx.stroke()
-
-  // 8. 太阳码（右下圆形）
+  // 太阳码（右侧圆形）
   const qrPath = await downloadImage(qrUrl)
   if (qrPath) {
-    const qrSize = 52
-    const qrX = POSTER_W - 16 - qrSize
-    const qrY = POSTER_H - 14 - qrSize
+    const qrSize = 62
+    const qrX = POSTER_W - 14 - 16 - qrSize
+    const qrY = cardY + (cardH - qrSize) / 2
     ctx.save()
     ctx.beginPath()
     ctx.arc(qrX + qrSize / 2, qrY + qrSize / 2, qrSize / 2, 0, 2 * Math.PI)
@@ -183,10 +251,12 @@ export async function drawSharePoster(opts: SharePosterOptions): Promise<boolean
     ctx.restore()
   }
 
-  // 9. 底部提示
-  ctx.setFillStyle('#9ca3af')
-  ctx.setFontSize(11)
-  ctx.fillText('长按识别小程序码，立即抢购', 16, POSTER_H - 30)
+  // 9. 最底部 slogan
+  ctx.setFillStyle('rgba(255,255,255,0.75)')
+  ctx.setFontSize(10)
+  ctx.setTextAlign('center')
+  ctx.fillText(`${brandName} · 好东西值得分享`, POSTER_W / 2, POSTER_H - 10)
+  ctx.setTextAlign('left')
 
   return new Promise((resolve) => {
     ctx.draw(false, () => resolve(true))
