@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -234,6 +234,7 @@ const AdminPage = () => {
             { icon: 'settings', label: '抽奖设置', color: '#ec4899', bg: '#fdf2f8', page: '/pages/lottery-settings/index', adminOnly: true },
             { icon: 'wallet', label: '平台佣金', color: '#f59e0b', bg: '#fffbeb', page: '/pages/platform-commission/index', adminOnly: true },
             { icon: 'banknote', label: '提现审核', color: '#0ea5e9', bg: '#f0f9ff', page: '/pages/withdrawal-review/index', adminOnly: true },
+            { icon: 'handcoins', label: '分销管理', color: '#f43f5e', bg: '#fff1f2', page: '/pages/distribution-audit/index', adminOnly: true },
             { icon: 'bell', label: '消息模板', color: '#6366f1', bg: '#eef2ff', page: '/pages/notify-template-config/index', adminOnly: true },
             { icon: 'shield', label: '微信配置', color: '#16a34a', bg: '#f0fdf4', page: '/pages/wechat-config/index', adminOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
@@ -254,6 +255,7 @@ const AdminPage = () => {
                 {item.icon === 'settings' && <Settings size={28} color={item.color} />}
                 {item.icon === 'wallet' && <Wallet size={28} color={item.color} />}
                 {item.icon === 'banknote' && <Banknote size={28} color={item.color} />}
+                {item.icon === 'handcoins' && <HandCoins size={28} color={item.color} />}
                 {item.icon === 'bell' && <BellRing size={28} color={item.color} />}
                 {item.icon === 'shield' && <ShieldCheck size={28} color={item.color} />}
                 {item.icon === 'piggy' && <PiggyBank size={28} color={item.color} />}

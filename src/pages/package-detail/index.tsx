@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
+import SharePosterModal from '@/components/share-poster-modal'
 import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
 import {
   Phone,
@@ -103,6 +104,7 @@ export default function PackageDetail() {
   const [loading, setLoading] = useState(true)
   const [distanceText, setDistanceText] = useState('')
   const [locationDenied, setLocationDenied] = useState(false)
+  const [showPoster, setShowPoster] = useState(false)
   const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
 
   // 每次页面显示时重新加载，确保门店等后台数据变更后展示最新内容
@@ -398,13 +400,14 @@ export default function PackageDetail() {
   return (
     <View className="min-h-screen bg-gray-50 pb-24">
       <ScrollView scrollY className="h-screen">
-        {/* 头图轮播 */}
-        <View className="w-full h-64 bg-gray-200 relative">
+        {/* 头图：完整展示不裁切，深色底衬托，点击可放大预览 */}
+        <View className="w-full h-72 bg-gray-900 relative">
           {allImages.length > 0 ? (
-            <Image 
-              src={allImages[0]} 
-              className="w-full h-full" 
-              mode="aspectFill"
+            <Image
+              src={allImages[0]}
+              className="w-full h-full"
+              mode="aspectFit"
+              onClick={() => Taro.previewImage({ current: allImages[0], urls: allImages })}
             />
           ) : (
             <View className="flex items-center justify-center h-full">
@@ -533,7 +536,7 @@ export default function PackageDetail() {
                     >
                       <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                         {prize.image_url ? (
-                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
+                          <Image src={prize.image_url} className="w-full h-full" mode="aspectFit" />
                         ) : (
                           <Gift size={24} color="#FF6B9D" />
                         )}
@@ -590,13 +593,20 @@ export default function PackageDetail() {
           </View>
         )}
 
-        {/* 图片详情 */}
+        {/* 图片详情：完整展示不裁切，点击可放大预览 */}
         {allImages.length > 1 && (
           <View className="bg-white mt-2 px-4 py-4">
             <Text className="block text-base font-bold text-gray-800 mb-4">图片详情</Text>
             <View className="flex flex-col gap-3">
               {allImages.map((img: string, idx: number) => (
-                <Image key={idx} src={img} className="w-full h-48 rounded-lg" mode="aspectFill" />
+                <View key={idx} className="w-full h-52 rounded-lg bg-gray-50 overflow-hidden">
+                  <Image
+                    src={img}
+                    className="w-full h-full"
+                    mode="aspectFit"
+                    onClick={() => Taro.previewImage({ current: img, urls: allImages })}
+                  />
+                </View>
               ))}
             </View>
           </View>
@@ -927,15 +937,44 @@ export default function PackageDetail() {
             <Text className="block text-sm text-gray-400 line-through pb-1">¥{formatPrice(originalPrice)}</Text>
           )}
         </View>
-        <View
-          onClick={handleBuy}
-          className={`px-8 py-3 rounded-full ${buying ? 'bg-[#ffaab3]' : 'bg-[#FF4757]'}`}
-        >
-          <Text className="block text-base font-semibold text-white">
-            {buying ? '购买中...' : '立即购买'}
-          </Text>
+        <View className="flex flex-row items-center gap-2">
+          {/* 分享海报 */}
+          <View
+            onClick={() => {
+              if (!isMiniApp) {
+                Taro.showToast({ title: '请在小程序中生成分享海报', icon: 'none' })
+                return
+              }
+              setShowPoster(true)
+            }}
+            className="px-4 py-3 rounded-full border border-[#FF4757]"
+          >
+            <Text className="block text-sm font-semibold text-[#FF4757]">海报</Text>
+          </View>
+          <View
+            onClick={handleBuy}
+            className={`px-8 py-3 rounded-full ${buying ? 'bg-[#ffaab3]' : 'bg-[#FF4757]'}`}
+          >
+            <Text className="block text-base font-semibold text-white">
+              {buying ? '购买中...' : '立即购买'}
+            </Text>
+          </View>
         </View>
       </View>
+
+      {/* 分享海报弹层 */}
+      {pkg && (
+        <SharePosterModal
+          visible={showPoster}
+          onClose={() => setShowPoster(false)}
+          coverUrl={pkg.cover_image || null}
+          title={pkg.name}
+          subtitle={merchant?.name || ''}
+          priceText={`¥${formatPrice(currentPrice)}`}
+          scene={`packageId=${pkg.id}`}
+          page="pages/package-detail/index"
+        />
+      )}
 
       {/* 购买确认弹窗 */}
       {showPurchaseModal && pkg && (

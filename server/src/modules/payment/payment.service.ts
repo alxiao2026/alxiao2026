@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { getSupabaseClient } from '../../storage/database/supabase-client';
 import { NotificationService } from '../notification/notification.service';
+import { DistributionService } from '../distribution/distribution.service';
 import { WechatPayService } from './wechat-pay.service';
 
 export interface PaymentRecord {
@@ -39,6 +40,7 @@ export class PaymentService {
   constructor(
     private readonly notificationService: NotificationService,
     private readonly wechatPay: WechatPayService,
+    private readonly distributionService: DistributionService,
   ) {}
 
   /**
@@ -445,6 +447,13 @@ export class PaymentService {
       amount: payment.pay_amount,
       order_no: paidOrder?.order_no || '',
     });
+
+    // 三级分销结算（fire-and-forget：失败不影响支付主流程）
+    if (paidOrder?.order_no) {
+      this.distributionService
+        .settleOrder(paidOrder.order_no)
+        .catch((err) => this.logger.warn(`分销结算失败(已忽略): ${err?.message}`));
+    }
 
     return {
       status: 'paid',

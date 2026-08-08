@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import AppTabBar from '@/components/app-tab-bar'
+import SharePosterModal from '@/components/share-poster-modal'
 import {
   Share2,
   MapPin,
@@ -22,6 +23,7 @@ import {
   ChevronRight,
   Trophy,
   PartyPopper,
+  ImagePlus,
 } from 'lucide-react-taro'
 
 interface Merchant {
@@ -95,6 +97,7 @@ export default function MerchantPage() {
   const [error, setError] = useState('')
   const [swiperIndex, setSwiperIndex] = useState(0)
   const [winStats, setWinStats] = useState<{ totalWins: number; freeMealWins: number }>({ totalWins: 0, freeMealWins: 0 })
+  const [showPoster, setShowPoster] = useState(false)
   const [winners, setWinners] = useState<WinnerRecord[]>([])
   const [distanceText, setDistanceText] = useState('')
   const [locationDenied, setLocationDenied] = useState(false)
@@ -293,11 +296,11 @@ export default function MerchantPage() {
         </View>
       ) : (
         <View>
-          {/* 顶部图集轮播 */}
-          <View className="relative w-full h-64 bg-gray-200">
+          {/* 顶部图集轮播：完整展示不裁切，深色底衬托，点击可放大预览 */}
+          <View className="relative w-full h-72 bg-gray-900">
             {gallery.length > 0 ? (
               <Swiper
-                className="w-full h-64"
+                className="w-full h-72"
                 autoplay
                 circular
                 interval={4000}
@@ -305,7 +308,12 @@ export default function MerchantPage() {
               >
                 {gallery.map((url, i) => (
                   <SwiperItem key={i}>
-                    <Image src={url} className="w-full h-64" mode="aspectFill" />
+                    <Image
+                      src={url}
+                      className="w-full h-72"
+                      mode="aspectFit"
+                      onClick={() => Taro.previewImage({ current: url, urls: gallery })}
+                    />
                   </SwiperItem>
                 ))}
               </Swiper>
@@ -505,7 +513,7 @@ export default function MerchantPage() {
                       >
                         <View className="h-18 bg-gray-50 flex items-center justify-center relative">
                           {prize.image_url ? (
-                            <Image src={prize.image_url} className="w-full h-full" mode="aspectFill" />
+                            <Image src={prize.image_url} className="w-full h-full" mode="aspectFit" />
                           ) : (
                             <Gift size={24} color="#FF6B9D" />
                           )}
@@ -613,7 +621,32 @@ export default function MerchantPage() {
                 <Text className="text-xs">分享</Text>
               </Button>
             </View>
+            {/* 生成分享海报 */}
+            <View
+              className="w-full h-11 mt-2 bg-gradient-to-r from-[#FF6B81] to-[#FF4757] rounded-full flex flex-row items-center justify-center gap-2"
+              onClick={() => {
+                if (!isMiniApp) {
+                  Taro.showToast({ title: '请在小程序中生成分享海报', icon: 'none' })
+                  return
+                }
+                setShowPoster(true)
+              }}
+            >
+              <ImagePlus size={15} color="#ffffff" />
+              <Text className="text-white text-sm font-medium">生成分享海报（含小程序码）</Text>
+            </View>
           </View>
+
+          {/* 分享海报弹层 */}
+          <SharePosterModal
+            visible={showPoster}
+            onClose={() => setShowPoster(false)}
+            coverUrl={merchant?.images?.[0] || null}
+            title={merchant?.name || ''}
+            subtitle={merchant?.address || ''}
+            scene={`merchantId=${merchantId}`}
+            page="pages/merchant/index"
+          />
 
           {/* 底部文案 */}
           <View className="py-4 text-center">

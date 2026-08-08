@@ -1711,17 +1711,21 @@ export default function PackageAdmin() {
                     </View>
                     <Text className="block text-xs text-[#FF4757]">规范示例</Text>
                   </View>
-                  <Text className="block text-xs text-gray-400 mb-3">在商品详情页以 4:3 比例展示，建议 5MB 以内</Text>
+                  <Text className="block text-xs text-gray-400 mb-3">建议上传 4:3 横图（如 1200×900 像素），5MB 以内；详情页将完整展示原图不裁切</Text>
 
                   {formData.cover_image ? (
-                    <View className="relative w-24 h-24 rounded-lg overflow-hidden">
-                      <Image src={formData.cover_image} className="w-full h-full" mode="aspectFill" />
-                      <View
-                        className="absolute top-0 right-0 bg-black bg-opacity-50 rounded-bl-lg p-1"
-                        onClick={() => updateFormData('cover_image', '')}
-                      >
-                        <X size={14} color="#fff" />
+                    <View>
+                      {/* 上传后预览：模拟详情页真实展示效果（深色底完整图） */}
+                      <View className="relative w-full h-44 rounded-lg overflow-hidden bg-gray-900">
+                        <Image src={formData.cover_image} className="w-full h-full" mode="aspectFit" />
+                        <View
+                          className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1"
+                          onClick={() => updateFormData('cover_image', '')}
+                        >
+                          <X size={14} color="#fff" />
+                        </View>
                       </View>
+                      <Text className="block text-xs text-gray-400 mt-1">预览效果：详情页头图将如此完整展示，点击右上角可删除重传</Text>
                     </View>
                   ) : (
                     <Button
@@ -1747,12 +1751,17 @@ export default function PackageAdmin() {
                     <Text className="block text-sm text-gray-600">环境图</Text>
                     <Text className="block text-xs text-[#FF4757]">查看示例</Text>
                   </View>
-                  <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张，单张建议 5MB 以内。</Text>
+                  <Text className="block text-xs text-gray-400 mb-3">良好的环境也是用户的优先选择，最多可上传 10 张，单张建议 5MB 以内；建议 4:3 或 1:1 比例，详情页将完整展示不裁切，点击小图可预览大图。</Text>
 
                   <View className="flex flex-wrap gap-2">
                     {Array.isArray(formData.environment_images) && formData.environment_images.map((url, index) => (
                       <View key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                        <Image src={url} className="w-full h-full" mode="aspectFill" />
+                        <Image
+                          src={url}
+                          className="w-full h-full"
+                          mode="aspectFit"
+                          onClick={() => Taro.previewImage({ current: url, urls: formData.environment_images })}
+                        />
                         <View
                           className="absolute top-0 right-0 bg-black bg-opacity-50 rounded-bl-lg p-1"
                           onClick={() => removeEnvImage(index)}

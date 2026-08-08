@@ -107,8 +107,8 @@ export class PrizeService {
     if (!body.name) throw new BadRequestException('奖品名称不能为空');
     if ((body.prize_type || 'coupon') === 'coupon') {
       const rate = body.discount_rate ?? 0;
-      if (!(rate >= 8 && rate <= 9.5)) {
-        throw new BadRequestException('折扣券的折扣比例必须在 8.0 ~ 9.5 折之间');
+      if (!(rate >= 1 && rate <= 9.9)) {
+        throw new BadRequestException('折扣券的折扣比例必须在 1.0 ~ 9.9 折之间');
       }
     }
 
@@ -159,11 +159,11 @@ export class PrizeService {
   }>): Promise<Prize> {
     const existing = await this.findOne(id);
 
-    // 折扣券校验：折扣比例必须在 8.0 ~ 9.5 折之间
+    // 折扣券校验：折扣比例必须在 1.0 ~ 9.9 折之间
     const targetType = body.prize_type ?? existing.prize_type;
     const targetRate = body.discount_rate ?? parseFloat(String((existing as Prize & { discount_rate?: string }).discount_rate || '0'));
-    if (targetType === 'coupon' && !(targetRate >= 8 && targetRate <= 9.5)) {
-      throw new BadRequestException('折扣券的折扣比例必须在 8.0 ~ 9.5 折之间');
+    if (targetType === 'coupon' && !(targetRate >= 1 && targetRate <= 9.9)) {
+      throw new BadRequestException('折扣券的折扣比例必须在 1.0 ~ 9.9 折之间');
     }
 
     const updateData: Record<string, any> = {};

@@ -3,11 +3,15 @@ export default typeof definePageConfig === 'function'
       navigationBarTitleText: '膨胀团',
       navigationStyle: 'custom',
       navigationBarTextStyle: 'black',
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      enableShareAppMessage: true,
+      enableShareTimeline: true
     })
   : {
       navigationBarTitleText: '膨胀团',
       navigationStyle: 'custom',
       navigationBarTextStyle: 'black',
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      enableShareAppMessage: true,
+      enableShareTimeline: true
     }

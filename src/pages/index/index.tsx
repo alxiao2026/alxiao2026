@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro, { useShareAppMessage, useShareTimeline, useDidShow } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useShareTimeline, useDidShow, useLoad } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -132,6 +132,33 @@ const IndexPage = () => {
     }
   }, []);
 
+  // 分销裂变：识别分享链接/太阳码中的 inviter 参数，绑定上下级关系
+  useLoad((options) => {
+    // 太阳码进入时参数在 scene（如 inviter=xxx），分享卡片进入时在 query.inviter
+    let inviterId = typeof options?.inviter === 'string' ? options.inviter : '';
+    const sceneRaw = typeof options?.scene === 'string' ? decodeURIComponent(options.scene) : '';
+    if (!inviterId && sceneRaw) {
+      const m = sceneRaw.match(/inviter=([^&]+)/);
+      if (m) inviterId = m[1];
+    }
+    if (!inviterId) return;
+    const tryBind = () => {
+      const myId = Taro.getStorageSync('user_id');
+      if (!myId || myId === inviterId) return;
+      Network.request({
+        url: '/api/distribution/bind',
+        method: 'POST',
+        data: { user_id: myId, inviter_id: inviterId }
+      }).then((res) => {
+        console.log('[分销绑定]', JSON.stringify(res.data));
+      }).catch((err) => {
+        console.log('[分销绑定] 失败（可忽略）:', err);
+      });
+    };
+    // 等 user_id 初始化完成后再绑定（首次进入时 user_id 是异步生成的）
+    setTimeout(tryBind, 800);
+  });
+
   // 获取数据
   useEffect(() => {
     fetchRankShops();
@@ -185,17 +212,19 @@ const IndexPage = () => {
 
   // 设置分享（转发给朋友）
   useShareAppMessage(() => {
+    const inviterId = Taro.getStorageSync('user_id') || '';
     return {
       title: '膨胀团！下单套餐，分享好友抽大奖！',
-      path: '/pages/index/index',
+      path: inviterId ? `/pages/index/index?inviter=${inviterId}` : '/pages/index/index',
     };
   });
 
   // 分享到朋友圈
   useShareTimeline(() => {
+    const inviterId = Taro.getStorageSync('user_id') || '';
     return {
       title: '膨胀团！下单套餐抽霸王餐，每单都有好运！',
-      query: '',
+      query: inviterId ? `inviter=${inviterId}` : '',
     };
   });
 

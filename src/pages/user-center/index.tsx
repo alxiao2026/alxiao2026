@@ -8,7 +8,7 @@ import AppTabBar from '@/components/app-tab-bar';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell, HandCoins
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -205,6 +205,12 @@ const UserCenterPage = () => {
       label: '中奖记录',
       desc: '历史中奖 & 未参与订单',
       onClick: goToLotteryRecords
+    },
+    {
+      icon: <HandCoins size={20} color="#6B7280" />,
+      label: '分销中心',
+      desc: '邀请好友下单赚佣金',
+      onClick: () => Taro.navigateTo({ url: '/pages/distribution/index' })
     },
     {
       icon: <Pencil size={20} color="#6B7280" />,

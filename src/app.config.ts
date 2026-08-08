@@ -30,7 +30,9 @@ export default defineAppConfig({
     'pages/notify-template-config/index',
     'pages/wechat-config/index',
     'pages/platform-commission/index',
-    'pages/notification-center/index'
+    'pages/notification-center/index',
+    'pages/distribution/index',
+    'pages/distribution-audit/index'
   ],
   window: {
     backgroundTextStyle: 'light',

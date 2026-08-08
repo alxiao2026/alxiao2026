@@ -4,5 +4,6 @@ export default typeof definePageConfig === 'function'
       navigationBarBackgroundColor: '#FF4757',
       navigationBarTextStyle: 'white',
       enableShareAppMessage: true,
+      enableShareTimeline: true,
     })
-  : { navigationBarTitleText: '商家首页', enableShareAppMessage: true }
+  : { navigationBarTitleText: '商家首页', enableShareAppMessage: true, enableShareTimeline: true }

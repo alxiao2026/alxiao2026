@@ -112,19 +112,22 @@ export default function PrizeManagePage() {
     }
   };
 
-  // 已被其他奖品占用的概率（不含兜底奖、不含正在编辑的奖品自身）
-  const usedProbability = () =>
+  // 规范化商家ID（null/undefined 统一为 null，其余转 number 便于比较）
+  const normMid = (v: number | null | undefined) => (v === null || v === undefined ? null : Number(v));
+
+  // 已被其他奖品占用的概率（按商家维度：仅统计同一可用门店下的启用中非兜底奖品，不含正在编辑的奖品自身）
+  const usedProbability = (targetMid: number | null) =>
     prizes
-      .filter((p) => p.is_active && !p.is_fallback && p.id !== editingPrize?.id)
+      .filter((p) => p.is_active && !p.is_fallback && p.id !== editingPrize?.id && normMid(p.merchant_id) === normMid(targetMid))
       .reduce((s, p) => s + (parseFloat(p.probability) || 0), 0);
 
-  // 剩余可分配概率（保留两位小数，最低为 0）
-  const remainingProbability = () => Math.max(0, Math.round((100 - usedProbability()) * 100) / 100);
+  // 剩余可分配概率（按商家维度，保留两位小数，最低为 0）
+  const remainingProbability = (targetMid: number | null) => Math.max(0, Math.round((100 - usedProbability(targetMid)) * 100) / 100);
 
   const openCreatePrize = () => {
     setEditingPrize(null);
-    // 自动填入剩余可分配概率，填完一个下一个自动递减
-    setPrizeForm({ name: '', description: '', probability: String(remainingProbability()), stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', image_url: '', is_fallback: false });
+    // 自动填入当前商家维度下的剩余可分配概率，填完一个下一个自动递减
+    setPrizeForm({ name: '', description: '', probability: String(remainingProbability(merchantId ?? null)), stock: '100', prize_type: 'coupon', discount_rate: '8.5', discount_cap: '', product_name: '', product_value: '', validity_hours: '', image_url: '', is_fallback: false });
     setFormMerchantId(merchantId); // 商家账号默认本店；超管默认全部门店通用
     setShowDialog(true);
   };
@@ -146,15 +149,16 @@ export default function PrizeManagePage() {
 
   const handleSavePrize = async () => {
     if (!prizeForm.name) { Taro.showToast({ title: '请输入奖品名称', icon: 'none' }); return; }
-    // 概率总和校验仅约束商家账号（单门店奖品池合计不超 100%）；
-    // 系统账户（超管）面向多门店投放平台奖品，不受 100% 上限限制，否则平台侧将无法新增任何奖品
-    if (merchantId && !prizeForm.is_fallback) {
+    // 概率总和按商家维度校验：同一可用门店下的启用奖品概率合计不超 100%
+    // 商家账号固定校验本店；超管按表单所选目标门店校验（全部门店通用也作为一个维度）
+    if (!prizeForm.is_fallback) {
+      const targetMid = merchantId ?? formMerchantId;
       const prob = parseFloat(prizeForm.probability) || 0;
-      const remaining = remainingProbability();
+      const remaining = remainingProbability(targetMid);
       if (prob > remaining + 1e-9) {
         Taro.showModal({
           title: '概率超标',
-          content: `全部奖品概率之和不能超过 100%\n当前剩余可分配 ${remaining}%，建议填 ${remaining}%`,
+          content: `「${getMerchantName(targetMid)}」奖品概率之和不能超过 100%\n该门店剩余可分配 ${remaining}%，建议填 ${remaining}%`,
           showCancel: false,
           confirmText: '知道了',
           confirmColor: '#FF4757',
@@ -164,8 +168,8 @@ export default function PrizeManagePage() {
     }
     if (prizeForm.prize_type === 'coupon') {
       const rate = Number(prizeForm.discount_rate);
-      if (!(rate > 0 && rate < 10)) {
-        Taro.showToast({ title: '折扣比例需在 0.1~9.9 折之间', icon: 'none' }); return;
+      if (!(rate >= 1 && rate <= 9.9)) {
+        Taro.showToast({ title: '折扣比例需在 1.0~9.9 折之间', icon: 'none' }); return;
       }
     }
     try {
@@ -258,6 +262,26 @@ export default function PrizeManagePage() {
     return false;
   });
 
+  // 超管视角：奖品按商家维度分组（全部门店通用视为一组），组内保持原顺序
+  const prizeGroups: { mid: number | null; name: string; items: Prize[]; totalProb: number }[] = (() => {
+    const map = new Map<string, { mid: number | null; items: Prize[] }>();
+    filteredPrizes.forEach((p) => {
+      const mid = normMid(p.merchant_id);
+      const key = mid === null ? '__all__' : String(mid);
+      if (!map.has(key)) map.set(key, { mid, items: [] });
+      map.get(key)!.items.push(p);
+    });
+    const groups = Array.from(map.values()).map((g) => ({
+      mid: g.mid,
+      name: getMerchantName(g.mid),
+      items: g.items,
+      totalProb: Math.round(g.items.filter((p) => p.is_active && !p.is_fallback).reduce((s, p) => s + (parseFloat(p.probability) || 0), 0) * 100) / 100,
+    }));
+    // 「全部门店通用」排最前，其余按商家名排序
+    groups.sort((a, b) => (a.mid === null ? -1 : b.mid === null ? 1 : a.name.localeCompare(b.name, 'zh-CN')));
+    return groups;
+  })();
+
   return (
     <View className="min-h-screen bg-gray-50">
       {/* 搜索框：支持门店名或奖品标题 */}
@@ -281,13 +305,19 @@ export default function PrizeManagePage() {
         </View>
       </View>
 
-      {/* 总概率提示 */}
+      {/* 总概率提示：商家账号显示本店合计；超管按商家维度分别提示 */}
       <View className="px-4 mt-3">
         <View className="bg-red-50 border border-red-200 rounded-xl p-3">
-          <Text className="block text-xs text-[#FF4757]">
-            总概率: <Text className="font-bold">{prizes.filter(p => p.is_active && !p.is_fallback).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
-            （低于 100% 的差额由兜底奖候补；未设兜底奖则可能出现未中奖）
-          </Text>
+          {merchantId ? (
+            <Text className="block text-xs text-[#FF4757]">
+              总概率: <Text className="font-bold">{prizes.filter(p => p.is_active && !p.is_fallback).reduce((s, p) => s + parseFloat(p.probability || '0'), 0)}%</Text>
+              （低于 100% 的差额由兜底奖候补；未设兜底奖则可能出现未中奖）
+            </Text>
+          ) : (
+            <Text className="block text-xs text-[#FF4757]">
+              中奖率按商家维度独立控制：每个门店（含「全部门店通用」）奖品概率合计不超过 100%；低于 100% 的差额由该维度兜底奖候补
+            </Text>
+          )}
         </View>
       </View>
 
@@ -305,7 +335,19 @@ export default function PrizeManagePage() {
             </Text>
           </View>
         ) : (
-          filteredPrizes.map((prize) => (
+          // 超管视角按商家维度分组排版；商家账号仅本店一组，直接平铺
+          prizeGroups.map((group) => (
+            <View key={group.mid === null ? '__all__' : String(group.mid)}>
+              {!merchantId && (
+                <View className="flex flex-row items-center gap-2 mt-2 mb-2 px-1">
+                  <Store size={15} color="#FF4757" />
+                  <Text className="text-sm font-bold text-gray-800">{group.name}</Text>
+                  <View className="bg-red-50 rounded-full px-2 py-1">
+                    <Text className="text-xs text-[#FF4757] font-semibold">概率合计 {group.totalProb}%</Text>
+                  </View>
+                </View>
+              )}
+              {group.items.map((prize) => (
             <Card key={prize.id} className="mb-3">
               <CardContent className="p-4">
                 {/* 奖品图片（有则展示） */}
@@ -388,6 +430,8 @@ export default function PrizeManagePage() {
                 </View>
               </CardContent>
             </Card>
+              ))}
+            </View>
           ))
         )}
       </View>
@@ -495,7 +539,7 @@ export default function PrizeManagePage() {
                   <>
                     <View className="flex flex-row gap-3">
                       <View className="flex-1 min-w-0">
-                        <Text className="block text-sm text-gray-700 font-medium mb-1">折扣比例（0.1~9.9折）</Text>
+                        <Text className="block text-sm text-gray-700 font-medium mb-1">折扣比例（1.0~9.9折）</Text>
                         <View className="bg-white rounded-xl px-3 py-2 border border-gray-200">
                           <Input type="digit" className="w-full" style={{ backgroundColor: 'transparent' }} value={prizeForm.discount_rate} placeholder="如 8.5" onInput={(e) => setPrizeForm({ ...prizeForm, discount_rate: e.detail.value })} />
                         </View>
@@ -541,12 +585,12 @@ export default function PrizeManagePage() {
                       </View>
                       {(() => {
                         const prob = parseFloat(prizeForm.probability) || 0;
-                        const remaining = remainingProbability();
+                        const remaining = remainingProbability(merchantId ?? formMerchantId);
                         const over = prob > remaining + 1e-9;
                         return over ? (
-                          <Text className="block text-xs mt-1 text-[#FF4757] font-medium">概率超标：剩余可分配 {remaining}%，建议填 {remaining}%</Text>
+                          <Text className="block text-xs mt-1 text-[#FF4757] font-medium">概率超标：「{getMerchantName(merchantId ?? formMerchantId)}」剩余可分配 {remaining}%，建议填 {remaining}%</Text>
                         ) : (
-                          <Text className="block text-xs mt-1 text-gray-400">剩余可分配概率 {remaining}%</Text>
+                          <Text className="block text-xs mt-1 text-gray-400">「{getMerchantName(merchantId ?? formMerchantId)}」剩余可分配概率 {remaining}%</Text>
                         );
                       })()}
                     </View>

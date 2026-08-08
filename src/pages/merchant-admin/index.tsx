@@ -879,8 +879,8 @@ export default function MerchantAdmin() {
                   <View className="relative">
                     <Image
                       src={formData.logo}
-                      className="w-full h-48 rounded-lg object-cover"
-                      mode="aspectFill"
+                      className="w-full h-48 rounded-lg bg-gray-900"
+                      mode="aspectFit"
                     />
                     <Button
                       className="absolute top-2 right-2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
@@ -899,7 +899,7 @@ export default function MerchantAdmin() {
                     <Text className="block text-sm text-gray-500 mt-2">
                       {uploadingLogo ? '上传中...' : '点击上传首图'}
                     </Text>
-                    <Text className="block text-xs text-gray-400 mt-1">建议尺寸 750x400，不超过5M</Text>
+                    <Text className="block text-xs text-gray-400 mt-1">建议 4:3 横图（如 1200×900 像素），不超过5M；商家主页将完整展示原图不裁切</Text>
                   </Button>
                 )}
               </View>
@@ -912,8 +912,9 @@ export default function MerchantAdmin() {
                     <View key={index} className="relative">
                       <Image
                         src={img}
-                        className="w-full h-24 rounded-lg object-cover"
-                        mode="aspectFill"
+                        className="w-full h-24 rounded-lg bg-gray-50"
+                        mode="aspectFit"
+                        onClick={() => Taro.previewImage({ current: img, urls: formData.images })}
                       />
                       <Button
                         className="absolute top-1 right-1 w-6 h-6 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
@@ -936,7 +937,7 @@ export default function MerchantAdmin() {
                     </Button>
                   )}
                 </View>
-                <Text className="block text-xs text-gray-400 mt-2">最多9张，每张不超过5M</Text>
+                <Text className="block text-xs text-gray-400 mt-2">最多9张，每张不超过5M；建议 4:3 或 1:1 比例，商家主页将完整展示不裁切，点击小图可预览大图</Text>
               </View>
 
               {/* 营业时间 */}
