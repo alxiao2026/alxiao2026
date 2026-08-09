@@ -623,6 +623,14 @@ export class PaymentService {
       throw new InternalServerErrorException(`更新订单失败: ${orderErr.message}`);
     }
 
+    // 分销逆向分账：全额退款回收本单已产生的两级佣金（多处于冷静期 pending，直接作废回收）
+    // 异步执行，失败不阻塞退款主流程
+    if (fullyRefunded && order.order_no) {
+      this.distributionService
+        .revokeByOrder(order.order_no, '订单全额退款回收')
+        .catch((e: any) => console.error('退款逆向分账失败:', e?.message));
+    }
+
     // 3. 营销权益联动：一旦发生退款，本单折扣权益作废，不可恢复
     // 注意：lottery_records 无 prize_type 列，locked/redeemed 状态仅存在于折扣券/霸王餐
     await this.client

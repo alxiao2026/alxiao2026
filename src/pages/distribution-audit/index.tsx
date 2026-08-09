@@ -22,9 +22,19 @@ interface DistConfig {
   enabled: boolean
   level1_rate: number
   level2_rate: number
-  level3_rate: number
+  merchant_rate: number
+  pool_rate: number
+  platform_rate: number
+  cooling_days: number
   min_withdraw: number
   bind_expire_days: number
+}
+
+interface FundsOverview {
+  pending_amount: number
+  settled_amount: number
+  revoked_amount: number
+  pending_count: number
 }
 
 const fmt = (n: number) => (Math.round(Number(n) * 100) / 100).toFixed(2)
@@ -41,8 +51,9 @@ export default function DistributionAudit() {
   const [list, setList] = useState<WithdrawItem[]>([])
   const [loading, setLoading] = useState(true)
   const [config, setConfig] = useState<DistConfig | null>(null)
-  const [configForm, setConfigForm] = useState({ level1: '10', level2: '5', level3: '2', minWithdraw: '10', bindExpireDays: '0' })
+  const [configForm, setConfigForm] = useState({ merchant: '70', pool: '20', platform: '10', level1: '60', level2: '40', coolingDays: '7', minWithdraw: '1', bindExpireDays: '0' })
   const [savingConfig, setSavingConfig] = useState(false)
+  const [funds, setFunds] = useState<FundsOverview | null>(null)
 
   const fetchList = async (status?: string) => {
     setLoading(true)
@@ -67,9 +78,12 @@ export default function DistributionAudit() {
       if (c) {
         setConfig(c)
         setConfigForm({
+          merchant: String(Number(c.merchant_rate ?? 70)),
+          pool: String(Number(c.pool_rate ?? 20)),
+          platform: String(Number(c.platform_rate ?? 10)),
           level1: String(Number(c.level1_rate)),
           level2: String(Number(c.level2_rate)),
-          level3: String(Number(c.level3_rate)),
+          coolingDays: String(Number(c.cooling_days ?? 7)),
           minWithdraw: String(Number(c.min_withdraw)),
           bindExpireDays: String(Number(c.bind_expire_days ?? 0)),
         })
@@ -79,9 +93,20 @@ export default function DistributionAudit() {
     }
   }
 
+  const fetchFunds = async () => {
+    try {
+      const res = await Network.request({ url: '/api/distribution/admin/funds' })
+      console.log('[分销资金]:', res.data)
+      setFunds(res.data?.data || null)
+    } catch (err) {
+      console.error('[分销资金] 加载失败:', err)
+    }
+  }
+
   useDidShow(() => {
     fetchList(tab === 'config' ? undefined : tab === 'all' ? undefined : tab)
     fetchConfig()
+    fetchFunds()
   })
 
   const handleTabChange = (v: string) => {
@@ -124,33 +149,45 @@ export default function DistributionAudit() {
   }
 
   const handleSaveConfig = async () => {
+    const merchant = parseFloat(configForm.merchant) || 0
+    const pool = parseFloat(configForm.pool) || 0
+    const platform = parseFloat(configForm.platform) || 0
     const l1 = parseFloat(configForm.level1) || 0
     const l2 = parseFloat(configForm.level2) || 0
-    const l3 = parseFloat(configForm.level3) || 0
+    const coolingDays = parseInt(configForm.coolingDays, 10) || 0
     const minW = parseFloat(configForm.minWithdraw) || 0
     const bindDays = parseInt(configForm.bindExpireDays, 10) || 0
-    if (l1 < 0 || l2 < 0 || l3 < 0 || l1 > 100 || l2 > 100 || l3 > 100) {
-      Taro.showToast({ title: '佣金比例需在 0-100 之间', icon: 'none' })
+    if (Math.round(merchant + pool + platform) !== 100) {
+      Taro.showToast({ title: '商家/分销池/平台合计须为 100%', icon: 'none' })
       return
     }
-    if (bindDays < 0) {
-      Taro.showToast({ title: '绑定有效天数不能为负数', icon: 'none' })
+    if (Math.round(l1 + l2) !== 100) {
+      Taro.showToast({ title: '一级 + 二级瓜分比例合计须为 100%', icon: 'none' })
       return
     }
-    if (l1 + l2 + l3 > 50) {
-      Taro.showModal({ title: '提示', content: `三级佣金合计 ${l1 + l2 + l3}%，超过 50% 可能导致亏损，确认保存？`, success: (r) => { if (r.confirm) doSave(l1, l2, l3, minW, bindDays) } })
+    if (coolingDays < 0 || bindDays < 0) {
+      Taro.showToast({ title: '天数不能为负数', icon: 'none' })
       return
     }
-    doSave(l1, l2, l3, minW, bindDays)
+    doSave({ merchant, pool, platform, l1, l2, coolingDays, minW, bindDays })
   }
 
-  const doSave = async (l1: number, l2: number, l3: number, minW: number, bindDays: number) => {
+  const doSave = async (p: { merchant: number; pool: number; platform: number; l1: number; l2: number; coolingDays: number; minW: number; bindDays: number }) => {
     setSavingConfig(true)
     try {
       const res = await Network.request({
         url: '/api/distribution/config',
         method: 'PUT',
-        data: { level1_rate: l1, level2_rate: l2, level3_rate: l3, min_withdraw: minW, bind_expire_days: bindDays },
+        data: {
+          merchant_rate: p.merchant,
+          pool_rate: p.pool,
+          platform_rate: p.platform,
+          level1_rate: p.l1,
+          level2_rate: p.l2,
+          cooling_days: p.coolingDays,
+          min_withdraw: p.minW,
+          bind_expire_days: p.bindDays,
+        },
       })
       console.log('[分销配置] 保存:', res.data)
       Taro.showToast({ title: '配置已保存', icon: 'success' })
@@ -238,16 +275,38 @@ export default function DistributionAudit() {
         <TabsContent value="config">
           <ScrollView scrollY className="h-screen">
             <View className="px-4 pt-3 pb-10">
-              <View className="bg-white rounded-2xl p-4 shadow-sm">
-                <View className="flex flex-row items-center gap-2 mb-4">
-                  <Settings size={16} color="#6B7280" />
-                  <Text className="block text-base font-semibold text-gray-900">三级佣金比例</Text>
+              {/* 资金看板 */}
+              {funds && (
+                <View className="rounded-2xl p-4 mb-3" style={{ background: 'linear-gradient(135deg,#1A1A2E,#16213E)' }}>
+                  <Text className="block text-xs text-amber-300 mb-3">分销激励池资金（每单 {Number(config?.pool_rate ?? 20)}% 注入）</Text>
+                  <View className="flex flex-row">
+                    <View className="flex-1">
+                      <Text className="block text-lg font-bold text-amber-400">¥{fmt(funds.pending_amount)}</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">待入账({funds.pending_count})</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="block text-lg font-bold text-green-400">¥{fmt(funds.settled_amount)}</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">已结算</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="block text-lg font-bold text-red-400">¥{fmt(funds.revoked_amount)}</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">退款回收</Text>
+                    </View>
+                  </View>
                 </View>
+              )}
 
+              {/* 订单分账比例 */}
+              <View className="bg-white rounded-2xl p-4 shadow-sm mb-3">
+                <View className="flex flex-row items-center gap-2 mb-1">
+                  <Settings size={16} color="#6B7280" />
+                  <Text className="block text-base font-semibold text-gray-900">订单分账比例</Text>
+                </View>
+                <Text className="block text-xs text-gray-400 mb-4">每笔订单实付在三方的分配，合计须为 100%</Text>
                 {([
-                  { key: 'level1' as const, label: '一级佣金（直推）', desc: '好友下单，推荐人得' },
-                  { key: 'level2' as const, label: '二级佣金（间推）', desc: '好友的好友下单得' },
-                  { key: 'level3' as const, label: '三级佣金', desc: '第三代好友下单得' },
+                  { key: 'merchant' as const, label: '商家基础收入', desc: '核销后划转给商家' },
+                  { key: 'pool' as const, label: '分销激励池', desc: '分给两级种草官' },
+                  { key: 'platform' as const, label: '平台服务费', desc: '平台另出团长战队奖与伯乐奖' },
                 ]).map((row) => (
                   <View key={row.key} className="mb-4">
                     <Text className="block text-sm font-medium text-gray-800 mb-1">{row.label}</Text>
@@ -265,10 +324,52 @@ export default function DistributionAudit() {
                     <Text className="block text-xs text-gray-400 mt-1">{row.desc}</Text>
                   </View>
                 ))}
+              </View>
 
-                <View className="mb-4">
-                  <Text className="block text-sm font-medium text-gray-800 mb-1">最低提现金额（元）</Text>
-                  <View className="bg-gray-50 rounded-lg">
+              {/* 激励池瓜分（两级） */}
+              <View className="bg-white rounded-2xl p-4 shadow-sm mb-3">
+                <Text className="block text-base font-semibold text-gray-900 mb-1">激励池瓜分（两级）</Text>
+                <Text className="block text-xs text-gray-400 mb-4">激励池在一、二级种草官之间的分配，合计须为 100%</Text>
+                {([
+                  { key: 'level1' as const, label: '一级种草官（直推）', desc: '好友下单，推荐人得' },
+                  { key: 'level2' as const, label: '二级种草官（间推）', desc: '好友的好友下单得' },
+                ]).map((row) => (
+                  <View key={row.key} className="mb-4">
+                    <Text className="block text-sm font-medium text-gray-800 mb-1">{row.label}</Text>
+                    <View className="flex flex-row items-center gap-2">
+                      <View className="flex-1 bg-gray-50 rounded-lg">
+                        <Input
+                          type="digit"
+                          value={configForm[row.key]}
+                          onInput={(e) => setConfigForm({ ...configForm, [row.key]: e.detail.value })}
+                          className="w-full px-3 py-2 text-sm bg-transparent"
+                        />
+                      </View>
+                      <Text className="text-sm text-gray-500">%</Text>
+                    </View>
+                    <Text className="block text-xs text-gray-400 mt-1">{row.desc}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* 结算与提现规则 */}
+              <View className="bg-white rounded-2xl p-4 shadow-sm">
+                <Text className="block text-base font-semibold text-gray-900 mb-4">结算与提现规则</Text>
+                <View className="flex items-center gap-3 mb-4">
+                  <Text className="text-sm text-gray-700 w-24">佣金冷静期</Text>
+                  <View className="flex-1 bg-gray-50 rounded-lg">
+                    <Input
+                      type="number"
+                      value={configForm.coolingDays}
+                      onInput={(e) => setConfigForm({ ...configForm, coolingDays: e.detail.value })}
+                      className="w-full px-3 py-2 text-sm bg-transparent"
+                    />
+                  </View>
+                  <Text className="text-sm text-gray-500">天</Text>
+                </View>
+                <View className="flex items-center gap-3 mb-4">
+                  <Text className="text-sm text-gray-700 w-24">最低提现</Text>
+                  <View className="flex-1 bg-gray-50 rounded-lg">
                     <Input
                       type="digit"
                       value={configForm.minWithdraw}
@@ -276,9 +377,8 @@ export default function DistributionAudit() {
                       className="w-full px-3 py-2 text-sm bg-transparent"
                     />
                   </View>
+                  <Text className="text-sm text-gray-500">元</Text>
                 </View>
-
-                {/* 绑定有效天数 */}
                 <View className="flex items-center gap-3 mb-2">
                   <Text className="text-sm text-gray-700 w-24">绑定有效期</Text>
                   <View className="flex-1 bg-gray-50 rounded-lg">
@@ -292,12 +392,12 @@ export default function DistributionAudit() {
                   </View>
                   <Text className="text-sm text-gray-500">天</Text>
                 </View>
-                <Text className="block text-xs text-gray-400 mb-4">下级绑定关系超过该天数后自动失效，不再参与分佣；填 0 表示永久有效</Text>
+                <Text className="block text-xs text-gray-400 mb-4">绑定关系超过该天数自动失效，不再参与分佣；填 0 表示永久有效</Text>
 
                 {config && (
                   <View className="bg-blue-50 rounded-lg p-3 mb-4">
                     <Text className="block text-xs text-blue-700">
-                      当前：一级 {Number(config.level1_rate)}% · 二级 {Number(config.level2_rate)}% · 三级 {Number(config.level3_rate)}% · 最低提现 ¥{Number(config.min_withdraw)} · 绑定 {Number(config.bind_expire_days) === 0 ? '永久' : `${Number(config.bind_expire_days)} 天`}
+                      当前：商家 {Number(config.merchant_rate)}% · 池 {Number(config.pool_rate)}% · 平台 {Number(config.platform_rate)}%｜一级 {Number(config.level1_rate)}% · 二级 {Number(config.level2_rate)}%｜冷静期 {Number(config.cooling_days)} 天 · 最低提现 ¥{Number(config.min_withdraw)}
                     </Text>
                   </View>
                 )}

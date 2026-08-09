@@ -210,8 +210,8 @@ const UserCenterPage = () => {
     },
     {
       icon: <HandCoins size={20} color="#6B7280" />,
-      label: '分销中心',
-      desc: '邀请好友下单赚佣金',
+      label: '搞钱中心',
+      desc: '分享赚佣金，组队躺赚',
       onClick: () => Taro.navigateTo({ url: '/pages/distribution/index' })
     },
     {

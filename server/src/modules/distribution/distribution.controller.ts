@@ -44,10 +44,10 @@ export class DistributionController {
     return { code: 200, msg: 'success', data };
   }
 
-  /** 我的团队（level=1/2/3） */
+  /** 我的团队（合规：仅支持两级，level=1/2） */
   @Get('my/:userId/team')
   async team(@Param('userId') userId: string, @Query('level') level?: string) {
-    const lv = Math.min(3, Math.max(1, parseInt(level || '1', 10) || 1));
+    const lv = Math.min(2, Math.max(1, parseInt(level || '1', 10) || 1));
     const data = await this.distributionService.getTeam(userId, lv);
     return { code: 200, msg: 'success', data };
   }
@@ -83,6 +83,21 @@ export class DistributionController {
   @Get('admin/withdraws')
   async adminWithdraws(@Query('status') status?: string) {
     const data = await this.distributionService.adminWithdraws(status);
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 管理员：资金看板（各状态佣金汇总 + 待入账明细） */
+  @Get('admin/funds')
+  async adminFunds() {
+    const data = await this.distributionService.adminFunds();
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 管理员：手动释放到期佣金（可选指定用户） */
+  @Post('admin/release')
+  @HttpCode(200)
+  async adminRelease(@Body() body: { user_id?: string }) {
+    const data = await this.distributionService.adminRelease(body?.user_id);
     return { code: 200, msg: 'success', data };
   }
 
