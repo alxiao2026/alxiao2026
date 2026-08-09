@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
+import { uploadMiniAppImage } from '@/lib/upload-image';
 import { ChevronLeft, Check, Camera, Phone, Lock, User } from 'lucide-react-taro';
 import './index.css';
 
@@ -70,13 +71,12 @@ const LoginPage: React.FC = () => {
     setWxAvatarLocal(localPath);
     setAvatarUploading(true);
     try {
-      const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file' });
-      console.log('[Login] avatar upload response:', res.data);
-      const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-      if (data?.code === 200 && data?.data?.url) {
-        setWxAvatar(data.data.url);
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(localPath);
+      if (url) {
+        setWxAvatar(url);
       } else {
-        Taro.showToast({ title: '头像上传失败，可稍后再试', icon: 'none' });
+        Taro.showToast({ title: errorMsg || '头像上传失败，可稍后再试', icon: 'none' });
       }
     } catch (err) {
       console.error('[Login] avatar upload error:', err);

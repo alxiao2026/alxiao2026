@@ -36,6 +36,60 @@ export function dataUrlToFile(dataUrl: string, filename = 'crop.jpg'): File {
   return new File([u8arr], filename, { type: mime })
 }
 
+/** 把上传失败的原始错误转成用户可读提示（便于真机定位问题） */
+export function getUploadFailTip(error: any): string {
+  const msg = String(error?.errMsg || error?.message || error || '').toLowerCase()
+  if (!msg) return '上传失败，请检查网络后重试'
+  if (/domain|url not in|合法域名/.test(msg)) return '上传通道受限，已自动切换备用通道'
+  if (/cancel|取消/.test(msg)) return ''
+  if (/timeout|超时/.test(msg)) return '网络超时，请检查网络后重试'
+  if (/exceed|too large|过大|大小/.test(msg)) return '图片过大，请压缩后重试'
+  if (/file|not exist|no such|不存在|读取/.test(msg)) return '图片读取失败，请重新选择'
+  return '上传失败，请检查网络后重试'
+}
+
+/** base64 兜底上传：走 request 通道，绕开真机 uploadFile 域名白名单限制 */
+async function uploadViaBase64(localPath: string): Promise<string | null> {
+  try {
+    const fs = Taro.getFileSystemManager()
+    const readRes: any = await new Promise((resolve, reject) => {
+      fs.readFile({ filePath: localPath, encoding: 'base64', success: resolve, fail: reject })
+    })
+    const base64 = readRes?.data as string
+    if (!base64) return null
+    const isPng = /\.png$/i.test(localPath)
+    const res = await Network.request({
+      url: '/api/upload/base64',
+      method: 'POST',
+      data: { image: base64, filename: isPng ? 'upload.png' : 'upload.jpg' }
+    })
+    const body: any = res.data
+    if (res.statusCode === 200 && body?.code === 200 && body.data?.url) return body.data.url
+    return null
+  } catch (e) {
+    console.error('[Upload] base64 兜底上传失败:', e)
+    return null
+  }
+}
+
+/** 小程序端统一上传：优先 uploadFile 直传，网络层失败自动降级 base64 通道 */
+export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
+  try {
+    const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file' })
+    if (res.statusCode === 200) {
+      const body: any = JSON.parse(res.data)
+      if (body?.code === 200 && body.data?.url) return { url: body.data.url }
+      return { url: null, errorMsg: body?.msg || '上传失败' }
+    }
+    return { url: null, errorMsg: `HTTP ${res.statusCode}` }
+  } catch (error: any) {
+    // uploadFile 网络层失败（多为真机域名白名单拦截），降级 base64 通道
+    const fallbackUrl = await uploadViaBase64(localPath)
+    if (fallbackUrl) return { url: fallbackUrl }
+    return { url: null, errorMsg: getUploadFailTip(error) }
+  }
+}
+
 /**
  * 上传本地图片到对象存储
  * @param localPath 小程序 tempFilePath / H5 dataURL / H5 blob URL
@@ -46,17 +100,11 @@ export async function uploadLocalImage(localPath: string, h5File?: File): Promis
   Taro.showLoading({ title: '上传中...', mask: true })
   try {
     if (isMiniAppEnv()) {
-      const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
-        filePath: localPath,
-        name: 'file',
-      })
+      // 小程序端：优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(localPath)
       Taro.hideLoading()
-      if (uploadRes.statusCode === 200) {
-        const data = JSON.parse(uploadRes.data)
-        if (data.code === 200 && data.data?.url) return data.data.url
-      }
-      Taro.showToast({ title: '上传失败', icon: 'none' })
+      if (url) return url
+      if (errorMsg) Taro.showToast({ title: errorMsg, icon: 'none' })
       return null
     }
     // H5 端

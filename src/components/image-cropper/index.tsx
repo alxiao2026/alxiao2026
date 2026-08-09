@@ -94,8 +94,9 @@ export function ImageCropper({ visible, imagePath, aspectRatio, title, onConfirm
 
     const ctx = Taro.createCanvasContext(CANVAS_ID)
     ctx.clearRect(0, 0, OUT_WIDTH, outH)
-    // drawImage(图源, dx, dy, dWidth, dHeight, sx, sy, sWidth, sHeight)
-    ctx.drawImage(imagePath, 0, 0, OUT_WIDTH, outH, sx, sy, sw, sh)
+    // 微信 CanvasContext.drawImage 9 参数签名：源在前、目标在后
+    // drawImage(图源, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+    ctx.drawImage(imagePath, sx, sy, sw, sh, 0, 0, OUT_WIDTH, outH)
     ctx.draw(false, () => {
       setTimeout(() => {
         Taro.canvasToTempFilePath({
@@ -105,8 +106,30 @@ export function ImageCropper({ visible, imagePath, aspectRatio, title, onConfirm
           destWidth: OUT_WIDTH,
           destHeight: outH,
           success: (res) => {
+            const tempPath = res.tempFilePath
+            // 关键修复：裁剪组件隐藏/卸载后，canvas 生成的临时文件可能失效，
+            // 导致后续上传报“文件不存在”。这里先持久化为本地文件再回传，确保上传阶段文件一定可读。
+            try {
+              const fsm = Taro.getFileSystemManager && Taro.getFileSystemManager()
+              if (fsm && typeof fsm.saveFile === 'function') {
+                fsm.saveFile({
+                  tempFilePath: tempPath,
+                  success: (saveRes) => {
+                    setCutting(false)
+                    onConfirm(saveRes.savedFilePath || tempPath)
+                  },
+                  fail: () => {
+                    setCutting(false)
+                    onConfirm(tempPath)
+                  }
+                })
+                return
+              }
+            } catch (e) {
+              // H5 等不支持本地持久化的端，走兜底直接回传临时文件
+            }
             setCutting(false)
-            onConfirm(res.tempFilePath)
+            onConfirm(tempPath)
           },
           fail: () => {
             setCutting(false)

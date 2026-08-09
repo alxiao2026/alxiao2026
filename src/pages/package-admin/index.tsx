@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 import { ImageCropper } from '@/components/image-cropper'
-import { dataUrlToFile } from '@/lib/upload-image'
+import { dataUrlToFile, uploadMiniAppImage } from '@/lib/upload-image'
 import { format } from 'date-fns'
 
 interface Package {
@@ -927,32 +927,14 @@ export default function PackageAdmin() {
     setUploadingCover(true)
     Taro.showLoading({ title: '上传中...', mask: true })
     try {
-      const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
-        filePath: prepared.path,
-        name: 'file',
-        timeout: 30000
-      })
-      console.log('[PackageAdmin] upload cover statusCode:', uploadRes.statusCode)
-      // 后端返回非 200 或非 JSON 时防御性处理
-      if (uploadRes.statusCode !== 200) {
-        Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' })
-        return
-      }
-      let resData: any
-      try {
-        resData = JSON.parse(uploadRes.data)
-      } catch {
-        console.error('[PackageAdmin] upload cover response parse error:', uploadRes.data)
-        Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' })
-        return
-      }
-      console.log('[PackageAdmin] upload cover response:', resData)
-      if (resData?.code === 200 && resData?.data?.url) {
-        updateFormData('cover_image', resData.data.url)
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url: coverUrl, errorMsg: coverErr } = await uploadMiniAppImage(prepared.path)
+      if (coverUrl) {
+        console.log('[PackageAdmin] upload cover success:', coverUrl)
+        updateFormData('cover_image', coverUrl)
         Taro.showToast({ title: '上传成功', icon: 'success' })
       } else {
-        Taro.showToast({ title: resData?.msg || '上传失败，请重试', icon: 'none' })
+        Taro.showToast({ title: coverErr || '上传失败，请重试', icon: 'none' })
       }
     } catch (error) {
       console.error('[PackageAdmin] upload cover failed:', error)
@@ -1051,28 +1033,10 @@ export default function PackageAdmin() {
         let failCount = 0
         for (const f of preparedFiles) {
           try {
-            const uploadRes = await Network.uploadFile({
-              url: '/api/upload',
-              filePath: f.path,
-              name: 'file',
-              timeout: 30000
-            })
-            if (uploadRes.statusCode !== 200) {
-              console.error('[PackageAdmin] env upload bad status:', uploadRes.statusCode)
-              failCount++
-              continue
-            }
-            let resData: any
-            try {
-              resData = JSON.parse(uploadRes.data)
-            } catch {
-              console.error('[PackageAdmin] env upload parse error:', uploadRes.data)
-              failCount++
-              continue
-            }
-            console.log('[PackageAdmin] upload env response:', resData)
-            if (resData?.code === 200 && resData?.data?.url) {
-              newUrls.push(resData.data.url)
+            // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+            const { url: envUrl } = await uploadMiniAppImage(f.path)
+            if (envUrl) {
+              newUrls.push(envUrl)
             } else {
               failCount++
             }

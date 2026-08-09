@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
+import { uploadMiniAppImage } from '@/lib/upload-image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -67,15 +68,10 @@ export default function MerchantQualification() {
       const filePath = res.tempFilePaths?.[0]
       if (!filePath) return
       setUploading(field)
-      const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
-        filePath,
-        name: 'file',
-      })
-      const body = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-      const url = body?.data?.url
-      console.log('[qualification] 上传结果:', body)
-      if (!url) throw new Error(body?.msg || body?.message || '上传失败')
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(filePath)
+      console.log('[qualification] 上传结果:', url)
+      if (!url) throw new Error(errorMsg || '上传失败')
       if (field === 'business') setBusinessLicense(url)
       else if (field === 'food') setFoodLicense(url)
       else setOtherLicenses((prev) => [...prev, url])

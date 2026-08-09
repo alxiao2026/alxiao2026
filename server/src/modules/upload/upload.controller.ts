@@ -1,4 +1,4 @@
-import { Controller, Post, UploadedFile, UseInterceptors, HttpCode, BadRequestException, InternalServerErrorException } from '@nestjs/common'
+import { Controller, Post, Body, UploadedFile, UseInterceptors, HttpCode, BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { getSupabaseClient } from '@/storage/database/supabase-client'
 import { UploadService } from './upload.service'
@@ -35,6 +35,34 @@ export class UploadController {
       }
     } catch (err) {
       console.error('[Upload] 上传到对象存储失败:', err)
+      throw new InternalServerErrorException('文件上传失败，请稍后重试')
+    }
+  }
+
+  // base64 上传（兜底通道：小程序真机 uploadFile 受域名白名单限制时，改走 request 通道上传）
+  @Post('base64')
+  @HttpCode(200)
+  async uploadBase64(@Body() body: { image?: string; filename?: string }) {
+    const image = body?.image
+    if (!image || typeof image !== 'string') {
+      throw new BadRequestException('缺少图片数据')
+    }
+    const base64Data = image.includes(',') ? image.split(',')[1] : image
+    let buffer: Buffer
+    try {
+      buffer = Buffer.from(base64Data, 'base64')
+    } catch {
+      throw new BadRequestException('图片数据格式错误')
+    }
+    if (!buffer.length) throw new BadRequestException('图片数据为空')
+    if (buffer.length > 8 * 1024 * 1024) throw new BadRequestException('图片超过大小限制')
+    const filename = body?.filename || 'upload.jpg'
+    const mimetype = filename.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
+    try {
+      const result = await this.uploadService.uploadFile({ buffer, originalname: filename, mimetype, size: buffer.length } as Express.Multer.File)
+      return { code: 200, msg: 'success', data: { key: result.key, url: result.url } }
+    } catch (err) {
+      console.error('[Upload] base64 上传失败:', err)
       throw new InternalServerErrorException('文件上传失败，请稍后重试')
     }
   }

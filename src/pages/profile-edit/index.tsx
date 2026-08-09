@@ -2,6 +2,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
+import { uploadMiniAppImage } from '@/lib/upload-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, User } from 'lucide-react-taro';
@@ -168,31 +169,13 @@ const ProfileEditPage = () => {
     setUploading(true);
     Taro.showLoading({ title: '上传中...', mask: true });
     try {
-      const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
-        filePath: tempFilePath,
-        name: 'file',
-        timeout: 30000
-      });
-      console.log('[ProfileEdit] upload statusCode:', uploadRes.statusCode);
-      if (uploadRes.statusCode !== 200) {
-        Taro.showToast({ title: `上传失败(${uploadRes.statusCode})，请重试`, icon: 'none' });
-        return;
-      }
-      let data: any;
-      try {
-        data = JSON.parse(uploadRes.data);
-      } catch {
-        console.error('[ProfileEdit] upload response parse error:', uploadRes.data);
-        Taro.showToast({ title: '上传响应异常，请重试', icon: 'none' });
-        return;
-      }
-      console.log('[ProfileEdit] upload:', data);
-      if (data.code === 200 && data.data?.url) {
-        setAvatarUrl(data.data.url);
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(tempFilePath);
+      if (url) {
+        setAvatarUrl(url);
         Taro.showToast({ title: '头像已更新', icon: 'success' });
       } else {
-        Taro.showToast({ title: data.msg || '上传失败，请重试', icon: 'none' });
+        Taro.showToast({ title: errorMsg || '上传失败，请重试', icon: 'none' });
       }
     } catch (e) {
       console.error('上传头像失败:', e);

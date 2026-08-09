@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
+import { uploadMiniAppImage } from '@/lib/upload-image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -208,17 +209,14 @@ export default function PrizeManagePage() {
       const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] });
       const tempFilePath = res.tempFilePaths[0];
       Taro.showLoading({ title: '上传中...' });
-      const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(tempFilePath);
       Taro.hideLoading();
-      // Taro.uploadFile 返回的 data 是字符串，需要 JSON.parse
-      const resData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-      console.log('[PrizeManage] 上传响应:', resData);
-      const url = resData?.data?.url;
       if (url) {
         setPrizeForm(prev => ({ ...prev, image_url: url }));
         Taro.showToast({ title: '上传成功', icon: 'success' });
       } else {
-        Taro.showToast({ title: '上传失败：无URL', icon: 'none' });
+        Taro.showToast({ title: errorMsg || '上传失败', icon: 'none' });
       }
     } catch (err) {
       Taro.hideLoading();

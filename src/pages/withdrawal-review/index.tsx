@@ -3,6 +3,7 @@ import { View, Text, Image } from '@tarojs/components'
 import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Banknote, CircleCheck, CircleX, Store, Clock, CreditCard, Upload, X } from 'lucide-react-taro'
 import { Network } from '@/network'
+import { uploadMiniAppImage } from '@/lib/upload-image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -101,11 +102,9 @@ export default function WithdrawalReview() {
       const filePath = res.tempFilePaths?.[0]
       if (!filePath) return
       setUploadingProof(true)
-      const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath, name: 'file' })
-      const body = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-      console.log('[withdrawal-review] 凭证上传响应:', body)
-      const url = body?.data?.url
-      if (!url) throw new Error(body?.msg || body?.message || '上传失败')
+      // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
+      const { url, errorMsg } = await uploadMiniAppImage(filePath)
+      if (!url) throw new Error(errorMsg || '上传失败')
       setProofImage(url)
     } catch (e: any) {
       if (e?.errMsg?.includes('cancel')) return
