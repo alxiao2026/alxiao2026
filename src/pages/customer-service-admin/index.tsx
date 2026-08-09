@@ -54,8 +54,11 @@ const CustomerServiceAdminPage = () => {
     try {
       let url: string | null = null;
       if (isMiniAppEnv()) {
-        const choose = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] });
-        const path = choose.tempFilePaths?.[0];
+        // 使用 chooseMedia（chooseImage 在部分安卓机选图后会回收小程序导致重启/无响应）
+        console.log('[CustomerService] 调起 chooseMedia 选图');
+        const choose = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] });
+        const path = choose.tempFiles?.[0]?.tempFilePath;
+        console.log('[CustomerService] 选图结果 path:', path);
         if (path) url = await uploadLocalImage(path);
       } else {
         const picked = await chooseImageH5();

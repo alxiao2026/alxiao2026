@@ -51,11 +51,13 @@ export function getUploadFailTip(error: any): string {
 /** base64 兜底上传：走 request 通道，绕开真机 uploadFile 域名白名单限制 */
 async function uploadViaBase64(localPath: string): Promise<string | null> {
   try {
+    console.log('[Upload] base64 降级：读取文件', localPath)
     const fs = Taro.getFileSystemManager()
     const readRes: any = await new Promise((resolve, reject) => {
       fs.readFile({ filePath: localPath, encoding: 'base64', success: resolve, fail: reject })
     })
     const base64 = readRes?.data as string
+    console.log('[Upload] base64 读取完成，长度:', base64 ? base64.length : 0)
     if (!base64) return null
     const isPng = /\.png$/i.test(localPath)
     const res = await Network.request({
@@ -64,6 +66,7 @@ async function uploadViaBase64(localPath: string): Promise<string | null> {
       data: { image: base64, filename: isPng ? 'upload.png' : 'upload.jpg' }
     })
     const body: any = res.data
+    console.log('[Upload] base64 上传响应:', res.statusCode, body && body.code, body && body.msg)
     if (res.statusCode === 200 && body?.code === 200 && body.data?.url) return body.data.url
     return null
   } catch (e) {
@@ -74,8 +77,10 @@ async function uploadViaBase64(localPath: string): Promise<string | null> {
 
 /** 小程序端统一上传：优先 uploadFile 直传，网络层失败自动降级 base64 通道 */
 export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
+  console.log('[Upload] uploadMiniAppImage 开始:', localPath)
   try {
     const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file' })
+    console.log('[Upload] uploadFile statusCode:', res.statusCode)
     if (res.statusCode === 200) {
       const body: any = JSON.parse(res.data)
       if (body?.code === 200 && body.data?.url) return { url: body.data.url }
@@ -84,6 +89,7 @@ export async function uploadMiniAppImage(localPath: string): Promise<{ url: stri
     return { url: null, errorMsg: `HTTP ${res.statusCode}` }
   } catch (error: any) {
     // uploadFile 网络层失败（多为真机域名白名单拦截），降级 base64 通道
+    console.warn('[Upload] uploadFile 网络层失败，降级 base64:', error && (error.errMsg || error.message || error))
     const fallbackUrl = await uploadViaBase64(localPath)
     if (fallbackUrl) return { url: fallbackUrl }
     return { url: null, errorMsg: getUploadFailTip(error) }

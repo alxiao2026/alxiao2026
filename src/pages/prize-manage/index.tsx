@@ -206,8 +206,9 @@ export default function PrizeManagePage() {
 
   const handleUploadPrizeImage = async () => {
     try {
-      const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] });
-      const tempFilePath = res.tempFilePaths[0];
+      const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] });
+      const tempFilePath = res.tempFiles?.[0]?.tempFilePath;
+      if (!tempFilePath) return;
       Taro.showLoading({ title: '上传中...' });
       // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
       const { url, errorMsg } = await uploadMiniAppImage(tempFilePath);
@@ -218,8 +219,9 @@ export default function PrizeManagePage() {
       } else {
         Taro.showToast({ title: errorMsg || '上传失败', icon: 'none' });
       }
-    } catch (err) {
+    } catch (err: any) {
       Taro.hideLoading();
+      if (err?.errMsg?.includes('cancel')) return;
       console.error('[PrizeManage] 上传图片失败:', err);
       Taro.showToast({ title: '上传失败', icon: 'none' });
     }

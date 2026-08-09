@@ -64,8 +64,8 @@ export default function MerchantQualification() {
   /** 选择图片并上传到对象存储 */
   const pickAndUpload = async (field: UploadField) => {
     try {
-      const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
-      const filePath = res.tempFilePaths?.[0]
+      const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'] })
+      const filePath = res.tempFiles?.[0]?.tempFilePath
       if (!filePath) return
       setUploading(field)
       // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
