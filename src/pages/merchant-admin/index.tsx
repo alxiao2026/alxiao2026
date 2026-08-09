@@ -710,11 +710,14 @@ export default function MerchantAdmin() {
                 <Text className="block text-sm font-medium text-gray-800 mb-2">商家首图 *</Text>
                 {formData.logo ? (
                   <View className="relative">
-                    <Image
-                      src={formData.logo}
-                      className="w-full h-48 rounded-lg bg-gray-900"
-                      mode="aspectFit"
-                    />
+                    <View className="w-full aspect-[3/2] rounded-lg overflow-hidden bg-gray-100">
+                      <Image
+                        src={formData.logo}
+                        className="w-full h-full"
+                        mode="aspectFill"
+                        onClick={() => Taro.previewImage({ current: formData.logo, urls: [formData.logo] })}
+                      />
+                    </View>
                     <Button
                       className="absolute top-2 right-2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
                       onClick={() => handleRemoveImage('logo')}
@@ -743,12 +746,14 @@ export default function MerchantAdmin() {
                 <View className="grid grid-cols-3 gap-2">
                   {formData.images.map((img, index) => (
                     <View key={index} className="relative">
-                      <Image
-                        src={img}
-                        className="w-full h-24 rounded-lg bg-gray-50"
-                        mode="aspectFit"
-                        onClick={() => Taro.previewImage({ current: img, urls: formData.images })}
-                      />
+                      <View className="w-full aspect-[3/2] rounded-lg overflow-hidden bg-gray-100">
+                        <Image
+                          src={img}
+                          className="w-full h-full"
+                          mode="aspectFill"
+                          onClick={() => Taro.previewImage({ current: img, urls: formData.images })}
+                        />
+                      </View>
                       <Button
                         className="absolute top-1 right-1 w-6 h-6 bg-black bg-opacity-50 rounded-full flex items-center justify-center p-0"
                         onClick={() => handleRemoveImage('env', index)}

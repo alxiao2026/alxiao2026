@@ -32,7 +32,8 @@ export default defineAppConfig({
     'pages/platform-commission/index',
     'pages/notification-center/index',
     'pages/distribution/index',
-    'pages/distribution-audit/index'
+    'pages/distribution-audit/index',
+    'pages/customer-service-admin/index'
   ],
   window: {
     backgroundTextStyle: 'light',

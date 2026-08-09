@@ -1,0 +1,211 @@
+import { useEffect, useState } from 'react';
+import { View, Text, Image } from '@tarojs/components';
+import Taro from '@tarojs/taro';
+import { Network } from '@/network';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { uploadLocalImage, chooseImageH5, isMiniAppEnv } from '@/lib/upload-image';
+import { Headphones, ImagePlus, RefreshCw } from 'lucide-react-taro';
+
+interface CustomerServiceConfig {
+  enabled: boolean;
+  qrcode_url: string | null;
+  title: string;
+  welcome_text: string;
+  service_id: string | null;
+}
+
+const CustomerServiceAdminPage = () => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [enabled, setEnabled] = useState(true);
+  const [qrcodeUrl, setQrcodeUrl] = useState('');
+  const [title, setTitle] = useState('联系客服');
+  const [welcomeText, setWelcomeText] = useState('扫码添加客服企业微信，有问题随时找我们');
+  const [serviceId, setServiceId] = useState('');
+
+  const fetchConfig = async () => {
+    try {
+      const res = await Network.request({ url: '/api/customer-service/config', method: 'GET' });
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      const cfg: CustomerServiceConfig | undefined = body?.data;
+      if (cfg) {
+        setEnabled(!!cfg.enabled);
+        setQrcodeUrl(cfg.qrcode_url || '');
+        setTitle(cfg.title || '联系客服');
+        setWelcomeText(cfg.welcome_text || '');
+        setServiceId(cfg.service_id || '');
+      }
+    } catch {
+      Taro.showToast({ title: '加载失败', icon: 'none' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
+
+  const handleChooseQrcode = async () => {
+    if (uploading) return;
+    setUploading(true);
+    try {
+      let url: string | null = null;
+      if (isMiniAppEnv()) {
+        const choose = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] });
+        const path = choose.tempFilePaths?.[0];
+        if (path) url = await uploadLocalImage(path);
+      } else {
+        const picked = await chooseImageH5();
+        if (picked) url = await uploadLocalImage(picked.localUrl, picked.file);
+      }
+      if (url) {
+        setQrcodeUrl(url);
+        Taro.showToast({ title: '二维码已上传', icon: 'success' });
+      }
+    } catch {
+      // 用户取消选择
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await Network.request({
+        url: '/api/customer-service/config',
+        method: 'PUT',
+        data: {
+          enabled,
+          qrcode_url: qrcodeUrl || null,
+          title: title.trim() || '联系客服',
+          welcome_text: welcomeText.trim(),
+          service_id: serviceId.trim() || null
+        }
+      });
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      if (body?.code === 200) {
+        Taro.showToast({ title: '保存成功', icon: 'success' });
+      } else {
+        Taro.showToast({ title: body?.msg || '保存失败', icon: 'none' });
+      }
+    } catch {
+      Taro.showToast({ title: '保存失败', icon: 'none' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Text className="text-sm text-gray-400">加载中...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="min-h-screen bg-gray-50 pb-10">
+      {/* 头部 */}
+      <View className="px-5 pt-6 pb-4" style={{ background: 'linear-gradient(135deg,#FF6B9D 0%,#A06BFF 100%)' }}>
+        <View className="flex items-center gap-2">
+          <Headphones size={24} color="#fff" />
+          <Text className="text-xl font-bold text-white">客服配置</Text>
+        </View>
+        <Text className="block text-xs mt-1" style={{ color: 'rgba(255,255,255,0.9)' }}>
+          配置个人中心「联系客服」弹窗的企微二维码与文案
+        </Text>
+      </View>
+
+      <View className="px-4 mt-4 flex flex-col gap-4">
+        {/* 启用开关 */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm flex flex-row items-center justify-between">
+          <View>
+            <Text className="block text-sm font-semibold text-gray-800">启用客服入口</Text>
+            <Text className="block text-xs text-gray-400 mt-1">关闭后用户点击联系客服将提示暂未开通</Text>
+          </View>
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+        </View>
+
+        {/* 企微二维码 */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm">
+          <Text className="block text-sm font-semibold text-gray-800 mb-1">企业微信二维码</Text>
+          <Text className="block text-xs text-gray-400 mb-3">建议上传清晰的正方形二维码图片，用户长按识别添加</Text>
+          <View className="flex flex-row items-center gap-4">
+            {qrcodeUrl ? (
+              <View className="rounded-xl overflow-hidden bg-gray-50 p-2 border border-gray-100">
+                <Image src={qrcodeUrl} className="w-32 h-32" mode="aspectFit" />
+              </View>
+            ) : (
+              <View className="w-32 h-32 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
+                <Text className="text-xs text-gray-300">未上传</Text>
+              </View>
+            )}
+            <View className="flex-1">
+              <Button
+                className="w-full bg-[#A06BFF] text-white rounded-xl"
+                disabled={uploading}
+                onClick={handleChooseQrcode}
+              >
+                <View className="flex flex-row items-center justify-center gap-1">
+                  {qrcodeUrl ? <RefreshCw size={16} color="#fff" /> : <ImagePlus size={16} color="#fff" />}
+                  <Text className="text-white text-sm">{uploading ? '上传中...' : qrcodeUrl ? '重新上传' : '上传二维码'}</Text>
+                </View>
+              </Button>
+            </View>
+          </View>
+        </View>
+
+        {/* 文案配置 */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+          <View>
+            <Text className="block text-sm font-semibold text-gray-800 mb-2">弹窗标题</Text>
+            <Input
+              className="bg-gray-50 rounded-xl border-0"
+              placeholder="如：联系客服"
+              value={title}
+              onInput={(e) => setTitle(e.detail.value)}
+            />
+          </View>
+
+          <View>
+            <Text className="block text-sm font-semibold text-gray-800 mb-2">欢迎文案</Text>
+            <Textarea
+              className="bg-gray-50 rounded-xl border-0 min-h-20"
+              placeholder="展示在二维码下方的引导文案"
+              maxlength={100}
+              value={welcomeText}
+              onInput={(e) => setWelcomeText(e.detail.value)}
+            />
+          </View>
+
+          <View>
+            <Text className="block text-sm font-semibold text-gray-800 mb-2">企微号（选填）</Text>
+            <Input
+              className="bg-gray-50 rounded-xl border-0"
+              placeholder="展示给用户的客服企微号"
+              value={serviceId}
+              onInput={(e) => setServiceId(e.detail.value)}
+            />
+          </View>
+        </View>
+
+        {/* 保存 */}
+        <Button
+          className="w-full rounded-full py-3 text-white font-semibold"
+          style={{ background: 'linear-gradient(90deg,#FF6B9D 0%,#A06BFF 100%)' }}
+          disabled={saving}
+          onClick={handleSave}
+        >
+          <Text className="text-white">{saving ? '保存中...' : '保存配置'}</Text>
+        </Button>
+      </View>
+    </View>
+  );
+};
+
+export default CustomerServiceAdminPage;

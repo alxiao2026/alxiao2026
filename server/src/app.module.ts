@@ -16,6 +16,7 @@ import { SettlementModule } from './modules/settlement/settlement.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ShareModule } from './modules/share/share.module';
 import { DistributionModule } from './modules/distribution/distribution.module';
+import { CustomerServiceModule } from './modules/customer-service/customer-service.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DistributionModule } from './modules/distribution/distribution.module';
     NotificationModule,
     ShareModule,
     DistributionModule,
+    CustomerServiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

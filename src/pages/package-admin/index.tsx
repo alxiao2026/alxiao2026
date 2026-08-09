@@ -1721,9 +1721,9 @@ export default function PackageAdmin() {
 
                   {formData.cover_image ? (
                     <View>
-                      {/* 上传后预览：模拟详情页真实展示效果（深色底完整图） */}
-                      <View className="relative w-full h-44 rounded-lg overflow-hidden bg-gray-900">
-                        <Image src={formData.cover_image} className="w-full h-full" mode="aspectFit" />
+                      {/* 上传后预览：4:3 框与裁剪比例一致，填满展示即详情页实际效果 */}
+                      <View className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                        <Image src={formData.cover_image} className="w-full h-full" mode="aspectFill" />
                         <View
                           className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1"
                           onClick={() => updateFormData('cover_image', '')}
@@ -1731,7 +1731,7 @@ export default function PackageAdmin() {
                           <X size={14} color="#fff" />
                         </View>
                       </View>
-                      <Text className="block text-xs text-gray-400 mt-1">预览效果：详情页头图将如此完整展示，点击右上角可删除重传</Text>
+                      <Text className="block text-xs text-gray-400 mt-1">预览效果：详情页头图将如此展示，点击右上角可删除重传</Text>
                     </View>
                   ) : (
                     <Button
@@ -1765,7 +1765,7 @@ export default function PackageAdmin() {
                         <Image
                           src={url}
                           className="w-full h-full"
-                          mode="aspectFit"
+                          mode="aspectFill"
                           onClick={() => Taro.previewImage({ current: url, urls: formData.environment_images })}
                         />
                         <View

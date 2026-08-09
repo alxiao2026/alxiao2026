@@ -5,6 +5,7 @@ import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import { getNavSafeAreaTop } from '@/lib/utils';
 import AppTabBar from '@/components/app-tab-bar';
+import CustomerServiceModal from '@/components/customer-service-modal';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
@@ -52,6 +53,7 @@ const UserCenterPage = () => {
   const [nickName, setNickName] = useState('');
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showCustomerService, setShowCustomerService] = useState(false);
 
   const fetchProfile = useCallback(async (uid: string) => {
     try {
@@ -221,8 +223,8 @@ const UserCenterPage = () => {
     {
       icon: <Phone size={20} color="#6B7280" />,
       label: '联系客服',
-      desc: '在线客服咨询',
-      onClick: () => Taro.showToast({ title: '客服功能即将上线', icon: 'none' })
+      desc: '扫码加企微，随时撩',
+      onClick: () => setShowCustomerService(true)
     },
     {
       icon: <Settings size={20} color="#6B7280" />,
@@ -430,6 +432,9 @@ const UserCenterPage = () => {
       {/* 底部占位（避让悬浮 TabBar） */}
       <View className="h-28" />
     </ScrollView>
+
+    {/* 客服弹窗 */}
+    <CustomerServiceModal visible={showCustomerService} onClose={() => setShowCustomerService(false)} />
 
     {/* 悬浮胶囊导航栏 */}
     <AppTabBar current="/pages/user-center/index" />
