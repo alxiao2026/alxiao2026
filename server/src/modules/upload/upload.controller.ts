@@ -3,6 +3,9 @@ import { FileInterceptor } from '@nestjs/platform-express'
 import { getSupabaseClient } from '@/storage/database/supabase-client'
 import { UploadService } from './upload.service'
 
+// 分片上传暂存（uploadId -> 分片数组），收齐后合并并删除；真机 wx.request 单次 body 受限，用分片绕开
+const chunkStore = new Map<string, { chunks: string[]; received: number; filename: string }>()
+
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
@@ -63,6 +66,42 @@ export class UploadController {
       return { code: 200, msg: 'success', data: { key: result.key, url: result.url } }
     } catch (err) {
       console.error('[Upload] base64 上传失败:', err)
+      throw new InternalServerErrorException('文件上传失败，请稍后重试')
+    }
+  }
+
+  // 分片 base64 上传：真机 wx.request 单次 body 受限，前端把 base64 分片逐个发送，后端收齐合并后存 TOS
+  @Post('base64-chunk')
+  @HttpCode(200)
+  async uploadBase64Chunk(@Body() body: { uploadId?: string; index?: number; total?: number; chunk?: string; filename?: string }) {
+    const { uploadId, index, total, chunk, filename } = body || {}
+    if (!uploadId || index == null || !total || typeof chunk !== 'string') {
+      throw new BadRequestException('分片参数不完整')
+    }
+    if (total < 1 || total > 200) throw new BadRequestException('分片数量异常')
+    let entry = chunkStore.get(uploadId)
+    if (!entry) {
+      entry = { chunks: new Array(total).fill(''), received: 0, filename: filename || 'upload.jpg' }
+      chunkStore.set(uploadId, entry)
+    }
+    if (entry.chunks[index] === '') {
+      entry.chunks[index] = chunk
+      entry.received++
+    }
+    if (entry.received < entry.chunks.length) {
+      return { code: 200, msg: 'chunk_received', data: { received: entry.received, total: entry.chunks.length } }
+    }
+    chunkStore.delete(uploadId)
+    const buffer = Buffer.from(entry.chunks.join(''), 'base64')
+    if (!buffer.length) throw new BadRequestException('图片数据为空')
+    if (buffer.length > 8 * 1024 * 1024) throw new BadRequestException('图片超过大小限制')
+    const fname = entry.filename
+    const mimetype = fname.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
+    try {
+      const result = await this.uploadService.uploadFile({ buffer, originalname: fname, mimetype, size: buffer.length } as Express.Multer.File)
+      return { code: 200, msg: 'success', data: { key: result.key, url: result.url } }
+    } catch (err) {
+      console.error('[Upload] 分片合并上传失败:', err)
       throw new InternalServerErrorException('文件上传失败，请稍后重试')
     }
   }

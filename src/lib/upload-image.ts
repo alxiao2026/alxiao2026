@@ -92,24 +92,36 @@ async function uploadViaBase64(localPath: string): Promise<{ url: string | null;
   }
   if (!base64) return { url: null, errDetail: '读取文件内容为空' }
 
-  // 3) 发起上传请求
+  // 3) 分片上传（每片约 350KB base64 字符，确保单个 wx.request body 不超限）
+  const CHUNK = 350 * 1024
+  const total = Math.ceil(base64.length / CHUNK)
+  const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const filename = /\.png$/i.test(path) ? 'upload.png' : 'upload.jpg'
+  console.log(`[Upload] 分片上传: ${total} 片`)
   try {
-    const isPng = /\.png$/i.test(path)
-    const res = await Network.request({
-      url: '/api/upload/base64',
-      method: 'POST',
-      timeout: 60000,
-      data: { image: base64, filename: isPng ? 'upload.png' : 'upload.jpg' }
-    })
-    const body: any = res.data
-    console.log('[Upload] 上传响应:', res.statusCode, body?.code, body?.msg)
-    if (res.statusCode === 200 && body?.code === 200 && body.data?.url) {
-      return { url: body.data.url, errDetail: '' }
+    for (let i = 0; i < total; i++) {
+      const chunk = base64.slice(i * CHUNK, (i + 1) * CHUNK)
+      const res = await Network.request({
+        url: '/api/upload/base64-chunk',
+        method: 'POST',
+        timeout: 60000,
+        data: { uploadId, index: i, total, chunk, filename }
+      })
+      const body: any = res.data
+      if (res.statusCode !== 200 || body?.code !== 200) {
+        console.error(`[Upload] 分片${i}失败:`, res.statusCode, body?.msg)
+        return { url: null, errDetail: `分片${i + 1}/${total}上传失败:${body?.msg || res.statusCode}` }
+      }
+      if (i === total - 1) {
+        console.log('[Upload] 分片合并完成:', body.data?.url)
+        if (body.data?.url) return { url: body.data.url, errDetail: '' }
+        return { url: null, errDetail: '上传完成但未返回图片地址' }
+      }
     }
-    return { url: null, errDetail: `上传返回${res.statusCode}:${body?.msg || '服务错误'}` }
+    return { url: null, errDetail: '分片上传未完成' }
   } catch (e: any) {
     const m = e?.errMsg || e?.message || String(e)
-    console.error('[Upload] 上传请求失败:', m)
+    console.error('[Upload] 分片上传请求失败:', m)
     return { url: null, errDetail: `请求失败:${m}` }
   }
 }
