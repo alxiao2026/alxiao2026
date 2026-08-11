@@ -48,65 +48,98 @@ export function getUploadFailTip(error: any): string {
   return '上传失败，请检查网络后重试'
 }
 
-/** base64 上传：走 request 通道（小程序授权第三方平台后无法配置 uploadFile 合法域名，此为真机主通道） */
-async function uploadViaBase64(localPath: string): Promise<string | null> {
+/** base64 上传：走 request 通道，返回具体失败原因便于真机定位 */
+async function uploadViaBase64(localPath: string): Promise<{ url: string | null; errDetail: string }> {
+  // 1) 压缩到 800KB 内（base64 后约 1.1MB，确保 wx.request body 不超限）
+  let path = localPath
   try {
-    // 大图先压缩，避免 base64 请求体过大导致 request 超时/失败
-    let path = localPath
-    try {
-      const info: any = await Taro.getFileInfo({ filePath: localPath })
-      const size = info?.size || 0
-      console.log('[Upload] 原图大小:', (size / 1048576).toFixed(2), 'MB')
-      if (size > 2 * 1024 * 1024) {
-        for (const q of [60, 40, 20]) {
+    const info: any = await Taro.getFileInfo({ filePath: localPath })
+    let size = info?.size || 0
+    console.log('[Upload] 原图:', (size / 1024).toFixed(0), 'KB')
+    if (size > 800 * 1024) {
+      for (const q of [60, 40, 25, 15]) {
+        try {
           const c = await Taro.compressImage({ src: path, quality: q })
           const ci: any = await Taro.getFileInfo({ filePath: c.tempFilePath })
           path = c.tempFilePath
-          const cs = ci?.size || 0
-          console.log(`[Upload] 压缩 q=${q}:`, (cs / 1048576).toFixed(2), 'MB')
-          if (cs <= 2 * 1024 * 1024) break
+          size = ci?.size || 0
+          console.log(`[Upload] 压缩 q=${q}:`, (size / 1024).toFixed(0), 'KB')
+          if (size <= 800 * 1024) break
+        } catch (ce: any) {
+          console.warn('[Upload] compressImage 失败:', ce?.errMsg || ce)
+          break
         }
       }
-    } catch (e) {
-      console.warn('[Upload] 压缩预处理失败，使用原图:', e)
-      path = localPath
     }
+  } catch (e: any) {
+    console.warn('[Upload] getFileInfo 失败，尝试用原图:', e?.errMsg || e)
+    path = localPath
+  }
 
-    console.log('[Upload] base64 读取文件:', path)
+  // 2) 读取文件为 base64
+  let base64 = ''
+  try {
     const fs = Taro.getFileSystemManager()
     const readRes: any = await new Promise((resolve, reject) => {
       fs.readFile({ filePath: path, encoding: 'base64', success: resolve, fail: reject })
     })
-    const base64 = readRes?.data as string
-    console.log('[Upload] base64 读取完成，长度:', base64 ? base64.length : 0)
-    if (!base64) return null
+    base64 = (readRes?.data as string) || ''
+    console.log('[Upload] base64 长度:', base64.length)
+  } catch (e: any) {
+    const m = e?.errMsg || e?.message || String(e)
+    console.error('[Upload] readFile 失败:', m)
+    return { url: null, errDetail: `读取文件失败:${m}` }
+  }
+  if (!base64) return { url: null, errDetail: '读取文件内容为空' }
+
+  // 3) 发起上传请求
+  try {
     const isPng = /\.png$/i.test(path)
     const res = await Network.request({
       url: '/api/upload/base64',
       method: 'POST',
+      timeout: 60000,
       data: { image: base64, filename: isPng ? 'upload.png' : 'upload.jpg' }
     })
     const body: any = res.data
-    console.log('[Upload] base64 上传响应:', res.statusCode, body && body.code, body && body.msg)
-    if (res.statusCode === 200 && body?.code === 200 && body.data?.url) return body.data.url
-    return null
-  } catch (e) {
-    console.error('[Upload] base64 上传失败:', e)
-    return null
+    console.log('[Upload] 上传响应:', res.statusCode, body?.code, body?.msg)
+    if (res.statusCode === 200 && body?.code === 200 && body.data?.url) {
+      return { url: body.data.url, errDetail: '' }
+    }
+    return { url: null, errDetail: `上传返回${res.statusCode}:${body?.msg || '服务错误'}` }
+  } catch (e: any) {
+    const m = e?.errMsg || e?.message || String(e)
+    console.error('[Upload] 上传请求失败:', m)
+    return { url: null, errDetail: `请求失败:${m}` }
   }
 }
 
 /**
- * 小程序端统一上传
- * 说明：小程序已授权扣子第三方平台托管，无法在 mp 后台单独配置 uploadFile 合法域名，
- * 真机 uploadFile 会被域名白名单拦截；因此统一走 base64 + request 通道
- *（request 合法域名由平台配置，页面能正常加载数据即证明该通道可用）。
+ * 小程序端统一上传（全路径覆盖 + 自我诊断）
+ * 优先 uploadFile（小程序调试模式下不校验合法域名，multipart 高效，适合大文件）；
+ * 失败自动走 base64 + request 通道（强制压缩到 800KB 内）；
+ * 最终失败会带回具体原因（读取文件失败/请求失败/上传返回错误等），便于真机定位。
  */
 export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
-  console.log('[Upload] 上传(base64通道):', localPath)
-  const url = await uploadViaBase64(localPath)
+  console.log('[Upload] 开始上传:', localPath)
+  // 1) 优先 uploadFile
+  try {
+    const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file', timeout: 60000 })
+    console.log('[Upload] uploadFile statusCode:', res.statusCode)
+    if (res.statusCode === 200) {
+      const body: any = JSON.parse(res.data)
+      if (body?.code === 200 && body.data?.url) return { url: body.data.url }
+      console.warn('[Upload] uploadFile 业务失败:', body?.msg)
+    } else {
+      console.warn('[Upload] uploadFile HTTP:', res.statusCode)
+    }
+  } catch (e: any) {
+    console.warn('[Upload] uploadFile 失败，转 base64:', e?.errMsg || e?.message || e)
+  }
+  // 2) base64 降级
+  const { url, errDetail } = await uploadViaBase64(localPath)
   if (url) return { url }
-  return { url: null, errorMsg: '上传失败，请检查网络后重试' }
+  return { url: null, errorMsg: errDetail || '上传失败，请检查网络后重试' }
 }
 
 /**
