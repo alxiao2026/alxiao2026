@@ -867,7 +867,7 @@ export default function PackageAdmin() {
       // 用户取消选择不提示
       if (errMsg.includes('cancel')) return
       console.error('[PackageAdmin] upload cover failed:', error)
-      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
+      showUploadFailModal(`选图阶段异常:${errMsg || String(error)}`, '头图上传失败')
     }
   }
 
@@ -1066,7 +1066,7 @@ export default function PackageAdmin() {
       // 用户取消选择不提示
       if (errMsg.includes('cancel')) return
       console.error('[PackageAdmin] upload env failed:', error)
-      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
+      showUploadFailModal(`选图阶段异常:${errMsg || String(error)}`, '环境图上传失败')
     } finally {
       setUploadingEnv(false)
     }

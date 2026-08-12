@@ -135,7 +135,14 @@ async function uploadViaBase64(localPath: string): Promise<{ url: string | null;
 export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
   const rawDomain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
   const host = rawDomain.replace(/^https?:\/\//, '') || '空域名'
-  console.log('[Upload] 开始上传:', localPath, '域名:', host)
+  console.log('[Upload] V84 开始上传:', localPath, '域名:', host)
+
+  // 0) 连通性预检测：先确认后端可达，否则后面的 uploadFile/base64 全都会失败但原因被吞
+  const conn = await checkConnectivity()
+  if (!conn.ok) {
+    return { url: null, errorMsg: `后端不可达\n${conn.error}\n\n请检查微信后台域名白名单：\nrequest 和 uploadFile 都要加 ${host}` }
+  }
+  console.log('[Upload] 连通性正常，开始上传')
 
   // 1) 优先 uploadFile 直传（收集具体错误用于诊断）
   let directErr = ''
@@ -175,12 +182,30 @@ export async function uploadMiniAppImage(localPath: string): Promise<{ url: stri
 
 /** 上传失败诊断弹窗：完整展示域名与两条通道的真实错误，便于真机截图反馈定位 */
 export function showUploadFailModal(detail: string, title = '上传失败') {
+  // 先关 loading，防止 showLoading 和 showModal 冲突导致弹窗不出现
+  Taro.hideLoading()
   Taro.showModal({
-    title: `${title}·请截图反馈`,
+    title: `${title}·V84请截图`,
     content: detail || '未知原因',
     showCancel: false,
     confirmText: '知道了'
   })
+}
+
+/** 上传前连通性预检测：先请求 /api/hello 确认后端可达，失败直接返回诊断信息 */
+async function checkConnectivity(): Promise<{ ok: boolean; error: string }> {
+  const rawDomain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
+  const host = rawDomain.replace(/^https?:\/\//, '') || '空域名'
+  try {
+    const res = await Network.request({ url: '/api/hello', method: 'GET', timeout: 10000 })
+    console.log('[Upload] 连通性检测:', res.statusCode, res.data)
+    if (res.statusCode === 200) return { ok: true, error: '' }
+    return { ok: false, error: `HTTP${res.statusCode}` }
+  } catch (e: any) {
+    const m = e?.errMsg || e?.message || String(e)
+    console.error('[Upload] 连通性检测失败:', m)
+    return { ok: false, error: `域名:${host}\n请求失败:${m}` }
+  }
 }
 
 /**
