@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 import { ImageCropper } from '@/components/image-cropper'
-import { dataUrlToFile, uploadMiniAppImage } from '@/lib/upload-image'
+import { dataUrlToFile, uploadMiniAppImage, showUploadFailModal } from '@/lib/upload-image'
 import { format } from 'date-fns'
 
 interface Package {
@@ -934,11 +934,12 @@ export default function PackageAdmin() {
         updateFormData('cover_image', coverUrl)
         Taro.showToast({ title: '上传成功', icon: 'success' })
       } else {
-        Taro.showToast({ title: coverErr || '上传失败，请重试', icon: 'none' })
+        showUploadFailModal(coverErr || '未知原因', '头图上传失败')
       }
     } catch (error) {
+      const m = (error as any)?.errMsg || (error as any)?.message || String(error)
       console.error('[PackageAdmin] upload cover failed:', error)
-      Taro.showToast({ title: '上传失败，请检查网络后重试', icon: 'none' })
+      showUploadFailModal(`异常:${m}`, '头图上传异常')
     } finally {
       Taro.hideLoading()
       setUploadingCover(false)
@@ -1031,18 +1032,21 @@ export default function PackageAdmin() {
       try {
         const newUrls = [...formData.environment_images]
         let failCount = 0
+        let firstErr = ''
         for (const f of preparedFiles) {
           try {
             // 优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
-            const { url: envUrl } = await uploadMiniAppImage(f.path)
+            const { url: envUrl, errorMsg: envErr } = await uploadMiniAppImage(f.path)
             if (envUrl) {
               newUrls.push(envUrl)
             } else {
               failCount++
+              if (!firstErr && envErr) firstErr = envErr
             }
           } catch (singleErr) {
             console.error('[PackageAdmin] single env image upload failed:', singleErr)
             failCount++
+            if (!firstErr) firstErr = (singleErr as any)?.errMsg || (singleErr as any)?.message || String(singleErr)
           }
         }
         if (newUrls.length > formData.environment_images.length) {
@@ -1050,7 +1054,7 @@ export default function PackageAdmin() {
         }
         const totalFail = failCount + oversizeCount
         if (totalFail > 0) {
-          Taro.showToast({ title: `${totalFail}张图片上传失败，请重试`, icon: 'none' })
+          showUploadFailModal(firstErr || '未知原因', `${totalFail}张环境图上传失败`)
         } else {
           Taro.showToast({ title: '上传成功', icon: 'success' })
         }

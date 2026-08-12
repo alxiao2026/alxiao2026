@@ -133,25 +133,54 @@ async function uploadViaBase64(localPath: string): Promise<{ url: string | null;
  * 最终失败会带回具体原因（读取文件失败/请求失败/上传返回错误等），便于真机定位。
  */
 export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
-  console.log('[Upload] 开始上传:', localPath)
-  // 1) 优先 uploadFile
+  const rawDomain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
+  const host = rawDomain.replace(/^https?:\/\//, '') || '空域名'
+  console.log('[Upload] 开始上传:', localPath, '域名:', host)
+
+  // 1) 优先 uploadFile 直传（收集具体错误用于诊断）
+  let directErr = ''
   try {
     const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file', timeout: 60000 })
     console.log('[Upload] uploadFile statusCode:', res.statusCode)
     if (res.statusCode === 200) {
-      const body: any = JSON.parse(res.data)
-      if (body?.code === 200 && body.data?.url) return { url: body.data.url }
-      console.warn('[Upload] uploadFile 业务失败:', body?.msg)
+      try {
+        const body: any = JSON.parse(res.data)
+        if (body?.code === 200 && body.data?.url) return { url: body.data.url }
+        directErr = `200但业务失败:${body?.msg || '无msg'}`
+      } catch {
+        directErr = '200但返回非JSON'
+      }
     } else {
-      console.warn('[Upload] uploadFile HTTP:', res.statusCode)
+      directErr = `HTTP${res.statusCode}`
     }
   } catch (e: any) {
-    console.warn('[Upload] uploadFile 失败，转 base64:', e?.errMsg || e?.message || e)
+    directErr = e?.errMsg || e?.message || String(e)
   }
-  // 2) base64 降级
-  const { url, errDetail } = await uploadViaBase64(localPath)
-  if (url) return { url }
-  return { url: null, errorMsg: errDetail || '上传失败，请检查网络后重试' }
+  console.warn('[Upload] 直传失败:', directErr)
+
+  // 2) base64 分片降级（整体兜底，防异常逃逸吞掉真实错误）
+  let chunkErr = ''
+  try {
+    const { url, errDetail } = await uploadViaBase64(localPath)
+    if (url) return { url }
+    chunkErr = errDetail || '分片未知失败'
+  } catch (e: any) {
+    chunkErr = `异常:${e?.errMsg || e?.message || String(e)}`
+  }
+  console.warn('[Upload] 分片失败:', chunkErr)
+
+  const errorMsg = `域名:${host}\n直传:${directErr}\n分片:${chunkErr}`
+  return { url: null, errorMsg }
+}
+
+/** 上传失败诊断弹窗：完整展示域名与两条通道的真实错误，便于真机截图反馈定位 */
+export function showUploadFailModal(detail: string, title = '上传失败') {
+  Taro.showModal({
+    title: `${title}·请截图反馈`,
+    content: detail || '未知原因',
+    showCancel: false,
+    confirmText: '知道了'
+  })
 }
 
 /**
