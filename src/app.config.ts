@@ -73,5 +73,6 @@ export default defineAppConfig({
       desc: '用于展示您与门店的距离并提供到店导航服务'
     }
   },
-  requiredPrivateInfos: ['getLocation', 'chooseLocation']
+  requiredPrivateInfos: ['getLocation', 'chooseLocation'],
+  __usePrivacyCheck__: true
 })
