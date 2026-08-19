@@ -218,7 +218,7 @@ const UserCenterPage = () => {
       icon: <Sprout size={20} color="#6B7280" />,
       label: '我的果园',
       desc: '种树打卡领水滴，收获兑满减券',
-      onClick: () => Taro.navigateTo({ url: '/pages/orchard/index' })
+      onClick: () => Taro.switchTab({ url: '/pages/tuantuan/index' })
     },
     {
       icon: <Pencil size={20} color="#6B7280" />,

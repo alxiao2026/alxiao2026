@@ -15,7 +15,7 @@ export default function OrchardAssistPage() {
 
   const invalid = !shareId
 
-  const goOrchard = () => Taro.redirectTo({ url: '/pages/orchard/index' })
+  const goOrchard = () => Taro.switchTab({ url: '/pages/tuantuan/index' })
 
   const handleHelp = async () => {
     if (state === 'submitting' || state === 'success') return

@@ -34,7 +34,6 @@ export default defineAppConfig({
     'pages/distribution/index',
     'pages/distribution-audit/index',
     'pages/customer-service-admin/index',
-    'pages/orchard/index',
     'pages/orchard-tasks/index',
     'pages/orchard-coupons/index',
     'pages/orchard-me/index',

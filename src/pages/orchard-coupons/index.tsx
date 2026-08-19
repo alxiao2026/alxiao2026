@@ -85,7 +85,7 @@ export default function OrchardCouponsPage() {
     }, 600)
   }
 
-  const goOrchard = () => Taro.redirectTo({ url: '/pages/orchard/index' })
+  const goOrchard = () => Taro.switchTab({ url: '/pages/tuantuan/index' })
 
   return (
     <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg,#FFF8EE 0%,#FFF2DF 45%,#F3F9E8 100%)' }}>
