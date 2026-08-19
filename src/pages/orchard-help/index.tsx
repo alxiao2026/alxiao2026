@@ -39,13 +39,13 @@ export default function OrchardHelpPage() {
   ]
 
   return (
-    <View className="min-h-screen pb-10" style={{ background: 'linear-gradient(180deg, #FFF8EE 0%, #F0FDF4 100%)' }}>
-      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #d9f99d 0%, #a7f3d0 60%, rgba(167,243,208,0) 100%)' }}>
+    <View className="min-h-screen pb-10" style={{ backgroundColor: '#F9FAFB' }}>
+      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 60%, rgba(249,250,251,0) 100%)' }}>
         <View onClick={() => Taro.navigateBack({ delta: 1 })}>
           <Text className="text-sm font-bold" style={{ color: '#78716c' }}>← 返回</Text>
         </View>
         <View className="mt-2" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(63,98,18,0.7)' }}>HOW TO PLAY</Text>
+          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,71,87,0.7)' }}>HOW TO PLAY</Text>
           <Text className="block text-2xl font-black mt-1" style={{ color: '#1c1917' }}>📖 玩法规则</Text>
           <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>怎么玩转小果园</Text>
         </View>

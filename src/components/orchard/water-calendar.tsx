@@ -3,7 +3,7 @@ import type { OrchardCalendarCell } from '@/lib/orchard-api'
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 
-/** 浇水打卡日历：绿=已浇 / 红=漏浇 / 蓝圈=今天 / 灰=未来 */
+/** 浇水打卡日历：红=已浇 / 浅红=漏浇 / 红圈=今天 / 灰=未来（膨胀团主题） */
 export default function WaterCalendar({
   cells,
   onSelectMissed,
@@ -28,10 +28,10 @@ export default function WaterCalendar({
             let bg = 'transparent'
             let color = '#a8a29e'
             let border = 'none'
-            if (cell.watered) { bg = '#dcfce7'; color = '#15803d' }
+            if (cell.watered) { bg = '#FFE5EC'; color = '#E11D48' }
             else if (cell.missed) { bg = '#fee2e2'; color = '#b91c1c' }
             else if (cell.isFuture) { bg = 'transparent'; color = '#d6d3d1' }
-            if (cell.isToday) border = '1px solid #0284c7'
+            if (cell.isToday) border = '1px solid #FF4757'
             return (
               <View key={ci} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                 <View
@@ -43,7 +43,7 @@ export default function WaterCalendar({
                 >
                   <Text className="text-xs font-semibold" style={{ color }}>{day}</Text>
                 </View>
-                <Text style={{ fontSize: 10, color: cell.watered ? '#16a34a' : cell.missed ? '#dc2626' : '#d6d3d1', lineHeight: '14px' }}>
+                <Text style={{ fontSize: 10, color: cell.watered ? '#FF4757' : cell.missed ? '#dc2626' : '#d6d3d1', lineHeight: '14px' }}>
                   {cell.watered ? '💧' : cell.missed ? '补' : ''}
                 </Text>
               </View>

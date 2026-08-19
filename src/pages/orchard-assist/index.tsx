@@ -49,7 +49,7 @@ export default function OrchardAssistPage() {
       {/* 沉浸式天空舞台 */}
       <View
         className="relative overflow-hidden px-4 pt-14 pb-24"
-        style={{ background: 'linear-gradient(180deg, #38BDF8 0%, #7DD3FC 35%, #BAE6FD 60%, #D9F99D 88%, #FFF8EE 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+        style={{ background: 'linear-gradient(180deg, #FF4757 0%, #FF6B6B 35%, #FFA07A 62%, #FFE5EC 88%, #F9FAFB 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       >
         <Text className="absolute" style={{ top: 32, left: 32, fontSize: 32 }}>☀️</Text>
         <Text className="absolute" style={{ top: 64, right: 40, fontSize: 28, opacity: 0.9 }}>☁️</Text>
@@ -109,7 +109,7 @@ export default function OrchardAssistPage() {
               <Text className="block mt-1 text-center" style={{ fontSize: 11, color: '#78716c' }}>每天只能帮同一位好友助力 1 次哦</Text>
               <View
                 className="rounded-full py-4 mt-4 w-full"
-                style={{ background: 'linear-gradient(90deg,#0ea5e9,#22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: state === 'submitting' ? 0.6 : 1, boxShadow: '0 8px 20px -8px rgba(14,165,233,0.6)' }}
+                style={{ background: 'linear-gradient(90deg,#FF4757,#FFA502)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: state === 'submitting' ? 0.6 : 1, boxShadow: '0 8px 20px -8px rgba(255,71,87,0.5)' }}
                 onClick={handleHelp}
               >
                 <Text className="text-base font-black text-white">{state === 'submitting' ? '助力中…' : '💧 帮 TA 助力'}</Text>

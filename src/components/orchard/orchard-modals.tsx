@@ -55,7 +55,7 @@ export function WaterResultModal({
               <Text className="text-white font-semibold">🌳 去收获</Text>
             </Button>
           ) : null}
-          <Button className="w-full rounded-full mt-2" variant={becameMature ? 'outline' : 'default'} style={becameMature ? {} : { backgroundColor: '#0284c7' }} onClick={onClose}>
+          <Button className="w-full rounded-full mt-2" variant={becameMature ? 'outline' : 'default'} style={becameMature ? {} : { backgroundColor: '#FF4757' }} onClick={onClose}>
             <Text className={becameMature ? 'font-semibold' : 'text-white font-semibold'}>{becameMature ? '稍后' : '好的'}</Text>
           </Button>
         </View>
@@ -136,7 +136,7 @@ export function MakeupModal({
         <View className="mt-5">
           <Button
             className="w-full rounded-2xl mb-3"
-            style={{ backgroundColor: canUseCard ? '#0284c7' : '#e7e5e4' }}
+            style={{ backgroundColor: canUseCard ? '#FF4757' : '#e7e5e4' }}
             disabled={!canUseCard}
             onClick={() => onConfirm('card')}
           >

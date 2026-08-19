@@ -87,13 +87,13 @@ export default function OrchardMePage() {
   const records: MenuItem[] = [
     { icon: '📊', label: '水滴/积分明细', desc: '看看每一滴水都去哪啦', tile: 'linear-gradient(135deg,#a7f3d0,#5eead4)', onClick: () => nav('/pages/orchard-points/index') },
     { icon: '🎟️', label: '我的优惠券', desc: `共 ${coupons.length} 张 · 未使用 ${unusedCoupons} 张`, tile: 'linear-gradient(135deg,#fecdd3,#fdba74)', onClick: () => Taro.redirectTo({ url: '/pages/orchard-coupons/index' }) },
-    { icon: '🌳', label: '种植记录', desc: `已收获 ${tree?.harvested ?? 0} 棵果树`, tile: 'linear-gradient(135deg,#d9f99d,#86efac)', onClick: latestHarvest },
-    { icon: '🔁', label: '积分兑换水滴', desc: '1 积分 = 1 水滴，立即浇灌', tile: 'linear-gradient(135deg,#bae6fd,#67e8f9)', onClick: () => nav('/pages/orchard-exchange/index') },
+    { icon: '🌳', label: '种植记录', desc: `已收获 ${tree?.harvested ?? 0} 棵果树`, tile: 'linear-gradient(135deg,#FFF1F2,#FFE5EC)', onClick: latestHarvest },
+    { icon: '🔁', label: '积分兑换水滴', desc: '1 积分 = 1 水滴，立即浇灌', tile: 'linear-gradient(135deg,#FFE5EC,#fecdd3)', onClick: () => nav('/pages/orchard-exchange/index') },
   ]
 
   const tools: MenuItem[] = [
     { icon: '🤝', label: '邀请好友助力', desc: '好友点开分享卡片助力，你得补浇卡', tile: 'linear-gradient(135deg,#fde68a,#fdba74)', badge: '+1 补浇卡', onClick: () => setShareOpen(true) },
-    { icon: '📖', label: '玩法规则', desc: '怎么玩转小果园', tile: 'linear-gradient(135deg,#d9f99d,#86efac)', onClick: () => nav('/pages/orchard-help/index') },
+    { icon: '📖', label: '玩法规则', desc: '怎么玩转小果园', tile: 'linear-gradient(135deg,#FFF1F2,#FFE5EC)', onClick: () => nav('/pages/orchard-help/index') },
     { icon: '📞', label: '联系客服', desc: '企微客服一对一服务', tile: 'linear-gradient(135deg,#e7e5e4,#d6d3d1)', onClick: () => setWecomOpen(true) },
     ...(profile?.isAdmin
       ? [{ icon: '🛠️', label: '设置后台', desc: '运营数值配置，保存全局生效', tile: 'linear-gradient(135deg,#fdba74,#fde68a)', onClick: () => nav('/pages/orchard-admin/index') }]
@@ -107,9 +107,9 @@ export default function OrchardMePage() {
   ]
 
   return (
-    <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg, #FFF6EC 0%, #FFFDF7 100%)' }}>
+    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>
       {/* ============ 顶部卡通 header ============ */}
-      <View className="relative overflow-hidden px-4 pt-12 pb-20" style={{ background: 'linear-gradient(160deg, #fb923c 0%, #fbbf24 42%, #a3e635 100%)' }}>
+      <View className="relative overflow-hidden px-4 pt-12 pb-20" style={{ background: 'linear-gradient(160deg, #FF4757 0%, #F43F5E 48%, #FFA502 100%)' }}>
         <View className="absolute rounded-full" style={{ top: -40, right: -40, width: 176, height: 176, backgroundColor: 'rgba(255,255,255,0.15)' }} />
         <Text className="absolute text-white" style={{ right: 32, top: 48, fontSize: 18 }}>✨</Text>
 
@@ -174,12 +174,12 @@ export default function OrchardMePage() {
                     width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: d.watered ? 'linear-gradient(135deg,#34d399,#22c55e)' : '#f5f5f4',
                     boxShadow: d.watered ? '0 4px 10px rgba(34,197,94,0.4)' : 'none',
-                    border: d.isToday ? '2px solid #38bdf8' : 'none',
+                    border: d.isToday ? '2px solid #fb7185' : 'none',
                   }}
                 >
                   <Text className="text-sm font-black" style={{ color: d.watered ? '#fff' : '#d6d3d1' }}>{d.watered ? '💧' : '·'}</Text>
                 </View>
-                <Text className="font-bold mt-1" style={{ fontSize: 10, color: d.isToday ? '#0284c7' : '#78716c' }}>{d.label}</Text>
+                <Text className="font-bold mt-1" style={{ fontSize: 10, color: d.isToday ? '#FF4757' : '#78716c' }}>{d.label}</Text>
               </View>
             ))}
           </View>

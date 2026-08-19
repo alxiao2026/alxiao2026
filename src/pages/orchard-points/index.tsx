@@ -73,17 +73,17 @@ export default function OrchardPointsPage() {
   }
 
   return (
-    <View className="min-h-screen pb-10" style={{ background: 'linear-gradient(180deg, #FFF8EE 0%, #F0FDF4 100%)' }}>
+    <View className="min-h-screen pb-10" style={{ backgroundColor: '#F9FAFB' }}>
       {/* 头部 */}
-      <View className="px-4 pt-12 pb-10" style={{ background: 'linear-gradient(180deg, #a7f3d0 0%, #fde68a 60%, rgba(253,230,138,0) 100%)' }}>
+      <View className="px-4 pt-12 pb-10" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 60%, rgba(249,250,251,0) 100%)' }}>
         <View onClick={() => Taro.navigateBack({ delta: 1 })}>
           <Text className="text-sm font-bold" style={{ color: '#78716c' }}>← 返回</Text>
         </View>
         <View className="mt-2" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(4,120,87,0.7)' }}>MY WALLET</Text>
+          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,71,87,0.7)' }}>MY WALLET</Text>
           <View className="mt-2" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 24 }}>
             <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Text className="font-black" style={{ fontSize: 36, color: '#0284c7' }}>
+              <Text className="font-black" style={{ fontSize: 36, color: '#FF4757' }}>
                 {profile?.tree.growth ?? 0}<Text className="text-base">g</Text>
               </Text>
               <Text className="font-bold" style={{ fontSize: 11, color: 'rgba(4,120,87,0.8)' }}>当前水滴（已浇入果树）</Text>
@@ -132,7 +132,7 @@ export default function OrchardPointsPage() {
               </View>
               <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 {r.droplets !== undefined && (
-                  <Text className="text-sm font-black" style={{ color: r.droplets >= 0 ? '#0284c7' : '#78716c' }}>
+                  <Text className="text-sm font-black" style={{ color: r.droplets >= 0 ? '#FF4757' : '#78716c' }}>
                     {r.droplets >= 0 ? '+' : ''}{r.droplets}g
                   </Text>
                 )}

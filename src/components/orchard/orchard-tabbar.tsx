@@ -49,7 +49,7 @@ export default function OrchardTabBar({ active }: { active: OrchardTabKey }) {
               className="block text-xs"
               style={{
                 marginTop: 2,
-                color: isActive ? '#0284c7' : '#a8a29e',
+                color: isActive ? '#FF4757' : '#a8a29e',
                 fontWeight: isActive ? 600 : 400,
               }}
             >

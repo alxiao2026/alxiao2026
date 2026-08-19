@@ -208,10 +208,10 @@ export default function OrchardTasksPage() {
   const showPhoneAuthButton = bindPhoneTask && !bindPhoneTask.done && !data?.hasPhone && isMiniApp
 
   return (
-    <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg,#FFF8EE 0%,#FFF2DF 45%,#F3F9E8 100%)' }}>
+    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>
       {/* 头部 */}
-      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #bae6fd 0%, #ccfbf1 55%, rgba(204,251,241,0) 100%)' }}>
-        <Text className="block text-xs font-black" style={{ color: 'rgba(3,105,161,0.8)', letterSpacing: 2 }}>TODAY&apos;S MISSION</Text>
+      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 55%, rgba(249,250,251,0) 100%)' }}>
+        <Text className="block text-xs font-black" style={{ color: 'rgba(255,71,87,0.8)', letterSpacing: 2 }}>TODAY&apos;S MISSION</Text>
         <Text className="block text-2xl font-black mt-1" style={{ color: '#1e293b' }}>做任务，赚水滴 🎯</Text>
         <Text className="block text-xs mt-1" style={{ color: 'rgba(71,85,105,0.8)' }}>水滴 24 小时有效，完成后立即浇灌到果树</Text>
       </View>
@@ -222,7 +222,7 @@ export default function OrchardTasksPage() {
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
               <Text className="block text-xs font-bold" style={{ color: '#78716c' }}>今日已得水滴</Text>
-              <Text className="block text-2xl font-black mt-1" style={{ color: '#0284c7' }}>+{todayDroplets}<Text className="text-sm ml-1" style={{ color: '#38bdf8' }}>g</Text></Text>
+              <Text className="block text-2xl font-black mt-1" style={{ color: '#FF4757' }}>+{todayDroplets}<Text className="text-sm ml-1" style={{ color: '#fb7185' }}>g</Text></Text>
             </View>
             <Text style={{ fontSize: 36 }}>💧</Text>
           </View>
@@ -244,7 +244,7 @@ export default function OrchardTasksPage() {
                   <Text className="block text-sm font-black" style={{ color: '#1c1917' }}>{t.title}</Text>
                   <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>{taskDesc(t)}</Text>
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                    <Text className="text-xs font-black" style={{ color: '#0284c7' }}>
+                    <Text className="text-xs font-black" style={{ color: '#FF4757' }}>
                       {t.id === 'invite_friend' ? '+1 补浇卡 🎫' : `+${t.reward}g 水滴`}
                     </Text>
                     <Text className="text-xs ml-2" style={{ color: '#a8a29e', fontSize: 10 }}>· {progressLabel(t)}</Text>
@@ -257,7 +257,7 @@ export default function OrchardTasksPage() {
                 ) : (
                   <View
                     className="rounded-full px-4 py-2"
-                    style={{ background: 'linear-gradient(135deg,#38bdf8,#0284c7)', boxShadow: '0 6px 16px -6px rgba(2,132,199,0.5)' }}
+                    style={{ background: 'linear-gradient(135deg,#FF4757,#F43F5E)', boxShadow: '0 6px 16px -6px rgba(255,71,87,0.5)' }}
                     onClick={() => handleDaily(t)}
                   >
                     <Text className="text-xs font-black text-white">{dailyActionText(t)}</Text>
@@ -365,7 +365,7 @@ function SectionTitle({ emoji, title, tag }: { emoji: string; title: string; tag
       <Text className="text-base font-black ml-2" style={{ color: '#1c1917' }}>{title}</Text>
       {tag ? (
         <View className="rounded-full px-2 py-1 ml-auto" style={{ backgroundColor: '#f0f9ff' }}>
-          <Text className="text-xs font-bold" style={{ color: '#0284c7', fontSize: 10 }}>{tag}</Text>
+          <Text className="text-xs font-bold" style={{ color: '#FF4757', fontSize: 10 }}>{tag}</Text>
         </View>
       ) : null}
     </View>

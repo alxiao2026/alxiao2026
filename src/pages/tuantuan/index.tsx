@@ -219,11 +219,11 @@ export default function TuantuanPage() {
   const meals = profile?.meals
 
   return (
-    <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg,#FFF8EE 0%,#FFF2DF 45%,#F3F9E8 100%)' }}>
-      {/* ============ 沉浸式天空舞台 ============ */}
+    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>
+      {/* ============ 沉浸式果园舞台（融入膨胀团红金主题） ============ */}
       <View
-        className="relative overflow-hidden px-4 pt-12 pb-16"
-        style={{ background: 'linear-gradient(180deg, #38BDF8 0%, #7DD3FC 30%, #BAE6FD 55%, #D9F99D 82%, #FFF8EE 100%)' }}
+        className="relative overflow-hidden px-4 pt-12 pb-6"
+        style={{ background: 'linear-gradient(180deg, #FF4757 0%, #FF6B6B 38%, #FFA07A 62%, #FFE5EC 88%, #F9FAFB 100%)' }}
       >
         {/* 天气 + 云朵装饰 */}
         <View style={{ position: 'absolute', top: 4, right: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -242,18 +242,18 @@ export default function TuantuanPage() {
                 <Text className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.8)' }}>{dateStr}</Text>
               </View>
             </View>
-            <Text className="block text-2xl font-black mt-1" style={{ color: '#fff', textShadow: '0 2px 8px rgba(3,105,161,0.45)' }}>
+            <Text className="block text-2xl font-black mt-1" style={{ color: '#fff', textShadow: '0 2px 8px rgba(194,24,51,0.45)' }}>
               {greeting}，来给果树{'\n'}浇水吧！
             </Text>
           </View>
           <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: 4 }}>
             <View className="rounded-full px-3 py-1 mb-1" style={{ backgroundColor: 'rgba(255,255,255,0.9)', display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
               <Text className="text-sm">💧</Text>
-              <Text className="text-sm font-black ml-1" style={{ color: '#0284c7' }}>{growth}g</Text>
+              <Text className="text-sm font-black ml-1" style={{ color: '#FF4757' }}>{growth}g</Text>
             </View>
             <View className="rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(255,255,255,0.9)', display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
               <Text className="text-sm">🪙</Text>
-              <Text className="text-sm font-black ml-1" style={{ color: '#ea580c' }}>{profile?.points ?? 0}</Text>
+              <Text className="text-sm font-black ml-1" style={{ color: '#F59E0B' }}>{profile?.points ?? 0}</Text>
             </View>
           </View>
         </View>
@@ -261,9 +261,9 @@ export default function TuantuanPage() {
         {/* 贴纸徽章行 */}
         <View style={{ position: 'relative', marginTop: 12, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
           <View className="rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
-            <Text className="text-xs font-black" style={{ color: '#15803d' }}>🌳 第 {(tree?.harvested ?? 0) + 1} 棵</Text>
+            <Text className="text-xs font-black" style={{ color: '#FF4757' }}>🌳 第 {(tree?.harvested ?? 0) + 1} 棵</Text>
           </View>
-          <View className="rounded-full px-3 py-1 ml-2" style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+          <View className="rounded-full px-3 py-1 ml-2" style={{ background: 'linear-gradient(135deg,#FFA502,#F97316)' }}>
             <Text className="text-xs font-black text-white">{STAGE_EMOJIS[stage]} {STAGE_NAMES[stage]}</Text>
           </View>
           <View className="rounded-full px-3 py-1 ml-auto" style={{ background: 'linear-gradient(135deg,#FBBF24,#F97316)' }}>
@@ -273,9 +273,9 @@ export default function TuantuanPage() {
 
         {/* 果树舞台 */}
         <View className="relative mt-1" style={{ height: 320 }}>
-          {/* 草地 */}
+          {/* 暖金地面（融入膨胀团金色调） */}
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 56 }}>
-            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 44, background: 'linear-gradient(180deg, rgba(163,230,53,0) 0%, rgba(163,230,53,0.55) 45%, rgba(132,204,22,0.8) 100%)', borderRadius: '50% 50% 0 0 / 60% 60% 0 0' }} />
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 44, background: 'linear-gradient(180deg, rgba(255,213,140,0) 0%, rgba(255,183,77,0.5) 45%, rgba(255,165,2,0.75) 100%)', borderRadius: '50% 50% 0 0 / 60% 60% 0 0' }} />
             <Text style={{ position: 'absolute', bottom: 6, left: 24, fontSize: 20 }}>🌼</Text>
             <Text style={{ position: 'absolute', bottom: 8, right: 32, fontSize: 20 }}>🌷</Text>
             <Text style={{ position: 'absolute', bottom: 2, left: '30%', fontSize: 16 }}>🍀</Text>
@@ -283,9 +283,9 @@ export default function TuantuanPage() {
           </View>
 
           {/* 左贴纸：已浇水滴 */}
-          <View className="bg-white rounded-2xl px-3 py-2" style={{ position: 'absolute', left: 0, top: 56, border: '2px solid #bae6fd', boxShadow: '0 10px 24px -10px rgba(14,165,233,0.5)', transform: 'rotate(-3deg)' }}>
-            <Text className="block text-xs font-black" style={{ color: '#38bdf8', letterSpacing: 1 }}>已浇水滴</Text>
-            <Text className="block text-2xl font-black mt-1" style={{ color: '#0284c7' }}>{growth}<Text className="text-xs" style={{ color: '#38bdf8' }}>g</Text></Text>
+          <View className="bg-white rounded-2xl px-3 py-2" style={{ position: 'absolute', left: 0, top: 56, border: '2px solid #fecdd3', boxShadow: '0 10px 24px -10px rgba(255,71,87,0.45)', transform: 'rotate(-3deg)' }}>
+            <Text className="block text-xs font-black" style={{ color: '#fb7185', letterSpacing: 1 }}>已浇水滴</Text>
+            <Text className="block text-2xl font-black mt-1" style={{ color: '#FF4757' }}>{growth}<Text className="text-xs" style={{ color: '#fb7185' }}>g</Text></Text>
           </View>
 
           {/* 右贴纸：距升级 */}
@@ -299,10 +299,10 @@ export default function TuantuanPage() {
           </View>
 
           {/* 果树（emoji 按阶段放大） */}
-          <View style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ position: 'absolute', bottom: 112, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
             {plusG && (
-              <Text key={plusG.key} style={{ position: 'absolute', top: 0, left: '50%', fontSize: 28, fontWeight: 900, color: '#0284c7', textShadow: '0 2px 0 #fff, 0 4px 10px rgba(2,132,199,0.4)' }}>
+              <Text key={plusG.key} style={{ position: 'absolute', top: 0, left: '50%', fontSize: 28, fontWeight: 900, color: '#FF4757', textShadow: '0 2px 0 #fff, 0 4px 10px rgba(255,71,87,0.4)' }}>
                 {plusG.text}
               </Text>
             )}
@@ -316,26 +316,31 @@ export default function TuantuanPage() {
               </View>
             )}
           </View>
+
+          {/* 浇水按钮：融入舞台，红橙渐变（膨胀团主色） */}
+          <View style={{ position: 'absolute', bottom: 14, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                width: 92, height: 92, borderRadius: 46, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: isTodayWatered ? 'linear-gradient(135deg,#4ade80,#16a34a)' : 'linear-gradient(135deg,#FF4757 0%,#FFA502 100%)',
+                boxShadow: isTodayWatered ? '0 12px 26px -8px rgba(22,163,74,0.55)' : '0 12px 26px -8px rgba(255,71,87,0.6)',
+                border: '3px solid rgba(255,255,255,0.9)',
+                opacity: watering ? 0.8 : 1,
+              }}
+              onClick={handleDailyWater}
+            >
+              <Text style={{ fontSize: 26, lineHeight: '1' }}>{isTodayWatered ? '✅' : '💧'}</Text>
+              <Text className="text-sm font-black text-white mt-1">{isTodayWatered ? '已浇水' : watering ? '浇水中…' : '浇水'}</Text>
+              <Text className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.9)' }}>{isTodayWatered ? '明天再来' : `+${profile?.config.dailyWater ?? 20}g`}</Text>
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* ============ 浇水 CTA ============ */}
-      <View className="relative z-10 flex flex-col items-center px-4" style={{ marginTop: -48 }}>
-        <View
-          style={{
-            width: 112, height: 112, borderRadius: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            background: isTodayWatered ? 'linear-gradient(135deg,#4ade80,#16a34a)' : 'linear-gradient(135deg,#38bdf8,#0ea5e9 55%,#10b981)',
-            boxShadow: isTodayWatered ? '0 14px 30px -10px rgba(22,163,74,0.55)' : '0 14px 30px -10px rgba(2,132,199,0.55)',
-            opacity: watering ? 0.8 : 1,
-          }}
-          onClick={handleDailyWater}
-        >
-          <Text style={{ fontSize: 30, lineHeight: '1' }}>{isTodayWatered ? '✅' : '💧'}</Text>
-          <Text className="text-sm font-black text-white mt-1">{isTodayWatered ? '已浇水' : watering ? '浇水中…' : '浇水'}</Text>
-          <Text className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.9)' }}>{isTodayWatered ? '明天再来哦' : `+${profile?.config.dailyWater ?? 20}g`}</Text>
-        </View>
-        <Text className="block text-xs font-bold mt-2" style={{ color: '#78716c' }}>
-          {isTodayWatered ? '今天的水滴已到账，去做任务继续攒水吧 👉' : `每天第一次浇水 +${profile?.config.dailyWater ?? 20}g，点我浇树～`}
+      {/* 浇水提示（紧贴舞台，同页面底色无割裂） */}
+      <View className="flex flex-col items-center px-4 mt-1">
+        <Text className="block text-xs font-bold" style={{ color: '#78716c' }}>
+          {isTodayWatered ? '今天的水滴已到账，去做任务继续攒水吧 👉' : `每天第一次浇水 +${profile?.config.dailyWater ?? 20}g，点上方按钮浇树～`}
         </Text>
       </View>
 
@@ -343,12 +348,12 @@ export default function TuantuanPage() {
       <View className="px-4 mt-5">
         <View className="bg-white rounded-3xl px-4 pt-4 pb-4" style={{ boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)' }}>
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text className="text-xs font-black" style={{ color: 'rgba(5,150,105,0.7)', letterSpacing: 2 }}>成长进度</Text>
-            <Text className="text-xs font-black" style={{ color: '#047857' }}>{growth}<Text style={{ color: '#34d399' }}>/{fullGrowth}g</Text></Text>
+            <Text className="text-xs font-black" style={{ color: 'rgba(255,71,87,0.7)', letterSpacing: 2 }}>成长进度</Text>
+            <Text className="text-xs font-black" style={{ color: '#FF4757' }}>{growth}<Text style={{ color: '#FFA502' }}>/{fullGrowth}g</Text></Text>
           </View>
           <View className="relative mx-3 mt-5" style={{ height: 62 }}>
             <View style={{ position: 'absolute', left: 0, right: 0, top: 15, height: 10, borderRadius: 5, backgroundColor: '#f5f5f4' }} />
-            <View style={{ position: 'absolute', left: 0, top: 15, height: 10, borderRadius: 5, width: `${trackFillPct(growth, fullGrowth)}%`, background: 'linear-gradient(90deg,#38BDF8 0%,#22C55E 55%,#FBBF24 100%)' }} />
+            <View style={{ position: 'absolute', left: 0, top: 15, height: 10, borderRadius: 5, width: `${trackFillPct(growth, fullGrowth)}%`, background: 'linear-gradient(90deg,#FF4757 0%,#FFA502 60%,#FBBF24 100%)' }} />
             {thresholds.map((th, i) => {
               const pct = (i / (thresholds.length - 1)) * 100
               const reached = growth >= th
@@ -359,13 +364,13 @@ export default function TuantuanPage() {
                     style={{
                       width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       backgroundColor: reached || isNext ? '#fff' : '#fafaf9',
-                      border: reached ? '2px solid #4ade80' : isNext ? '2px solid #fbbf24' : '2px solid #e7e5e4',
+                      border: reached ? '2px solid #FF4757' : isNext ? '2px solid #FFA502' : '2px solid #e7e5e4',
                       opacity: reached || isNext ? 1 : 0.6,
                     }}
                   >
                     <Text className="text-sm">{STAGE_EMOJIS[i]}</Text>
                   </View>
-                  <Text className="text-xs font-black mt-1" style={{ color: reached ? '#16a34a' : isNext ? '#d97706' : '#a8a29e', fontSize: 10 }}>{th}g</Text>
+                  <Text className="text-xs font-black mt-1" style={{ color: reached ? '#FF4757' : isNext ? '#d97706' : '#a8a29e', fontSize: 10 }}>{th}g</Text>
                 </View>
               )
             })}
@@ -381,7 +386,7 @@ export default function TuantuanPage() {
           {meals?.slots.map((s) => {
             const claimed = meals.claimed[s.key]
             const active = meals.currentSlot === s.key && !claimed
-            const meta = { morning: { g: 'linear-gradient(135deg,#FBBF24,#F97316)' }, noon: { g: 'linear-gradient(135deg,#FB923C,#EF4444)' }, evening: { g: 'linear-gradient(135deg,#14B8A6,#0EA5E9)' } }[s.key]
+            const meta = { morning: { g: 'linear-gradient(135deg,#FFA502,#F97316)' }, noon: { g: 'linear-gradient(135deg,#FF4757,#F43F5E)' }, evening: { g: 'linear-gradient(135deg,#FB7185,#FF4757)' } }[s.key]
             return (
               <View
                 key={s.key}
@@ -411,8 +416,8 @@ export default function TuantuanPage() {
       <View className="px-4 mt-5" style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
         <View className="flex-1 bg-white rounded-3xl p-4 relative overflow-hidden" style={{ boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)' }}>
           <Text style={{ position: 'absolute', right: -6, top: -6, fontSize: 36, opacity: 0.15 }}>🌳</Text>
-          <Text className="block text-xs font-black" style={{ color: 'rgba(5,150,105,0.7)', letterSpacing: 1 }}>已收获果树</Text>
-          <Text className="block text-3xl font-black mt-1" style={{ color: '#059669' }}>{tree?.harvested ?? 0}<Text className="text-sm font-bold ml-1" style={{ color: '#34d399' }}>棵</Text></Text>
+          <Text className="block text-xs font-black" style={{ color: 'rgba(255,71,87,0.7)', letterSpacing: 1 }}>已收获果树</Text>
+          <Text className="block text-3xl font-black mt-1" style={{ color: '#FF4757' }}>{tree?.harvested ?? 0}<Text className="text-sm font-bold ml-1" style={{ color: '#fb7185' }}>棵</Text></Text>
           <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>种成果树就能换券哦</Text>
         </View>
         <View className="flex-1 bg-white rounded-3xl p-4 relative overflow-hidden" style={{ boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)' }}>
@@ -430,8 +435,8 @@ export default function TuantuanPage() {
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text className="text-sm font-black" style={{ color: '#1c1917' }}>{calendarMonth.y} 年 {calendarMonth.m} 月</Text>
             <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-              <Text className="text-xs" style={{ color: '#0284c7' }} onClick={() => setCalendarMonth((p) => p.m === 1 ? { y: p.y - 1, m: 12 } : { y: p.y, m: p.m - 1 })}>◀ 上月</Text>
-              <Text className="text-xs" style={{ color: '#0284c7' }} onClick={() => setCalendarMonth((p) => p.m === 12 ? { y: p.y + 1, m: 1 } : { y: p.y, m: p.m + 1 })}>下月 ▶</Text>
+              <Text className="text-xs" style={{ color: '#FF4757' }} onClick={() => setCalendarMonth((p) => p.m === 1 ? { y: p.y - 1, m: 12 } : { y: p.y, m: p.m - 1 })}>◀ 上月</Text>
+              <Text className="text-xs" style={{ color: '#FF4757' }} onClick={() => setCalendarMonth((p) => p.m === 12 ? { y: p.y + 1, m: 1 } : { y: p.y, m: p.m + 1 })}>下月 ▶</Text>
             </View>
           </View>
           <WaterCalendar cells={calendarCells} onSelectMissed={(date) => { if (date < todayStr()) setMakeupDate(date) }} />
@@ -441,9 +446,9 @@ export default function TuantuanPage() {
       {/* ============ 快捷入口（任务/助力/领券/我的果园） ============ */}
       <View className="px-4 mt-5" style={{ display: 'flex', flexDirection: 'row', gap: 10 }}>
         {[
-          { emoji: '📋', title: '做任务攒水', desc: '团购·分享·邀请', bg: 'linear-gradient(135deg,#38bdf8,#0284c7)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-tasks/index' }) },
-          { emoji: '🎟️', title: '领券中心', desc: '果树兑换满减券', bg: 'linear-gradient(135deg,#fb7185,#f97316)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-coupons/index' }) },
-          { emoji: '👤', title: '我的果园', desc: '战绩·明细·规则', bg: 'linear-gradient(135deg,#4ade80,#16a34a)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-me/index' }) },
+          { emoji: '📋', title: '做任务攒水', desc: '团购·分享·邀请', bg: 'linear-gradient(135deg,#FF4757,#F43F5E)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-tasks/index' }) },
+          { emoji: '🎟️', title: '领券中心', desc: '果树兑换满减券', bg: 'linear-gradient(135deg,#FFA502,#F97316)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-coupons/index' }) },
+          { emoji: '👤', title: '我的果园', desc: '战绩·明细·规则', bg: 'linear-gradient(135deg,#FB7185,#FF4757)', onClick: () => Taro.navigateTo({ url: '/pages/orchard-me/index' }) },
         ].map((it) => (
           <View key={it.title} className="flex-1 rounded-3xl p-3" style={{ background: it.bg }} onClick={it.onClick}>
             <Text className="block text-2xl">{it.emoji}</Text>

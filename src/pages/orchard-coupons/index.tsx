@@ -88,12 +88,12 @@ export default function OrchardCouponsPage() {
   const goOrchard = () => Taro.switchTab({ url: '/pages/tuantuan/index' })
 
   return (
-    <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg,#FFF8EE 0%,#FFF2DF 45%,#F3F9E8 100%)' }}>
+    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>
       {/* 头部 */}
-      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #fed7aa 0%, #fde68a 50%, rgba(253,230,138,0) 100%)' }}>
+      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 50%, rgba(249,250,251,0) 100%)' }}>
         <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
-            <Text className="block text-xs font-black" style={{ color: 'rgba(194,65,12,0.8)', letterSpacing: 2 }}>COUPON WALL</Text>
+            <Text className="block text-xs font-black" style={{ color: 'rgba(255,71,87,0.8)', letterSpacing: 2 }}>COUPON WALL</Text>
             <Text className="block text-2xl font-black mt-1" style={{ color: '#1c1917' }}>优惠券</Text>
           </View>
           <View className="rounded-full px-3 py-1" style={{ backgroundColor: 'rgba(255,255,255,0.85)' }}>
@@ -131,12 +131,12 @@ export default function OrchardCouponsPage() {
                 {isMature ? '收下果实入库就能换优惠券' : `再浇 ${fullGrowth - growth}g 就能收获入库`}
               </Text>
             </View>
-            <View className="rounded-full px-3 py-1" style={{ background: 'linear-gradient(135deg,#4ade80,#16a34a)' }}>
+            <View className="rounded-full px-3 py-1" style={{ background: 'linear-gradient(135deg,#FF4757,#F43F5E)' }}>
               <Text className="text-xs font-black text-white">{isMature ? '去收获' : '去浇水'}</Text>
             </View>
           </View>
           <View className="rounded-full mt-3" style={{ height: 10, backgroundColor: '#f5f5f4', overflow: 'hidden' }}>
-            <View style={{ height: 10, borderRadius: 5, width: `${growthPct}%`, background: 'linear-gradient(90deg,#38bdf8,#4ade80,#fbbf24)' }} />
+            <View style={{ height: 10, borderRadius: 5, width: `${growthPct}%`, background: 'linear-gradient(90deg,#FF4757,#FFA502,#FBBF24)' }} />
           </View>
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
             <Text className="text-xs font-bold" style={{ color: '#059669' }}>🌳 果树库存 {stock} 棵</Text>
@@ -220,7 +220,7 @@ export default function OrchardCouponsPage() {
             <Text style={{ fontSize: 36 }}>🎫</Text>
             <Text className="block text-sm font-black mt-2" style={{ color: '#1c1917' }}>暂无优惠券</Text>
             <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>把果树种成熟，就能收获优惠券啦</Text>
-            <View className="rounded-full px-5 py-2 mt-4" style={{ background: 'linear-gradient(135deg,#4ade80,#16a34a)' }} onClick={goOrchard}>
+            <View className="rounded-full px-5 py-2 mt-4" style={{ background: 'linear-gradient(135deg,#FF4757,#F43F5E)' }} onClick={goOrchard}>
               <Text className="text-xs font-black text-white">回果园浇水 🌱</Text>
             </View>
           </View>
@@ -269,7 +269,7 @@ function CouponCard({ coupon, onUse }: { coupon: OrchardCoupon; onUse: () => voi
               有效期至 {coupon.expireAt ? new Date(coupon.expireAt).toLocaleDateString() : '长期'}
             </Text>
             {!disabled && !isLocked && (
-              <View className="rounded-full px-4 py-1 ml-auto" style={{ background: 'linear-gradient(135deg,#4ade80,#16a34a)' }} onClick={onUse}>
+              <View className="rounded-full px-4 py-1 ml-auto" style={{ background: 'linear-gradient(135deg,#FF4757,#F43F5E)' }} onClick={onUse}>
                 <Text className="text-xs font-black text-white">去使用</Text>
               </View>
             )}

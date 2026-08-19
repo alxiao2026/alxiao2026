@@ -58,14 +58,14 @@ export default function OrchardExchangePage() {
   }
 
   return (
-    <View className="min-h-screen pb-10" style={{ background: 'linear-gradient(180deg, #F0F9FF 0%, #ECFDF5 100%)' }}>
+    <View className="min-h-screen pb-10" style={{ backgroundColor: '#F9FAFB' }}>
       {/* 头部 */}
-      <View className="px-4 pt-12 pb-10" style={{ background: 'linear-gradient(180deg, #bae6fd 0%, #a7f3d0 60%, rgba(167,243,208,0) 100%)' }}>
+      <View className="px-4 pt-12 pb-10" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 60%, rgba(249,250,251,0) 100%)' }}>
         <View onClick={() => Taro.navigateBack({ delta: 1 })}>
           <Text className="text-sm font-bold" style={{ color: '#78716c' }}>← 返回</Text>
         </View>
         <View className="mt-2" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(2,132,199,0.8)' }}>POINTS → DROPLETS</Text>
+          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,71,87,0.8)' }}>POINTS → DROPLETS</Text>
           <Text className="block text-2xl font-black mt-1" style={{ color: '#1e293b' }}>积分兑换水滴</Text>
           <Text className="block text-xs mt-1" style={{ color: 'rgba(71,85,105,0.8)' }}>1 积分 = {rate}g 水滴，兑换后立即浇灌到果树</Text>
         </View>
@@ -79,7 +79,7 @@ export default function OrchardExchangePage() {
           </View>
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
             <Text className="text-xs font-bold" style={{ color: '#78716c' }}>将获得水滴</Text>
-            <Text className="text-2xl font-black" style={{ color: '#0284c7' }}>💧 {Math.max(0, Math.min(value, points)) * rate}g</Text>
+            <Text className="text-2xl font-black" style={{ color: '#FF4757' }}>💧 {Math.max(0, Math.min(value, points)) * rate}g</Text>
           </View>
 
           <Text className="block text-xs font-black mt-4" style={{ color: '#78716c' }}>兑换数量（积分）</Text>
@@ -113,7 +113,7 @@ export default function OrchardExchangePage() {
 
           <View
             className="rounded-full py-3 mt-5"
-            style={{ background: 'linear-gradient(135deg,#38bdf8,#0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: canExchange ? 1 : 0.5, boxShadow: '0 8px 24px -12px rgba(2,132,199,0.5)' }}
+            style={{ background: 'linear-gradient(135deg,#FF4757,#F43F5E)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: canExchange ? 1 : 0.5, boxShadow: '0 8px 24px -12px rgba(2,132,199,0.5)' }}
             onClick={handleExchange}
           >
             <Text className="text-base font-black text-white">

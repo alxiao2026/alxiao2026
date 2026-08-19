@@ -459,6 +459,23 @@ export class OrchardService {
         noon: !!row.meals_claimed?.noon,
         evening: !!row.meals_claimed?.evening,
       },
+      meals: {
+        date: todayStr(),
+        currentSlot:
+          MEAL_SLOTS.find((s) => cstHour() >= s.startHour && cstHour() < s.endHour)?.key ?? null,
+        claimed: {
+          morning: !!row.meals_claimed?.morning,
+          noon: !!row.meals_claimed?.noon,
+          evening: !!row.meals_claimed?.evening,
+        },
+        slots: MEAL_SLOTS.map((s) => ({
+          key: s.key,
+          label: s.label,
+          range: `${s.startHour}:00-${s.endHour}:00`,
+          emoji: s.emoji,
+          water: cfg.mealWater,
+        })),
+      },
       tasks,
       config: cfg,
       fullGrowth: full,

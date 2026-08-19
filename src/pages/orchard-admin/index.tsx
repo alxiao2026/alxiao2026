@@ -19,7 +19,7 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    emoji: '🎫', title: '补浇设置', note: '补浇卡获取不限量，仅限制每个种树周期的使用张数', tile: 'linear-gradient(135deg,#cffafe,#bae6fd)',
+    emoji: '🎫', title: '补浇设置', note: '补浇卡获取不限量，仅限制每个种树周期的使用张数', tile: 'linear-gradient(135deg,#FFF1F2,#FFE5EC)',
     fields: [
       { key: 'cycleMakeupUseLimit', label: '补浇卡每周期限用', unit: '张' },
       { key: 'makeupCostPoints', label: '积分补浇消耗', unit: '积分/次' },
@@ -33,7 +33,7 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    emoji: '✅', title: '日常任务奖励', tile: 'linear-gradient(135deg,#d9f99d,#86efac)',
+    emoji: '✅', title: '日常任务奖励', tile: 'linear-gradient(135deg,#FFF1F2,#FFE5EC)',
     fields: [
       { key: 'taskGroupBuyReward', label: '团购下单奖励', unit: 'g/单' },
       { key: 'taskGroupBuyLimit', label: '团购下单每日上限', unit: '单' },
@@ -173,13 +173,13 @@ export default function OrchardAdminPage() {
   }
 
   return (
-    <View className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #FFF6EC 0%, #FFFDF7 100%)' }}>
-      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #fed7aa 0%, #fde68a 60%, rgba(253,230,138,0) 100%)' }}>
+    <View className="min-h-screen pb-24" style={{ backgroundColor: '#F9FAFB' }}>
+      <View className="px-4 pt-12 pb-8" style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 60%, rgba(249,250,251,0) 100%)' }}>
         <View onClick={() => Taro.navigateBack({ delta: 1 })}>
           <Text className="text-sm font-bold" style={{ color: '#78716c' }}>← 返回</Text>
         </View>
         <View className="mt-2" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(194,65,12,0.7)' }}>ORCHARD ADMIN</Text>
+          <Text className="block font-black" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,71,87,0.7)' }}>ORCHARD ADMIN</Text>
           <Text className="block text-2xl font-black mt-1" style={{ color: '#1c1917' }}>🛠️ 果园设置后台</Text>
           <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>运营数值配置，保存后全局生效</Text>
         </View>
