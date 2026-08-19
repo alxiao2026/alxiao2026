@@ -6,7 +6,8 @@ import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subs
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift, Sprout } from 'lucide-react-taro'
+import { orchardApi, type OrchardCoupon } from '@/lib/orchard-api'
 
 interface Order {
   id: string
@@ -51,6 +52,10 @@ interface PrepayInfo {
   pay_amount: number
   discount_name: string | null
   pay_expire_at: string | null
+  /** 果园满减券抵扣（叠加在抽奖折扣之后） */
+  orchard_discount_amount?: number | null
+  orchard_discount_name?: string | null
+  orchard_coupon_code?: string | null
   /** 微信通道：小程序调起支付参数（后端二次签名） */
   wechat_pay?: {
     timeStamp: string
@@ -98,6 +103,9 @@ export default function OrderDetail() {
   const [refreshingQR, setRefreshingQR] = useState(false)
   const [prepayInfo, setPrepayInfo] = useState<PrepayInfo | null>(null)
   const [paying, setPaying] = useState(false)
+  const [orchardCoupons, setOrchardCoupons] = useState<OrchardCoupon[]>([])
+  const [selectedOrchardCoupon, setSelectedOrchardCoupon] = useState<string | null>(null)
+  const orchardCouponRef = useRef<string | null>(null)
   const [countdownText, setCountdownText] = useState('')
   const [showPaySuccess, setShowPaySuccess] = useState(false)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -125,13 +133,53 @@ export default function OrderDetail() {
     }
   }, [order?.status])
 
-  // 待支付：加载支付金额明细 + 启动倒计时
+  // 待支付：加载支付金额明细 + 启动倒计时 + 拉取果园可用券
   useEffect(() => {
     if (order?.status === 'created') {
       loadPrepay(true)
       startCountdown(order.pay_expire_at)
+      loadOrchardCoupons()
     }
   }, [order?.status, order?.pay_expire_at])
+
+  /** 果园满减券：按订单金额过滤门槛，仅取未使用的券 */
+  const loadOrchardCoupons = async () => {
+    try {
+      const userId = Taro.getStorageSync('user_id')
+      if (!userId || !order) return
+      const amount = toAmount(order.original_amount) || toAmount(order.price) * (order.quantity || 1)
+      const res = await orchardApi.availableCoupons(userId, amount)
+      if (res.code === 200 && Array.isArray(res.data)) {
+        setOrchardCoupons(res.data.filter((c) => c.status === 'unused'))
+      }
+    } catch (e) {
+      console.warn('[OrderDetail] 果园券加载失败:', e)
+    }
+  }
+
+  /** 选择/取消果园券：重新预下单（后端换锁），金额明细实时刷新 */
+  const handlePickOrchardCoupon = () => {
+    const items = ['不使用优惠券', ...orchardCoupons.map((c) => `满${c.threshold}减${c.amount}元（${c.title}）`)]
+    const currentIdx = selectedOrchardCoupon
+      ? orchardCoupons.findIndex((c) => c.code === selectedOrchardCoupon) + 1
+      : 0
+    Taro.showActionSheet({
+      itemList: items,
+      success: async (r) => {
+        if (r.tapIndex === currentIdx) return
+        const code = r.tapIndex === 0 ? null : orchardCoupons[r.tapIndex - 1]?.code || null
+        orchardCouponRef.current = code
+        setSelectedOrchardCoupon(code)
+        const data = await loadPrepay(true, code)
+        if (!data && code) {
+          Taro.showToast({ title: '该券暂不可用', icon: 'none' })
+          orchardCouponRef.current = null
+          setSelectedOrchardCoupon(null)
+          loadPrepay(true, null)
+        }
+      },
+    })
+  }
 
   const loadOrder = async () => {
     try {
@@ -214,21 +262,27 @@ export default function OrderDetail() {
     }
   }
 
-  /** 预下单：后端金额引擎计算实付（含抽奖券抵扣），前端只展示 */
-  const loadPrepay = async (silent = false): Promise<PrepayInfo | null> => {
+  /** 预下单：后端金额引擎计算实付（含抽奖券+果园券抵扣），前端只展示 */
+  const loadPrepay = async (silent = false, orchardCouponCode?: string | null): Promise<PrepayInfo | null> => {
     try {
       const userId = Taro.getStorageSync('user_id')
       if (!userId) return null
-      console.log('[OrderDetail] 请求预下单, order_id:', id)
+      const couponCode = orchardCouponCode === undefined ? orchardCouponRef.current : orchardCouponCode
+      console.log('[OrderDetail] 请求预下单, order_id:', id, '果园券:', couponCode)
       const res = await Network.request({
         url: '/api/payment/prepay',
         method: 'POST',
-        data: { order_id: id, user_id: userId },
+        data: { order_id: id, user_id: userId, orchard_coupon_code: couponCode || undefined },
       })
       console.log('[OrderDetail] 预下单响应:', res.data)
       const data = res.data?.data || res.data
       if (data?.prepay_id) {
         setPrepayInfo(data)
+        // 恢复此前会话中已锁定的果园券选中态
+        if (orchardCouponCode === undefined && data.orchard_coupon_code && !orchardCouponRef.current) {
+          orchardCouponRef.current = data.orchard_coupon_code
+          setSelectedOrchardCoupon(data.orchard_coupon_code)
+        }
         return data as PrepayInfo
       }
       // prepay 失败（如支付通道未配置）：透传后端真实错误，避免静默无反应；自动预取时静默
@@ -440,6 +494,7 @@ export default function OrderDetail() {
     ? prepayInfo.original_amount
     : toAmount(order.original_amount) || toAmount(order.price) * (order.quantity || 1)
   const discountAmount = prepayInfo ? prepayInfo.discount_amount : toAmount(order.discount_amount)
+  const orchardDiscountAmount = prepayInfo?.orchard_discount_amount || 0
   const payAmount = prepayInfo
     ? prepayInfo.pay_amount
     : Math.max(originalAmount - discountAmount, 0.01)
@@ -506,6 +561,44 @@ export default function OrderDetail() {
                     </Text>
                     <Text className="block text-sm font-semibold text-[#52C41A]">
                       -¥{discountAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                </>
+              )}
+              {/* 果园满减券：种树收获的券可在本单直接抵扣 */}
+              {orchardCoupons.length > 0 && (
+                <>
+                  <Separator />
+                  <View className="flex flex-row justify-between items-center py-2" onClick={handlePickOrchardCoupon}>
+                    <View className="flex flex-row items-center gap-1">
+                      <Sprout size={14} color="#16A34A" />
+                      <Text className="block text-sm text-gray-400">果园满减券</Text>
+                    </View>
+                    <View className="flex flex-row items-center gap-1">
+                      {selectedOrchardCoupon ? (
+                        <Text className="block text-sm font-semibold text-[#16A34A]">
+                          {(() => {
+                            const c = orchardCoupons.find((x) => x.code === selectedOrchardCoupon)
+                            return c ? `满${c.threshold}减${c.amount}元` : '已选 1 张'
+                          })()}
+                        </Text>
+                      ) : (
+                        <Text className="block text-sm text-[#FF4757]">{orchardCoupons.length} 张可用</Text>
+                      )}
+                      <ChevronRight size={14} color="#9CA3AF" />
+                    </View>
+                  </View>
+                </>
+              )}
+              {orchardDiscountAmount > 0 && (
+                <>
+                  <Separator />
+                  <View className="flex flex-row justify-between items-center py-2">
+                    <Text className="block text-sm text-gray-400">
+                      {prepayInfo?.orchard_discount_name || '果园满减券抵扣'}
+                    </Text>
+                    <Text className="block text-sm font-semibold text-[#16A34A]">
+                      -¥{orchardDiscountAmount.toFixed(2)}
                     </Text>
                   </View>
                 </>
@@ -723,7 +816,7 @@ export default function OrderDetail() {
                   <>
                     <Separator />
                     <View className="flex flex-row justify-between items-center py-2">
-                      <Text className="block text-sm text-gray-400">抽奖优惠抵扣</Text>
+                      <Text className="block text-sm text-gray-400">优惠抵扣（抽奖/果园券）</Text>
                       <Text className="block text-sm font-semibold text-[#52C41A]">-¥{toAmount(order.discount_amount).toFixed(2)}</Text>
                     </View>
                   </>

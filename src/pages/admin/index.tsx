@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -238,6 +238,7 @@ const AdminPage = () => {
             { icon: 'bell', label: '消息模板', color: '#6366f1', bg: '#eef2ff', page: '/pages/notify-template-config/index', adminOnly: true },
             { icon: 'shield', label: '微信配置', color: '#16a34a', bg: '#f0fdf4', page: '/pages/wechat-config/index', adminOnly: true },
             { icon: 'headphones', label: '客服配置', color: '#d946ef', bg: '#fdf4ff', page: '/pages/customer-service-admin/index', adminOnly: true },
+            { icon: 'sprout', label: '果园设置', color: '#22c55e', bg: '#f0fdf4', page: '/pages/orchard-admin/index', adminOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
           ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
@@ -260,6 +261,7 @@ const AdminPage = () => {
                 {item.icon === 'bell' && <BellRing size={28} color={item.color} />}
                 {item.icon === 'shield' && <ShieldCheck size={28} color={item.color} />}
                 {item.icon === 'headphones' && <Headphones size={28} color={item.color} />}
+                {item.icon === 'sprout' && <Sprout size={28} color={item.color} />}
                 {item.icon === 'piggy' && <PiggyBank size={28} color={item.color} />}
                 {item.icon === 'receipt' && <Receipt size={28} color={item.color} />}
               </View>

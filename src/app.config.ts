@@ -33,7 +33,16 @@ export default defineAppConfig({
     'pages/notification-center/index',
     'pages/distribution/index',
     'pages/distribution-audit/index',
-    'pages/customer-service-admin/index'
+    'pages/customer-service-admin/index',
+    'pages/orchard/index',
+    'pages/orchard-tasks/index',
+    'pages/orchard-coupons/index',
+    'pages/orchard-me/index',
+    'pages/orchard-points/index',
+    'pages/orchard-exchange/index',
+    'pages/orchard-assist/index',
+    'pages/orchard-help/index',
+    'pages/orchard-admin/index'
   ],
   window: {
     backgroundTextStyle: 'light',

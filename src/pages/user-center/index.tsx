@@ -9,7 +9,7 @@ import CustomerServiceModal from '@/components/customer-service-modal';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell, HandCoins
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell, HandCoins, Sprout
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -213,6 +213,12 @@ const UserCenterPage = () => {
       label: '搞钱中心',
       desc: '分享赚佣金，组队躺赚',
       onClick: () => Taro.navigateTo({ url: '/pages/distribution/index' })
+    },
+    {
+      icon: <Sprout size={20} color="#6B7280" />,
+      label: '我的果园',
+      desc: '种树打卡领水滴，收获兑满减券',
+      onClick: () => Taro.navigateTo({ url: '/pages/orchard/index' })
     },
     {
       icon: <Pencil size={20} color="#6B7280" />,

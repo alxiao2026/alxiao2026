@@ -1174,6 +1174,13 @@ export class OrderService {
       .update({ status: 'failed', updated_at: new Date().toISOString() })
       .eq('order_id', order.id)
       .eq('status', 'prepay');
+
+    // 解锁该订单占用的果园满减券（未支付，券退回券池）
+    await this.client
+      .from('orchard_coupons')
+      .update({ status: 'unused', verify_order_id: null })
+      .eq('verify_order_id', order.id)
+      .eq('status', 'locked');
   }
 
   // 批量检测过期订单并自动退款

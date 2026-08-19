@@ -9,6 +9,7 @@ import { getSupabaseClient } from '../../storage/database/supabase-client';
 import { NotificationService } from '../notification/notification.service';
 import { DistributionService } from '../distribution/distribution.service';
 import { WechatPayService } from './wechat-pay.service';
+import { OrchardService, type OrchardCoupon } from '../orchard/orchard.service';
 
 export interface PaymentRecord {
   id: string;
@@ -23,6 +24,7 @@ export interface PaymentRecord {
   pay_amount: number;
   refund_amount: number | null;
   lottery_record_id: string | null;
+  orchard_coupon_code: string | null;
   notify_count: number;
   paid_at: string | null;
   refunded_at: string | null;
@@ -41,18 +43,21 @@ export class PaymentService {
     private readonly notificationService: NotificationService,
     private readonly wechatPay: WechatPayService,
     private readonly distributionService: DistributionService,
+    private readonly orchardService: OrchardService,
   ) {}
 
   /**
    * 金额计算引擎（后端权威计算，前端只展示）
    * 实付 = max(原始金额 - 折扣券/霸王餐抵扣, 0.01)
    */
-  private async calculatePayAmount(order: any): Promise<{
+  private async calculatePayAmount(order: any, orchardCoupon?: OrchardCoupon | null): Promise<{
     originalAmount: number;
     discountAmount: number;
     payAmount: number;
     discountRecord: any | null;
     discountName: string | null;
+    orchardDiscountAmount: number;
+    orchardDiscountName: string | null;
   }> {
     const originalAmount =
       parseFloat(order.original_amount || '0') ||
@@ -94,17 +99,36 @@ export class PaymentService {
       }
     }
 
+    // 果园满减券：叠加在抽奖折扣之后的剩余金额上，门槛按订单原始金额判断
+    let orchardDiscountAmount = 0;
+    let orchardDiscountName: string | null = null;
+    if (orchardCoupon) {
+      const remain = Math.max(originalAmount - discountAmount, 0);
+      orchardDiscountAmount = Math.min(
+        Number(orchardCoupon.amount) || 0,
+        Math.max(remain - MIN_PAY_AMOUNT, 0),
+      );
+      orchardDiscountAmount = Math.round(orchardDiscountAmount * 100) / 100;
+      if (orchardDiscountAmount > 0) {
+        orchardDiscountName = `果园满减券（满${Number(orchardCoupon.threshold)}减${Number(orchardCoupon.amount)}）`;
+      } else {
+        orchardDiscountName = null;
+      }
+    }
+
     const payAmount = Math.max(
-      Math.round((originalAmount - discountAmount) * 100) / 100,
+      Math.round((originalAmount - discountAmount - orchardDiscountAmount) * 100) / 100,
       MIN_PAY_AMOUNT,
     );
 
     return {
       originalAmount: Math.round(originalAmount * 100) / 100,
-      discountAmount,
+      discountAmount: Math.round((discountAmount + orchardDiscountAmount) * 100) / 100,
       payAmount,
       discountRecord,
       discountName,
+      orchardDiscountAmount,
+      orchardDiscountName,
     };
   }
 
@@ -119,7 +143,7 @@ export class PaymentService {
   /**
    * 发起支付预下单（真实微信用户强制微信支付；Mock 通道仅供开发测试且需显式开启）
    */
-  async prepay(body: { order_id: string; user_id: string }) {
+  async prepay(body: { order_id: string; user_id: string; orchard_coupon_code?: string }) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
     }
@@ -149,7 +173,21 @@ export class PaymentService {
       throw new BadRequestException('订单已超时关闭，请重新下单');
     }
 
-    const calc = await this.calculatePayAmount(order);
+    // 果园满减券：若前端选择了券则校验（属于本人/未使用/未过期/门槛达标按原始金额）
+    const originalAmountForThreshold =
+      parseFloat(order.original_amount || '0') ||
+      parseFloat(order.price || '0') * (order.quantity || 1);
+    let orchardCoupon: OrchardCoupon | null = null;
+    const requestedCouponCode = String(body.orchard_coupon_code || '').trim();
+    if (requestedCouponCode) {
+      orchardCoupon = await this.orchardService.getCouponForPrepay(
+        requestedCouponCode,
+        body.user_id,
+        originalAmountForThreshold,
+      );
+    }
+
+    const calc = await this.calculatePayAmount(order, orchardCoupon);
 
     // 幂等：复用本订单未完成的支付单；若金额因券状态变化而不同则更新金额
     const { data: existing } = await this.client
@@ -162,10 +200,12 @@ export class PaymentService {
 
     let payment = existing?.[0] as PaymentRecord | undefined;
     let amountChanged = false;
+    const newCouponCode = orchardCoupon?.code || null;
     if (payment) {
       if (
         Number(payment.pay_amount) !== calc.payAmount ||
-        Number(payment.discount_amount) !== calc.discountAmount
+        Number(payment.discount_amount) !== calc.discountAmount ||
+        String(payment.orchard_coupon_code || '') !== String(newCouponCode || '')
       ) {
         const { data: updated, error } = await this.client
           .from('payments')
@@ -174,6 +214,7 @@ export class PaymentService {
             discount_amount: calc.discountAmount,
             pay_amount: calc.payAmount,
             lottery_record_id: calc.discountRecord?.id || null,
+            orchard_coupon_code: newCouponCode,
             updated_at: new Date().toISOString(),
           })
           .eq('id', payment.id)
@@ -199,6 +240,7 @@ export class PaymentService {
           discount_amount: calc.discountAmount,
           pay_amount: calc.payAmount,
           lottery_record_id: calc.discountRecord?.id || null,
+          orchard_coupon_code: newCouponCode,
         })
         .select()
         .single();
@@ -207,6 +249,9 @@ export class PaymentService {
       }
       payment = created as PaymentRecord;
     }
+
+    // 果园券锁定：换券/取消选券时先解锁旧券，再锁定新券（防止一券多单并发占用）
+    await this.orchardService.syncCouponLock(newCouponCode, order.id, body.user_id);
 
     // ===== 微信通道：支付配置齐全且用户已微信授权（有 open_id）时走真实下单 =====
     if (await this.wechatPay.isEnabled()) {
@@ -265,6 +310,9 @@ export class PaymentService {
             discount_amount: calc.discountAmount,
             pay_amount: calc.payAmount,
             discount_name: calc.discountName,
+            orchard_discount_amount: calc.orchardDiscountAmount,
+            orchard_discount_name: calc.orchardDiscountName,
+            orchard_coupon_code: newCouponCode,
             pay_expire_at: order.pay_expire_at,
           };
         }
@@ -295,6 +343,9 @@ export class PaymentService {
       discount_amount: calc.discountAmount,
       pay_amount: calc.payAmount,
       discount_name: calc.discountName,
+      orchard_discount_amount: calc.orchardDiscountAmount,
+      orchard_discount_name: calc.orchardDiscountName,
+      orchard_coupon_code: newCouponCode,
       pay_expire_at: order.pay_expire_at,
     };
   }
@@ -435,6 +486,20 @@ export class PaymentService {
         .eq('id', payment.lottery_record_id)
         .eq('refund_status', 'locked');
     }
+
+    // 3.5 果园满减券：locked → used（支付成功正式核销）
+    if (payment.orchard_coupon_code) {
+      try {
+        await this.orchardService.redeemCoupon(payment.orchard_coupon_code, payment.order_id);
+      } catch (e) {
+        this.logger.error(`果园券核销失败: ${(e as Error)?.message}`);
+      }
+    }
+
+    // 3.6 支付成功自动累计果园「购买团购」任务（果园与膨胀团下单打通，fire-and-forget）
+    this.orchardService
+      .onOrderPaid(payment.user_id)
+      .catch((e) => this.logger.warn(`果园团购任务累计失败(已忽略): ${(e as Error)?.message}`));
 
     // 通知5：订单付款成功通知
     const { data: paidOrder } = await this.client

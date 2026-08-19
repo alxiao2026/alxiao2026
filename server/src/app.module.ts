@@ -17,6 +17,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { ShareModule } from './modules/share/share.module';
 import { DistributionModule } from './modules/distribution/distribution.module';
 import { CustomerServiceModule } from './modules/customer-service/customer-service.module';
+import { OrchardModule } from './modules/orchard/orchard.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CustomerServiceModule } from './modules/customer-service/customer-servi
     ShareModule,
     DistributionModule,
     CustomerServiceModule,
+    OrchardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

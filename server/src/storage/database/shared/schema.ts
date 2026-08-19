@@ -252,3 +252,83 @@ export const lotteryLogs = pgTable("lottery_logs", {
 	index("lottery_logs_order_id_idx").on(table.order_id),
 	index("lottery_logs_created_at_idx").on(table.created_at),
 ]);
+
+// ============ 果园打卡模块（ orchard ） ============
+
+// 果园用户状态表（与 users 表通过 user_id 关联；积分直接共用 users.points）
+export const orchardUsers = pgTable("orchard_users", {
+	userId: varchar("user_id", { length: 128 }).primaryKey(),
+	growth: integer("growth").notNull().default(0), // 当前树累计水滴（克）
+	stage: integer("stage").notNull().default(0), // 当前阶段 0-5
+	harvested: integer("harvested").notNull().default(0), // 已收获棵数
+	availableTrees: integer("available_trees").notNull().default(0), // 果树库存（兑券货币）
+	plantedAt: timestamp("planted_at", { withTimezone: true }).defaultNow(),
+	cycleMakeupUsed: integer("cycle_makeup_used").notNull().default(0), // 本周期已用补浇卡
+	treeHistory: jsonb("tree_history").notNull().default([]), // 种植历史
+	wateredDates: jsonb("watered_dates").notNull().default([]), // 已浇水日期 ['YYYY-MM-DD']
+	currentStreak: integer("current_streak").notNull().default(0),
+	maxStreak: integer("max_streak").notNull().default(0),
+	lastWaterDate: varchar("last_water_date", { length: 20 }),
+	makeupCards: integer("makeup_cards").notNull().default(0), // 补浇卡
+	tasksState: jsonb("tasks_state").notNull().default({}), // 任务进度 { [taskId]: { progress, done, completedAt } }
+	taskDate: varchar("task_date", { length: 20 }), // 日常任务归属日期
+	mealsClaimed: jsonb("meals_claimed").notNull().default({}), // 三餐已领 { morning, noon, evening }
+	mealsDate: varchar("meals_date", { length: 20 }),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// 水滴流水表
+export const orchardRecords = pgTable("orchard_records", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	amount: integer("amount").notNull().default(0),
+	reason: varchar("reason", { length: 30 }).notNull(),
+	remark: varchar("remark", { length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+	index("orchard_records_user_idx").on(table.userId),
+]);
+
+// 果园优惠券表（种树收获兑换；可在膨胀团下单时抵扣）
+export const orchardCoupons = pgTable("orchard_coupons", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	code: varchar("code", { length: 32 }).notNull().unique(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	defId: varchar("def_id", { length: 20 }).notNull(),
+	type: varchar("type", { length: 20 }).notNull().default("amount"), // amount=满减券
+	title: varchar("title", { length: 128 }).notNull(),
+	threshold: numeric("threshold", { precision: 10, scale: 2 }).notNull().default("0"), // 满减门槛（元）
+	amount: numeric("amount", { precision: 10, scale: 2 }).notNull().default("0"), // 减免金额（元）
+	status: varchar("status", { length: 20 }).notNull().default("unused"), // unused/locked/used/expired
+	claimedAt: timestamp("claimed_at", { withTimezone: true }).defaultNow(),
+	usedAt: timestamp("used_at", { withTimezone: true }),
+	expireAt: timestamp("expire_at", { withTimezone: true }),
+	fromTree: integer("from_tree").notNull().default(0),
+	verifyOrderId: varchar("verify_order_id", { length: 36 }), // 锁定/核销关联的订单
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+	index("orchard_coupons_user_idx").on(table.userId),
+	index("orchard_coupons_code_idx").on(table.code),
+]);
+
+// 好友助力记录表
+export const orchardHelps = pgTable("orchard_helps", {
+	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+	shareUserId: varchar("share_user_id", { length: 128 }).notNull(), // 被助力人
+	helperUserId: varchar("helper_user_id", { length: 128 }).notNull(), // 助力好友
+	helperName: varchar("helper_name", { length: 128 }),
+	date: varchar("date", { length: 20 }).notNull(), // 助力日期（每日限 1 次）
+	claimed: boolean("claimed").notNull().default(false), // 奖励是否已结算
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+	index("orchard_helps_share_idx").on(table.shareUserId),
+	index("orchard_helps_helper_idx").on(table.helperUserId),
+]);
+
+// 果园运营配置表（单行 id=1，设置后台读写）
+export const orchardConfig = pgTable("orchard_config", {
+	id: integer("id").primaryKey().default(1),
+	config: jsonb("config").notNull().default({}),
+	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});

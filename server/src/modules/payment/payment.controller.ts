@@ -14,16 +14,17 @@ import { PaymentService } from './payment.service';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  /** 发起支付预下单：后端金额引擎计算实付，前端只展示 */
+  /** 发起支付预下单：后端金额引擎计算实付，前端只展示；支持果园满减券叠加抵扣 */
   @Post('prepay')
   @HttpCode(200)
-  async prepay(@Body() body: { order_id?: string; user_id?: string }) {
+  async prepay(@Body() body: { order_id?: string; user_id?: string; orchard_coupon_code?: string }) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
     }
     return this.paymentService.prepay({
       order_id: body.order_id,
       user_id: body.user_id,
+      orchard_coupon_code: body.orchard_coupon_code,
     });
   }
 
