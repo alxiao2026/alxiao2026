@@ -76,7 +76,7 @@ interface WinnerRecord {
 }
 
 
-const DEFAULT_COVER = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9';
+const DEFAULT_COVER = 'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/popup_mascot_box_v3_7348436c_cd186a3a.png?sign=2102468949-167c99c778-0-ee299d9fb5b1b984bc8995b3ca408bb0555e8af4bc2e341103b3fcf05a721952';
 
 // 登录态读取（兼容历史存储的字符串 '1' / 'true'）
 const readLoggedIn = (): boolean => {

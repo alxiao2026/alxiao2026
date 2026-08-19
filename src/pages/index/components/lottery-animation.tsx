@@ -18,7 +18,7 @@ interface LotteryAnimationProps {
   onClose: () => void;
 }
 
-const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_pengtuan_351a650c.png?sign=1786607826-2bed5f54c9-0-97678c83503bc0f3caa6d543ad6c00b34a3cd0feb4d4bdcebe92e8f5d9cd6125';
+const LOGO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/popup_mascot_box_v3_7348436c_cd186a3a.png?sign=2102468949-167c99c778-0-ee299d9fb5b1b984bc8995b3ca408bb0555e8af4bc2e341103b3fcf05a721952';
 
 const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountCap, discountCapped, productName, productValue, redemptionCode, refundAmount, onClose }: LotteryAnimationProps) => {
   const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealing' | 'result'>('idle');

@@ -49,20 +49,20 @@ interface PrizePoolItem {
 }
 
 const LOGO_URL =
-  'https://coze-coding-project.tos.coze.site/coze_storage_7662281810482692131/logo_new_pengtuan_2d6e000c.png?sign=1786611400-ab636b32a4-0-481e336cec57d85a4be349e1365bbc63d2a048d78e79de1c43bc7c0cc8dbdea9'
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/popup_mascot_box_v3_7348436c_cd186a3a.png?sign=2102468949-167c99c778-0-ee299d9fb5b1b984bc8995b3ca408bb0555e8af4bc2e341103b3fcf05a721952'
 
 // 顶部标题区卡片图（膨胀盲盒大标题 + 副标题 + 装饰，按参考设计稿切图）
 const TITLE_CARD_URL =
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/title_card_f19ec67b.jpg?sign=1787462487-e5e95baf36-0-60f38917a60395dd4a8b20ba47fcf8f70c600030174c3dcd403e4dde7828161c'
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/title_card_f19ec67b_601edd75.jpg?sign=2102468949-55992ef630-0-ac6068e09be5e3bcc8ed58325ab12f03126ea1d7bf0493fecafe3d9db0dc9e0d'
 
 // 6 个盲盒图片（用户提供的 3D 黏土风，不裁切原始比例，TOS 存储）
 const BOX_IMAGES = [
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_01_71b79235.jpg?sign=1787471315-f0df2855a5-0-a8eee7d11331d50154a76b5ef3f156ba743239c5a857ee29f0808df066dc4e3e',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_02_b67fc1f7.jpg?sign=1787471315-6fa305fa43-0-4175e00faeba9d80a9eada841375fcc2d6834f2b2f70472f1da194a7f8d1758d',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_03_ae83f602.jpg?sign=1787471316-8fec97d945-0-b00ca560dc83e7423243fc3ae0ba7f6fae6417584b727330d930420d4610da5f',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_04_c9420ef2.jpg?sign=1787471317-af9a1b724f-0-41af6f9d4ad190e6200a28646bb2424ae11072eb7dc32ed7a4934da0ef0770a3',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_05_21225e6f.jpg?sign=1787471318-92250a8d49-0-6777e37e416c89ffaf640acbc6fc7011cf49b4cd86f94544dd90a6c614a30e9c',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/full_box_06_513884ca.jpg?sign=1787471318-b5fd5b0a49-0-7fd587b797f06bf4c4410600153c88ee19eec6ae91a5c387a4db69369df57cf9',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_01_71b79235_ebe9826c.jpg?sign=2102468947-f10687b3fa-0-95d6d3f20db2090cf7ae098d493ce1142cf80e812f9f29affb4ef089df7bf690',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_02_b67fc1f7_b994a9c8.jpg?sign=2102468947-cd16d9ad55-0-9edb2c21114078acdd84ffaabf6614a6ef261365e3b362624792acf6d3eff438',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_03_ae83f602_256e6e70.jpg?sign=2102468948-d4a0a8625a-0-aed7e6374cc3dff8e661afd16e06a2fe9f75601f0c6301675155e828a7d976e8',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_04_c9420ef2_6fcb8d6b.jpg?sign=2102468948-08df5b5584-0-13547d4bf54513a1be85484a69c5c8dc304c528b0070ede8c35268ef00b984c6',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_05_21225e6f_f29b4261.jpg?sign=2102468948-8a4ed5897c-0-86dacba533ef654689914fe28f0d564e13a6a38dddd9f3485f6d71d1418eb787',
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_06_513884ca_64d7d07a.jpg?sign=2102468949-5fa4497b39-0-deeb8f073bae3a2ec3995ae790a8fdbaf8cbed56f2bbddf2ea173f903056854c',
 ]
 
 
@@ -70,7 +70,7 @@ const CONFETTI_COLORS = ['#FF6B9D', '#FFA502', '#F7B731', '#45AAF2', '#A55EEA', 
 
 // 中奖弹窗吉祥物盒子图（设计稿切图，底色已羽化为奶油色，TOS 存储）
 const MASCOT_POPUP_URL =
-  'https://coze-coding-project.tos.coze.site/coze_storage_7665771487420678144/lottery/popup_mascot_box_v3_7348436c.png?sign=1816447151-18db31b37c-0-9c4deb7f1db9de651dac418676b92f3b20ad560b1f14704e7a18ca7a2775ff7f'
+  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/popup_mascot_box_v3_7348436c_cd186a3a.png?sign=2102468949-167c99c778-0-ee299d9fb5b1b984bc8995b3ca408bb0555e8af4bc2e341103b3fcf05a721952'
 
 const POOL_ICON_COLORS = ['#FF6B9D', '#A55EEA', '#45AAF2', '#2ED573']
 
