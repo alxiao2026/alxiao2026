@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import SharePosterModal from '@/components/share-poster-modal'
+import { ensureLogin } from '@/lib/silent-login'
 import {
   Users, Wallet, HandCoins, UserPlus, Zap, Flame, Crown, Rocket, Gift, Coins, TrendingUp,
 } from 'lucide-react-taro'
@@ -131,25 +132,35 @@ export default function DistributionCenter() {
     }
   }, [])
 
-  useDidShow(() => {
-    const uid = Taro.getStorageSync('user_id')
-    if (!uid) {
-      Taro.showModal({
-        title: '提示', content: '先登录，再开启搞钱之路', confirmText: '去登录', cancelText: '取消',
-        success: (r) => {
-          if (r.confirm) Taro.navigateTo({ url: '/pages/login/index' })
-          else Taro.navigateBack().catch(() => Taro.switchTab({ url: '/pages/user-center/index' }))
-        },
-      })
-      setLoading(false)
-      return
-    }
+  const loadAll = (uid: string) => {
     setUserId(uid)
     setLoading(true)
     fetchOverview(uid)
     fetchTeam(uid, teamLevel)
     fetchCommissions(uid)
     fetchWithdraws(uid)
+  }
+
+  useDidShow(() => {
+    const uid = Taro.getStorageSync('user_id')
+    if (!uid) {
+      // 未登录：先尝试微信静默登录，失败再引导去登录页
+      ensureLogin()
+        .then((newUid) => loadAll(newUid))
+        .catch((e) => {
+          console.error('[Distribution] 静默登录失败:', e)
+          Taro.showModal({
+            title: '提示', content: '先登录，再开启搞钱之路', confirmText: '去登录', cancelText: '取消',
+            success: (r) => {
+              if (r.confirm) Taro.navigateTo({ url: '/pages/login/index' })
+              else Taro.navigateBack().catch(() => Taro.switchTab({ url: '/pages/user-center/index' }))
+            },
+          })
+          setLoading(false)
+        })
+      return
+    }
+    loadAll(uid)
   })
 
   // 战报弹幕数据（真实收益 + 氛围文案）
@@ -184,7 +195,7 @@ export default function DistributionCenter() {
     }
     Taro.showModal({
       title: '申请提现',
-      content: `可提现 ¥${fmt(overview.available_commission)}，确认全部提现？`,
+      content: `本次提现 ¥${fmt(overview.available_commission)}（全额提现）。\n每日限提 1 次，受理时间 9:00-21:00，提交后 1-3 个工作日到账微信零钱。`,
       confirmText: '确认提现',
       cancelText: '再想想',
       success: async (r) => {
@@ -365,6 +376,18 @@ export default function DistributionCenter() {
                 <Text className="block text-xs" style={{ color: 'rgba(233,213,255,0.55)' }}>待入账 ¥{fmt(overview?.pending_commission || 0)}</Text>
                 <Text className="block text-xs mt-1" style={{ color: 'rgba(233,213,255,0.4)' }}>累计 ¥{fmt(overview?.total_commission || 0)}</Text>
               </View>
+            </View>
+
+            {/* 提现规则说明（审核要求完整展示） */}
+            <View className="mt-3 rounded-xl p-3" style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.18)' }}>
+              <Text className="block text-xs font-semibold mb-2" style={{ color: '#6EE7B7' }}>提现规则</Text>
+              <Text className="block text-xs leading-5" style={{ color: 'rgba(233,213,255,0.6)' }}>
+                1. 提现额度：满 ¥{overview?.min_withdraw ?? 1} 即可提现，单笔最高不超过可提现余额；{'\n'}
+                2. 提现次数：每日限提 1 次，当日已提需次日再提；{'\n'}
+                3. 受理时间：每日 9:00-21:00，其余时间提交将于下一时段处理；{'\n'}
+                4. 到账时间：申请提交后 1-3 个工作日内到账微信零钱；{'\n'}
+                5. 佣金结算：下单佣金冷静 {overview?.rates.cooling_days ?? 7} 天后转入可提现，期间退款将自动回收对应佣金。
+              </Text>
             </View>
 
             {/* 明细 tabs */}

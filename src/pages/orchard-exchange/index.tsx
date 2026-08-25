@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
-import { orchardApi, currentUserId, type OrchardProfile } from '@/lib/orchard-api'
+import { orchardApi, type OrchardProfile } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 const PRESETS = [10, 50, 100, 200]
 
@@ -10,7 +11,7 @@ export default function OrchardExchangePage() {
   const [profile, setProfile] = useState<OrchardProfile | null>(null)
   const [value, setValue] = useState(10)
   const [busy, setBusy] = useState(false)
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -27,11 +28,21 @@ export default function OrchardExchangePage() {
 
   useDidShow(() => {
     if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardExchange] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   const points = profile?.points ?? 0
   const exchangeMin = profile?.config.pointsExchangeMin ?? 10

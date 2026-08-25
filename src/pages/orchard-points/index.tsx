@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { orchardApi, currentUserId, type OrchardProfile, type OrchardRecord } from '@/lib/orchard-api'
+import { orchardApi, type OrchardProfile, type OrchardRecord } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 type FilterKey = 'all' | 'in' | 'out'
 
@@ -24,7 +25,7 @@ export default function OrchardPointsPage() {
   const [profile, setProfile] = useState<OrchardProfile | null>(null)
   const [records, setRecords] = useState<OrchardRecord[]>([])
   const [filter, setFilter] = useState<FilterKey>('all')
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -39,11 +40,21 @@ export default function OrchardPointsPage() {
 
   useDidShow(() => {
     if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardPoints] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   const rows = useMemo(() => {
     return records.map((r) => {

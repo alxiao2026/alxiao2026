@@ -4,6 +4,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import { getNavSafeAreaTop } from '@/lib/utils';
+import { ensureLogin } from '@/lib/silent-login';
 import AppTabBar from '@/components/app-tab-bar';
 import CustomerServiceModal from '@/components/customer-service-modal';
 import {
@@ -118,28 +119,13 @@ const UserCenterPage = () => {
     }
   }, []);
 
-  // 每次进入页面都校验登录态：未登录直接跳登录页
-  // 先切回首页再压入登录页，保证用户从登录页返回时落在首页，不会反复横跳
-  useDidShow(() => {
-    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
-    const savedUserId = Taro.getStorageSync('user_id');
-
-    if (!loggedIn || !savedUserId) {
-      setLoading(false);
-      Taro.switchTab({
-        url: '/pages/index/index',
-        success: () => {
-          Taro.navigateTo({ url: '/pages/login/index' });
-        }
-      });
-      return;
-    }
-
+  // 已登录后的数据加载流程
+  const bootstrap = useCallback((uid: string) => {
     // 已有数据时静默刷新，避免闪全屏加载态
     if (!profile) setLoading(true);
     const savedNickName = Taro.getStorageSync('nick_name');
     const savedAvatar = Taro.getStorageSync('avatar_url');
-    setUserId(savedUserId);
+    setUserId(uid);
     setNickName(savedNickName || '');
     setAvatarUrl(savedAvatar || '');
     // 登录/注册用户到后端
@@ -147,7 +133,7 @@ const UserCenterPage = () => {
       url: '/api/users/login',
       method: 'POST',
       // 不传 nick_name/avatar_url，避免本地旧缓存覆盖数据库最新资料
-      data: { user_id: savedUserId }
+      data: { user_id: uid }
     }).then((res) => {
       console.log('[UserCenter] login:', res.data);
       if (res.data?.code === 200 && res.data?.data) {
@@ -155,7 +141,35 @@ const UserCenterPage = () => {
       }
     }).catch((e) => console.error('用户登录失败:', e));
 
-    Promise.all([fetchProfile(savedUserId), fetchStats(savedUserId), fetchPermissions(savedUserId), fetchLotteryCount(savedUserId)]).finally(() => setLoading(false));
+    Promise.all([fetchProfile(uid), fetchStats(uid), fetchPermissions(uid), fetchLotteryCount(uid)]).finally(() => setLoading(false));
+  }, [profile, fetchProfile, fetchStats, fetchPermissions, fetchLotteryCount]);
+
+  // 每次进入页面都校验登录态：未登录先尝试微信静默登录，失败再跳登录页
+  // 先切回首页再压入登录页，保证用户从登录页返回时落在首页，不会反复横跳
+  useDidShow(() => {
+    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
+    const savedUserId = Taro.getStorageSync('user_id');
+
+    if (!loggedIn || !savedUserId) {
+      ensureLogin()
+        .then((uid) => {
+          console.log('[UserCenter] 静默登录成功:', uid);
+          bootstrap(uid);
+        })
+        .catch((e) => {
+          console.error('[UserCenter] 静默登录失败，跳登录页:', e);
+          setLoading(false);
+          Taro.switchTab({
+            url: '/pages/index/index',
+            success: () => {
+              Taro.navigateTo({ url: '/pages/login/index' });
+            }
+          });
+        });
+      return;
+    }
+
+    bootstrap(savedUserId);
   });
 
   const handleLogin = () => {

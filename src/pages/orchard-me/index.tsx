@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import OrchardTabBar from '@/components/orchard/orchard-tabbar'
 import ShareSheet from '@/components/orchard/share-sheet'
 import { CustomerServiceModal } from '@/components/customer-service-modal'
-import { orchardApi, currentUserId, type OrchardProfile, type OrchardCoupon, type OrchardShareInfo } from '@/lib/orchard-api'
+import { orchardApi, type OrchardProfile, type OrchardCoupon, type OrchardShareInfo } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 interface MenuItem {
   icon: string
@@ -21,7 +22,7 @@ export default function OrchardMePage() {
   const [shareInfo, setShareInfo] = useState<OrchardShareInfo | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [wecomOpen, setWecomOpen] = useState(false)
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -41,11 +42,21 @@ export default function OrchardMePage() {
 
   useDidShow(() => {
     if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardMe] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   const tree = profile?.tree
   const unusedCoupons = coupons.filter((c) => c.status === 'unused').length

@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
-import { orchardApi, currentUserId, type OrchardConfig } from '@/lib/orchard-api'
+import { orchardApi, type OrchardConfig } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 type NumKey = Exclude<keyof OrchardConfig, 'couponTiers' | 'wecomQrCode'>
 
@@ -57,7 +58,7 @@ export default function OrchardAdminPage() {
   const [tiers, setTiers] = useState<Array<{ threshold: string; amount: string; treeCost: string }>>([])
   const [denied, setDenied] = useState(false)
   const [saving, setSaving] = useState(false)
-  const adminId = currentUserId()
+  const [adminId, setAdminId] = useState('')
 
   const toDraft = (c: OrchardConfig): Record<NumKey, string> => ({
     dailyWater: String(c.dailyWater),
@@ -97,11 +98,21 @@ export default function OrchardAdminPage() {
 
   useDidShow(() => {
     if (!adminId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setAdminId(id))
+        .catch((e) => {
+          console.error('[OrchardAdmin] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (adminId) load()
+  }, [adminId, load])
 
   const handleSave = async () => {
     if (!draft || saving || !adminId) return

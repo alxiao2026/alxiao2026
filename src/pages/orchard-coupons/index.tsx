@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import OrchardTabBar from '@/components/orchard/orchard-tabbar'
 import {
-  orchardApi, currentUserId,
+  orchardApi,
   type OrchardCoupon, type OrchardCouponDef, type OrchardProfile,
 } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 type FilterKey = 'all' | 'unused' | 'used' | 'expired'
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
@@ -22,7 +23,7 @@ export default function OrchardCouponsPage() {
   const [filter, setFilter] = useState<FilterKey>('unused')
   const [exchangingId, setExchangingId] = useState<string | null>(null)
 
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -42,11 +43,21 @@ export default function OrchardCouponsPage() {
 
   useDidShow(() => {
     if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardCoupons] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   const tree = profile?.tree
   const stock = tree?.availableTrees ?? 0

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { orchardApi, currentUserId } from '@/lib/orchard-api'
+import { orchardApi } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 type HelpState = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -19,9 +20,12 @@ export default function OrchardAssistPage() {
 
   const handleHelp = async () => {
     if (state === 'submitting' || state === 'success') return
-    const helperUserId = currentUserId()
-    if (!helperUserId) {
-      Taro.showToast({ title: '请先登录后再助力', icon: 'none' })
+    let helperUserId = ''
+    try {
+      helperUserId = await ensureLogin()
+    } catch (e) {
+      console.error('[OrchardAssist] 静默登录失败:', e)
+      Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
       return
     }
     if (helperUserId === shareId) {

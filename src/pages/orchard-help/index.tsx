@@ -1,13 +1,14 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { orchardApi, currentUserId, type OrchardProfile } from '@/lib/orchard-api'
+import { orchardApi, type OrchardProfile } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 const STAGES = ['种子', '发芽', '幼苗', '小树', '大树', '成熟']
 
 export default function OrchardHelpPage() {
   const [profile, setProfile] = useState<OrchardProfile | null>(null)
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -19,7 +20,22 @@ export default function OrchardHelpPage() {
     }
   }, [userId])
 
-  useDidShow(() => { load() })
+  useDidShow(() => {
+    if (!userId) {
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardHelp] 静默登录失败:', e)
+        })
+      return
+    }
+    load()
+  })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   const cfg = profile?.config
   const full = cfg?.treeFullGrowth ?? 1500

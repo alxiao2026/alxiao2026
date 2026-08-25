@@ -6,9 +6,10 @@ import ShareSheet from '@/components/orchard/share-sheet'
 import WaterCalendar from '@/components/orchard/water-calendar'
 import { WaterResultModal, HarvestModal, MakeupModal } from '@/components/orchard/orchard-modals'
 import {
-  orchardApi, currentUserId,
+  orchardApi,
   type OrchardProfile, type OrchardCalendarCell, type OrchardShareInfo,
 } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 /** 阶段阈值比例（与后端 treeStageForGrowth 一致） */
 const STAGE_RATIOS = [0, 0.08, 0.25, 0.5, 0.8, 1]
@@ -54,8 +55,8 @@ export default function TuantuanPage() {
   const [makeupDate, setMakeupDate] = useState<string | null>(null)
   const [showShare, setShowShare] = useState(false)
   const [plusG, setPlusG] = useState<{ text: string; key: number } | null>(null)
-
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
+  const [loadError, setLoadError] = useState(false)
 
   const loadProfile = useCallback(async () => {
     if (!userId) return
@@ -63,11 +64,13 @@ export default function TuantuanPage() {
       const res = await orchardApi.profile(userId)
       if (res.code === 200 && res.data) {
         setProfile(res.data)
+        setLoadError(false)
         // 头像昵称同步到本地缓存（与膨胀团账号一致）
         if (res.data.nickname) Taro.setStorageSync('nick_name', res.data.nickname)
       }
     } catch (e) {
       console.error('[Orchard] profile 加载失败:', e)
+      setLoadError(true)
     }
   }, [userId])
 
@@ -91,22 +94,46 @@ export default function TuantuanPage() {
     }
   }, [userId])
 
-  // 进入果园：拉档案 + 日历 + 分享信息，并结算好友助力奖励
-  useDidShow(() => {
-    if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
-      return
-    }
+  // 拉取果园全部数据（档案 + 日历 + 分享信息 + 助力结算）
+  const loadAll = useCallback((uid: string) => {
     loadProfile()
     loadCalendar()
     loadShareInfo()
-    orchardApi.settleHelps(userId).then((r) => {
+    orchardApi.settleHelps(uid).then((r) => {
       if (r.data && r.data.settled > 0) {
         Taro.showToast({ title: `好友助力到账 +${r.data.droplets}g`, icon: 'none' })
         loadProfile()
       }
     }).catch(() => undefined)
+  }, [loadProfile, loadCalendar, loadShareInfo])
+
+  // 静默登录：登录成功后拿到 userId 再加载数据
+  const initLogin = useCallback(() => {
+    ensureLogin()
+      .then((id) => {
+        setUserId(id)
+        setLoadError(false)
+      })
+      .catch((e) => {
+        console.error('[Orchard] 静默登录失败:', e)
+        setLoadError(true)
+      })
+  }, [])
+
+  // 进入果园：未登录先静默登录，已登录直接拉数据
+  useDidShow(() => {
+    if (!userId) {
+      initLogin()
+      return
+    }
+    loadAll(userId)
   })
+
+  // 静默登录成功后触发首次加载
+  useEffect(() => {
+    if (userId) loadAll(userId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   useEffect(() => { loadCalendar() }, [loadCalendar])
 
@@ -217,6 +244,24 @@ export default function TuantuanPage() {
       : '继续浇水，让小树快快长大～'
 
   const meals = profile?.meals
+
+  // 加载失败兜底：提供重试入口，避免页面假死
+  if (loadError && !profile) {
+    return (
+      <View className="min-h-screen flex flex-col items-center justify-center px-8" style={{ backgroundColor: '#F9FAFB' }}>
+        <Text style={{ fontSize: 56 }}>🌳</Text>
+        <Text className="block text-base font-bold mt-4" style={{ color: '#374151' }}>果园加载失败</Text>
+        <Text className="block text-sm mt-2 text-center" style={{ color: '#9CA3AF' }}>网络似乎开了个小差，请检查网络后重试</Text>
+        <Button
+          className="mt-6 rounded-full px-8"
+          style={{ backgroundColor: '#FF4757', color: '#fff' }}
+          onClick={() => { setLoadError(false); if (userId) { loadAll(userId) } else { initLogin() } }}
+        >
+          重新加载
+        </Button>
+      </View>
+    )
+  }
 
   return (
     <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>

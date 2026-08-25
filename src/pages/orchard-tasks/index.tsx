@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
@@ -6,9 +6,10 @@ import OrchardTabBar from '@/components/orchard/orchard-tabbar'
 import ShareSheet from '@/components/orchard/share-sheet'
 import { CustomerServiceModal } from '@/components/customer-service-modal'
 import {
-  orchardApi, currentUserId,
+  orchardApi,
   type OrchardTasksData, type OrchardTask, type OrchardShareInfo, type OrchardRecord,
 } from '@/lib/orchard-api'
+import { ensureLogin } from '@/lib/silent-login'
 
 const TASK_EMOJI: Record<string, string> = {
   group_buy: '🛒',
@@ -27,7 +28,7 @@ export default function OrchardTasksPage() {
   const [wecomOpen, setWecomOpen] = useState(false)
   const [wecomClaiming, setWecomClaiming] = useState(false)
 
-  const userId = currentUserId()
+  const [userId, setUserId] = useState('')
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
 
@@ -55,7 +56,12 @@ export default function OrchardTasksPage() {
 
   useDidShow(() => {
     if (!userId) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      ensureLogin()
+        .then((id) => setUserId(id))
+        .catch((e) => {
+          console.error('[OrchardTasks] 静默登录失败:', e)
+          Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+        })
       return
     }
     load()
@@ -64,6 +70,11 @@ export default function OrchardTasksPage() {
       if (r.data && r.data.settled > 0) load()
     }).catch(() => undefined)
   })
+
+  // 静默登录成功后自动加载
+  useEffect(() => {
+    if (userId) load()
+  }, [userId, load])
 
   /** 分享卡片：好友点开进入助力页 */
   useShareAppMessage(() => {
