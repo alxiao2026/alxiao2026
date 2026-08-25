@@ -34,6 +34,10 @@ export interface CreateMerchantDto {
   settlement_type: number;
   commission_rate?: number;
   settlement_price?: number;
+  /** 店内免费 WiFi 名称（系统管理员在商家编辑页配置） */
+  wifi_ssid?: string;
+  /** 店内免费 WiFi 密码 */
+  wifi_password?: string;
 }
 
 export interface UpdateMerchantDto {
@@ -54,6 +58,10 @@ export interface UpdateMerchantDto {
   settlement_type?: number;
   commission_rate?: number;
   settlement_price?: number;
+  /** 店内免费 WiFi 名称 */
+  wifi_ssid?: string;
+  /** 店内免费 WiFi 密码 */
+  wifi_password?: string;
 }
 
 export interface Merchant {
@@ -70,6 +78,8 @@ export interface Merchant {
   settlement_type?: number;
   commission_rate?: number;
   settlement_price?: number;
+  wifi_ssid?: string;
+  wifi_password?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -164,6 +174,24 @@ export class MerchantService {
       .maybeSingle();
     if (error) throw new Error(`查询商家失败：${error.message}`);
     return data as Merchant | null;
+  }
+
+  /** 消费者端获取店内免费 WiFi 信息（小程序 connectWifi 需要真实账号密码） */
+  async getWifiInfo(id: number) {
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('id, name, wifi_ssid, wifi_password')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(`查询商家 WiFi 失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+    return {
+      merchant_id: data.id,
+      merchant_name: data.name,
+      has_wifi: !!data.wifi_ssid,
+      ssid: data.wifi_ssid || '',
+      password: data.wifi_password || '',
+    };
   }
 
   /**
@@ -321,6 +349,8 @@ export class MerchantService {
         settlement_type: body.settlement_type,
         commission_rate: body.settlement_type === 1 ? Number(body.commission_rate) : 0,
         settlement_price: 0,
+        wifi_ssid: (body.wifi_ssid || '').trim() || null,
+        wifi_password: (body.wifi_password || '').trim() || null,
       })
       .select()
       .single();
@@ -396,6 +426,8 @@ export class MerchantService {
       .update({
         ...restFields,
         ...(location !== undefined && { address: location }),
+        ...(restFields.wifi_ssid !== undefined && { wifi_ssid: (restFields.wifi_ssid || '').trim() || null }),
+        ...(restFields.wifi_password !== undefined && { wifi_password: (restFields.wifi_password || '').trim() || null }),
         settlement_type: type,
         commission_rate: type === 1 ? Number(restFields.commission_rate) : 0,
         settlement_price: 0,

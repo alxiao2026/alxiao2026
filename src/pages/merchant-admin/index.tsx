@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Wifi, LoaderCircle } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
 import { isMiniAppEnv, chooseImageH5, uploadLocalImage } from '@/lib/upload-image';
@@ -28,6 +28,8 @@ interface Merchant {
   settlement_type?: number;
   commission_rate?: number;
   settlement_price?: number;
+  wifi_ssid?: string;
+  wifi_password?: string;
 }
 
 export default function MerchantAdmin() {
@@ -70,6 +72,8 @@ export default function MerchantAdmin() {
     admin_password: '',
     settlement_type: 0,
     commission_rate: '',
+    wifi_ssid: '',
+    wifi_password: '',
   });
 
   useEffect(() => {
@@ -108,6 +112,8 @@ export default function MerchantAdmin() {
       admin_password: '',
       settlement_type: 0,
       commission_rate: '',
+      wifi_ssid: '',
+      wifi_password: '',
     });
     setPackagePrices([]);
     setShowForm(true);
@@ -145,6 +151,41 @@ export default function MerchantAdmin() {
     }
   };
 
+  /** 自动获取手机当前连接的 WiFi 名称（仅小程序端可用，密码仍需手动填写） */
+  const [fetchingWifi, setFetchingWifi] = useState(false);
+  const handleFetchCurrentWifi = async () => {
+    const env = Taro.getEnv();
+    if (env !== Taro.ENV_TYPE.WEAPP && env !== Taro.ENV_TYPE.TT) {
+      Taro.showToast({ title: '当前端无法自动获取，请手动输入 WiFi 名称', icon: 'none' });
+      return;
+    }
+    if (fetchingWifi) return;
+    setFetchingWifi(true);
+    try {
+      await Taro.startWifi();
+      const res = (await Taro.getConnectedWifi()) as any;
+      const ssid = res?.wifi?.SSID || '';
+      if (ssid) {
+        setFormData((prev) => ({ ...prev, wifi_ssid: ssid }));
+        Taro.showToast({ title: '已获取当前 WiFi', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '未检测到已连接的 WiFi', icon: 'none' });
+      }
+    } catch (e: any) {
+      console.error('[MerchantAdmin] 获取当前 WiFi 失败:', e);
+      const msg = String(e?.errMsg || '');
+      if (msg.includes('not connected')) {
+        Taro.showToast({ title: '手机未连接 WiFi，请先连接店内 WiFi', icon: 'none' });
+      } else if (msg.includes('location') || msg.includes('auth')) {
+        Taro.showToast({ title: '请开启定位权限后重试', icon: 'none' });
+      } else {
+        Taro.showToast({ title: '获取失败，请手动输入', icon: 'none' });
+      }
+    } finally {
+      setFetchingWifi(false);
+    }
+  };
+
   const handleEdit = async (merchant: Merchant) => {
     setEditingMerchant(merchant);
     setFormData({
@@ -162,6 +203,8 @@ export default function MerchantAdmin() {
       admin_password: '',
       settlement_type: merchant.settlement_type || 0,
       commission_rate: merchant.settlement_type === 1 && merchant.commission_rate != null ? String(merchant.commission_rate) : '',
+      wifi_ssid: merchant.wifi_ssid || '',
+      wifi_password: merchant.wifi_password || '',
     });
     // 结算价模式：回显该商家所有套餐的结算价
     if (merchant.settlement_type === 2) {
@@ -815,6 +858,53 @@ export default function MerchantAdmin() {
                   onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
                   maxlength={200}
                 />
+              </View>
+
+              {/* 店内免费 WiFi（消费者在商家页可一键连接，非必填） */}
+              <View className="mb-4 rounded-xl p-4" style={{ background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE5EC 55%, #FFF7E6 100%)', border: '1px solid #FFD6DE' }}>
+                <View className="flex flex-row items-center mb-1">
+                  <Wifi size={16} color="#FF4757" />
+                  <Text className="block text-sm font-medium text-gray-800 ml-1">店内免费 WiFi</Text>
+                  <View className="ml-2 px-2 py-1 rounded-full" style={{ backgroundColor: '#FF4757' }}>
+                    <Text className="text-xs font-bold" style={{ color: '#fff', lineHeight: 1 }}>FREE</Text>
+                  </View>
+                </View>
+                <Text className="block text-xs text-gray-400 mb-3">配置后消费者在商家页可一键连接店内 WiFi；手机连上店内 WiFi 时点「获取当前」可自动填入名称，密码需手动输入</Text>
+
+                <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 名称（SSID）</Text>
+                <View className="flex flex-row items-center gap-2 mb-3">
+                  <View className="flex-1">
+                    <Input
+                      className="w-full bg-white"
+                      placeholder="如：PengZhangTuan-5G"
+                      value={formData.wifi_ssid}
+                      onInput={(e) => setFormData({ ...formData, wifi_ssid: e.detail.value })}
+                      maxlength={32}
+                    />
+                  </View>
+                  <Button
+                    size="sm"
+                    className="rounded-full shrink-0 border-0"
+                    style={{ background: fetchingWifi ? '#FFB3BD' : 'linear-gradient(135deg, #FF4757, #FF7A59)' }}
+                    onClick={handleFetchCurrentWifi}
+                    disabled={fetchingWifi}
+                  >
+                    <View className="flex flex-row items-center gap-1">
+                      {fetchingWifi ? <LoaderCircle size={13} color="#fff" /> : <Wifi size={13} color="#fff" />}
+                      <Text className="text-xs font-bold text-white">{fetchingWifi ? '获取中' : '获取当前'}</Text>
+                    </View>
+                  </Button>
+                </View>
+
+                <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 密码</Text>
+                <Input
+                  className="w-full bg-white"
+                  placeholder="请输入 WiFi 密码（手动填写）"
+                  value={formData.wifi_password}
+                  onInput={(e) => setFormData({ ...formData, wifi_password: e.detail.value })}
+                  maxlength={64}
+                />
+                <Text className="block text-xs text-gray-400 mt-2">留空 WiFi 名称则商家页不展示连接入口</Text>
               </View>
 
               {/* 结算配置（必填，仅系统管理员可见可修改） */}

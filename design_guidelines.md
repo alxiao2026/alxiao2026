@@ -46,3 +46,17 @@
 - 图片使用 TOS 对象存储，不打包进项目
 - 包体积控制：主包 < 2MB
 - 分享功能：使用 Taro 的 useShareAppMessage 钩子
+
+## WiFi 模块（波普流体风 Pop Fluid）
+- **意象锚点**：便利店收银台旁的免费 WiFi 贴纸 — 轻松、即得、无负担的小确幸
+- **气质**：软糖、气泡、跳跃；像把红金汽水倒在屏幕上
+- **配色（融入膨胀团红金）**：
+  - 主色 `#FF4757` 膨胀红 / 辅色 `#FFA502` 金（按钮、渐变气泡）
+  - 流体渐变：`linear-gradient(135deg, #FF4757, #FFA502)` 大气泡；`#FFE5EC → #FFF7E6` 浅气泡
+  - 成功色 `#2ED573`（对勾、FREE 标签）；页面底 `#F9FAFB`
+- **软糖卡片**：圆角 rounded-[2rem]（≈28px+），柔和投影 `0 8px 24px rgba(255,71,87,0.12)`
+- **超大 emoji**：📶 ⚡ ✓ 🎉 点缀，大标题 font-black text-3xl，数字/大字层级对比强烈
+- **微动效（页面级 css keyframes）**：信号波扩散（scale+opacity 脉冲）、呼吸光晕（box-shadow 脉冲）、成功打勾弹入（spring scale）、彩屑下落、卡片依次弹入
+- **按钮**：胶囊形 rounded-full，点击涟漪用 `:active` 缩放反馈
+- **底部 tab**：模块内自定义 tab（首页/附近/我的），“我的”跳膨胀团个人中心
+- **跨端**：WiFi API 仅小程序端可用（Taro.startWifi/connectWifi/getConnectedWifi/scanWifi），H5 端整模块降级提示

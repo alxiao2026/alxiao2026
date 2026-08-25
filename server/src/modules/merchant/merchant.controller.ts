@@ -57,6 +57,14 @@ export class MerchantController {
     return { code: 200, msg: '保存成功', data };
   }
 
+  /** 消费者端：获取店内免费 WiFi（扫码连 WiFi 模块用） */
+  @Get(':id/wifi')
+  @HttpCode(HttpStatus.OK)
+  async getWifiInfo(@Param('id') id: string) {
+    const data = await this.merchantService.getWifiInfo(Number(id));
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   async findById(@Param('id') id: string) {

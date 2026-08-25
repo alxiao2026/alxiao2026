@@ -41,7 +41,9 @@ export default defineAppConfig({
     'pages/orchard-exchange/index',
     'pages/orchard-assist/index',
     'pages/orchard-help/index',
-    'pages/orchard-admin/index'
+    'pages/orchard-admin/index',
+    'pages/wifi/index',
+    'pages/wifi-nearby/index'
   ],
   window: {
     backgroundTextStyle: 'light',
