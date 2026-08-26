@@ -21,7 +21,9 @@ import './index.css'
 /**
  * 驿站首页（独立分包 · 快递查件流量入口）
  * - 不使用主包 Network / 账号体系 / 全局状态，数据全部来自本地存储
- * - 查件入口 → 确认弹窗 → 过渡页（倒计时 + 插屏广告模拟 + 复制链接兜底）
+ * - 查件入口 → 确认弹窗 → 过渡页（倒计时 + 跳转官方小程序 + 复制链接兜底）
+ * - 入口位置：系统管理员账号的「管理后台」菜单（pages/admin，roleCode===2 可见），
+ *   普通用户与商家账号不展示入口
  */
 const StationHomePage = () => {
   const [station, setStation] = useState<StationConfig>(() => loadStationConfig())

@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
+/**
+ * 驿站管理配置页（独立分包 · 隐藏管理页）
+ * - 入口一：关于页顶部标题连点 5 次 → 口令（DEPLOY.ADMIN_PASSWORD，默认 8888）
+ * - 入口二：系统管理员「管理后台」→「驿站设置」菜单直达（roleCode===2 可见）
+ */
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'

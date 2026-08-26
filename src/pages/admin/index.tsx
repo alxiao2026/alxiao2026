@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout, Truck, Warehouse } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -239,6 +239,10 @@ const AdminPage = () => {
             { icon: 'shield', label: '微信配置', color: '#16a34a', bg: '#f0fdf4', page: '/pages/wechat-config/index', adminOnly: true },
             { icon: 'headphones', label: '客服配置', color: '#d946ef', bg: '#fdf4ff', page: '/pages/customer-service-admin/index', adminOnly: true },
             { icon: 'sprout', label: '果园设置', color: '#22c55e', bg: '#f0fdf4', page: '/pages/orchard-admin/index', adminOnly: true },
+            // 驿站快递查询板块（独立分包 packages/station，物理隔离）：入口仅系统管理员可见
+            { icon: 'truck', label: '驿站查询', color: '#ff6b35', bg: '#fff3ea', page: '/packages/station/pages/home/index', adminOnly: true },
+            // 驿站参数设置：驿站名称/编码/菜鸟stationId/地址/营业时间/团购列表（本地存储 mock）
+            { icon: 'warehouse', label: '驿站设置', color: '#ea580c', bg: '#ffedd5', page: '/packages/station/pages/admin/index', adminOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
           ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
@@ -262,6 +266,8 @@ const AdminPage = () => {
                 {item.icon === 'shield' && <ShieldCheck size={28} color={item.color} />}
                 {item.icon === 'headphones' && <Headphones size={28} color={item.color} />}
                 {item.icon === 'sprout' && <Sprout size={28} color={item.color} />}
+                {item.icon === 'truck' && <Truck size={28} color={item.color} />}
+                {item.icon === 'warehouse' && <Warehouse size={28} color={item.color} />}
                 {item.icon === 'piggy' && <PiggyBank size={28} color={item.color} />}
                 {item.icon === 'receipt' && <Receipt size={28} color={item.color} />}
               </View>
