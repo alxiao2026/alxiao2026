@@ -4,7 +4,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
 import { getNavSafeAreaTop } from '@/lib/utils';
-import { ensureLogin } from '@/lib/silent-login';
+import { isRealLogin } from '@/utils/auth-guard';
 import AppTabBar from '@/components/app-tab-bar';
 import CustomerServiceModal from '@/components/customer-service-modal';
 import {
@@ -144,28 +144,20 @@ const UserCenterPage = () => {
     Promise.all([fetchProfile(uid), fetchStats(uid), fetchPermissions(uid), fetchLotteryCount(uid)]).finally(() => setLoading(false));
   }, [profile, fetchProfile, fetchStats, fetchPermissions, fetchLotteryCount]);
 
-  // 每次进入页面都校验登录态：未登录先尝试微信静默登录，失败再跳登录页
+  // 每次进入页面都校验登录态：未真实登录（含静默游客账号）直接跳登录页，不再静默登录生成空白账号
   // 先切回首页再压入登录页，保证用户从登录页返回时落在首页，不会反复横跳
   useDidShow(() => {
-    const loggedIn = Taro.getStorageSync('is_logged_in') === true;
     const savedUserId = Taro.getStorageSync('user_id');
 
-    if (!loggedIn || !savedUserId) {
-      ensureLogin()
-        .then((uid) => {
-          console.log('[UserCenter] 静默登录成功:', uid);
-          bootstrap(uid);
-        })
-        .catch((e) => {
-          console.error('[UserCenter] 静默登录失败，跳登录页:', e);
-          setLoading(false);
-          Taro.switchTab({
-            url: '/pages/index/index',
-            success: () => {
-              Taro.navigateTo({ url: '/pages/login/index' });
-            }
-          });
-        });
+    if (!isRealLogin() || !savedUserId) {
+      console.log('[UserCenter] 未登录（或为静默游客账号），跳转登录页');
+      setLoading(false);
+      Taro.switchTab({
+        url: '/pages/index/index',
+        success: () => {
+          Taro.navigateTo({ url: '/pages/login/index' });
+        }
+      });
       return;
     }
 

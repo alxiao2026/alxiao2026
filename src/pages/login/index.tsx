@@ -128,6 +128,7 @@ const LoginPage: React.FC = () => {
       }
       Taro.setStorageSync('is_logged_in', true);
       Taro.setStorageSync('user_id', userId);
+      Taro.setStorageSync('login_via', 'page');
       Taro.setStorageSync('user_role', user.role);
       Taro.setStorageSync('role_code', user.role_code);
       Taro.setStorageSync('merchant_id', user.merchant_id || '');

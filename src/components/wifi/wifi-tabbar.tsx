@@ -1,6 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { House, Signal, UserRound } from 'lucide-react-taro'
+import { isRealLogin } from '@/utils/auth-guard'
 
 interface Props {
   active: 'home' | 'nearby'
@@ -15,6 +16,11 @@ export default function WifiTabBar({ active, merchantId, merchantName }: Props) 
 
   const go = (tab: 'home' | 'nearby' | 'mine') => {
     if (tab === 'mine') {
+      // 未真实登录（含静默游客账号）→ 跳登录页，避免进入空白个人中心
+      if (!isRealLogin()) {
+        Taro.navigateTo({ url: '/pages/login/index' })
+        return
+      }
       Taro.switchTab({ url: '/pages/user-center/index' }).catch(() => Taro.navigateTo({ url: '/pages/user-center/index' }))
       return
     }

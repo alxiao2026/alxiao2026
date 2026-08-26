@@ -32,6 +32,8 @@ export async function ensureLogin(): Promise<string> {
     if (res.data?.code === 200 && user?.user_id) {
       Taro.setStorageSync('user_id', user.user_id)
       Taro.setStorageSync('is_logged_in', true)
+      // 标记为静默游客账号：未在登录页完成账号登录，进入「我的」时仍需引导去登录页
+      Taro.setStorageSync('login_via', 'silent')
       if (user.nick_name) Taro.setStorageSync('nick_name', user.nick_name)
       if (user.avatar_url) Taro.setStorageSync('avatar_url', user.avatar_url)
       console.log('[SilentLogin] 登录成功:', user.user_id)
