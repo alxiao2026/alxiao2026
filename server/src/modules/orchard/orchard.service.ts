@@ -172,6 +172,7 @@ export interface OrchardRow {
 export class OrchardService {
   private storage: S3Storage;
   private treeImageUrlCache = new Map<string, { url: string; expireAt: number }>();
+  private treeImageBufCache = new Map<string, { buf: Buffer; ts: number }>();
 
   constructor(private readonly userService: UserService) {
     this.storage = new S3Storage({
@@ -206,6 +207,25 @@ export class OrchardService {
       }
     }
     return urls;
+  }
+
+  /**
+   * 读取指定阶段的树图二进制（供图片代理接口使用，绕过小程序图片域名白名单限制）
+   * @param stage 阶段序号 0-5，越界时回落到 0
+   */
+  async getTreeImage(stage: number): Promise<Buffer> {
+    const idx = Number.isFinite(stage) ? Math.min(Math.max(Math.floor(stage), 0), 5) : 0;
+    const cfg = await this.getConfig();
+    const keys = (cfg as any).treeStageImages as string[] | undefined;
+    const key = keys?.[idx];
+    if (!key) throw new BadRequestException('树图资源未配置');
+
+    const cached = this.treeImageBufCache.get(key);
+    if (cached && Date.now() - cached.ts < 10 * 60_000) return cached.buf;
+
+    const buf = await this.storage.readFile({ fileKey: key });
+    this.treeImageBufCache.set(key, { buf, ts: Date.now() });
+    return buf;
   }
 
   private client() {

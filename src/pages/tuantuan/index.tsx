@@ -51,6 +51,7 @@ export default function TuantuanPage() {
   const [makeupDate, setMakeupDate] = useState<string | null>(null)
   const [showShare, setShowShare] = useState(false)
   const [plusG, setPlusG] = useState<{ text: string; key: number } | null>(null)
+  const [treeImgFailed, setTreeImgFailed] = useState(false)
   const [userId, setUserId] = useState('')
   const [loadError, setLoadError] = useState(false)
 
@@ -147,14 +148,15 @@ export default function TuantuanPage() {
   const fullGrowth = profile?.config.treeFullGrowth ?? 1500
   const thresholds = tree?.stageThresholds?.length === 6 ? tree.stageThresholds : FALLBACK_THRESHOLDS
   const stage = tree?.stage ?? 0
-  const stageImage = tree?.stageImage || ''
-  const stageImages = tree?.stageImages || []
   const stageName = tree?.stageName || STAGE_NAMES[stage] || ''
   const isMature = tree?.isMature ?? false
   const isTodayWatered = tree?.wateredToday ?? false
   const nextThreshold = thresholds[Math.min(5, stage + 1)]
   const toNextStage = Math.max(0, nextThreshold - growth)
   const nextStageName = tree?.nextStageName || STAGE_NAMES[Math.min(5, stage + 1)] || ''
+
+  /** 树图走后端代理（API 域名必然在小程序合法域名列表，避免直连 TOS 被白名单拦截） */
+  const treeImgUrl = (s: number) => `${(typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''}/api/orchard/tree-image?stage=${s}`
 
   const now = new Date()
   const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 周${'日一二三四五六'[now.getDay()]}`
@@ -343,12 +345,15 @@ export default function TuantuanPage() {
             )}
           </View>
 
-          {/* 果树（芭芭农场风格树图，按阶段变大） */}
+          {/* 果树（芭芭农场风格树图，走后端图片代理，按阶段变大；加载失败回退 emoji） */}
           <View style={{ position: 'absolute', bottom: 112, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {stageImage ? (
+            {treeImgFailed ? (
+              <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
+            ) : (
               <Image
-                src={stageImage}
+                src={treeImgUrl(stage)}
                 mode="aspectFit"
+                onError={() => setTreeImgFailed(true)}
                 style={{
                   width: 172 + stage * 12,
                   height: 172 + stage * 12,
@@ -358,8 +363,6 @@ export default function TuantuanPage() {
                   boxShadow: '0 14px 30px -12px rgba(194,24,51,0.45)',
                 }}
               />
-            ) : (
-              <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
             )}
             {plusG && (
               <Text key={plusG.key} style={{ position: 'absolute', top: 0, left: '50%', fontSize: 28, fontWeight: 900, color: '#FF4757', textShadow: '0 2px 0 #fff, 0 4px 10px rgba(255,71,87,0.4)' }}>
@@ -418,7 +421,6 @@ export default function TuantuanPage() {
               const pct = (i / (thresholds.length - 1)) * 100
               const reached = growth >= th
               const isNext = !reached && (i === 0 || growth >= thresholds[i - 1])
-              const nodeImg = stageImages[i]
               return (
                 <View key={i} style={{ position: 'absolute', top: 0, left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <View
@@ -429,11 +431,7 @@ export default function TuantuanPage() {
                       opacity: reached || isNext ? 1 : 0.6,
                     }}
                   >
-                    {nodeImg ? (
-                      <Image src={nodeImg} mode="aspectFill" style={{ width: 26, height: 26 }} />
-                    ) : (
-                      <Text className="text-sm">{STAGE_EMOJIS[i]}</Text>
-                    )}
+                    <Image src={treeImgUrl(i)} mode="aspectFill" style={{ width: 26, height: 26 }} />
                   </View>
                   <Text className="text-xs font-black mt-1" style={{ color: reached ? '#FF4757' : isNext ? '#d97706' : '#a8a29e', fontSize: 10 }}>{th}g</Text>
                 </View>

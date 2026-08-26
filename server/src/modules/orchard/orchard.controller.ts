@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Query, HttpCode, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Query, HttpCode, BadRequestException, ForbiddenException, Res, StreamableFile } from '@nestjs/common';
 import { OrchardService } from './orchard.service';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
@@ -29,6 +29,18 @@ export class OrchardController {
   async getProfile(@Query('user_id') userId: string) {
     const data = await this.orchardService.getProfile(requireUser(userId));
     return { code: 200, msg: 'success', data };
+  }
+
+  /**
+   * 树图代理：走 API 域名输出图片二进制，避免小程序端直连 TOS 域名被白名单拦截
+   * GET /api/orchard/tree-image?stage=0..5
+   */
+  @Get('tree-image')
+  async getTreeImage(@Query('stage') stage: string, @Res({ passthrough: true }) res: any): Promise<StreamableFile> {
+    const buf = await this.orchardService.getTreeImage(Number(stage));
+    res.set?.('Content-Type', 'image/jpeg');
+    res.set?.('Cache-Control', 'public, max-age=86400');
+    return new StreamableFile(buf);
   }
 
   /** 果树信息 */
