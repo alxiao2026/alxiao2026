@@ -200,7 +200,6 @@ const UserCenterPage = () => {
       desc: permissions?.can_view_all_merchants ? '全平台数据管理' : '本店数据管理',
       onClick: goToAdmin
     }] : []),
-    ...(permissions?.can_access_admin ? [{ icon: <Wallet size={20} color="#6B7280" />, label: "商家余额", desc: "查看余额、提现", onClick: goToMerchantBalance }] : []),
     {
       icon: <Bell size={20} color="#6B7280" />,
       label: '消息通知',
@@ -455,8 +454,3 @@ const UserCenterPage = () => {
 };
 
 export default UserCenterPage;
-
-// 商家余额入口
-const goToMerchantBalance = () => {
-  Taro.navigateTo({ url: '/pages/merchant-balance/index' });
-};
