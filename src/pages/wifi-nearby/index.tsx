@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import WifiTabBar from '@/components/wifi/wifi-tabbar'
 import { Network } from '@/network'
-import { isWifiSupported, getConnected, scanNearby, signalLevel } from '@/lib/wifi'
+import { isWifiSupported, getConnected, scanNearby, signalLevel, connectAndVerify } from '@/lib/wifi'
 import { Search, Wifi, Lock, RefreshCw, Check, Zap, PencilLine } from 'lucide-react-taro'
 import '../wifi/index.css'
 
@@ -32,6 +32,7 @@ export default function WifiNearbyPage() {
   // 加密热点密码输入弹窗
   const [pwdTarget, setPwdTarget] = useState<WifiItem | null>(null)
   const [pwdInput, setPwdInput] = useState('')
+  const [connecting, setConnecting] = useState('')
   // 手动连接其他 WiFi 弹窗
   const [manualOpen, setManualOpen] = useState(false)
   const [manualSsid, setManualSsid] = useState('')
@@ -91,10 +92,22 @@ export default function WifiNearbyPage() {
     return list.filter((i) => i.ssid.toLowerCase().includes(kw))
   }, [list, keyword])
 
-  /** 跳回首页执行连接流程（复用连接中/成功动效页） */
-  const goConnect = (ssid: string, password: string) => {
-    const url = `/pages/wifi/index?merchantId=${merchantId}&name=${encodeURIComponent(merchantName)}&autoSsid=${encodeURIComponent(ssid)}&autoPwd=${encodeURIComponent(password)}`
-    Taro.redirectTo({ url }).catch(() => Taro.navigateTo({ url }))
+  /** 本页直接连接指定热点，不跳转 */
+  const doConnect = async (ssid: string, password: string) => {
+    if (connecting) return
+    setConnecting(ssid)
+    Taro.showLoading({ title: `正在连接 ${ssid.slice(0, 10)}`, mask: true })
+    try {
+      await connectAndVerify(ssid, password)
+      Taro.hideLoading()
+      Taro.showToast({ title: `已连接 ${ssid.slice(0, 12)}`, icon: 'success' })
+      loadList() // 刷新列表，该热点会标记为「当前连接」
+    } catch (e: any) {
+      Taro.hideLoading()
+      Taro.showToast({ title: e?.message || '连接失败，请重试', icon: 'none', duration: 2500 })
+    } finally {
+      setConnecting('')
+    }
   }
 
   /** 点击连接：商家/开放热点直连，加密热点弹密码框 */
@@ -107,12 +120,12 @@ export default function WifiNearbyPage() {
       // 商家热点密码已下发，重新拉一次确保最新
       Network.request({ url: `/api/merchants/${merchantId}/wifi` }).then((res) => {
         const d = (res.data as any)?.data
-        goConnect(item.ssid, d?.password || '')
-      }).catch(() => goConnect(item.ssid, ''))
+        doConnect(item.ssid, d?.password || '')
+      }).catch(() => doConnect(item.ssid, ''))
       return
     }
     if (!item.secure) {
-      goConnect(item.ssid, '')
+      doConnect(item.ssid, '')
       return
     }
     setPwdInput('')
@@ -282,7 +295,7 @@ export default function WifiNearbyPage() {
                 if (!pwdTarget) return
                 const ssid = pwdTarget.ssid
                 setPwdTarget(null)
-                goConnect(ssid, pwdInput)
+                doConnect(ssid, pwdInput)
               }}
             >
               <Text className="text-sm font-bold text-white">立即连接</Text>
@@ -321,7 +334,7 @@ export default function WifiNearbyPage() {
                   return
                 }
                 setManualOpen(false)
-                goConnect(manualSsid.trim(), manualPwd)
+                doConnect(manualSsid.trim(), manualPwd)
               }}
             >
               <Text className="text-sm font-bold text-white">立即连接</Text>

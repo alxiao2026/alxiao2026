@@ -44,7 +44,7 @@ export default function WifiPage() {
   const router = useRouter()
   const merchantId = router.params.merchantId
   const merchantName = router.params.name || ''
-  const autoSsid = router.params.ssid
+  const autoSsid = router.params.autoSsid
 
   const [phase, setPhase] = useState<Phase>('home')
   const [config, setConfig] = useState<MerchantWifiConfig | null>(null)
@@ -64,11 +64,11 @@ export default function WifiPage() {
 
   /** 拉取商家 WiFi 配置 */
   const fetchConfig = useCallback(async () => {
+    if (!merchantId) return
     try {
       const res = await Network.request({
-        url: '/api/wifi/config',
+        url: `/api/merchants/${merchantId}/wifi`,
         method: 'GET',
-        data: merchantId ? { merchantId } : undefined,
       })
       console.log('[wifi] config response:', JSON.stringify(res.data))
       const payload = res.data?.data
@@ -118,14 +118,19 @@ export default function WifiPage() {
   }, [merchantId, merchantName])
   startConnectRef.current = startConnect
 
-  /** 主 CTA：有店内 WiFi 直连，否则去附近 */
+  /** 主 CTA：点击直接连接店内 WiFi，不再跳转 */
   const handleMain = useCallback(() => {
     if (config?.has_wifi && config.ssid) {
       startConnect(config.ssid, config.password || '')
-    } else {
-      Taro.redirectTo({ url: `/pages/wifi-nearby/index?merchantId=${merchantId ?? ''}&name=${encodeURIComponent(merchantName)}` })
+      return
     }
-  }, [config, startConnect, merchantId, merchantName])
+    if (!merchantId || config === null) {
+      Taro.showToast({ title: 'WiFi信息获取中，请稍候再试', icon: 'none' })
+      if (!config) fetchConfig()
+      return
+    }
+    Taro.showToast({ title: '该门店暂未提供WiFi', icon: 'none' })
+  }, [config, startConnect, merchantId, fetchConfig])
 
   /** 刷新当前连接 + 附近热点数量 */
   const refreshState = useCallback(async () => {
@@ -143,9 +148,9 @@ export default function WifiPage() {
   useDidShow(() => {
     fetchConfig()
     refreshState()
-    // 从附近热点页带 ssid 参数回来：直接自动连接
+    // 从附近热点页带 ssid 参数回来：直接自动连接（注意参数名与 nearby 页的 autoPwd 对齐）
     if (autoSsid && phase === 'home') {
-      const pwd = router.params.password ? decodeURIComponent(router.params.password) : ''
+      const pwd = router.params.autoPwd ? decodeURIComponent(router.params.autoPwd) : ''
       setTimeout(() => startConnectRef.current(autoSsid, pwd), 600)
     }
   })
@@ -158,7 +163,10 @@ export default function WifiPage() {
     setSpeedTesting(true)
     const start = Date.now()
     try {
-      await Network.request({ url: '/api/wifi/health', method: 'GET' })
+      await Network.request({
+        url: merchantId ? `/api/merchants/${merchantId}/wifi` : '/api/merchants',
+        method: 'GET',
+      })
       const cost = Math.max(40, Date.now() - start)
       const mbps = Math.round((64 / cost) * 1000 * 8 / 1024)
       setSpeedMbps(Math.max(1, Math.min(mbps, 300)))
@@ -300,10 +308,10 @@ export default function WifiPage() {
           </View>
 
           <Text className="block text-lg font-bold mt-6" style={{ color: '#1F2937' }}>
-            {config?.has_wifi ? '连接店内WiFi' : '查看附近热点'}
+            {config?.has_wifi ? '连接店内WiFi' : '一键连接WiFi'}
           </Text>
           <Text className="block text-xs mt-2" style={{ color: '#9CA3AF' }}>
-            {config?.has_wifi && config.ssid ? config.ssid : '发现身边的免费网络'}
+            {config?.has_wifi && config.ssid ? config.ssid : '点击即可连接门店网络'}
           </Text>
 
           {currentWifi && (
