@@ -1027,11 +1027,11 @@ export class LotteryService {
       }
     }
 
-    // 补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐
+    // 补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐（附商家信息）
     if (record.is_winner && record.order_id) {
       const { data: order } = await this.client
         .from('orders')
-        .select('package_name')
+        .select('package_name, shop_name')
         .eq('id', record.order_id)
         .maybeSingle();
       const orderPackageName = (order as any)?.package_name || '';
@@ -1040,6 +1040,30 @@ export class LotteryService {
         const isFreeMealPrize = record.prize_type === 'free_meal' || /霸王餐|免单/.test(record.prize_name || '');
         if (isFreeMealPrize && !record.product_name) {
           record.product_name = orderPackageName;
+        }
+      }
+      const shopName = (order as any)?.shop_name || '';
+      if (shopName) {
+        record.shop_name = shopName;
+        // 联表补商家地址与位置（中奖时间久了能认出是哪家门店）
+        const { data: shop } = await this.client
+          .from('merchants')
+          .select('address, latitude, longitude')
+          .eq('name', shopName)
+          .limit(1);
+        if (shop && shop.length > 0) {
+          const shopRow = shop[0] as any;
+          const toNum = (v: unknown): number | null => {
+            const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+            return Number.isFinite(n) ? n : null;
+          };
+          const latitude = toNum(shopRow.latitude);
+          const longitude = toNum(shopRow.longitude);
+          if (latitude !== null && longitude !== null) {
+            record.shop_latitude = latitude;
+            record.shop_longitude = longitude;
+          }
+          if (shopRow.address) record.shop_address = shopRow.address;
         }
       }
     }
@@ -1099,20 +1123,47 @@ export class LotteryService {
 
     const globalExpiryHours = await this.getRedemptionExpiryHours();
 
-    // 批量补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐
+    // 批量补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐（附商家信息）
     const orderIds = [...new Set(records.map(r => r.order_id).filter(Boolean))];
     const orderMap = new Map<string, any>();
     if (orderIds.length > 0) {
       const { data: orders } = await this.client
         .from('orders')
-        .select('id, package_name')
+        .select('id, package_name, shop_name')
         .in('id', orderIds);
       (orders || []).forEach((o: any) => orderMap.set(o.id, o));
     }
 
+    // 批量补商家地址与位置（中奖时间久了能认出是哪家门店）
+    const shopNames = [...new Set([...orderMap.values()].map(o => o.shop_name).filter(Boolean))];
+    const shopMap = new Map<string, { address: string; latitude: number | null; longitude: number | null }>();
+    if (shopNames.length > 0) {
+      const { data: shops } = await this.client
+        .from('merchants')
+        .select('name, address, latitude, longitude')
+        .in('name', shopNames);
+      (shops || []).forEach((s: any) => {
+        // 独立坐标列（varchar 存储，需转数字）
+        const toNum = (v: unknown): number | null => {
+          if (typeof v === 'number' && Number.isFinite(v)) return v;
+          if (typeof v === 'string' && v.trim() !== '') {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+          }
+          return null;
+        };
+        const latitude = toNum(s.latitude);
+        const longitude = toNum(s.longitude);
+        shopMap.set(s.name, { address: s.address || '', latitude, longitude });
+      });
+    }
+
     return records.map(r => {
       const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
-      const orderPackageName = r.order_id ? orderMap.get(r.order_id)?.package_name || '' : '';
+      const orderRow = r.order_id ? orderMap.get(r.order_id) : null;
+      const orderPackageName = orderRow?.package_name || '';
+      const orderShopName = orderRow?.shop_name || '';
+      const orderShop = orderShopName ? shopMap.get(orderShopName) || null : null;
       const isFreeMealPrize = prize?.prize_type === 'free_meal' || /霸王餐|免单/.test(r.prize_name || '');
       const result: any = {
         ...r,
@@ -1125,6 +1176,10 @@ export class LotteryService {
         product_value: prize?.product_value ?? null,
         prize_image: prize?.image_url || '',
         order_package_name: orderPackageName,
+        shop_name: orderShopName,
+        shop_address: orderShop?.address || '',
+        shop_latitude: orderShop?.latitude ?? null,
+        shop_longitude: orderShop?.longitude ?? null,
       };
       // 补充过期信息（优先奖品单品有效期）
       if (r.redemption_code) {

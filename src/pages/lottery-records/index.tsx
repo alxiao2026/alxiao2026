@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Package, Clock, Gift, QrCode } from 'lucide-react-taro'
+import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation } from 'lucide-react-taro'
 import { formatDateTime, formatShortDateTime } from '@/lib/utils'
 
 interface LotteryRecord {
@@ -32,6 +32,11 @@ interface LotteryRecord {
   expired?: boolean
   expiry_date?: string
   expiry_hours?: number
+  // 商家信息
+  shop_name?: string
+  shop_address?: string
+  shop_latitude?: number
+  shop_longitude?: number
 }
 
 interface Order {
@@ -130,6 +135,20 @@ export default function LotteryRecordsPage() {
     } finally {
       setQrLoading(false)
     }
+  }
+
+  // 一键导航到门店
+  const handleNavigateToShop = () => {
+    if (!currentRecord?.shop_latitude || !currentRecord?.shop_longitude) {
+      Taro.showToast({ title: '暂无门店位置信息', icon: 'none' })
+      return
+    }
+    Taro.openLocation({
+      latitude: Number(currentRecord.shop_latitude),
+      longitude: Number(currentRecord.shop_longitude),
+      name: currentRecord.shop_name || '门店',
+      address: currentRecord.shop_address || '',
+    })
   }
 
   const getPrizeTypeLabel = (type: string) => {
@@ -359,6 +378,33 @@ export default function LotteryRecordsPage() {
               <Text className="block text-sm text-gray-600 mb-2 text-center">
                 {currentRecord.prize_type === 'free_meal' ? '霸王餐商品' : '商品'}：{currentRecord.product_name}
               </Text>
+            )}
+            {/* 商家信息卡片：店名 + 地址 + 导航 */}
+            {currentRecord?.shop_name && (
+              <View
+                className="w-full bg-gray-50 rounded-xl p-3 mb-3 flex flex-row items-center"
+                onClick={() => handleNavigateToShop()}
+              >
+                <View className="flex-1 min-w-0">
+                  <Text className="block text-sm font-semibold text-gray-800 truncate">
+                    {currentRecord.shop_name}
+                  </Text>
+                  {currentRecord.shop_address && (
+                    <View className="flex items-center mt-1">
+                      <MapPin size={12} color="#9ca3af" />
+                      <Text className="text-xs text-gray-500 ml-1 flex-1 truncate">
+                        {currentRecord.shop_address}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {(currentRecord.shop_latitude && currentRecord.shop_longitude) || currentRecord.shop_address ? (
+                  <View className="flex items-center justify-center bg-[#FF4757] rounded-full px-3 py-2 ml-2">
+                    <Navigation size={12} color="#ffffff" />
+                    <Text className="text-xs text-white ml-1">导航</Text>
+                  </View>
+                ) : null}
+              </View>
             )}
             {/* 过期提示 */}
             {currentRecord?.expired && !isRedeemed(currentRecord) ? (
