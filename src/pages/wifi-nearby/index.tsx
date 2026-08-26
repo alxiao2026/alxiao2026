@@ -135,10 +135,10 @@ export default function WifiNearbyPage() {
   /* ================= H5 降级 ================= */
   if (!supported) {
     return (
-      <View className="min-h-screen flex flex-col items-center justify-center px-8" style={{ background: 'linear-gradient(160deg, #FF4757 0%, #FF7A59 45%, #FFA502 80%, #FFE5EC 100%)' }}>
+      <View className="min-h-screen flex flex-col items-center justify-center px-8" style={{ background: 'linear-gradient(180deg, #FFF3F4 0%, #F7F8FA 100%)' }}>
         <Text style={{ fontSize: 64 }}>📶</Text>
-        <Text className="block text-2xl font-black text-white mt-6">附近WiFi</Text>
-        <Text className="block text-sm text-center mt-3 leading-6" style={{ color: 'rgba(255,255,255,0.9)' }}>
+        <Text className="block text-2xl font-black mt-6" style={{ color: '#1F2937' }}>附近热点</Text>
+        <Text className="block text-sm text-center mt-3 leading-6" style={{ color: '#6B7280' }}>
           WiFi 连接功能仅在微信小程序中可用{'\n'}请使用微信扫码打开小程序体验
         </Text>
       </View>
@@ -146,27 +146,26 @@ export default function WifiNearbyPage() {
   }
 
   return (
-    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F9FAFB' }}>
+    <View className="min-h-screen pb-32" style={{ backgroundColor: '#F7F8FA' }}>
       {/* 头部：标题 + 搜索 */}
-      <View className="relative overflow-hidden px-5 pt-12 pb-8" style={{ background: 'linear-gradient(150deg, #FF4757 0%, #FF6B6B 45%, #FFA07A 80%, #FFE5EC 100%)' }}>
-        <View className="wifi-blob absolute rounded-full" style={{ width: 100, height: 100, top: -26, right: -20, background: 'rgba(255,255,255,0.14)' }} />
-        <Text className="absolute" style={{ top: 30, right: 90, fontSize: 18 }}>✨</Text>
+      <View className="relative overflow-hidden px-5 pt-10 pb-8" style={{ background: 'linear-gradient(180deg, #FFF3F4 0%, #F7F8FA 100%)' }}>
+        <View className="wifi-blob absolute rounded-full" style={{ width: 100, height: 100, top: -26, right: -20, background: 'rgba(255,71,87,0.08)' }} />
         <View className="wifi-pop-in flex flex-row items-center justify-between relative">
           <View className="flex flex-row items-center gap-2">
             <Text style={{ fontSize: 32 }}>🛜</Text>
-            <Text className="text-2xl font-black text-white" style={{ textShadow: '0 2px 8px rgba(194,24,51,0.4)' }}>附近WiFi</Text>
+            <Text className="text-2xl font-black" style={{ color: '#1F2937' }}>附近热点</Text>
           </View>
-          <View className="wifi-ripple rounded-full p-2" style={{ background: 'rgba(255,255,255,0.25)' }} onClick={loadList}>
-            <RefreshCw size={18} color="#fff" className={loading ? 'wifi-spin' : ''} />
+          <View className="wifi-ripple rounded-full p-2" style={{ background: 'rgba(255,71,87,0.08)' }} onClick={loadList}>
+            <RefreshCw size={18} color="#FF4757" className={loading ? 'wifi-spin' : ''} />
           </View>
         </View>
         {/* 搜索框 */}
-        <View className="wifi-pop-in relative mt-4 rounded-full px-4 py-1 flex flex-row items-center gap-2" style={{ background: 'rgba(255,255,255,0.95)', animationDelay: '0.1s' }}>
-          <Search size={17} color="#FF8FA3" />
+        <View className="wifi-pop-in relative mt-4 rounded-full px-4 py-1 flex flex-row items-center gap-2" style={{ background: '#FFFFFF', boxShadow: '0 4px 14px rgba(31,41,55,0.06)', animationDelay: '0.1s' }}>
+          <Search size={17} color="#FF4757" />
           <View className="flex-1">
             <Input
               className="w-full bg-transparent"
-              placeholder="搜索 WiFi 名称…"
+              placeholder="搜索网络名称，立即直连"
               value={keyword}
               onInput={(e) => setKeyword(e.detail.value)}
             />
@@ -243,17 +242,17 @@ export default function WifiNearbyPage() {
           <View className="wifi-pop-in flex flex-col items-center py-14">
             <Text style={{ fontSize: 52 }}>📡</Text>
             <Text className="block text-base font-bold mt-4" style={{ color: '#374151' }}>
-              {keyword ? '没有找到匹配的WiFi' : '暂未发现附近热点'}
+              {keyword ? '未找到匹配的网络' : '周边暂无可用热点'}
             </Text>
             <Text className="block text-sm mt-2 text-center" style={{ color: '#9CA3AF' }}>
-              {keyword ? '换个关键词试试' : '靠近店内路由器后点右上角刷新'}
+              {keyword ? '换个关键词，或直接手动输入网络名' : '走近店内路由器，点右上角立即刷新'}
             </Text>
           </View>
         )}
         {scanLimited && !keyword && (
           <View className="wifi-pop-in rounded-[2rem] px-4 py-3" style={{ background: '#FFF7E6', border: '1px solid #FFE8BF' }}>
             <Text className="block text-xs leading-5" style={{ color: '#B45309' }}>
-              💡 受手机系统限制，部分设备无法扫描全部热点；可用首页「扫码连WiFi」或下方手动输入名称连接
+              💡 受手机系统限制，部分设备扫描不全；在下方手动输入网络名，一样秒连
             </Text>
           </View>
         )}

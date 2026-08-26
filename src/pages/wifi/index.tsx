@@ -185,7 +185,7 @@ export default function WifiPage() {
   // ============ 连接中 ============
   if (phase === 'connecting') {
     return (
-      <View className="min-h-screen flex flex-col items-center justify-center px-8" style={{ background: 'linear-gradient(180deg, #FF4757 0%, #FF6B6B 55%, #FF8E8E 100%)' }}>
+      <View className="min-h-screen flex flex-col items-center justify-center px-8" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FFF3F4 18%, #FF4757 52%, #FF6B6B 100%)' }}>
         <View style={{ position: 'relative', width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <View className="wifi-wave-ring" style={{ width: 150, height: 150 }} />
           <View className="wifi-wave-ring" style={{ width: 150, height: 150, animationDelay: '0.55s' }} />
@@ -194,8 +194,8 @@ export default function WifiPage() {
           </View>
         </View>
 
-        <Text className="wifi-pop-in block text-xl font-bold text-white mt-10">正在连接</Text>
-        <Text className="wifi-pop-in block text-sm mt-2" style={{ color: 'rgba(255,255,255,0.85)' }}>{connectSsid}</Text>
+        <Text className="wifi-pop-in block text-xl font-bold text-white mt-10">秒速连接中</Text>
+        <Text className="wifi-pop-in block text-sm mt-2 font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>{connectSsid}</Text>
 
         <View className="wifi-pop-in" style={{ marginTop: 20 }}>
           <SignalBars level={4} color="#fff" blink />
@@ -206,7 +206,7 @@ export default function WifiPage() {
             <View className={progressDone ? 'wifi-progress-done wifi-progress-run' : 'wifi-progress-run'} style={{ height: '100%', borderRadius: 9999, background: 'linear-gradient(90deg, #FFFFFF, #FFE5EC)' }} />
           </View>
         </View>
-        <Text className="wifi-pop-in block text-xs mt-3" style={{ color: 'rgba(255,255,255,0.75)' }}>正在验证网络，请稍候</Text>
+        <Text className="wifi-pop-in block text-xs mt-3 font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>安全验证中，马上就好</Text>
       </View>
     )
   }
@@ -214,14 +214,14 @@ export default function WifiPage() {
   // ============ 连接成功 ============
   if (phase === 'success' && connected) {
     return (
-      <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg, #2ED573 0%, #7BED9F 38%, #F7F8FA 76%)' }}>
+      <View className="min-h-screen pb-32" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #EAFBF2 16%, #2ED573 48%, #7BED9F 72%, #F7F8FA 100%)' }}>
         <View className="flex flex-col items-center px-5 pt-20">
           <View className="wifi-check rounded-full flex items-center justify-center" style={{ width: 96, height: 96, backgroundColor: '#FFFFFF', boxShadow: '0 16px 40px rgba(46,213,115,0.35)' }}>
             <Check size={52} color="#2ED573" strokeWidth={3} />
           </View>
 
           <Text className="wifi-pop-in block text-2xl font-black mt-6" style={{ color: '#0B6B3A' }}>连接成功</Text>
-          <Text className="wifi-pop-in block text-sm mt-2" style={{ color: 'rgba(11,107,58,0.62)' }}>网络已就绪，开始冲浪</Text>
+          <Text className="wifi-pop-in block text-sm mt-2 font-medium" style={{ color: 'rgba(11,107,58,0.72)' }}>网速拉满，冲浪去吧</Text>
 
           <View className="wifi-pop-in w-full rounded-3xl bg-white p-5 mt-8" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.06)' }}>
             <View className="flex flex-row items-center gap-3">
@@ -290,9 +290,9 @@ export default function WifiPage() {
     <View className="min-h-screen pb-32" style={{ backgroundColor: '#F7F8FA' }}>
       {/* 顶部 */}
       <View className="px-6 pt-10 pb-9" style={{ background: 'linear-gradient(180deg, #FFF3F4 0%, #F7F8FA 100%)' }}>
-        <Text className="block text-2xl font-bold" style={{ color: '#1F2937' }}>一键连WiFi</Text>
-        <Text className="block text-sm mt-2" style={{ color: '#9CA3AF' }}>
-          {displayName ? `${displayName} · 免费网络即点即连` : '免费网络，即点即连'}
+        <Text className="block text-2xl font-black" style={{ color: '#1F2937' }}>一键连WiFi</Text>
+        <Text className="block text-sm mt-2 font-medium" style={{ color: '#6B7280' }}>
+          {displayName ? `${displayName} · 到店免密直连` : '到店免密，一秒上网'}
         </Text>
       </View>
 
@@ -310,8 +310,8 @@ export default function WifiPage() {
           <Text className="block text-lg font-bold mt-6" style={{ color: '#1F2937' }}>
             {config?.has_wifi ? '连接店内WiFi' : '一键连接WiFi'}
           </Text>
-          <Text className="block text-xs mt-2" style={{ color: '#9CA3AF' }}>
-            {config?.has_wifi && config.ssid ? config.ssid : '点击即可连接门店网络'}
+          <Text className="block text-xs mt-2 font-medium" style={{ color: '#6B7280' }}>
+            {config?.has_wifi && config.ssid ? config.ssid : '无需密码，点击秒连'}
           </Text>
 
           {currentWifi && (
@@ -332,8 +332,8 @@ export default function WifiPage() {
             </View>
             <View>
               <Text className="block text-base font-semibold" style={{ color: '#1F2937' }}>附近免费热点</Text>
-              <Text className="block text-xs mt-1" style={{ color: '#9CA3AF' }}>
-                {nearbyCount > 0 ? `${nearbyCount} 个网络可用` : '查看身边的可用网络'}
+              <Text className="block text-xs mt-1 font-medium" style={{ color: '#6B7280' }}>
+                {nearbyCount > 0 ? `${nearbyCount} 个网络即点即连` : '周边网络一键直达'}
               </Text>
             </View>
           </View>
@@ -349,8 +349,8 @@ export default function WifiPage() {
           </View>
           <View className="flex-1">
             <Text className="block text-sm font-semibold" style={{ color: '#4B5563' }}>连接小贴士</Text>
-            <Text className="block text-xs mt-2" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
-              连接前请保持手机WiFi开关已打开；若连接不上，靠近路由器或到「附近」选择其他热点。
+            <Text className="block text-xs mt-2 font-medium" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
+              连接前请打开手机WiFi开关；连接失败时靠近路由器，或到「附近」切换其他热点秒连。
             </Text>
           </View>
         </View>
