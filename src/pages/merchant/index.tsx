@@ -431,35 +431,6 @@ export default function MerchantPage() {
                 <Text className={`text-sm ${status.open ? 'text-green-600' : 'text-gray-500'}`}>{status.text}</Text>
               </View>
 
-              {/* 链接店内WiFi 入口（商家已配置时展示） */}
-              {!!merchant?.wifi_ssid && (
-                <View
-                  className="flex flex-row items-center justify-between mt-3 rounded-2xl px-4 py-3"
-                  style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF7A59 55%, #FFA502 100%)', boxShadow: '0 8px 20px rgba(255,71,87,0.28)' }}
-                  onClick={() => {
-                    console.log('[Merchant] 进入店内WiFi模块', merchant.id)
-                    Taro.navigateTo({ url: `/pages/wifi/index?merchantId=${merchant.id}&name=${encodeURIComponent(merchant.name)}` })
-                      .catch((e) => console.error('[Merchant] 跳转WiFi页失败', e))
-                  }}
-                >
-                  <View className="flex flex-row items-center gap-3">
-                    <View className="rounded-full flex items-center justify-center" style={{ width: 38, height: 38, background: 'rgba(255,255,255,0.25)' }}>
-                      <Wifi size={20} color="#fff" strokeWidth={2.5} />
-                    </View>
-                    <View>
-                      <View className="flex flex-row items-center gap-2">
-                        <Text className="text-base font-black text-white">链接店内WiFi</Text>
-                        <View className="px-2 py-1 rounded-full" style={{ backgroundColor: '#2ED573' }}>
-                          <Text className="text-xs font-bold" style={{ color: '#fff', lineHeight: 1 }}>FREE</Text>
-                        </View>
-                      </View>
-                      <Text className="block text-xs mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>一键免费上网 · {merchant.wifi_ssid}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={18} color="rgba(255,255,255,0.9)" />
-                </View>
-              )}
-
               {/* 分隔线 + 地址行（右侧导航/联系圆形按钮） */}
               {merchant.address && (
                 <View className="flex flex-row items-center mt-3 pt-3 border-t border-gray-100">
@@ -501,6 +472,35 @@ export default function MerchantPage() {
                       </View>
                     )}
                   </View>
+                </View>
+              )}
+
+              {/* 链接店内WiFi 入口（商家已配置时展示，置于门店地址下方） */}
+              {!!merchant?.wifi_ssid && (
+                <View
+                  className="flex flex-row items-center justify-between mt-3 rounded-2xl px-4 py-3"
+                  style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF7A59 55%, #FFA502 100%)', boxShadow: '0 8px 20px rgba(255,71,87,0.28)' }}
+                  onClick={() => {
+                    console.log('[Merchant] 进入店内WiFi模块', merchant.id)
+                    Taro.navigateTo({ url: `/pages/wifi/index?merchantId=${merchant.id}&name=${encodeURIComponent(merchant.name)}` })
+                      .catch((e) => console.error('[Merchant] 跳转WiFi页失败', e))
+                  }}
+                >
+                  <View className="flex flex-row items-center gap-3">
+                    <View className="rounded-full flex items-center justify-center" style={{ width: 38, height: 38, background: 'rgba(255,255,255,0.25)' }}>
+                      <Wifi size={20} color="#fff" strokeWidth={2.5} />
+                    </View>
+                    <View>
+                      <View className="flex flex-row items-center gap-2">
+                        <Text className="text-base font-black text-white">链接店内WiFi</Text>
+                        <View className="px-2 py-1 rounded-full" style={{ backgroundColor: '#2ED573' }}>
+                          <Text className="text-xs font-bold" style={{ color: '#fff', lineHeight: 1 }}>FREE</Text>
+                        </View>
+                      </View>
+                      <Text className="block text-xs mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>一键免费上网 · {merchant.wifi_ssid}</Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color="rgba(255,255,255,0.9)" />
                 </View>
               )}
             </View>
