@@ -49,7 +49,9 @@ export default defineAppConfig({
     { root: 'pages/orchard-admin', pages: ['index'] },
     // ===== 分包：WiFi 模块 =====
     { root: 'pages/wifi', pages: ['index'] },
-    { root: 'pages/wifi-nearby', pages: ['index'] }
+    { root: 'pages/wifi-nearby', pages: ['index'] },
+    // ===== 独立分包：驿站快递查询（物理隔离，不依赖主包状态/账号/请求层）=====
+    { root: 'packages/station', pages: ['pages/home/index', 'pages/transition/index', 'pages/about/index', 'pages/nearby-shops/index', 'pages/admin/index'] }
   ],
   window: {
     backgroundTextStyle: 'light',

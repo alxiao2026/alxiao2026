@@ -6,7 +6,7 @@ import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AppTabBar from '@/components/app-tab-bar';
 import {
-  ChevronRight, Clock, Flame, Trophy, Store
+  ChevronRight, Clock, Flame, Trophy, Store, Package
 } from 'lucide-react-taro';
 import LotteryAnimation from './components/lottery-animation';
 import './index.css';
@@ -304,6 +304,22 @@ const IndexPage = () => {
         <View className="px-5 pb-4 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
           <Text className="block text-2xl font-bold text-[#FF4757]">膨胀团</Text>
           <Text className="block text-xs text-gray-400 mt-1">给生活来点小惊喜 · 每单都有好运 ✨</Text>
+        </View>
+
+        {/* ===== 驿站快递查询入口（独立分包 packages/station，物理隔离不共享业务状态） ===== */}
+        <View
+          className="mx-4 rounded-3xl px-4 py-3 flex flex-row items-center gap-3 shadow-sm"
+          style={{ background: 'linear-gradient(135deg, #FFB347 0%, #FF6B35 100%)' }}
+          onClick={() => Taro.navigateTo({ url: '/packages/station/pages/home/index' })}
+        >
+          <View className="w-10 h-10 rounded-2xl bg-white bg-opacity-25 flex items-center justify-center flex-shrink-0">
+            <Package size={22} color="#FFFFFF" />
+          </View>
+          <View className="flex-1">
+            <Text className="block text-base font-bold text-white">驿站快递查询</Text>
+            <Text className="block text-xs text-white mt-1">查拼多多 / 菜鸟包裹 · 到站免排队取件</Text>
+          </View>
+          <ChevronRight size={18} color="#FFFFFF" />
         </View>
 
         {/* ===== 霸王餐人气榜（年轻活泼风格） ===== */}

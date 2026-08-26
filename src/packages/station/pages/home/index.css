@@ -1,0 +1,30 @@
+/* 驿站首页 · 仅保留动画类样式（呼吸/入场动效），其余样式统一走 Tailwind 原子类 */
+
+/* 查件大按钮呼吸动效 */
+@keyframes station-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+.station-breathe {
+  animation: station-breathe 2.6s ease-in-out infinite;
+}
+
+/* 卡片入场上浮淡入 */
+@keyframes station-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.station-float-in {
+  animation: station-float-in 0.45s ease-out both;
+}

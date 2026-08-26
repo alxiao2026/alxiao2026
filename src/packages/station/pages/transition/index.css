@@ -1,0 +1,16 @@
+/* 跳转过渡页 · 仅动画类样式（倒计时数字脉冲 + 广告大图脉冲） */
+
+@keyframes station-ad-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.92;
+    transform: scale(1.015);
+  }
+}
+.station-ad-pulse {
+  animation: station-ad-pulse 1.4s ease-in-out infinite;
+}
