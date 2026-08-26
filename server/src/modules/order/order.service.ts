@@ -29,6 +29,8 @@ export interface Order {
   coupon_record_id?: string | null;
   coupon_discount?: string | null;
   verified_by?: string | null;
+  // 消费返积分：本单累计已发放积分（撤销核销时按份数扣回）
+  points_awarded?: number | null;
   // 支付字段（Phase 0 支付骨架）
   original_amount?: string | null;
   discount_amount?: string | null;
@@ -65,6 +67,9 @@ function localTimeStr(d: Date): string {
   return `${h}:${m}`;
 }
 
+// 消费返积分比例：1 元 = 1 积分（核销时按份数发放，撤销核销按份数扣回）
+const CONSUME_POINTS_RATE = 1;
+
 @Injectable()
 export class OrderService {
   private client = getSupabaseClient();
@@ -73,6 +78,92 @@ export class OrderService {
     private readonly notificationService: NotificationService,
     private readonly settlementService: SettlementService,
   ) {}
+
+  /**
+   * 消费返积分（容错，不影响核销主流程）：
+   * 核销成功后按「单价 × 核销份数」发放积分（1 元 = 1 积分），
+   * 积分写入 users.points（与果园打通），流水写入 orchard_records 供「水滴/积分明细」展示。
+   */
+  private async awardConsumePoints(order: Order, verifyCount: number): Promise<void> {
+    try {
+      const award = Math.round(parseFloat(String(order.price || '0')) * verifyCount * CONSUME_POINTS_RATE);
+      if (!Number.isFinite(award) || award <= 0) return;
+
+      const { data: user, error: userError } = await this.client
+        .from('users')
+        .select('points')
+        .eq('user_id', order.user_id)
+        .maybeSingle();
+      if (userError) throw new Error(userError.message);
+
+      const nextPoints = (Number(user?.points) || 0) + award;
+      const { error: updateError } = await this.client
+        .from('users')
+        .update({ points: nextPoints, updated_at: new Date().toISOString() })
+        .eq('user_id', order.user_id);
+      if (updateError) throw new Error(updateError.message);
+
+      // 记录本单累计已发积分（撤销时按份数扣回）
+      await this.client
+        .from('orders')
+        .update({ points_awarded: (Number(order.points_awarded) || 0) + award, updated_at: new Date().toISOString() })
+        .eq('id', order.id);
+
+      // 积分流水：amount=0（无水滴变动），remark 带 "+X 积分" 供明细页解析
+      await this.client.from('orchard_records').insert({
+        user_id: order.user_id,
+        amount: 0,
+        reason: 'consume_rebate',
+        remark: `消费返积分 +${award}积分（${order.package_name || '套餐'}核销×${verifyCount}）`,
+      });
+
+      console.log(`[OrderService] 消费返积分: 订单${order.id} 核销${verifyCount}份 发放${award}积分`);
+    } catch (e) {
+      console.warn('[OrderService] 消费返积分发放失败（不影响核销）:', e);
+    }
+  }
+
+  /**
+   * 撤销核销扣回积分（容错，不影响撤销主流程）：
+   * 按「单价 × 撤销份数」扣回，积分余额不足时扣到 0 为止。
+   */
+  private async rollbackConsumePoints(order: Order, revokeQty: number): Promise<void> {
+    try {
+      const deduct = Math.round(parseFloat(String(order.price || '0')) * revokeQty * CONSUME_POINTS_RATE);
+      const awarded = Number(order.points_awarded) || 0;
+      if (!Number.isFinite(deduct) || deduct <= 0 || awarded <= 0) return;
+
+      const { data: user, error: userError } = await this.client
+        .from('users')
+        .select('points')
+        .eq('user_id', order.user_id)
+        .maybeSingle();
+      if (userError) throw new Error(userError.message);
+
+      const nextPoints = Math.max(0, (Number(user?.points) || 0) - deduct);
+      const { error: updateError } = await this.client
+        .from('users')
+        .update({ points: nextPoints, updated_at: new Date().toISOString() })
+        .eq('user_id', order.user_id);
+      if (updateError) throw new Error(updateError.message);
+
+      await this.client
+        .from('orders')
+        .update({ points_awarded: Math.max(0, awarded - deduct), updated_at: new Date().toISOString() })
+        .eq('id', order.id);
+
+      await this.client.from('orchard_records').insert({
+        user_id: order.user_id,
+        amount: 0,
+        reason: 'consume_rebate_revoke',
+        remark: `撤销核销，扣回 ${deduct} 积分（${order.package_name || '套餐'}×${revokeQty}）`,
+      });
+
+      console.log(`[OrderService] 撤销核销扣回积分: 订单${order.id} 撤销${revokeQty}份 扣回${deduct}积分`);
+    } catch (e) {
+      console.warn('[OrderService] 撤销核销扣回积分失败（不影响撤销）:', e);
+    }
+  }
 
   async findByMerchant(merchantId: string, status?: string, startDate?: string, endDate?: string, verifiedBy?: string, keyword?: string): Promise<Order[]> {
     // 先查该商家的所有套餐ID
@@ -728,7 +819,16 @@ export class OrderService {
     // 结算：按套餐结算配置生成结算记录并更新商家余额（容错，不影响核销主流程）
     await this.settlementService.settleOrder(data as Order, verifyCount);
 
-    return data as Order;
+    // 消费返积分：核销份数 × 单价（1 元 = 1 积分），积分可在果园兑换水滴（容错）
+    await this.awardConsumePoints(order as Order, verifyCount);
+
+    // 积分已异步落库，返回对象同步最新值供前端展示
+    const { data: finalOrder } = await this.client
+      .from('orders')
+      .select()
+      .eq('id', order.id)
+      .single();
+    return (finalOrder || data) as Order;
   }
 
   /** 根据奖品兑换码查询中奖记录及奖品信息 */
@@ -905,6 +1005,9 @@ export class OrderService {
     // 同时写入撤销流水（撤销时间/操作人/份数/扣回金额），供结算明细页红字行与导出对账
     await this.settlementService.rollbackOrderSettlement(orderId, revokeQty, verifiedCount, merchantUserId);
 
+    // 消费返积分扣回：按撤销份数扣回对应积分（容错，不影响撤销主流程）
+    await this.rollbackConsumePoints(order as Order, revokeQty);
+
     // 通知用户核销已被撤销（容错，不影响主流程）
     try {
       if (order.user_id) {
@@ -917,7 +1020,13 @@ export class OrderService {
       console.warn('核销撤销通知发送失败:', e);
     }
 
-    return data as Order;
+    // 积分扣回已异步落库，返回对象同步最新值供前端展示
+    const { data: finalOrder } = await this.client
+      .from('orders')
+      .select()
+      .eq('id', orderId)
+      .single();
+    return (finalOrder || data) as Order;
   }
 
   /** 订单列表（按用户身份强制过滤：管理员看全平台，商户仅本店，其他角色拒绝） */

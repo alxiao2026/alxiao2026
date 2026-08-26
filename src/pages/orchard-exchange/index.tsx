@@ -136,6 +136,7 @@ export default function OrchardExchangePage() {
         <View className="bg-white rounded-2xl p-4 mt-4" style={{ boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)' }}>
           <Text className="block text-sm font-black mb-2" style={{ color: '#1c1917' }}>💡 兑换说明</Text>
           <Text className="block" style={{ fontSize: 11, color: '#78716c', lineHeight: '18px' }}>· 每次最低兑换 {exchangeMin} 积分，1 积分 = {rate}g 水滴；</Text>
+          <Text className="block" style={{ fontSize: 11, color: '#78716c', lineHeight: '18px' }}>· 积分来源：小程序消费 1 元返 1 积分（核销后自动到账），完成任务也可获得；</Text>
           <Text className="block" style={{ fontSize: 11, color: '#78716c', lineHeight: '18px' }}>· 兑换成功后水滴立即浇灌到当前果树，不进入余额；</Text>
           <Text className="block" style={{ fontSize: 11, color: '#78716c', lineHeight: '18px' }}>· 水滴无法反向兑换为积分，请按需兑换；</Text>
           <Text className="block" style={{ fontSize: 11, color: '#78716c', lineHeight: '18px' }}>· 兑换记录可在「水滴/积分明细」中查看。</Text>

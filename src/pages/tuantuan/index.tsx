@@ -537,7 +537,7 @@ export default function TuantuanPage() {
       <View className="px-4 mt-5">
         <SectionTitle emoji="📖" title="玩法规则" />
         <View className="bg-white rounded-3xl p-4" style={{ boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)' }}>
-          <Text className="block text-xs leading-relaxed" style={{ color: '#78716c' }}>1. 每日签到浇水 +{profile?.config.dailyWater ?? 20}g，水滴立即浇灌到当前果树；{'\n'}2. 三餐时段（7-9 / 12-14 / 19-21 点）各可领 {profile?.config.mealWater ?? 10}g 水滴；{'\n'}3. 完成任务（团购下单 / 分享好友）可继续获得水滴；{'\n'}4. 果树成长：{thresholds.map((th, i) => (th > 0 ? `${STAGE_NAMES[i]}(${th}g)` : STAGE_NAMES[i])).join('→')}；{'\n'}5. 成熟后收获果树入库，用库存果树兑换优惠券，兑换后重新种下一棵；{'\n'}6. 漏浇可补浇：补浇卡每周期限用 {profile?.config.cycleMakeupUseLimit ?? 5} 张，也可用 {profile?.config.makeupCostPoints ?? 50} 积分补浇。</Text>
+          <Text className="block text-xs leading-relaxed" style={{ color: '#78716c' }}>1. 每日签到浇水 +{profile?.config.dailyWater ?? 20}g，水滴立即浇灌到当前果树；{'\n'}2. 三餐时段（7-9 / 12-14 / 19-21 点）各可领 {profile?.config.mealWater ?? 10}g 水滴；{'\n'}3. 完成任务（团购下单 / 分享好友）可继续获得水滴；{'\n'}4. 积分获取：小程序消费核销后返积分（1 元 = 1 积分），可在「积分兑换水滴」中兑换；{'\n'}5. 果树成长：{thresholds.map((th, i) => (th > 0 ? `${STAGE_NAMES[i]}(${th}g)` : STAGE_NAMES[i])).join('→')}；{'\n'}6. 成熟后收获果树入库，用库存果树兑换优惠券，兑换后重新种下一棵；{'\n'}7. 漏浇可补浇：补浇卡每周期限用 {profile?.config.cycleMakeupUseLimit ?? 5} 张，也可用 {profile?.config.makeupCostPoints ?? 50} 积分补浇。</Text>
         </View>
       </View>
 

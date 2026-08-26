@@ -17,6 +17,8 @@ const REASON_META: Record<string, { emoji: string; label: string; tone: 'in' | '
   help_friend: { emoji: '🙌', label: '助力好友', tone: 'system' },
   order_bonus: { emoji: '🎁', label: '下单返水滴', tone: 'in' },
   points_exchange: { emoji: '🔁', label: '积分兑换水滴', tone: 'in' },
+  consume_rebate: { emoji: '🛍️', label: '消费返积分', tone: 'in' },
+  consume_rebate_revoke: { emoji: '↩️', label: '撤销核销扣回', tone: 'out' },
   makeup: { emoji: '🎫', label: '补浇', tone: 'out' },
   admin_grant: { emoji: '🎁', label: '系统/活动', tone: 'system' },
 }
@@ -59,7 +61,9 @@ export default function OrchardPointsPage() {
   const rows = useMemo(() => {
     return records.map((r) => {
       const meta = REASON_META[r.reason] ?? { emoji: '✨', label: r.remark || '系统变动', tone: 'system' as const }
-      const isPointsOnly = r.reason === 'admin_grant' || r.reason === 'invite_friend'
+      const isPointsOnly = r.reason === 'admin_grant' || r.reason === 'invite_friend' || r.reason === 'consume_rebate'
+      // 撤销核销扣回：remark 形如「撤销核销，扣回 X 积分」
+      const revokePoints = r.reason === 'consume_rebate_revoke' ? extractDeductPoints(r.remark ?? '') : undefined
       return {
         id: r.id,
         createdAt: r.createdAt,
@@ -67,6 +71,7 @@ export default function OrchardPointsPage() {
         emoji: meta.emoji,
         droplets: r.amount > 0 && !isPointsOnly ? r.amount : undefined,
         points: isPointsOnly && (r.remark ?? '').includes('+') ? extractPoints(r.remark ?? '') : undefined,
+        revokePoints,
         tone: meta.tone,
       }
     })
@@ -150,6 +155,9 @@ export default function OrchardPointsPage() {
                 {r.points !== undefined && (
                   <Text className="text-xs font-black" style={{ color: '#d97706' }}>+{r.points} 积分</Text>
                 )}
+                {r.revokePoints !== undefined && (
+                  <Text className="text-xs font-black" style={{ color: '#78716c' }}>-{r.revokePoints} 积分</Text>
+                )}
               </View>
             </View>
           ))
@@ -161,5 +169,10 @@ export default function OrchardPointsPage() {
 
 function extractPoints(remark: string): number | undefined {
   const m = remark.match(/\+(\d+)\s*积分/)
+  return m ? Number(m[1]) : undefined
+}
+
+function extractDeductPoints(remark: string): number | undefined {
+  const m = remark.match(/扣回\s*(\d+)\s*积分/)
   return m ? Number(m[1]) : undefined
 }
