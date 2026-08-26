@@ -738,6 +738,7 @@ export class OrderService {
     prize_name: string;
     product_name: string;
     product_value: number | null;
+    prize_type: string;
     nick_name: string;
     redemption_code: string;
     refund_status: string;
@@ -747,7 +748,7 @@ export class OrderService {
   } | null> {
     const { data: record, error } = await this.client
       .from('lottery_records')
-      .select('id, prize_id, prize_name, user_id, redemption_code, refund_status, created_at')
+      .select('id, prize_id, prize_name, user_id, order_id, redemption_code, refund_status, created_at')
       .eq('redemption_code', code)
       .eq('is_winner', true)
       .maybeSingle();
@@ -760,18 +761,30 @@ export class OrderService {
     let productName = '';
     let productValue: number | null = null;
     let validityHours: number | null = null;
+    let prizeType = '';
     if (r.prize_id) {
       const { data: prize } = await this.client
         .from('prizes')
-        .select('product_name, product_value, validity_hours')
+        .select('prize_type, product_name, product_value, validity_hours')
         .eq('id', r.prize_id)
         .maybeSingle();
       if (prize) {
+        prizeType = (prize as any).prize_type || '';
         productName = (prize as any).product_name || '';
         productValue = (prize as any).product_value ?? null;
         const vh = (prize as any).validity_hours;
         validityHours = typeof vh === 'number' && vh > 0 ? vh : null;
       }
+    }
+
+    // 霸王餐奖品：商品名回退为订单套餐名（霸王餐商品即所购套餐）
+    if (!productName && (prizeType === 'free_meal' || /霸王餐|免单/.test(r.prize_name || '')) && r.order_id) {
+      const { data: order } = await this.client
+        .from('orders')
+        .select('package_name')
+        .eq('id', r.order_id)
+        .maybeSingle();
+      productName = (order as any)?.package_name || '';
     }
 
     // 中奖用户昵称
@@ -803,6 +816,7 @@ export class OrderService {
       prize_name: r.prize_name || '',
       product_name: productName,
       product_value: productValue,
+      prize_type: prizeType,
       nick_name: nickName,
       redemption_code: r.redemption_code,
       refund_status: r.refund_status || '',

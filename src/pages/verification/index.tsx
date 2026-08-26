@@ -354,7 +354,9 @@ export default function VerificationPage() {
                 <View className="mt-2 bg-gray-50 rounded-lg p-3">
                   <Text className="block text-sm text-gray-800 font-semibold">奖品：{verifyResult.prize.prize_name}</Text>
                   {verifyResult.prize.product_name ? (
-                    <Text className="block text-xs text-gray-500 mt-1">商品：{verifyResult.prize.product_name}</Text>
+                    <Text className="block text-xs text-gray-500 mt-1">
+                      {verifyResult.prize.prize_type === 'free_meal' ? '霸王餐商品' : '商品'}：{verifyResult.prize.product_name}
+                    </Text>
                   ) : null}
                   <Text className="block text-xs text-gray-500 mt-1">用户：{verifyResult.prize.nick_name || '匿名用户'}</Text>
                   <Text className="block text-xs text-gray-500">兑换码：{verifyResult.prize.redemption_code}</Text>

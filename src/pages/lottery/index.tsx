@@ -198,6 +198,7 @@ export default function Lottery() {
           is_winner: !!record.is_winner,
           prize_name: record.prize_name || '',
           prize_type: record.prize_type,
+          product_name: record.product_name || '',
           redemption_code: record.redemption_code || '',
           refund_amount: record.refund_amount || '0',
           record_id: record.id || '',
@@ -226,6 +227,7 @@ export default function Lottery() {
         is_winner: !!record.is_winner,
         prize_name: record.prize_name || '',
         prize_type: record.prize_type,
+        product_name: record.product_name || '',
         redemption_code: record.redemption_code || '',
         refund_amount: record.refund_amount || '0',
         record_id: record.id || '',
@@ -450,8 +452,10 @@ export default function Lottery() {
       const isFreeMeal = type === 'free_meal'
       return (
         <View className="mt-3 w-full">
-          {drawResult.product_name && !isFreeMeal ? (
-            <Text className="block text-sm text-amber-700 mb-2 text-center">奖品：{drawResult.product_name}</Text>
+          {drawResult.product_name ? (
+            <Text className={`block text-sm text-amber-700 mb-1 text-center ${isFreeMeal ? 'font-bold' : ''}`}>
+              {isFreeMeal ? `霸王餐商品：${drawResult.product_name}` : `奖品：${drawResult.product_name}`}
+            </Text>
           ) : null}
           {isFreeMeal && (
             <Text className="block text-sm text-amber-700 mb-2 text-center">

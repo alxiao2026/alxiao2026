@@ -244,6 +244,9 @@ export default function LotteryRecordsPage() {
                                 )}
                               </View>
                             )}
+                            {record.prize_type === 'free_meal' && record.product_name && (
+                              <Text className="block text-sm text-gray-600">霸王餐商品：{record.product_name}</Text>
+                            )}
                             {(record.prize_type === 'free_meal' || record.prize_type === 'coupon') && Number(record.refund_amount) > 0 && (
                               <Text className="block text-sm text-green-500 font-medium">
                                 返现金额：¥{record.refund_amount}{record.prize_type === 'coupon' ? '（已原路退回支付账户）' : ''}
@@ -351,6 +354,12 @@ export default function LotteryRecordsPage() {
             </DialogTitle>
           </DialogHeader>
           <View className="flex flex-col items-center mt-2">
+            {/* 具体商品（霸王餐显示所购套餐） */}
+            {currentRecord?.product_name && (
+              <Text className="block text-sm text-gray-600 mb-2 text-center">
+                {currentRecord.prize_type === 'free_meal' ? '霸王餐商品' : '商品'}：{currentRecord.product_name}
+              </Text>
+            )}
             {/* 过期提示 */}
             {currentRecord?.expired && !isRedeemed(currentRecord) ? (
               <View className="flex flex-col items-center py-6">

@@ -808,6 +808,7 @@ export class LotteryService {
     prize_name: string;
     product_name: string;
     product_value: number | null;
+    prize_type: string;
     user_id: string;
     redemption_code: string;
     refund_status: string;
@@ -818,30 +819,54 @@ export class LotteryService {
   }> {
     const { data: record, error } = await this.client
       .from('lottery_records')
-      .select('id, prize_name, user_id, redemption_code, refund_status, created_at')
+      .select('id, prize_name, prize_id, user_id, order_id, redemption_code, refund_status, created_at')
       .eq('redemption_code', redemptionCode)
       .eq('is_winner', true)
       .maybeSingle();
     if (error) throw new Error(`查询兑换码失败: ${error.message}`);
     if (!record) throw new NotFoundException('兑换码无效');
 
-    // 补充奖品商品信息（含单品有效期）
+    // 补充奖品商品信息（含单品有效期）：优先按 prize_id 匹配，回退按名称匹配
     let productName = '';
     let productValue: number | null = null;
     let prizeValidity: number | null = null;
+    let prizeType = '';
     const r = record as any;
-    if (r.prize_name) {
-      const { data: prize } = await this.client
-        .from('prizes')
-        .select('product_name, product_value, validity_hours')
-        .eq('name', r.prize_name)
-        .maybeSingle();
+    if (r.prize_id || r.prize_name) {
+      let prize: any = null;
+      if (r.prize_id) {
+        const { data: prizeById } = await this.client
+          .from('prizes')
+          .select('prize_type, product_name, product_value, validity_hours')
+          .eq('id', r.prize_id)
+          .maybeSingle();
+        prize = prizeById;
+      }
+      if (!prize && r.prize_name) {
+        const { data: prizeByName } = await this.client
+          .from('prizes')
+          .select('prize_type, product_name, product_value, validity_hours')
+          .eq('name', r.prize_name)
+          .maybeSingle();
+        prize = prizeByName;
+      }
       if (prize) {
+        prizeType = (prize as any).prize_type || '';
         productName = (prize as any).product_name || '';
         productValue = (prize as any).product_value ?? null;
         const vh = (prize as any).validity_hours;
         prizeValidity = typeof vh === 'number' && vh > 0 ? vh : null;
       }
+    }
+
+    // 霸王餐奖品：商品名回退为订单套餐名（霸王餐商品即所购套餐）
+    if (!productName && (prizeType === 'free_meal' || /霸王餐|免单/.test(r.prize_name || '')) && r.order_id) {
+      const { data: order } = await this.client
+        .from('orders')
+        .select('package_name')
+        .eq('id', r.order_id)
+        .maybeSingle();
+      productName = (order as any)?.package_name || '';
     }
 
     const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
@@ -850,6 +875,7 @@ export class LotteryService {
       prize_name: r.prize_name || '',
       product_name: productName,
       product_value: productValue,
+      prize_type: prizeType,
       user_id: r.user_id,
       redemption_code: r.redemption_code,
       refund_status: r.refund_status || '',
@@ -1001,6 +1027,23 @@ export class LotteryService {
       }
     }
 
+    // 补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐
+    if (record.is_winner && record.order_id) {
+      const { data: order } = await this.client
+        .from('orders')
+        .select('package_name')
+        .eq('id', record.order_id)
+        .maybeSingle();
+      const orderPackageName = (order as any)?.package_name || '';
+      if (orderPackageName) {
+        record.order_package_name = orderPackageName;
+        const isFreeMealPrize = record.prize_type === 'free_meal' || /霸王餐|免单/.test(record.prize_name || '');
+        if (isFreeMealPrize && !record.product_name) {
+          record.product_name = orderPackageName;
+        }
+      }
+    }
+
     // 补充过期信息（优先奖品单品有效期）
     if (record.redemption_code) {
       const expiryHours = prizeValidity ?? await this.getRedemptionExpiryHours();
@@ -1056,8 +1099,21 @@ export class LotteryService {
 
     const globalExpiryHours = await this.getRedemptionExpiryHours();
 
+    // 批量补充订单套餐名：霸王餐奖品的"具体商品"即用户所购套餐
+    const orderIds = [...new Set(records.map(r => r.order_id).filter(Boolean))];
+    const orderMap = new Map<string, any>();
+    if (orderIds.length > 0) {
+      const { data: orders } = await this.client
+        .from('orders')
+        .select('id, package_name')
+        .in('id', orderIds);
+      (orders || []).forEach((o: any) => orderMap.set(o.id, o));
+    }
+
     return records.map(r => {
       const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
+      const orderPackageName = r.order_id ? orderMap.get(r.order_id)?.package_name || '' : '';
+      const isFreeMealPrize = prize?.prize_type === 'free_meal' || /霸王餐|免单/.test(r.prize_name || '');
       const result: any = {
         ...r,
         prize_type: prize?.prize_type || '',
@@ -1065,9 +1121,10 @@ export class LotteryService {
         coupon_condition: prize?.coupon_min_spend ?? null,
         discount_rate: parseFloat(prize?.discount_rate || '0'),
         discount_cap: parseFloat(prize?.discount_cap || '0'),
-        product_name: prize?.product_name || '',
+        product_name: prize?.product_name || (isFreeMealPrize ? orderPackageName : ''),
         product_value: prize?.product_value ?? null,
         prize_image: prize?.image_url || '',
+        order_package_name: orderPackageName,
       };
       // 补充过期信息（优先奖品单品有效期）
       if (r.redemption_code) {

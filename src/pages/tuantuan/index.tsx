@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
+import AppTabBar from '@/components/app-tab-bar'
 import ShareSheet from '@/components/orchard/share-sheet'
 import WaterCalendar from '@/components/orchard/water-calendar'
 import { WaterResultModal, HarvestModal, MakeupModal } from '@/components/orchard/orchard-modals'
@@ -579,6 +580,9 @@ export default function TuantuanPage() {
         inviteLimit={profile?.config.taskInviteLimit ?? 1}
         onClose={() => setShowShare(false)}
       />
+
+      {/* 底部导航（首页/团团/我的） */}
+      <AppTabBar current="/pages/tuantuan/index" />
     </View>
   )
 }
