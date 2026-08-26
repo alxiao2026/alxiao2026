@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text } from '@tarojs/components'
+import { useCallback, useEffect, useState } from 'react'
+import { View, Text, Image } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import AppTabBar from '@/components/app-tab-bar'
@@ -12,24 +12,19 @@ import {
 } from '@/lib/orchard-api'
 import { ensureLogin } from '@/lib/silent-login'
 
-/** 阶段阈值比例（与后端 treeStageForGrowth 一致） */
-const STAGE_RATIOS = [0, 0.08, 0.25, 0.5, 0.8, 1]
+/** 阶段兜底：与后端 STAGE_DEFS（1500 基准）完全一致，正常情况直接消费后端 stageThresholds */
 const STAGE_EMOJIS = ['🌰', '🌱', '🪴', '🌸', '🍊', '🌟']
 const STAGE_NAMES = ['种子', '发芽', '小树', '开花', '结果', '成熟']
-
-function stageThresholds(fullGrowth: number) {
-  return STAGE_RATIOS.map((r) => Math.round(fullGrowth * r))
-}
+const FALLBACK_THRESHOLDS = [0, 100, 300, 600, 1000, 1500]
 
 /** 里程碑轨道填充百分比（图标等距，分段线性映射） */
-function trackFillPct(g: number, fullGrowth: number): number {
-  const th = stageThresholds(fullGrowth)
-  const last = th.length - 1
+function trackFillPct(g: number, thresholds: number[]): number {
+  const last = thresholds.length - 1
   if (g <= 0) return 0
-  if (g >= th[last]) return 100
+  if (g >= thresholds[last]) return 100
   for (let i = 0; i < last; i++) {
-    if (g <= th[i + 1]) {
-      return ((i + (g - th[i]) / (th[i + 1] - th[i])) / last) * 100
+    if (g <= thresholds[i + 1]) {
+      return ((i + (g - thresholds[i]) / (thresholds[i + 1] - thresholds[i])) / last) * 100
     }
   }
   return 100
@@ -150,12 +145,16 @@ export default function TuantuanPage() {
   const tree = profile?.tree
   const growth = tree?.growth ?? 0
   const fullGrowth = profile?.config.treeFullGrowth ?? 1500
-  const thresholds = useMemo(() => stageThresholds(fullGrowth), [fullGrowth])
+  const thresholds = tree?.stageThresholds?.length === 6 ? tree.stageThresholds : FALLBACK_THRESHOLDS
   const stage = tree?.stage ?? 0
+  const stageImage = tree?.stageImage || ''
+  const stageImages = tree?.stageImages || []
+  const stageName = tree?.stageName || STAGE_NAMES[stage] || ''
   const isMature = tree?.isMature ?? false
   const isTodayWatered = tree?.wateredToday ?? false
   const nextThreshold = thresholds[Math.min(5, stage + 1)]
   const toNextStage = Math.max(0, nextThreshold - growth)
+  const nextStageName = tree?.nextStageName || STAGE_NAMES[Math.min(5, stage + 1)] || ''
 
   const now = new Date()
   const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 周${'日一二三四五六'[now.getDay()]}`
@@ -241,7 +240,7 @@ export default function TuantuanPage() {
   const hintText = isMature
     ? '🎉 果树成熟啦，快点上方按钮收获优惠券！'
     : toNextStage > 0
-      ? `再浇 ${toNextStage}g 就能升级「${STAGE_EMOJIS[Math.min(5, stage + 1)]} ${STAGE_NAMES[Math.min(5, stage + 1)]}」啦`
+      ? `再浇 ${toNextStage}g 就能升级「${STAGE_EMOJIS[Math.min(5, stage + 1)]} ${nextStageName}」啦`
       : '继续浇水，让小树快快长大～'
 
   const meals = profile?.meals
@@ -310,7 +309,7 @@ export default function TuantuanPage() {
             <Text className="text-xs font-black" style={{ color: '#FF4757' }}>🌳 第 {(tree?.harvested ?? 0) + 1} 棵</Text>
           </View>
           <View className="rounded-full px-3 py-1 ml-2" style={{ background: 'linear-gradient(135deg,#FFA502,#F97316)' }}>
-            <Text className="text-xs font-black text-white">{STAGE_EMOJIS[stage]} {STAGE_NAMES[stage]}</Text>
+            <Text className="text-xs font-black text-white">{STAGE_EMOJIS[stage]} {stageName}</Text>
           </View>
           <View className="rounded-full px-3 py-1 ml-auto" style={{ background: 'linear-gradient(135deg,#FBBF24,#F97316)' }}>
             <Text className="text-xs font-black text-white">🔥 连浇 {tree?.currentStreak ?? 0} 天</Text>
@@ -344,9 +343,24 @@ export default function TuantuanPage() {
             )}
           </View>
 
-          {/* 果树（emoji 按阶段放大） */}
+          {/* 果树（芭芭农场风格树图，按阶段变大） */}
           <View style={{ position: 'absolute', bottom: 112, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
+            {stageImage ? (
+              <Image
+                src={stageImage}
+                mode="aspectFit"
+                style={{
+                  width: 172 + stage * 12,
+                  height: 172 + stage * 12,
+                  borderRadius: '50%',
+                  border: '3px solid rgba(255,255,255,0.95)',
+                  backgroundColor: '#E8F7E9',
+                  boxShadow: '0 14px 30px -12px rgba(194,24,51,0.45)',
+                }}
+              />
+            ) : (
+              <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
+            )}
             {plusG && (
               <Text key={plusG.key} style={{ position: 'absolute', top: 0, left: '50%', fontSize: 28, fontWeight: 900, color: '#FF4757', textShadow: '0 2px 0 #fff, 0 4px 10px rgba(255,71,87,0.4)' }}>
                 {plusG.text}
@@ -399,22 +413,27 @@ export default function TuantuanPage() {
           </View>
           <View className="relative mx-3 mt-5" style={{ height: 62 }}>
             <View style={{ position: 'absolute', left: 0, right: 0, top: 15, height: 10, borderRadius: 5, backgroundColor: '#f5f5f4' }} />
-            <View style={{ position: 'absolute', left: 0, top: 15, height: 10, borderRadius: 5, width: `${trackFillPct(growth, fullGrowth)}%`, background: 'linear-gradient(90deg,#FF4757 0%,#FFA502 60%,#FBBF24 100%)' }} />
+            <View style={{ position: 'absolute', left: 0, top: 15, height: 10, borderRadius: 5, width: `${trackFillPct(growth, thresholds)}%`, background: 'linear-gradient(90deg,#FF4757 0%,#FFA502 60%,#FBBF24 100%)' }} />
             {thresholds.map((th, i) => {
               const pct = (i / (thresholds.length - 1)) * 100
               const reached = growth >= th
               const isNext = !reached && (i === 0 || growth >= thresholds[i - 1])
+              const nodeImg = stageImages[i]
               return (
                 <View key={i} style={{ position: 'absolute', top: 0, left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <View
                     style={{
-                      width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                       backgroundColor: reached || isNext ? '#fff' : '#fafaf9',
                       border: reached ? '2px solid #FF4757' : isNext ? '2px solid #FFA502' : '2px solid #e7e5e4',
                       opacity: reached || isNext ? 1 : 0.6,
                     }}
                   >
-                    <Text className="text-sm">{STAGE_EMOJIS[i]}</Text>
+                    {nodeImg ? (
+                      <Image src={nodeImg} mode="aspectFill" style={{ width: 26, height: 26 }} />
+                    ) : (
+                      <Text className="text-sm">{STAGE_EMOJIS[i]}</Text>
+                    )}
                   </View>
                   <Text className="text-xs font-black mt-1" style={{ color: reached ? '#FF4757' : isNext ? '#d97706' : '#a8a29e', fontSize: 10 }}>{th}g</Text>
                 </View>

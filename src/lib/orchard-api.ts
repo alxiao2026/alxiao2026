@@ -8,6 +8,15 @@ export interface OrchardTree {
   stage: number
   stageName: string
   stageEmoji: string
+  /** 当前阶段树图（TOS 签名 URL，芭芭农场风格） */
+  stageImage: string
+  /** 全部 6 阶段树图（里程碑轨道小图） */
+  stageImages: string[]
+  /** 各阶段成长阈值（与后端 STAGE_DEFS 换算一致，绝对值 g） */
+  stageThresholds: number[]
+  /** 下一阶段阈值（g），已成熟为 null */
+  nextStageGrowth: number | null
+  nextStageName: string | null
   fullGrowth: number
   progressPct: number
   isMature: boolean

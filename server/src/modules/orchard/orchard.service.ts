@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { S3Storage } from 'coze-coding-dev-sdk';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { UserService } from '../user/user.service';
 
@@ -34,6 +35,8 @@ export interface OrchardAppConfig {
   growthAddWecomPoints: number;
   wecomQrCode: string;
   couponTiers: CouponTier[];
+  /** 各阶段树形象的 TOS key（索引 0-5：种子/发芽/小树/开花/结果/成熟） */
+  treeStageImages?: string[];
 }
 
 export const DEFAULT_ORCHARD_CONFIG: OrchardAppConfig = {
@@ -56,6 +59,14 @@ export const DEFAULT_ORCHARD_CONFIG: OrchardAppConfig = {
     { threshold: 50, amount: 10, treeCost: 1 },
     { threshold: 100, amount: 25, treeCost: 2 },
     { threshold: 200, amount: 60, treeCost: 3 },
+  ],
+  treeStageImages: [
+    'generate_image_66396d7b-efcc-4ddc-8557-783332a9f00c_e26ceeea.jpeg',
+    'generate_image_e7287146-6e7a-46e8-8471-f72cbe987573_15789c6c.jpeg',
+    'generate_image_528f248a-0425-432c-9912-a0f07770b0c0_2fed6046.jpeg',
+    'generate_image_f332d39f-e983-47f1-8b87-cfe893d85212_0b914cb7.jpeg',
+    'generate_image_e6969784-4b50-42cd-9710-36c62acdcebe_feb46c55.jpeg',
+    'generate_image_75a33de8-64ab-450b-a524-0b7dfc8bc33b_a1ed14d4.jpeg',
   ],
 };
 
@@ -159,7 +170,43 @@ export interface OrchardRow {
 
 @Injectable()
 export class OrchardService {
-  constructor(private readonly userService: UserService) {}
+  private storage: S3Storage;
+  private treeImageUrlCache = new Map<string, { url: string; expireAt: number }>();
+
+  constructor(private readonly userService: UserService) {
+    this.storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
+      accessKey: '',
+      secretKey: '',
+      bucketName: process.env.COZE_BUCKET_NAME,
+      region: 'cn-beijing',
+    });
+  }
+
+  /** 果树阶段图：TOS key → 签名 URL（带缓存，7 天过期前 1 小时刷新） */
+  private async treeImageUrls(keys: string[] | undefined): Promise<string[]> {
+    if (!keys || keys.length === 0) return [];
+    const now = Date.now();
+    const urls: string[] = [];
+    for (const key of keys) {
+      const cached = this.treeImageUrlCache.get(key);
+      if (cached && cached.expireAt > now + 3600_000) {
+        urls.push(cached.url);
+        continue;
+      }
+      try {
+        const url = await this.storage.generatePresignedUrl({
+          key,
+          expireTime: 7 * 24 * 3600,
+        });
+        this.treeImageUrlCache.set(key, { url, expireAt: now + 7 * 24 * 3600_000 });
+        urls.push(url);
+      } catch {
+        urls.push(key);
+      }
+    }
+    return urls;
+  }
 
   private client() {
     return getSupabaseClient();
@@ -433,6 +480,10 @@ export class OrchardService {
     ]);
     const tasks = this.buildTasksView(row, cfg);
     const full = cfg.treeFullGrowth;
+    const liveStage = this.stageByGrowth(row.growth, full);
+    const next = this.nextStage(row.growth, full);
+    const treeImages = await this.treeImageUrls(cfg.treeStageImages);
+    const thresholds = STAGE_DEFS.map((d) => Math.round(d.ratio * full));
     return {
       userId,
       nickname: userInfo?.nick_name || '果园小农夫',
@@ -447,7 +498,13 @@ export class OrchardService {
       maxStreak: row.max_streak,
       tree: {
         growth: row.growth,
-        stage: row.stage,
+        stage: liveStage.index,
+        stageName: liveStage.name,
+        stageImage: treeImages[liveStage.index] || '',
+        stageImages: treeImages,
+        stageThresholds: thresholds,
+        nextStageGrowth: next?.threshold ?? null,
+        nextStageName: next?.name ?? null,
         harvested: row.harvested,
         availableTrees: row.available_trees,
         plantedAt: row.planted_at ? new Date(row.planted_at).getTime() : Date.now(),
