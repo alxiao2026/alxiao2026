@@ -15,6 +15,9 @@ import { ensureLogin } from '@/lib/silent-login'
 /** 阶段兜底：与后端 STAGE_DEFS（1500 基准）完全一致，正常情况直接消费后端 stageThresholds */
 const STAGE_EMOJIS = ['🌰', '🌱', '🪴', '🌸', '🍊', '🌟']
 const STAGE_NAMES = ['种子', '发芽', '小树', '开花', '结果', '成熟']
+
+/** 树图 base64 data URL 缓存（模块级：阶段来回切换时零请求） */
+const TREE_IMG_DATA_URL_CACHE = new Map<number, string>()
 const FALLBACK_THRESHOLDS = [0, 100, 300, 600, 1000, 1500]
 
 /** 里程碑轨道填充百分比（图标等距，分段线性映射） */
@@ -52,6 +55,7 @@ export default function TuantuanPage() {
   const [showShare, setShowShare] = useState(false)
   const [plusG, setPlusG] = useState<{ text: string; key: number } | null>(null)
   const [treeImgFailed, setTreeImgFailed] = useState(false)
+  const [treeImgSrc, setTreeImgSrc] = useState('')
   const [userId, setUserId] = useState('')
   const [loadError, setLoadError] = useState(false)
 
@@ -155,8 +159,34 @@ export default function TuantuanPage() {
   const toNextStage = Math.max(0, nextThreshold - growth)
   const nextStageName = tree?.nextStageName || STAGE_NAMES[Math.min(5, stage + 1)] || ''
 
-  /** 树图走后端代理（API 域名必然在小程序合法域名列表，避免直连 TOS 被白名单拦截） */
-  const treeImgUrl = (s: number) => `${(typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''}/api/orchard/tree-image?stage=${s}`
+  // 树图加载：走 request 域名拉 base64 data URL，绕过小程序 <Image> 的 downloadFile 域名白名单（真机直链图片常因域名未配置加载失败）
+  useEffect(() => {
+    if (!Number.isFinite(stage) || stage < 0) return
+    setTreeImgFailed(false)
+    const cached = TREE_IMG_DATA_URL_CACHE.get(stage)
+    if (cached) {
+      setTreeImgSrc(cached)
+      return
+    }
+    setTreeImgSrc('')
+    let alive = true
+    orchardApi.treeImageDataUrl(stage)
+      .then((r) => {
+        if (!alive) return
+        if (r.code === 200 && r.data?.url) {
+          TREE_IMG_DATA_URL_CACHE.set(stage, r.data.url)
+          setTreeImgSrc(r.data.url)
+        } else {
+          setTreeImgFailed(true)
+        }
+      })
+      .catch((e) => {
+        console.error('[Orchard] 树图加载失败:', e)
+        if (alive) setTreeImgFailed(true)
+      })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage])
 
   const now = new Date()
   const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 周${'日一二三四五六'[now.getDay()]}`
@@ -345,13 +375,13 @@ export default function TuantuanPage() {
             )}
           </View>
 
-          {/* 果树（芭芭农场风格树图，走后端图片代理，按阶段变大；加载失败回退 emoji） */}
+          {/* 果树（芭芭农场风格树图，base64 data URL 按阶段变大；加载失败回退 emoji） */}
           <View style={{ position: 'absolute', bottom: 112, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {treeImgFailed ? (
+            {treeImgFailed || !treeImgSrc ? (
               <Text style={{ fontSize: 64 + stage * 16, lineHeight: '1.1' }}>{STAGE_EMOJIS[stage]}</Text>
             ) : (
               <Image
-                src={treeImgUrl(stage)}
+                src={treeImgSrc}
                 mode="aspectFit"
                 onError={() => setTreeImgFailed(true)}
                 style={{
@@ -431,7 +461,7 @@ export default function TuantuanPage() {
                       opacity: reached || isNext ? 1 : 0.6,
                     }}
                   >
-                    <Image src={treeImgUrl(i)} mode="aspectFill" style={{ width: 26, height: 26 }} />
+                    <Text style={{ fontSize: 18, lineHeight: 26 }}>{STAGE_EMOJIS[i]}</Text>
                   </View>
                   <Text className="text-xs font-black mt-1" style={{ color: reached ? '#FF4757' : isNext ? '#d97706' : '#a8a29e', fontSize: 10 }}>{th}g</Text>
                 </View>

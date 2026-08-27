@@ -185,6 +185,12 @@ export const orchardApi = {
   /** 用户完整档案：果树+任务+三餐+积分+头像昵称（首屏一次拉全） */
   profile: (userId: string) => get<OrchardProfile>(`/api/orchard/profile?user_id=${userId}`),
 
+  /**
+   * 树图 base64 data URL：小程序 <Image> 加载远程图片走 downloadFile 域名白名单（与 request 白名单独立），
+   * 真机常因未配置图片域名而加载失败；通过 request 拉回 data URL 渲染可完全绕过该限制
+   */
+  treeImageDataUrl: (stage: number) => get<{ url: string }>(`/api/orchard/tree-image-data?stage=${stage}`),
+
   /** 任务列表 */
   tasks: (userId: string) => get<OrchardTasksData>(`/api/orchard/tasks?user_id=${userId}`),
 

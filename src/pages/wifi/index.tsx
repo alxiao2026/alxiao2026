@@ -13,6 +13,16 @@ import './index.css'
 
 type Phase = 'home' | 'connecting' | 'success'
 
+/** 路由参数安全解码：跳转方已 encodeURIComponent，未解码会导致中文商家名显示成 %E8%9C%9C%E9%9B%AA... 乱码 */
+function decodeParam(v?: string): string {
+  if (!v) return ''
+  try {
+    return decodeURIComponent(v)
+  } catch {
+    return v
+  }
+}
+
 interface MerchantWifiConfig {
   has_wifi: boolean
   ssid: string | null
@@ -43,7 +53,7 @@ function SignalBars({ level, color = '#FF4757', blink = false }: { level: 1 | 2 
 export default function WifiPage() {
   const router = useRouter()
   const merchantId = router.params.merchantId
-  const merchantName = router.params.name || ''
+  const merchantName = decodeParam(router.params.name)
   const autoSsid = router.params.autoSsid
 
   const [phase, setPhase] = useState<Phase>('home')

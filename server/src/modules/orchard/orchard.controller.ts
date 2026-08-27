@@ -43,6 +43,18 @@ export class OrchardController {
     return new StreamableFile(buf);
   }
 
+  /**
+   * 树图 base64 data URL：供小程序端 <Image> 使用。
+   * 小程序 <Image> 加载远程图片走 downloadFile 域名白名单（与 request 白名单独立配置），
+   * 直接输出图片 URL 时真机可能被白名单拦截；改用 request 拉取 base64 后以 data URL 渲染可绕过该限制
+   */
+  @Get('tree-image-data')
+  @HttpCode(200)
+  async getTreeImageData(@Query('stage') stage: string) {
+    const data = await this.orchardService.getTreeImageDataUrl(Number(stage));
+    return { code: 200, msg: 'success', data };
+  }
+
   /** 果树信息 */
   @Get('tree')
   async getTree(@Query('user_id') userId: string) {

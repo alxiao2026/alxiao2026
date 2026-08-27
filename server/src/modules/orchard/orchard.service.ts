@@ -228,6 +228,16 @@ export class OrchardService {
     return buf;
   }
 
+  /**
+   * 树图 base64 data URL：微信小程序 <Image> 走 downloadFile 域名白名单（与 request 白名单分开配置），
+   * 真机可能因未配置 downloadFile 合法域名而加载失败；返回 data URL 后前端通过 Network.request 获取，
+   * 完全复用 request 域名白名单，绕过图片域名限制
+   */
+  async getTreeImageDataUrl(stage: number): Promise<{ url: string }> {
+    const buf = await this.getTreeImage(stage);
+    return { url: `data:image/jpeg;base64,${buf.toString('base64')}` };
+  }
+
   private client() {
     return getSupabaseClient();
   }
