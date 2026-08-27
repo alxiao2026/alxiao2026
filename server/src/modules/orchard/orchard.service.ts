@@ -60,13 +60,14 @@ export const DEFAULT_ORCHARD_CONFIG: OrchardAppConfig = {
     { threshold: 100, amount: 25, treeCost: 2 },
     { threshold: 200, amount: 60, treeCost: 3 },
   ],
+  /** 各阶段树形象 TOS key（索引 0-5：种子/发芽/小树/开花/结果/成熟，按用户提供的芭芭农场截图风格 AI 生成） */
   treeStageImages: [
-    'generate_image_66396d7b-efcc-4ddc-8557-783332a9f00c_e26ceeea.jpeg',
-    'generate_image_e7287146-6e7a-46e8-8471-f72cbe987573_15789c6c.jpeg',
-    'generate_image_528f248a-0425-432c-9912-a0f07770b0c0_2fed6046.jpeg',
-    'generate_image_f332d39f-e983-47f1-8b87-cfe893d85212_0b914cb7.jpeg',
-    'generate_image_e6969784-4b50-42cd-9710-36c62acdcebe_feb46c55.jpeg',
-    'generate_image_75a33de8-64ab-450b-a524-0b7dfc8bc33b_a1ed14d4.jpeg',
+    'orchard-tree-stage-0-seed_2204ba8a.png',
+    'orchard-tree-stage-1-sprout_ec4004e9.png',
+    'orchard-tree-stage-2-sapling_097f90de.png',
+    'orchard-tree-stage-3-bloom_8d258acf.png',
+    'orchard-tree-stage-4-fruit_79fc49c3.png',
+    'orchard-tree-stage-5-ripe_80e8ea40.png',
   ],
 };
 
@@ -130,6 +131,14 @@ function genCouponCode(): string {
 function num(v: unknown, fallback: number): number {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+/** 按文件魔数识别图片 MIME（PNG 89 50 4E 47 / JPEG FF D8，兜底 octet-stream） */
+export function detectImageMime(buf: Buffer): string {
+  if (!buf || buf.length < 4) return 'application/octet-stream';
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
+  if (buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg';
+  return 'application/octet-stream';
 }
 
 /** 果园券视图（金额单位：元） */
@@ -233,9 +242,10 @@ export class OrchardService {
    * 真机可能因未配置 downloadFile 合法域名而加载失败；返回 data URL 后前端通过 Network.request 获取，
    * 完全复用 request 域名白名单，绕过图片域名限制
    */
-  async getTreeImageDataUrl(stage: number): Promise<{ url: string }> {
+  async getTreeImageDataUrl(stage: number): Promise<{ url: string; mime: string }> {
     const buf = await this.getTreeImage(stage);
-    return { url: `data:image/jpeg;base64,${buf.toString('base64')}` };
+    const mime = detectImageMime(buf);
+    return { url: `data:${mime};base64,${buf.toString('base64')}`, mime };
   }
 
   private client() {

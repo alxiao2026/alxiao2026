@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Body, Query, HttpCode, BadRequestException, ForbiddenException, Res, StreamableFile } from '@nestjs/common';
-import { OrchardService } from './orchard.service';
+import { OrchardService, detectImageMime } from './orchard.service';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /** 超管权限校验（设置后台接口专用） */
@@ -38,7 +38,7 @@ export class OrchardController {
   @Get('tree-image')
   async getTreeImage(@Query('stage') stage: string, @Res({ passthrough: true }) res: any): Promise<StreamableFile> {
     const buf = await this.orchardService.getTreeImage(Number(stage));
-    res.set?.('Content-Type', 'image/jpeg');
+    res.set?.('Content-Type', detectImageMime(buf));
     res.set?.('Cache-Control', 'public, max-age=86400');
     return new StreamableFile(buf);
   }
