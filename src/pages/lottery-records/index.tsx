@@ -240,9 +240,9 @@ export default function LotteryRecordsPage() {
                     <Card key={record.id} className="bg-white rounded-xl border-0 shadow-sm">
                       <CardContent className="p-4">
                         <View className="flex items-start justify-between">
-                          <View className="flex-1">
-                            <View className="flex items-center gap-2 mb-2">
-                              <Text className="text-base font-semibold text-gray-900">{record.prize_name}</Text>
+                          <View className="flex-1 min-w-0">
+                            <View className="flex items-center gap-2 mb-2 overflow-hidden">
+                              <Text className="text-base font-semibold text-gray-900 truncate">{record.prize_name}</Text>
                               {record.prize_type ? (
                                 <Badge className={`${getPrizeTypeColor(record.prize_type)} text-xs`}>
                                   <Text>{getPrizeTypeLabel(record.prize_type)}</Text>
@@ -382,24 +382,37 @@ export default function LotteryRecordsPage() {
             {/* 商家信息卡片：店名 + 地址 + 导航 */}
             {currentRecord?.shop_name && (
               <View
-                className="w-full bg-gray-50 rounded-xl p-3 mb-3 flex flex-row items-center"
+                className="w-full bg-gray-50 rounded-xl p-3 mb-3 flex flex-row items-center overflow-hidden"
                 onClick={() => handleNavigateToShop()}
               >
-                <View className="flex-1 min-w-0">
+                <View
+                  className="flex-1 min-w-0 overflow-hidden"
+                  style={{ flex: '1 1 0', minWidth: 0 }}
+                >
                   <Text className="block text-sm font-semibold text-gray-800 truncate">
                     {currentRecord.shop_name}
                   </Text>
                   {currentRecord.shop_address && (
-                    <View className="flex items-center mt-1">
-                      <MapPin size={12} color="#9ca3af" />
-                      <Text className="text-xs text-gray-500 ml-1 flex-1 truncate">
-                        {currentRecord.shop_address}
-                      </Text>
+                    <View className="flex items-center mt-1 overflow-hidden">
+                      <View className="shrink-0" style={{ flexShrink: 0 }}>
+                        <MapPin size={12} color="#9ca3af" />
+                      </View>
+                      <View
+                        className="flex-1 min-w-0 ml-1 overflow-hidden"
+                        style={{ flex: '1 1 0', minWidth: 0 }}
+                      >
+                        <Text className="block text-xs text-gray-500 truncate">
+                          {currentRecord.shop_address}
+                        </Text>
+                      </View>
                     </View>
                   )}
                 </View>
                 {(currentRecord.shop_latitude && currentRecord.shop_longitude) || currentRecord.shop_address ? (
-                  <View className="flex items-center justify-center bg-[#FF4757] rounded-full px-3 py-2 ml-2">
+                  <View
+                    className="flex items-center justify-center bg-[#FF4757] rounded-full px-3 py-2 ml-2 flex-shrink-0"
+                    style={{ flexShrink: 0 }}
+                  >
                     <Navigation size={12} color="#ffffff" />
                     <Text className="text-xs text-white ml-1">导航</Text>
                   </View>
