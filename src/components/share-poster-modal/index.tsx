@@ -88,22 +88,11 @@ export default function SharePosterModal({
   const handleSave = async () => {
     if (saving || !ready) return
     setSaving(true)
-    const result = await saveSharePoster(canvasId)
+    // 小程序端：保存成功/失败由 saveSharePoster 内部 toast；成功后关闭弹窗
+    const ok = await saveSharePoster(canvasId)
     setSaving(false)
-    if (result === 'saved') {
-      Taro.showToast({ title: '海报已保存到相册', icon: 'success' })
+    if (ok) {
       onClose()
-    } else if (result === 'deny') {
-      Taro.showModal({
-        title: '需要相册权限',
-        content: '请在设置中允许保存图片到相册',
-        confirmText: '去设置',
-        success: (r) => {
-          if (r.confirm) Taro.openSetting().catch(() => undefined)
-        },
-      })
-    } else {
-      Taro.showToast({ title: 'H5 端请截图保存海报', icon: 'none' })
     }
   }
 

@@ -1,10 +1,14 @@
 /**
  * 统一分享引擎：文案模板轮换 + 合规过滤 + 封面图自动搭配 + 轻量埋点
  *
- * 三大场景：
+ * 场景清单：
  * - package：团购详情页（名称 + 价格锚点/省钱钩子，约 20 字）
  * - assist：好友助力（口语化、互动感，不承诺必得）
  * - brand：首页/通用（品牌文案 + 主推团购钩子）
+ * - station：驿站页（独立分包）
+ * - merchant：商家详情页（商家名 + 抽霸王餐钩子，如实描述活动规则）
+ * - win：中奖炫耀（喜悦感、不夸大不吹牛、不提中奖概率）
+ * - boost：膨胀盲盒翻盒助力（如实描述规则：抽奖权重 +0.5，非必中）
  *
  * 合规红线（模板与拼接结果双重过滤）：
  * - 不出现「最高/第一/全网最低」等广告法极限词
@@ -14,8 +18,8 @@
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 
-export type ShareScene = 'package' | 'assist' | 'brand' | 'station'
-export type CoverCategory = 'food' | 'daily' | 'play' | 'assist'
+export type ShareScene = 'package' | 'assist' | 'brand' | 'station' | 'merchant' | 'win' | 'boost'
+export type CoverCategory = 'food' | 'daily' | 'play' | 'assist' | 'win'
 export type CoverRatio = 'share' | 'square'
 
 /** 卡片标题长度上限（微信卡片过长会截断，控制在 20 字左右） */
@@ -46,6 +50,30 @@ const TEMPLATES: Record<ShareScene, string[]> = {
     '{station}上新的团购有点意思：{name}',
     '查完件看看{name}，{station}取件顺手薅',
   ],
+  // 商家详情页：{merchant} 商家名（下单抽霸王餐为页面真实活动，如实描述不承诺结果）
+  merchant: [
+    '{merchant}下单抽霸王餐，我在这蹲到了',
+    '安利{merchant}，吃完还能抽个霸王餐',
+    '{merchant}安排上，说不定霸王餐就是你的',
+    '这顿{merchant}吃得值，抽奖白送的机会',
+    '{merchant}挺好吃的，抽霸王餐的活动也在这',
+  ],
+  // 中奖炫耀：{prize} 奖品名（只描述事实与喜悦，不提概率不夸张）
+  win: [
+    '我抽中了{prize}，运气爆棚的一天',
+    '{prize}到手，膨胀团宠我',
+    '随手一抽，{prize}就来了',
+    '今天的快乐是{prize}给的',
+    '在中{prize}这件事上，我是有点运气的',
+  ],
+  // 膨胀盲盒翻盒助力：{name} 发起人昵称（+0.5 为真实规则：抽奖权重加成，非必中）
+  boost: [
+    '帮我点一下，霸王餐概率+0.5',
+    '动动手指帮{name}翻盒，抽奖权重+0.5',
+    '{name}差你一个助力，翻盒权重马上加',
+    '帮{name}翻个盒，中不中看他造化',
+    '翻盒互助：{name}的霸王餐权重+0.5就靠你',
+  ],
   // 首页/通用：{name} 主推套餐名
   brand: [
     '膨胀团：好店好价都在这，下单还能抽奖',
@@ -61,6 +89,9 @@ const FALLBACK_TITLE: Record<ShareScene, string> = {
   assist: '来帮我浇浇水，一起种果树呀',
   brand: '膨胀团：好店好价，下单还能抽奖',
   station: '查快递顺手看团购，这个驿站有点东西',
+  merchant: '这家店下单能抽奖，霸王餐等你来抽',
+  win: '在膨胀团抽中了好东西，来沾沾运气',
+  boost: '帮朋友翻个盒，他的霸王餐就差这一下',
 }
 
 /**
@@ -216,6 +247,31 @@ export function buildStationShare(stationName: string, featuredName?: string, ra
   const seedKey = stationName || 'station'
   const name = clipName(featuredName, 8)
   const title = renderTemplate('station', seedKey, { station: clipName(stationName, 8), name })
+  return { title, imageUrl: getBrandCoverUrl('play', ratio) }
+}
+
+/** 商家详情页分享：商家名 + 抽霸王餐钩子；封面 = 店铺/团购头图优先，无图按品类底图 */
+export function buildMerchantShare(merchantName: string | null | undefined, featured?: SharePackageInput | null, ratio: CoverRatio = 'share'): ShareContent {
+  const seedKey = featured?.id || merchantName || 'merchant'
+  const merchant = clipName(merchantName, 8)
+  const title = renderTemplate('merchant', seedKey, { merchant })
+  const cover = (featured?.cover_image || '').trim()
+  const cat = mapCategoryToCover(featured?.category)
+  return { title, imageUrl: cover || getBrandCoverUrl(cat, ratio) }
+}
+
+/** 中奖炫耀分享：只描述事实与喜悦；封面 = 奖品图优先，无图用 win 主题庆祝底图 */
+export function buildWinShare(prizeName: string, prizeImage?: string | null, ratio: CoverRatio = 'share'): ShareContent {
+  const prize = clipName(prizeName, 8) || '好东西'
+  const title = renderTemplate('win', prize, { prize })
+  const cover = (prizeImage || '').trim()
+  return { title, imageUrl: cover || getBrandCoverUrl('win', ratio) }
+}
+
+/** 盲盒翻盒助力分享：{name} 发起人 + 权重+0.5 真实规则钩子 */
+export function buildBoostShare(displayName: string, seedKey: string, ratio: CoverRatio = 'share'): ShareContent {
+  const name = clipName(displayName, 6) || '好友'
+  const title = renderTemplate('boost', seedKey, { name })
   return { title, imageUrl: getBrandCoverUrl('play', ratio) }
 }
 

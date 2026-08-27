@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react-taro'
 import { formatDateTime } from '@/lib/utils'
+import { buildBoostShare, buildWinShare, trackShare } from '@/lib/share'
 import './index.css'
 
 type Stage = 'loading' | 'select' | 'opening' | 'result'
@@ -125,18 +126,39 @@ export default function Lottery() {
     []
   )
 
+  // 转发给朋友：点「炫耀一下」时走 win 场景（奖品名+庆祝底图），其余走 boost 助力场景（权重+0.5 钩子）
+  // 微信分享回调是页面级单例，用同步 storage 标志区分触发来源（按钮 onClick 先于回调执行）
   useShareAppMessage(() => {
+    const winFlag = Taro.getStorageSync('lottery_win_share_flag')
+    if (winFlag) {
+      Taro.removeStorageSync('lottery_win_share_flag')
+      const prizeName = drawResult?.prize_name || ''
+      const share = buildWinShare(prizeName, drawResult?.image_url || '', 'share')
+      trackShare('win', recordId || drawResult?.record_id || undefined, { page: 'pages/lottery/index', template: share.title })
+      return {
+        title: share.title,
+        path: `/pages/lottery/index?recordId=${recordId}`,
+        imageUrl: share.imageUrl,
+      }
+    }
+    const name = Taro.getStorageSync('nick_name') || '好友'
+    const share = buildBoostShare(name, orderId || recordId || 'box', 'share')
+    trackShare('boost', orderId || recordId || '', { page: 'pages/lottery/index', template: share.title })
     return {
-      title: '膨胀团幸运盲盒，快来帮我开出霸王餐！',
-      path: '/pages/index/index',
+      title: share.title,
+      path: `/pages/lottery/index?recordId=${recordId}`,
+      imageUrl: share.imageUrl,
     }
   })
 
-  // 分享到朋友圈
+  // 分享到朋友圈：boost 场景文案（朋友圈无法由页面按钮拉起，用户从右上角「···」进入）
   useShareTimeline(() => {
+    const name = Taro.getStorageSync('nick_name') || '好友'
+    const share = buildBoostShare(name, orderId || recordId || 'box', 'square')
     return {
-      title: '膨胀团幸运盲盒，快来帮我开出霸王餐！',
-      query: '',
+      title: share.title,
+      query: recordId ? `recordId=${recordId}` : '',
+      imageUrl: share.imageUrl,
     }
   })
 
@@ -850,6 +872,13 @@ export default function Lottery() {
                   >
                     <Text className="win-popup-cta-text">立即领取</Text>
                   </Button>
+
+                  {/* 炫耀一下：openType=share 真实触发转发，回调按 win_share_flag 走 win 场景文案 */}
+                  <Button className="win-popup-brag border-none" openType="share" onClick={() => Taro.setStorageSync('lottery_win_share_flag', 1)}>
+                    <Share2 size={13} color="#B3541E" strokeWidth={2.5} />
+                    <Text className="win-popup-brag-text">炫耀一下</Text>
+                  </Button>
+                  <Text className="win-popup-friends-tip">想发朋友圈？点右上角「···」就能分享</Text>
                 </View>
 
                 <Text className="block win-popup-back" onClick={goHome}>
@@ -922,7 +951,8 @@ export default function Lottery() {
                 <Text className="block text-sm font-black text-amber-900">分享提升霸王餐中奖概率</Text>
                 <Text className="block text-xs text-amber-700 mt-1">分享一位好友，霸王餐权重 +0.5，最高可分享 10 位</Text>
               </View>
-              <Button className="border-none clay-btn h-10 px-5" onClick={() => setNeedShare(true)}>
+              {/* openType=share 直接拉起转发面板（useShareAppMessage 回调走 boost 助力场景文案） */}
+              <Button className="border-none clay-btn h-10 px-5" openType="share" onClick={() => setSharePending(true)}>
                 <Text className="text-sm font-black text-white">去分享</Text>
               </Button>
             </View>

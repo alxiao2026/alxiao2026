@@ -36,12 +36,13 @@ export class ShareService {
   /** 品牌底图缓存（TOS 读取一次后常驻内存，图片体量小） */
   private coverCache = new Map<string, Buffer>();
 
-  /** 分享底图 TOS key（与 TOS 实际上传一致）：cat ∈ food/daily/play/assist，ratio ∈ share(5:4)/square(1:1) */
+  /** 分享底图 TOS key（与 TOS 实际上传一致）：cat ∈ food/daily/play/assist/win，ratio ∈ share(5:4)/square(1:1) */
   private static readonly COVER_KEYS: Record<string, Record<string, string>> = {
     food: { share: 'share-cover-food-share_c4fcc4f0.png', square: 'share-cover-food-square_0f7f99a0.png' },
     daily: { share: 'share-cover-daily-share_cd114f75.png', square: 'share-cover-daily-square_c08f59ee.png' },
     play: { share: 'share-cover-play-share_5dbc570d.png', square: 'share-cover-play-square_dcf8e305.png' },
     assist: { share: 'share-cover-assist-share_9d6d3017.png', square: 'share-cover-assist-square_078e94dc.png' },
+    win: { share: 'share-cover-win-share_6f4c1d1c.png', square: 'share-cover-win-square_66748af5.png' },
   };
 
   /** 读取品牌分享底图（供微信服务器抓取的公网代理 URL） */

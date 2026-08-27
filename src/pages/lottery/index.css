@@ -420,6 +420,40 @@
 .win-popup-cta::after {
   border: none;
 }
+
+/* 炫耀一下：次级分享按钮（小于主按钮，贴纸感喜庆不土） */
+.win-popup-brag {
+  margin-top: 18rpx;
+  width: 62%;
+  height: 76rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  background: #FFF6E9;
+  border: 3rpx solid #FFB347;
+  border-radius: 999rpx;
+  padding: 0;
+}
+
+.win-popup-brag::after {
+  border: none;
+}
+
+.win-popup-brag-text {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #B3541E;
+  letter-spacing: 1rpx;
+}
+
+.win-popup-friends-tip {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: #9A9A9A;
+  line-height: 1.4;
+}
 @keyframes winPopupBtnBreath {
   0%,
   100% {

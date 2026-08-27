@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import AppTabBar from '@/components/app-tab-bar'
 import SharePosterModal from '@/components/share-poster-modal'
+import { buildMerchantShare, trackShare } from '@/lib/share'
 import {
   Share2,
   MapPin,
@@ -219,18 +220,34 @@ export default function MerchantPage() {
   }
 
   // 分享：小程序端触发原生分享面板（Button openType="share"），H5 端复制链接
-  useShareAppMessage(() => ({
-    title: merchant ? `${merchant.name} 邀你来抽霸王餐！` : '膨胀团幸运盲盒，快来抽霸王餐！',
-    path: `/pages/merchant/index?id=${merchantId}`,
-    imageUrl: merchant?.images?.[0] || '',
-  }))
+  // 主推团购：优先销量/展示顺序第一个有效套餐，用于分享封面与文案兜底
+  const buildMerchantFeatured = () => {
+    const pkg = packages.find(p => (p.cover_image || '').trim().length > 0) || packages[0]
+    return pkg ? { id: String(pkg.id), cover_image: pkg.cover_image || '', category: pkg.category || '' } : null
+  }
 
-  // 分享到朋友圈
-  useShareTimeline(() => ({
-    title: merchant ? `${merchant.name} 邀你来抽霸王餐！` : '膨胀团幸运盲盒，快来抽霸王餐！',
-    query: `id=${merchantId}`,
-    imageUrl: merchant?.images?.[0] || '',
-  }))
+  // 转发给朋友：merchant 场景文案引擎（商家名 + 霸王餐钩子轮换），封面头图优先/品类底图兜底
+  useShareAppMessage(() => {
+    const featured = buildMerchantFeatured()
+    const share = buildMerchantShare(merchant?.name, featured, 'share')
+    trackShare('merchant', String(merchantId), { page: 'pages/merchant/index', template: share.title })
+    return {
+      title: share.title,
+      path: `/pages/merchant/index?id=${merchantId}`,
+      imageUrl: share.imageUrl,
+    }
+  })
+
+  // 分享到朋友圈：1:1 封面
+  useShareTimeline(() => {
+    const featured = buildMerchantFeatured()
+    const share = buildMerchantShare(merchant?.name, featured, 'square')
+    return {
+      title: share.title,
+      query: `id=${merchantId}`,
+      imageUrl: share.imageUrl,
+    }
+  })
 
   const handleH5Share = () => {
     if (isMiniApp) return
@@ -639,10 +656,11 @@ export default function MerchantPage() {
 
           {/* 底部分享引导 */}
           <View className="px-4 mt-3">
-            <View className="relative w-full h-11">
-              <View className="w-full h-11 bg-white border border-[#FF4757] rounded-full flex flex-row items-center justify-center gap-2">
-                <Share2 size={15} color="#FF4757" />
-                <Text className="text-[#FF4757] text-sm font-medium">分享本页给好友，一起抽霸王餐</Text>
+            <View className="relative w-full h-12">
+              {/* 年轻化大字报贴纸风：橙黄品牌渐变 + 双层描边贴纸感 */}
+              <View className="w-full h-12 rounded-full bg-gradient-to-r from-[#FFB347] to-[#FF6B35] flex flex-row items-center justify-center gap-2 shadow-md shadow-orange-300" style={{ border: '3px solid #FFF6E9' }}>
+                <Share2 size={16} color="#FFFFFF" strokeWidth={2.5} />
+                <Text className="text-white text-base font-bold tracking-wide">分享好友 一起抽霸王餐</Text>
               </View>
               <Button
                 openType="share"
