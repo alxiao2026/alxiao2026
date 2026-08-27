@@ -21,6 +21,7 @@ const REASON_META: Record<string, { emoji: string; label: string; tone: 'in' | '
   consume_rebate_revoke: { emoji: '↩️', label: '撤销核销扣回', tone: 'out' },
   makeup: { emoji: '🎫', label: '补浇', tone: 'out' },
   admin_grant: { emoji: '🎁', label: '系统/活动', tone: 'system' },
+  share_card: { emoji: '📣', label: '分享卡片', tone: 'system' },
 }
 
 export default function OrchardPointsPage() {

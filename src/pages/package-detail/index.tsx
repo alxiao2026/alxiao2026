@@ -4,6 +4,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import SharePosterModal from '@/components/share-poster-modal'
 import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
+import { buildPackageShare, buildBrandShare, trackShare } from '@/lib/share'
 import {
   Phone,
   Clock,
@@ -114,19 +115,30 @@ export default function PackageDetail() {
     }
   })
 
-  // 转发给朋友
-  useShareAppMessage(() => ({
-    title: pkg ? `${pkg.name}，下单抽霸王餐！` : '膨胀团超值套餐，下单抽霸王餐！',
-    path: `/pages/package-detail/index?id=${id || ''}`,
-    imageUrl: pkg?.cover_image || '',
-  }))
+  // 转发给朋友：文案由分享引擎按团购内容自动生成（价格锚点/销量钩子，20 字左右），封面用头图+品牌底图兜底
+  useShareAppMessage(() => {
+    const share = pkg
+      ? buildPackageShare(pkg, 'share')
+      : buildBrandShare(null, 'share')
+    trackShare('package', pkg?.id || id || '', { page: 'pages/package-detail/index', template: share.title })
+    return {
+      title: share.title,
+      path: `/pages/package-detail/index?id=${id || ''}`,
+      imageUrl: share.imageUrl,
+    }
+  })
 
-  // 分享到朋友圈
-  useShareTimeline(() => ({
-    title: pkg ? `${pkg.name}，下单抽霸王餐！` : '膨胀团超值套餐，下单抽霸王餐！',
-    query: `id=${id || ''}`,
-    imageUrl: pkg?.cover_image || '',
-  }))
+  // 分享到朋友圈：文案同引擎生成，封面 1:1 底图
+  useShareTimeline(() => {
+    const share = pkg
+      ? buildPackageShare(pkg, 'square')
+      : buildBrandShare(null, 'square')
+    return {
+      title: share.title,
+      query: `id=${id || ''}`,
+      imageUrl: share.imageUrl,
+    }
+  })
 
   const loadPackage = async () => {
     try {

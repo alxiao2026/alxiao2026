@@ -31,6 +31,53 @@ export class ShareService {
     });
   }
 
+  // ==================== 分享卡片封面与埋点 ====================
+
+  /** 品牌底图缓存（TOS 读取一次后常驻内存，图片体量小） */
+  private coverCache = new Map<string, Buffer>();
+
+  /** 分享底图 TOS key（与 TOS 实际上传一致）：cat ∈ food/daily/play/assist，ratio ∈ share(5:4)/square(1:1) */
+  private static readonly COVER_KEYS: Record<string, Record<string, string>> = {
+    food: { share: 'share-cover-food-share_c4fcc4f0.png', square: 'share-cover-food-square_0f7f99a0.png' },
+    daily: { share: 'share-cover-daily-share_cd114f75.png', square: 'share-cover-daily-square_c08f59ee.png' },
+    play: { share: 'share-cover-play-share_5dbc570d.png', square: 'share-cover-play-square_dcf8e305.png' },
+    assist: { share: 'share-cover-assist-share_9d6d3017.png', square: 'share-cover-assist-square_078e94dc.png' },
+  };
+
+  /** 读取品牌分享底图（供微信服务器抓取的公网代理 URL） */
+  async getShareCover(cat: string, ratio: string): Promise<Buffer> {
+    const map = ShareService.COVER_KEYS[cat] || ShareService.COVER_KEYS.play;
+    const key = map[ratio] || map.share;
+    const cached = this.coverCache.get(key);
+    if (cached) return cached;
+    const buf = await this.storage.readFile({ fileKey: key });
+    this.coverCache.set(key, buf);
+    return buf;
+  }
+
+  /**
+   * 分享行为埋点：复用 orchard_records（reason='share_card', amount=0, remark=JSON）。
+   * 轻量记录，不影响主流程；user_id 缺失时写 0（匿名）。
+   */
+  async trackShare(input: { user_id?: number | string; scene: string; page?: string; item_id?: string; template?: string }): Promise<void> {
+    const scene = String(input.scene || '').slice(0, 32);
+    const page = String(input.page || '').slice(0, 64);
+    const item_id = input.item_id ? String(input.item_id).slice(0, 64) : null;
+    const template = input.template ? String(input.template).slice(0, 128) : null;
+    const userId = Number(input.user_id) || 0;
+    try {
+      const db = getSupabaseClient();
+      await db.from('orchard_records').insert({
+        user_id: userId,
+        amount: 0,
+        reason: 'share_card',
+        remark: { scene, page, item_id, template },
+      });
+    } catch (err: any) {
+      this.logger.warn(`分享埋点写入失败（不影响主流程）: ${err?.message}`);
+    }
+  }
+
   private async getAccessToken(): Promise<string | null> {
     const { appid, secret } = await getWechatCredentials();
     if (!appid || !secret) return null;

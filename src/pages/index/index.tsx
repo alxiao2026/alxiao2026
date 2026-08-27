@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useShareAppMessage, useShareTimeline, useDidShow, useLoad } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
+import { buildBrandShare, trackShare } from '@/lib/share';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AppTabBar from '@/components/app-tab-bar';
 import {
@@ -240,21 +241,28 @@ const IndexPage = () => {
     }
   };
 
-  // 设置分享（转发给朋友）
+  // 设置分享（转发给朋友）：品牌文案 + 主推团购钩子，封面用主推头图/品牌底图
   useShareAppMessage(() => {
     const inviterId = Taro.getStorageSync('user_id') || '';
+    const featured = packages[0] || null;
+    const share = buildBrandShare(featured, 'share');
+    trackShare('brand', inviterId || undefined, { page: 'pages/index/index', template: share.title });
     return {
-      title: '膨胀团！下单套餐，分享好友抽大奖！',
+      title: share.title,
       path: inviterId ? `/pages/index/index?inviter=${inviterId}` : '/pages/index/index',
+      imageUrl: share.imageUrl,
     };
   });
 
-  // 分享到朋友圈
+  // 分享到朋友圈：封面 1:1 底图
   useShareTimeline(() => {
     const inviterId = Taro.getStorageSync('user_id') || '';
+    const featured = packages[0] || null;
+    const share = buildBrandShare(featured, 'square');
     return {
-      title: '膨胀团！下单套餐抽霸王餐，每单都有好运！',
+      title: share.title,
       query: inviterId ? `inviter=${inviterId}` : '',
+      imageUrl: share.imageUrl,
     };
   });
 

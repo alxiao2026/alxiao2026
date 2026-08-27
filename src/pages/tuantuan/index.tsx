@@ -11,6 +11,7 @@ import {
   type OrchardProfile, type OrchardCalendarCell, type OrchardShareInfo,
 } from '@/lib/orchard-api'
 import { ensureLogin } from '@/lib/silent-login'
+import { buildAssistShare, trackShare } from '@/lib/share'
 
 /** 阶段兜底：与后端 STAGE_DEFS（1500 基准）完全一致，正常情况直接消费后端 stageThresholds */
 const STAGE_EMOJIS = ['🌰', '🌱', '🪴', '🌸', '🍊', '🌟']
@@ -138,12 +139,15 @@ export default function TuantuanPage() {
 
   useEffect(() => { loadCalendar() }, [loadCalendar])
 
-  /** 小程序分享卡片：邀请好友助力 */
+  /** 小程序分享卡片：邀请好友助力（文案走分享引擎轮换模板，封面用助力主题底图，path 带发起人 id 直达助力页） */
   useShareAppMessage(() => {
     const name = profile?.nickname || Taro.getStorageSync('nick_name') || '好友'
+    const share = buildAssistShare(name, userId, 'share')
+    trackShare('assist', userId || undefined, { page: 'pages/tuantuan/index', template: share.title })
     return {
-      title: `快来帮 ${name} 浇水，一起种出真果树！`,
+      title: share.title,
       path: `/pages/orchard-assist/index?from=${userId}&name=${encodeURIComponent(name)}`,
+      imageUrl: share.imageUrl,
     }
   })
 

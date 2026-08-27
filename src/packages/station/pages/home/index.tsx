@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, Swiper, SwiperItem } from '@tarojs/components'
 import { useState } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ChevronRight, MapPin, Clock, Store, Megaphone, Users } from 'lucide-react-taro'
+import { buildStationShare, trackShare } from '@/lib/share'
 import {
   DEPLOY,
   MAX_GROUP_BUYS,
@@ -41,6 +42,26 @@ const StationHomePage = () => {
     const cfg = loadStationConfig()
     setStation(cfg)
     setGroupBuys(loadGroupBuys(cfg.code).slice(0, MAX_GROUP_BUYS))
+  })
+
+  /** 小程序分享卡片：驿站查件工具场景，文案带驿站名（主推团购钩子由附近好店数据驱动） */
+  useShareAppMessage(() => {
+    const share = buildStationShare(station.name, groupBuys[0]?.title, 'share')
+    trackShare('station', station.code, { page: 'packages/station/pages/home/index', template: share.title })
+    return {
+      title: share.title,
+      path: '/packages/station/pages/home/index',
+      imageUrl: share.imageUrl,
+    }
+  })
+
+  useShareTimeline(() => {
+    const share = buildStationShare(station.name, groupBuys[0]?.title, 'square')
+    return {
+      title: share.title,
+      query: '',
+      imageUrl: share.imageUrl,
+    }
   })
 
   const handleQueryClick = (type: QueryType) => {

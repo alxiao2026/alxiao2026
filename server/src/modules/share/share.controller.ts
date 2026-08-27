@@ -1,9 +1,38 @@
-import { Controller, Get, Post, Body, Query, Param, HttpCode, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, HttpCode, BadRequestException, Res, StreamableFile } from '@nestjs/common';
 import { ShareService } from './share.service';
 
 @Controller('share')
 export class ShareController {
   constructor(private readonly shareService: ShareService) {}
+
+  /**
+   * 分享卡片品牌底图代理：GET /api/share/cover?category=food&ratio=share
+   * 微信分享卡片的 imageUrl 由微信服务器抓取（不受小程序 request 域名白名单约束），
+   * 走后端代理可保证可公网访问且不被防盗链拦截。
+   * category ∈ food/daily/play/assist（非法值回退 play），ratio ∈ share(5:4)/square(1:1)
+   */
+  @Get('cover')
+  async getCover(@Query('category') category: string, @Query('ratio') ratio: string, @Res({ passthrough: true }) res: any): Promise<StreamableFile> {
+    const buf = await this.shareService.getShareCover(category || 'play', ratio || 'share');
+    const head = buf.subarray(0, 3);
+    const mime = head[0] === 0x89 && head[1] === 0x50 ? 'image/png' : 'image/jpeg';
+    res.set?.('Content-Type', mime);
+    res.set?.('Cache-Control', 'public, max-age=604800');
+    return new StreamableFile(buf);
+  }
+
+  /**
+   * 分享行为轻量埋点：POST /api/share/track
+   * body: { scene: 'package'|'assist'|'generic', page, item_id, template }
+   * 复用 orchard_records（reason='share_card'），写失败不影响前端主流程（service 内部吞错）。
+   */
+  @Post('track')
+  @HttpCode(200)
+  async track(@Body() body: { user_id?: number | string; scene?: string; page?: string; item_id?: string; template?: string }) {
+    if (!body?.scene) throw new BadRequestException('scene 不能为空');
+    await this.shareService.trackShare({ ...body, scene: body.scene });
+    return { code: 200, msg: 'success', data: { tracked: true } };
+  }
 
   /**
    * 生成海报太阳码（短码映射方案，支持超长参数如套餐 UUID、分销 inviter）。
