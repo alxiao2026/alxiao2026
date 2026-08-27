@@ -1,9 +1,23 @@
 import { Controller, Get, Post, Param, Body, Query, HttpCode, NotFoundException } from '@nestjs/common';
 import { OrderService, Order } from './order.service';
+import { OrderExpireRefundService } from './order-expire-refund.service';
 
 @Controller('orders')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly expireRefundService: OrderExpireRefundService,
+  ) {}
+
+  /**
+   * 手动触发过期自动退款扫描（测试/紧急补偿用；生产常态由每小时 cron 自动执行）
+   * GET /api/orders/sweep-expired-refund
+   */
+  @Get('sweep-expired-refund')
+  async sweepExpiredRefund(): Promise<{ code: number; data: { scanned: number; refunded: number } }> {
+    const data = await this.expireRefundService.sweepOnce('manual');
+    return { code: 200, data };
+  }
 
   @Get()
   async findAll(@Query('user_id') userId: string, @Query('merchant_id') merchantId?: string, @Query('status') status?: string, @Query('start_date') startDate?: string, @Query('end_date') endDate?: string, @Query('verified_by') verifiedBy?: string, @Query('keyword') keyword?: string): Promise<{ code: number; data: Order[] }> {

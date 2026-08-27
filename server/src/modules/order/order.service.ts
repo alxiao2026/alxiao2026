@@ -1307,6 +1307,32 @@ export class OrderService {
   }
 
   // 批量检测过期订单并自动退款
+  /**
+   * 主动扫描全量「已支付未核销」订单并执行过期自动退款（供定时任务/手动补偿端点调用）。
+   * 复用列表查询与核销同款判定（套餐 valid_days / valid_date_end），幂等可重复执行。
+   */
+  async sweepExpiredPaidOrdersForRefund(): Promise<{ scanned: number; refunded: number }> {
+    const { data: paidOrders, error } = await this.client
+      .from('orders')
+      .select('*')
+      .eq('status', 'paid')
+      .not('package_id', 'is', null);
+    if (error) {
+      console.error('[OrderExpireRefund] 拉取已支付订单失败:', error.message);
+      return { scanned: 0, refunded: 0 };
+    }
+    const orders = (paidOrders || []) as Order[];
+    let refunded = 0;
+    for (const order of orders) {
+      if (order.status !== 'paid' || !order.package_id) continue;
+      // refundExpiredOrders 按订单逐一判定并退款，这里按单批次复用（不传 merchantId 即全量）
+      const before: string = order.status;
+      await this.refundExpiredOrders([order]);
+      if (before === 'paid' && (order.status as string) === 'refunded') refunded += 1;
+    }
+    return { scanned: orders.length, refunded };
+  }
+
   private async refundExpiredOrders(orders: Order[], merchantId?: string): Promise<void> {
     let pendingOrders = orders.filter(o => o.status === 'paid' && o.package_id);
     if (pendingOrders.length === 0) return;
