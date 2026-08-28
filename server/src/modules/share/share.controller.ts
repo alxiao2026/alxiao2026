@@ -6,19 +6,50 @@ export class ShareController {
   constructor(private readonly shareService: ShareService) {}
 
   /**
-   * 分享卡片品牌底图代理：GET /api/share/cover?category=food&ratio=share
-   * 微信分享卡片的 imageUrl 由微信服务器抓取（不受小程序 request 域名白名单约束），
+   * 分享卡片封面图片代理：GET /api/share/cover?category=win&ratio=share[&prize_image=xxx]
+   * 微信分享卡片的 imageUrl 由微信服务器抓取（必须是可直接返回图片流的地址），
    * 走后端代理可保证可公网访问且不被防盗链拦截。
-   * category ∈ food/daily/play/assist（非法值回退 play），ratio ∈ share(5:4)/square(1:1)
+   * category ∈ food/daily/play/assist/win（非法值回退 play），ratio ∈ share(5:4)/square(1:1)。
+   * prize_image（win 场景可选）：奖品图完整 URL 或 TOS key，服务端代取并校验魔数，
+   * 取不到/非图片/非 TOS 域名一律回退品牌底图，保证该端点永远 200 且返回图片字节。
    */
   @Get('cover')
-  async getCover(@Query('category') category: string, @Query('ratio') ratio: string, @Res({ passthrough: true }) res: any): Promise<StreamableFile> {
-    const buf = await this.shareService.getShareCover(category || 'play', ratio || 'share');
+  async getCover(
+    @Query('category') category: string,
+    @Query('ratio') ratio: string,
+    @Query('prize_image') prizeImage: string,
+    @Res({ passthrough: true }) res: any,
+  ): Promise<StreamableFile> {
+    const buf = await this.shareService.getShareCover(category || 'play', ratio || 'share', prizeImage);
     const head = buf.subarray(0, 3);
     const mime = head[0] === 0x89 && head[1] === 0x50 ? 'image/png' : 'image/jpeg';
     res.set?.('Content-Type', mime);
     res.set?.('Cache-Control', 'public, max-age=604800');
     return new StreamableFile(buf);
+  }
+
+  /**
+   * 分享封面 TOS 签名直链（JSON，供前端 XHR 预取，返回的 url 才是给微信的 imageUrl）：
+   * GET /api/share/cover-url?category=win&ratio=share[&prize_image=xxx]
+   * TOS CDN 直出不依赖应用进程存活，规避后端热编译窗口内微信抓取失败导致灰图。
+   * 奖品图不可用（非 TOS 域名/取不到/非图片）时自动回退品牌底图直链。
+   */
+  @Get('cover-url')
+  @HttpCode(200)
+  async getCoverUrl(
+    @Query('category') category: string,
+    @Query('ratio') ratio: string,
+    @Query('prize_image') prizeImage: string,
+  ) {
+    const cat = category || 'play';
+    try {
+      const url = await this.shareService.getShareCoverUrl(cat, ratio || 'share', prizeImage);
+      return { code: 200, msg: 'success', data: { url } };
+    } catch (err) {
+      // 直链生成失败不阻断分享：前端拿到失败标记后继续用 /api/share/cover 代理兜底
+      console.error(`[ShareCoverUrl] cat=${cat} ratio=${ratio} 获取直链失败:`, err instanceof Error ? err.message : err);
+      return { code: 200, msg: 'fallback', data: { url: '' } };
+    }
   }
 
   /**

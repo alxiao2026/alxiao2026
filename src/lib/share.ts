@@ -197,12 +197,38 @@ export function mapCategoryToCover(category?: string | null): CoverCategory {
 }
 
 /**
- * 品牌底图 URL：后端代理输出（公网可访问，微信转存卡片封面）
+ * 品牌底图 URL：走后端二进制图片代理端点（直接回图片流，微信可抓取）
+ * prizeImage 可选：奖品图（完整 URL 或 TOS key）由服务端代取并校验，取不到自动回退底图
  * ratio: share=好友卡片(5:4) / square=朋友圈(1:1)
  */
-export function getBrandCoverUrl(cat: CoverCategory, ratio: CoverRatio): string {
+export function getBrandCoverUrl(cat: CoverCategory, ratio: CoverRatio, prizeImage?: string | null): string {
   const domain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
-  return `${domain}/api/share/cover?category=${cat}&ratio=${ratio}`
+  // 二进制图片代理端点：服务端直接回图片流（微信 imageUrl 必须是可抓取的图片地址，不能是 JSON）
+  const base = `${domain}/api/share/cover?category=${cat}&ratio=${ratio}`
+  const img = (prizeImage || '').trim()
+  return img ? `${base}&prize_image=${encodeURIComponent(img)}` : base
+}
+
+/**
+ * 预取分享封面 TOS 签名直链（异步，供中奖/开盒等分享前提前调用）：
+ * 返回可直接给微信 imageUrl 的公网图片地址；失败/为空返回 ''（调用方回退 getBrandCoverUrl 代理端点）。
+ * 优先级：奖品图直链 > 品牌底图直链，服务端已校验图片可用性。
+ */
+export async function fetchShareCoverUrl(cat: CoverCategory, ratio: CoverRatio, prizeImage?: string | null): Promise<string> {
+  try {
+    const img = (prizeImage || '').trim()
+    const qs = img ? `&prize_image=${encodeURIComponent(img)}` : ''
+    const res = await Network.request<{ code?: number; data?: { url?: string } }>({
+      url: `/api/share/cover-url?category=${cat}&ratio=${ratio}${qs}`,
+      method: 'GET',
+    })
+    console.log('[share] fetchShareCoverUrl 响应:', JSON.stringify(res?.data)?.slice(0, 160))
+    const url = res?.data?.data?.url || ''
+    return /^https?:\/\//.test(url) ? url : ''
+  } catch (err) {
+    console.error('[share] fetchShareCoverUrl 失败，将回退代理端点:', err instanceof Error ? err.message : err)
+    return ''
+  }
 }
 
 export interface SharePackageInput {
@@ -260,12 +286,20 @@ export function buildMerchantShare(merchantName: string | null | undefined, feat
   return { title, imageUrl: cover || getBrandCoverUrl(cat, ratio) }
 }
 
-/** 中奖炫耀分享：只描述事实与喜悦；封面 = 奖品图优先，无图用 win 主题庆祝底图 */
-export function buildWinShare(prizeName: string, prizeImage?: string | null, ratio: CoverRatio = 'share'): ShareContent {
+/** 中奖炫耀分享：只描述事实与喜悦；封面 = 奖品图优先，无图用 win 主题庆祝底图（永远有图） */
+export function buildWinShare(
+  prizeName: string,
+  prizeImage?: string | null,
+  ratio: CoverRatio = 'share',
+  prefetchedUrl?: string | null,
+): ShareContent {
   const prize = clipName(prizeName, 8) || '好东西'
   const title = renderTemplate('win', prize, { prize })
-  const cover = (prizeImage || '').trim()
-  return { title, imageUrl: cover || getBrandCoverUrl('win', ratio) }
+  // 封面优先级：预取的 TOS 签名直链（http）> 代理端点（服务端代取奖品图并校验，失败回底图）
+  // 两级兜底保证 imageUrl 永远指向可渲染的图片流，杜绝灰图
+  const direct = (prefetchedUrl || '').trim()
+  const imageUrl = /^https?:\/\//.test(direct) ? direct : getBrandCoverUrl('win', ratio, prizeImage)
+  return { title, imageUrl }
 }
 
 /** 盲盒翻盒助力分享：{name} 发起人 + 权重+0.5 真实规则钩子 */

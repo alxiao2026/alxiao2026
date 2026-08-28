@@ -36,6 +36,9 @@ export class ShareService {
   /** 品牌底图缓存（TOS 读取一次后常驻内存，图片体量小） */
   private coverCache = new Map<string, Buffer>();
 
+  /** TOS 签名直链缓存（签名有效期 6 天，缓存 5 天，剩余有效期内直接复用） */
+  private coverUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
   /** 分享底图 TOS key（与 TOS 实际上传一致）：cat ∈ food/daily/play/assist/win，ratio ∈ share(5:4)/square(1:1) */
   private static readonly COVER_KEYS: Record<string, Record<string, string>> = {
     food: { share: 'share-cover-food-share_c4fcc4f0.png', square: 'share-cover-food-square_0f7f99a0.png' },
@@ -45,15 +48,117 @@ export class ShareService {
     win: { share: 'share-cover-win-share_6f4c1d1c.png', square: 'share-cover-win-square_66748af5.png' },
   };
 
-  /** 读取品牌分享底图（供微信服务器抓取的公网代理 URL） */
-  async getShareCover(cat: string, ratio: string): Promise<Buffer> {
+  /**
+   * 读取分享封面（图片字节，供微信服务器抓取）：
+   * 优先级 = 奖品图（仅限 TOS，校验魔数）→ 品类底图 → 跨类目兜底，保证永远返回合法图片字节。
+   */
+  async getShareCover(cat: string, ratio: string, prizeImage?: string): Promise<Buffer> {
+    if (prizeImage) {
+      try {
+        const buf = await this.fetchPrizeImageBuffer(prizeImage);
+        if (buf) return buf;
+      } catch (err) {
+        this.logger.warn(`prize_image 代取失败回退底图: ${err instanceof Error ? err.message : err}`);
+      }
+    }
     const map = ShareService.COVER_KEYS[cat] || ShareService.COVER_KEYS.play;
     const key = map[ratio] || map.share;
     const cached = this.coverCache.get(key);
     if (cached) return cached;
-    const buf = await this.storage.readFile({ fileKey: key });
-    this.coverCache.set(key, buf);
-    return buf;
+    try {
+      const buf = await this.storage.readFile({ fileKey: key });
+      this.coverCache.set(key, buf);
+      return buf;
+    } catch (err) {
+      // 指定底图 key 异常时跨类目兜底（微信抓取失败不重试，端点必须永远 200 且有图）
+      this.logger.error(`底图读取失败 key=${key}: ${err instanceof Error ? err.message : err}`);
+      for (const m of Object.values(ShareService.COVER_KEYS)) {
+        if (m.share === key) continue;
+        try {
+          const buf = await this.storage.readFile({ fileKey: m.share });
+          this.coverCache.set(m.share, buf);
+          return buf;
+        } catch {
+          /* 尝试下一个 */
+        }
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * 生成分享封面 TOS 签名直链（高可用封面方案）：
+   * 微信分享卡片图片由微信服务器异步抓取，若走 /api/share/cover 代理，
+   * 后端热编译/重启窗口内抓取失败会直接显示灰色默认占位图且不会重试。
+   * TOS 签名直链由对象存储 CDN 直出，不依赖应用进程存活，抓取成功率大幅提升。
+   * 前端在中奖结果出现时预取并缓存，分享回调同步读取，代理 URL 仅作最终兜底。
+   */
+  async getShareCoverUrl(cat: string, ratio: string, prizeImage?: string): Promise<string> {
+    if (prizeImage) {
+      try {
+        const url = await this.resolvePrizeImageUrl(prizeImage);
+        if (url) return url;
+      } catch (err) {
+        this.logger.warn(`prize_image 直链解析失败回退底图: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+    const map = ShareService.COVER_KEYS[cat] || ShareService.COVER_KEYS.play;
+    const key = map[ratio] || map.share;
+    const cached = this.coverUrlCache.get(key);
+    if (cached && cached.expiresAt > Date.now() + 24 * 3600 * 1000) {
+      return cached.url;
+    }
+    const url = await this.storage.generatePresignedUrl({ key, expireTime: 6 * 24 * 3600 });
+    if (typeof url === 'string' && url.startsWith('http')) {
+      this.coverUrlCache.set(key, { url, expiresAt: Date.now() + 5 * 24 * 3600 * 1000 });
+      return url;
+    }
+    throw new Error('生成分享封面直链失败');
+  }
+
+  /**
+   * 奖品图直链解析：
+   * - 完整 https URL：仅允许 TOS 域名（防 SSRF），抓取并校验魔数后原样返回（签名长期有效）
+   * - 无 scheme：视为 TOS key，确认存在且为图片后重新签直链
+   * - 任何失败返回 null，由调用方回退品牌底图
+   */
+  private async resolvePrizeImageUrl(src: string): Promise<string | null> {
+    const s = String(src || '').trim();
+    if (!s) return null;
+    if (/^https?:\/\//i.test(s)) {
+      const buf = await this.fetchPrizeImageBuffer(s);
+      return buf ? s : null;
+    }
+    const buf = await this.storage.readFile({ fileKey: s });
+    if (!ShareService.looksLikeImage(buf)) return null;
+    const url = await this.storage.generatePresignedUrl({ key: s, expireTime: 6 * 24 * 3600 });
+    return typeof url === 'string' && url.startsWith('http') ? url : null;
+  }
+
+  /** 代取奖品图字节：仅允许 TOS 域名（防 SSRF），8s 超时，魔数校验不通过视为不可用 */
+  private async fetchPrizeImageBuffer(src: string): Promise<Buffer | null> {
+    const s = String(src || '').trim();
+    if (!s) return null;
+    if (/^https?:\/\//i.test(s)) {
+      const host = new URL(s).hostname;
+      if (!host.endsWith('.tos.coze.site')) return null;
+      const res = await fetch(s, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      return ShareService.looksLikeImage(buf) ? buf : null;
+    }
+    const buf = await this.storage.readFile({ fileKey: s });
+    return ShareService.looksLikeImage(buf) ? buf : null;
+  }
+
+  /** 图片魔数校验：PNG / JPEG / GIF / WebP */
+  private static looksLikeImage(buf: Buffer): boolean {
+    if (!buf || buf.length < 16) return false;
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e) return true;
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
+    if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return true;
+    if (buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42) return true;
+    return false;
   }
 
   /**

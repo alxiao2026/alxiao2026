@@ -997,7 +997,7 @@ export class LotteryService {
     if (record.prize_id) {
       const { data: prize } = await this.client
         .from('prizes')
-        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend, discount_rate, discount_cap, validity_hours')
+        .select('prize_type, product_name, product_value, coupon_amount, coupon_min_spend, discount_rate, discount_cap, validity_hours, image_url')
         .eq('id', record.prize_id)
         .maybeSingle();
       if (prize) {
@@ -1008,6 +1008,10 @@ export class LotteryService {
         record.coupon_min_spend = (prize as any).coupon_min_spend;
         record.discount_rate = parseFloat((prize as any).discount_rate || '0');
         record.discount_cap = parseFloat((prize as any).discount_cap || '0');
+        // 奖品图（win 分享封面用：有奖品图优先奖品图）
+        if ((prize as any).image_url) {
+          record.prize_image = (prize as any).image_url;
+        }
         // 折扣券：重算是否触发封顶（理论优惠 > 实际返还）
         if ((prize as any).prize_type === 'coupon') {
           const { data: order } = await this.client

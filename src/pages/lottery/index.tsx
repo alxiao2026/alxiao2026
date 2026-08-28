@@ -17,7 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react-taro'
 import { formatDateTime } from '@/lib/utils'
-import { buildBoostShare, buildWinShare, trackShare } from '@/lib/share'
+import { buildBoostShare, buildWinShare, fetchShareCoverUrl, trackShare } from '@/lib/share'
 import './index.css'
 
 type Stage = 'loading' | 'select' | 'opening' | 'result'
@@ -40,6 +40,8 @@ interface DrawResultData {
   expired?: boolean
   expiry_hours?: number
   expiry_date?: string
+  /** 奖品图（record/draw 返回，用于 win 场景分享封面） */
+  prize_image?: string
 }
 
 interface PrizePoolItem {
@@ -86,6 +88,8 @@ export default function Lottery() {
   const [needShare, setNeedShare] = useState(false)
   const [sharePending, setSharePending] = useState(false)
   const [drawResult, setDrawResult] = useState<DrawResultData | null>(null)
+  // win 场景分享封面（TOS 签名直链预取，分享回调时直接可用，避免运行时代理抖动）
+  const [winCoverUrl, setWinCoverUrl] = useState('')
   const [exploding, setExploding] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [prizePool, setPrizePool] = useState<PrizePoolItem[]>([])
@@ -133,7 +137,7 @@ export default function Lottery() {
     if (winFlag) {
       Taro.removeStorageSync('lottery_win_share_flag')
       const prizeName = drawResult?.prize_name || ''
-      const share = buildWinShare(prizeName, drawResult?.image_url || '', 'share')
+      const share = buildWinShare(prizeName, drawResult?.prize_image || drawResult?.image_url || '', 'share', winCoverUrl)
       trackShare('win', recordId || drawResult?.record_id || undefined, { page: 'pages/lottery/index', template: share.title })
       return {
         title: share.title,
@@ -231,7 +235,12 @@ export default function Lottery() {
           expired: !!record.expired,
           expiry_hours: record.expiry_hours || 0,
           expiry_date: record.expiry_date || '',
+          prize_image: record.prize_image || record.image_url || '',
         })
+        // 预取 win 分享封面直链（奖品图优先，失败自动回退底图，异步不阻塞弹窗）
+        fetchShareCoverUrl('win', 'share', record.prize_image || record.image_url || '')
+          .then(url => { if (url) setWinCoverUrl(url) })
+          .catch(() => {})
         if (autoStage) setStage('result')
         return true
       }
@@ -260,7 +269,12 @@ export default function Lottery() {
         expired: !!record.expired,
         expiry_hours: record.expiry_hours || 0,
         expiry_date: record.expiry_date || '',
+        prize_image: record.prize_image || record.image_url || '',
       })
+      // 预取 win 分享封面直链（奖品图优先，失败自动回退底图，异步不阻塞弹窗）
+      fetchShareCoverUrl('win', 'share', record.prize_image || record.image_url || '')
+        .then(url => { if (url) setWinCoverUrl(url) })
+        .catch(() => {})
       if (autoStage) setStage('result')
       return true
     }
