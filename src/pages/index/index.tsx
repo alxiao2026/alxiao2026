@@ -1,11 +1,12 @@
 import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Taro, { useShareAppMessage, useShareTimeline, useDidShow, useLoad } from '@tarojs/taro';
 import { Network } from '@/network';
 import { formatPrice, getNavSafeAreaTop } from '@/lib/utils';
 import { buildBrandShare, trackShare } from '@/lib/share';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AppTabBar from '@/components/app-tab-bar';
+import { TuantuanLoader, TuantuanEmpty } from '@/components/tuantuan-loader';
 import {
   ChevronRight, Clock, Flame, Trophy, Store
 } from 'lucide-react-taro';
@@ -85,11 +86,42 @@ const readLoggedIn = (): boolean => {
   return v === true || v === '1' || v === 'true';
 };
 
+// SWR 本地缓存：二次打开秒出首屏（缓存先渲染，网络数据回来后静默替换）
+const HOME_CACHE_KEY = 'home_swr_v1';
+
+interface HomeCache {
+  rankShops?: RankShop[];
+  packages?: Package[];
+  winners?: WinnerRecord[];
+}
+
+const readHomeCache = (): HomeCache => {
+  try {
+    const v = Taro.getStorageSync(HOME_CACHE_KEY);
+    return v && typeof v === 'object' ? (v as HomeCache) : {};
+  } catch (err) {
+    console.log('[首页] 读取本地缓存失败:', err);
+    return {};
+  }
+};
+
+const persistHomeCache = (patch: HomeCache) => {
+  try {
+    const prev = readHomeCache();
+    Taro.setStorageSync(HOME_CACHE_KEY, { ...prev, ...patch });
+  } catch (err) {
+    console.log('[首页] 写入本地缓存失败:', err);
+  }
+};
+
 const IndexPage = () => {
-  const [rankShops, setRankShops] = useState<RankShop[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [userId, setUserId] = useState<string>('');
-  const [winners, setWinners] = useState<WinnerRecord[]>([]);
+  // SWR 本地缓存：二次打开秒出首屏（缓存先渲染，网络回来后静默替换）
+  const initialCache = useMemo(readHomeCache, []);
+  const [rankShops, setRankShops] = useState<RankShop[]>(initialCache.rankShops || []);
+  const [packages, setPackages] = useState<Package[]>(initialCache.packages || []);
+  const [winners, setWinners] = useState<WinnerRecord[]>(initialCache.winners || []);
+  // 套餐加载态：无缓存时为 true（显示团团加载动画），网络返回后置 false
+  const [pkgLoading, setPkgLoading] = useState(!initialCache.packages);
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
   const [showLottery, setShowLottery] = useState(false);
   const [activeIndustry, setActiveIndustry] = useState('全部');
@@ -119,17 +151,15 @@ const IndexPage = () => {
     }
   };
 
-  // 读取缓存用户ID
+  // 读取缓存用户ID（首屏数据请求不依赖用户身份，此处仅为刷新昵称/头像）
   useEffect(() => {
     const savedUserId = Taro.getStorageSync('user_id');
     const loggedIn = readLoggedIn();
     if (savedUserId) {
-      setUserId(savedUserId);
       if (loggedIn) refreshUserInfo(savedUserId);
     } else {
       const newId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       Taro.setStorageSync('user_id', newId);
-      setUserId(newId);
     }
   }, []);
 
@@ -190,22 +220,26 @@ const IndexPage = () => {
     if (inviterId) doBind(inviterId);
   });
 
-  // 获取数据
+  // 首屏数据：三个接口与用户身份无关，挂载即并行发起
+  // （原实现等 userId state 就绪才发请求，数据晚一轮渲染，且 rankShops 被重复请求）
+  const lastFetchAtRef = useRef(0);
   useEffect(() => {
+    lastFetchAtRef.current = Date.now();
     fetchRankShops();
-    if (!userId) return;
     fetchPackages();
     fetchWinners();
-  }, [userId]);
+  }, []);
 
   // 页面每次显示时刷新数据（下单后返回自动更新销量）
   useDidShow(() => {
+    // 冷启动时 mount 已并行拉取（didShow 首次触发紧跟其后），5s 内去重避免整套接口重复请求
+    if (Date.now() - lastFetchAtRef.current < 5000) return;
+    lastFetchAtRef.current = Date.now();
     // 已登录时主动从后端刷新头像/昵称缓存，供个人中心等页面使用
     const loggedIn = readLoggedIn();
     const savedUserId = Taro.getStorageSync('user_id');
     if (loggedIn && savedUserId) refreshUserInfo(savedUserId);
     fetchRankShops();
-    if (!userId) return;
     fetchPackages();
     fetchWinners();
   });
@@ -216,6 +250,7 @@ const IndexPage = () => {
       console.log('[首页] 霸王餐人气榜:', res.data);
       const data = (res.data as any)?.data || [];
       setRankShops(data);
+      persistHomeCache({ rankShops: data });
     } catch (err) {
       console.error('获取霸王餐人气榜失败:', err);
     }
@@ -226,8 +261,11 @@ const IndexPage = () => {
       const res = await Network.request({ url: '/api/packages/active' });
       const data = (res.data as any)?.data || (res.data as Package[]) || [];
       setPackages(data);
+      persistHomeCache({ packages: data });
     } catch (err) {
       console.error('获取套餐失败:', err);
+    } finally {
+      setPkgLoading(false);
     }
   };
 
@@ -236,6 +274,7 @@ const IndexPage = () => {
       const res = await Network.request({ url: '/api/lottery/winners' });
       const data = (res.data as any)?.data || (res.data as WinnerRecord[]) || [];
       setWinners(data);
+      persistHomeCache({ winners: data });
     } catch (err) {
       console.error('获取中奖名单失败:', err);
     }
@@ -442,8 +481,16 @@ const IndexPage = () => {
         {/* ===== 套餐列表 ===== */}
         <View className="px-4 mt-4">
           {filteredPackages.length === 0 ? (
-            <View className="bg-white rounded-2xl py-10 flex items-center justify-center">
-              <Text className="block text-sm text-gray-400">暂无活动套餐</Text>
+            <View className="bg-white rounded-2xl">
+              {pkgLoading ? (
+                <TuantuanLoader size={104} />
+              ) : (
+                <TuantuanEmpty
+                  title="团团翻遍了口袋"
+                  desc={activeIndustry === '全部' ? '暂时没有活动套餐，晚点再来看看吧~' : '这个分类暂时没有活动，换个分类逛逛吧~'}
+                  size={104}
+                />
+              )}
             </View>
           ) : (
             filteredPackages.map((pkg) => {

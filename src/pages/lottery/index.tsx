@@ -6,6 +6,7 @@ import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subs
 import { navigateToTabBar } from '@/utils/navigate'
 import { Button } from '@/components/ui/button'
 import AppTabBar from '@/components/app-tab-bar'
+import { TuantuanLoader } from '@/components/tuantuan-loader'
 import {
   Gift,
   Ticket,
@@ -983,10 +984,7 @@ export default function Lottery() {
       {/* 加载态 */}
       {stage === 'loading' && (
         <View className="flex-1 flex flex-col items-center justify-center" style={{ position: 'relative', zIndex: 2 }}>
-          <View className="clay-pulse bg-white rounded-full p-4" style={{ boxShadow: '0 8px 20px rgba(200, 100, 30, 0.25)' }}>
-            <Image src={LOGO_URL} className="w-16 h-16 rounded-full" mode="aspectFill" />
-          </View>
-          <Text className="block text-sm font-bold text-amber-700 mt-4">加载中...</Text>
+          <TuantuanLoader size={120} text="团团正在摇奖池里扑腾…" />
         </View>
       )}
 

@@ -1,0 +1,67 @@
+/* 团团加载动画：跳动 + 落地压扁 + 同步缩放的地面阴影（仅动画关键帧，布局仍走 Tailwind） */
+.tuantuan-bounce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tuantuan-bounce 1.2s cubic-bezier(0.3, 0.86, 0.42, 1) infinite;
+}
+
+@keyframes tuantuan-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  14% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  40% {
+    transform: translateY(-42%) scale(0.95, 1.06);
+  }
+  60% {
+    transform: translateY(-42%) scale(0.97, 1.04);
+  }
+  86% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+}
+
+.tuantuan-shadow {
+  border-radius: 999rpx;
+  background: rgba(120, 70, 10, 0.16);
+  margin-top: 10rpx;
+  animation: tuantuan-shadow 1.2s cubic-bezier(0.3, 0.86, 0.42, 1) infinite;
+}
+
+@keyframes tuantuan-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.85;
+  }
+  40% {
+    transform: scaleX(0.55);
+    opacity: 0.35;
+  }
+  60% {
+    transform: scaleX(0.55);
+    opacity: 0.35;
+  }
+}
+
+/* 团团空状态：轻微呼吸，传达"安静等待"的松弛感 */
+.tuantuan-breathe {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tuantuan-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes tuantuan-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}

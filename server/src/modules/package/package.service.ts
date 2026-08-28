@@ -122,16 +122,22 @@ export class PackageService {
       activePackages.push(pkg);
     }
 
-    // 为每个套餐计算实时销量
-    for (const pkg of activePackages) {
-      const { data: orders } = await this.client
+    // 一次性批量计算所有套餐实时销量（替代原先每套餐一次查询的 N+1 串行往返）
+    if (activePackages.length > 0) {
+      const { data: orderRows } = await this.client
         .from('orders')
-        .select('quantity')
-        .eq('package_id', pkg.id)
+        .select('package_id, quantity')
+        .in('package_id', activePackages.map((p) => p.id))
         // 销量 = 累计成功支付份数：已支付/已核销均计入；已退款不回扣（用户需求）
         .in('status', ['paid', 'used', 'refunded']);
-      const totalSales = (orders || []).reduce((sum, o) => sum + (Number(o.quantity) || 1), 0);
-      (pkg as any).sales_count = totalSales;
+      const salesMap = new Map<string, number>();
+      (orderRows || []).forEach((o: { package_id: string | number; quantity: number }) => {
+        const key = String(o.package_id);
+        salesMap.set(key, (salesMap.get(key) || 0) + (Number(o.quantity) || 1));
+      });
+      activePackages.forEach((pkg) => {
+        (pkg as any).sales_count = salesMap.get(String(pkg.id)) || 0;
+      });
     }
 
     return activePackages;

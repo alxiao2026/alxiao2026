@@ -3,6 +3,7 @@ import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } fro
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import SharePosterModal from '@/components/share-poster-modal'
+import { TuantuanLoader, TuantuanEmpty } from '@/components/tuantuan-loader'
 import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
 import { buildPackageShare, buildBrandShare, trackShare } from '@/lib/share'
 import {
@@ -361,7 +362,7 @@ export default function PackageDetail() {
   if (loading) {
     return (
       <View className="flex items-center justify-center h-screen bg-gray-50">
-        <Text className="block text-gray-500">加载中...</Text>
+        <TuantuanLoader size={112} />
       </View>
     )
   }
@@ -369,7 +370,7 @@ export default function PackageDetail() {
   if (!pkg) {
     return (
       <View className="flex items-center justify-center h-screen bg-gray-50">
-        <Text className="block text-gray-500">套餐不存在</Text>
+        <TuantuanEmpty title="套餐不存在或已下架" desc="晚点再来看看，好东西不等人哦~" size={112} />
       </View>
     )
   }

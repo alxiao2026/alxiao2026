@@ -262,44 +262,54 @@ export class MerchantService {
   }
 
   /** 霸王餐人气榜：按门店统计 free_meal 中奖次数，取前 N 名 */
+  // 霸王餐榜单进程内缓存：数据量小、仅在新中奖产生时变化，60s 内直接复用，避免冷启动重复慢查询
+  private freeMealRankCache: {
+    data: Array<{ id: number; name: string; logo: string | null; address: string | null; freeMealWins: number }>;
+    ts: number;
+  } | null = null;
+
   async getFreeMealRank(limit = 5) {
-    // 1. 全部霸王餐奖品 → merchant_id 映射
-    const { data: freeMealPrizes, error: prizeError } = await this.client
-      .from('prizes')
-      .select('id, merchant_id')
-      .eq('prize_type', 'free_meal');
-    if (prizeError) throw new Error(`查询霸王餐奖品失败：${prizeError.message}`);
-    if (!freeMealPrizes || freeMealPrizes.length === 0) return [];
+    const cached = this.freeMealRankCache;
+    if (cached && Date.now() - cached.ts < 60_000) {
+      return cached.data.slice(0, limit);
+    }
 
-    const prizeMerchantMap = new Map<string, string>();
-    freeMealPrizes.forEach((p: { id: string; merchant_id: string }) => {
-      prizeMerchantMap.set(String(p.id), String(p.merchant_id));
-    });
-
-    // 2. 中奖记录（仅霸王餐奖品）
-    const { data: records, error: recordError } = await this.client
+    // 单次 JOIN：中奖记录内联霸王餐奖品取 merchant_id（替代原先 3 次串行远程往返）
+    const { data: rows, error } = await this.client
       .from('lottery_records')
-      .select('prize_id')
-      .in('prize_id', freeMealPrizes.map((p: { id: string }) => p.id))
-      .eq('is_winner', true);
-    if (recordError) throw new Error(`查询中奖记录失败：${recordError.message}`);
-    if (!records || records.length === 0) return [];
+      .select('prize_id, prizes!inner(merchant_id)')
+      .eq('is_winner', true)
+      .eq('prizes.prize_type', 'free_meal');
+    if (error) throw new Error(`查询霸王餐榜单失败：${error.message}`);
 
-    // 3. 按门店聚合计数
+    // 按门店聚合计数（PostgREST many-to-one 内联运行时可能返回对象或单元素数组，两种形态均兼容）
     const countMap = new Map<string, number>();
-    records.forEach((r: { prize_id: string }) => {
-      const merchantId = prizeMerchantMap.get(String(r.prize_id));
+    const winnerRows = (rows || []) as Array<{
+      prize_id: string;
+      prizes: { merchant_id: string | number } | Array<{ merchant_id: string | number }> | null;
+    }>;
+    winnerRows.forEach((r) => {
+      const embedded = r && r.prizes;
+      let merchantId = '';
+      if (Array.isArray(embedded)) {
+        merchantId = embedded.length > 0 ? String(embedded[0].merchant_id) : '';
+      } else if (embedded) {
+        merchantId = String(embedded.merchant_id);
+      }
       if (merchantId) {
         countMap.set(merchantId, (countMap.get(merchantId) || 0) + 1);
       }
     });
+    if (countMap.size === 0) {
+      this.freeMealRankCache = { data: [], ts: Date.now() };
+      return [];
+    }
 
-    // 4. 取前 N 名商家信息
+    // 第 2 次往返：取上榜商家信息（prizes 与 merchants 间无外键，无法继续内联）
     const topMerchantIds = [...countMap.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
       .map(([merchantId]) => merchantId);
-    if (topMerchantIds.length === 0) return [];
 
     const { data: merchants, error: merchantError } = await this.client
       .from('merchants')
@@ -312,7 +322,7 @@ export class MerchantService {
       merchantMap.set(String(m.id), m);
     });
 
-    return topMerchantIds
+    const result = topMerchantIds
       .map((merchantId) => {
         const merchant = merchantMap.get(merchantId);
         if (!merchant) return null;
@@ -324,7 +334,10 @@ export class MerchantService {
           freeMealWins: countMap.get(merchantId) || 0,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean) as Array<{ id: number; name: string; logo: string | null; address: string | null; freeMealWins: number }>;
+
+    this.freeMealRankCache = { data: result, ts: Date.now() };
+    return result;
   }
 
   async create(body: CreateMerchantDto): Promise<Merchant> {
