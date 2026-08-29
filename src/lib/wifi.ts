@@ -20,12 +20,15 @@ export function isWifiSupported(): boolean {
 
 let wifiReady = false
 
-/** 初始化 WiFi 模块（幂等） */
+/** 初始化 WiFi 模块（幂等）；3.5s 超时保护：个别机型 startWifi 回调悬挂会导致「点击无任何反应」 */
 export async function initWifi(): Promise<boolean> {
   if (!isWifiSupported()) return false
   if (wifiReady) return true
   try {
-    await Taro.startWifi()
+    await Promise.race([
+      Taro.startWifi(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('startWifi timeout')), 3500)),
+    ])
     wifiReady = true
     console.log('[WiFi] startWifi 初始化成功')
     return true
@@ -64,6 +67,17 @@ export async function scanNearby(): Promise<WifiInfo[]> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** 把微信 connectWifi 原始错误映射为用户可理解的提示 */
+function mapConnectError(e: any): Error {
+  const msg = String(e?.errMsg || e?.message || '')
+  console.error('[WiFi] connectWifi 失败:', msg)
+  if (msg.includes('password') || msg.includes('pswd')) return new Error('WiFi 密码错误，请核对后重试')
+  if (msg.includes('location') || msg.includes('auth') || msg.includes('permission')) return new Error('请开启手机定位与位置权限后重试')
+  if (msg.includes('wifi') && msg.includes('off')) return new Error('手机 WiFi 开关未打开，请先开启 WiFi')
+  if (msg.includes('cancel') || msg.includes('deny')) return new Error('已取消连接')
+  return new Error('连接失败，请靠近店内路由器后重试')
+}
+
 /**
  * 连接指定 WiFi 并轮询确认真正连上（connectWifi 成功回调不代表已完成切换）。
  * 连接失败/超时都会抛错，由调用方提示。
@@ -71,32 +85,41 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export async function connectAndVerify(
   ssid: string,
   password: string,
-  persist = false,
+  persist = true,
 ): Promise<WifiInfo> {
   if (!(await initWifi())) {
     throw new Error('当前环境不支持 WiFi 功能，请在微信小程序中打开')
   }
   console.log('[WiFi] 发起连接:', ssid, persist ? '(记住网络)' : '(仅本次)')
+  const base: any = {
+    SSID: ssid,
+    password: password || '',
+    // 无密码热点用 maunal 让系统直接连接
+    maunal: !password,
+  }
   try {
     await Taro.connectWifi({
-      SSID: ssid,
-      password: password || '',
-      // 无密码热点用 maunal 让系统直接连接
-      maunal: !password,
-      // persist=true 时触发系统级「保存网络」确认框（Android 固定安全 UI，文案无法修改），
-      // 保存成功后网络进入系统记忆：以后到店自动连接、退出小程序不断网。
-      // persist=false（默认）为微信默认直连：无任何确认界面，但连接仅小程序进程内有效。
-      // 调用方先用自定义引导弹窗预热（告知系统框含义）再传 true，避免用户被突兀框打断。
+      ...base,
+      // persist=true（默认，唯一对外模式「记住它」）：触发系统级「保存网络」确认框，
+      // 保存后网络进入系统记忆：以后到店自动连接、退出小程序不断网。
+      // 引导文案已由连接中页面非阻断展示，系统框出现不突兀。
       ...(persist ? { suggestion: true } : {}),
     } as any)
   } catch (e: any) {
+    // 旧版微信/系统拒绝网络建议等场景：自动降级普通直连，保证点击必有反馈。
+    // 密码错误、用户主动取消、WiFi 关闭、权限缺失属于重试也无意义的情况，直接报错。
     const msg = String(e?.errMsg || e?.message || '')
-    console.error('[WiFi] connectWifi 失败:', msg)
-    if (msg.includes('password') || msg.includes('pswd')) throw new Error('WiFi 密码错误，请核对后重试')
-    if (msg.includes('location') || msg.includes('auth') || msg.includes('permission')) throw new Error('请开启手机定位与位置权限后重试')
-    if (msg.includes('wifi') && msg.includes('off')) throw new Error('手机 WiFi 开关未打开，请先开启 WiFi')
-    if (msg.includes('cancel') || msg.includes('deny')) throw new Error('已取消连接')
-    throw new Error('连接失败，请靠近店内路由器后重试')
+    const recoverable = !/cancel|deny|pswd|password|location|auth|permission|off/i.test(msg)
+    if (persist && recoverable) {
+      try {
+        console.log('[WiFi] suggestion 连接失败，降级普通直连重试:', msg)
+        await Taro.connectWifi({ ...base } as any)
+      } catch (e2: any) {
+        throw mapConnectError(e2)
+      }
+    } else {
+      throw mapConnectError(e)
+    }
   }
 
   // 轮询确认真正连上目标 WiFi（最多约 9 秒）
