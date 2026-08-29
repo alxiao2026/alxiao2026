@@ -98,7 +98,8 @@ export default function WifiNearbyPage() {
     setConnecting(ssid)
     Taro.showLoading({ title: `正在连接 ${ssid.slice(0, 10)}`, mask: true })
     try {
-      await connectAndVerify(ssid, password)
+      // 统一「记住网络」偏好：选过记住则该页连接同样触发系统保存
+      await connectAndVerify(ssid, password, Taro.getStorageSync('wifi_save_pref') === 'remember')
       Taro.hideLoading()
       Taro.showToast({ title: `已连接 ${ssid.slice(0, 12)}`, icon: 'success' })
       loadList() // 刷新列表，该热点会标记为「当前连接」
