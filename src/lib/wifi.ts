@@ -79,7 +79,12 @@ export async function connectAndVerify(ssid: string, password: string): Promise<
       password: password || '',
       // 无密码热点用 maunal 让系统直接连接
       maunal: !password,
-    })
+      // 关键修复（Android 10+）：connectWifi 默认建立的连接仅对当前小程序进程生效，
+      // 退出 WiFi 页面/小程序后该连接被系统回收，表现为「退出页面立马断网」。
+      // suggestion: true 触发系统全局生效的 WiFi 连接（微信 8.0.60+ / Android 11+，
+      // 低版本客户端自动忽略此参数；iOS 连接本身就是系统级，不受影响）。
+      suggestion: true,
+    } as any)
   } catch (e: any) {
     const msg = String(e?.errMsg || e?.message || '')
     console.error('[WiFi] connectWifi 失败:', msg)
