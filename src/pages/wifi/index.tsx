@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow, useRouter, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import WifiTabBar from '@/components/wifi/wifi-tabbar'
 import { Network } from '@/network'
 import {
@@ -65,7 +66,9 @@ export default function WifiPage() {
   const [speedMbps, setSpeedMbps] = useState<number | null>(null)
   const [speedTesting, setSpeedTesting] = useState(false)
   const [progressDone, setProgressDone] = useState(false)
-  const startConnectRef = useRef<(ssid: string, password: string) => void>(() => {})
+  /** 「记住网络」引导弹窗：首次连接前弹出（选择后存偏好，此后不再打扰） */
+  const [saveDialog, setSaveDialog] = useState<{ ssid: string; password: string } | null>(null)
+  const startConnectRef = useRef<(ssid: string, password: string, persist?: boolean) => void>(() => {})
 
   useShareAppMessage(() => ({
     title: connected ? `我在用「${connected.SSID}」免费冲浪` : '一键连WiFi，免费网络即点即连',
@@ -96,8 +99,8 @@ export default function WifiPage() {
     }
   }, [merchantId])
 
-  /** 连接指定 WiFi */
-  const startConnect = useCallback(async (ssid: string, password: string) => {
+  /** 连接指定 WiFi；persist=true 触发系统保存（已由引导弹窗预热，系统框出现不突兀） */
+  const startConnect = useCallback(async (ssid: string, password: string, persist = false) => {
     if (!(await initWifi())) {
       Taro.showToast({ title: '当前环境不支持连WiFi', icon: 'none' })
       return
@@ -106,7 +109,7 @@ export default function WifiPage() {
     setPhase('connecting')
     setProgressDone(false)
     try {
-      const info = await connectAndVerify(ssid, password)
+      const info = await connectAndVerify(ssid, password, persist)
       setConnected(info)
       setProgressDone(true)
       setTimeout(() => {
@@ -131,7 +134,17 @@ export default function WifiPage() {
   /** 主 CTA：点击直接连接店内 WiFi，不再跳转 */
   const handleMain = useCallback(() => {
     if (config?.has_wifi && config.ssid) {
-      startConnect(config.ssid, config.password || '')
+      // 连接方式偏好：选过一次后永久无感（不弹任何框）；首次弹团团引导
+      const pref = Taro.getStorageSync('wifi_save_pref')
+      if (pref === 'remember') {
+        startConnect(config.ssid, config.password || '', true)
+        return
+      }
+      if (pref === 'once') {
+        startConnect(config.ssid, config.password || '', false)
+        return
+      }
+      setSaveDialog({ ssid: config.ssid, password: config.password || '' })
       return
     }
     if (!merchantId || config === null) {
@@ -161,7 +174,8 @@ export default function WifiPage() {
     // 从附近热点页带 ssid 参数回来：直接自动连接（注意参数名与 nearby 页的 autoPwd 对齐）
     if (autoSsid && phase === 'home') {
       const pwd = router.params.autoPwd ? decodeURIComponent(router.params.autoPwd) : ''
-      setTimeout(() => startConnectRef.current(autoSsid, pwd), 600)
+      const remember = Taro.getStorageSync('wifi_save_pref') === 'remember'
+      setTimeout(() => startConnectRef.current(autoSsid, pwd, remember), 600)
     }
   })
 
@@ -288,7 +302,37 @@ export default function WifiPage() {
           </View>
         </View>
 
-        <WifiTabBar active="home" merchantId={merchantId} merchantName={merchantName} />
+        {/* 「记住网络」引导：文案自定义（系统框文案是 Android 写死的改不了，这里做预热消解生硬感） */}
+    {saveDialog && (
+      <Dialog open onOpenChange={(o) => { if (!o) setSaveDialog(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>下次来店，团团帮你秒连？</DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              <Text className="block">让团团记住这个网络，以后到店 WiFi 自动连上，抢套餐快人一步～</Text>
+              <Text className="block">系统还会确认一次「保存网络」，点「保存」就妥啦</Text>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => { Taro.setStorageSync('wifi_save_pref', 'once'); setSaveDialog(null); startConnect(saveDialog.ssid, saveDialog.password, false) }}
+            >
+              <Text>仅本次</Text>
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => { Taro.setStorageSync('wifi_save_pref', 'remember'); setSaveDialog(null); startConnect(saveDialog.ssid, saveDialog.password, true) }}
+            >
+              <Text>记住它</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+
+    <WifiTabBar active="home" merchantId={merchantId} merchantName={merchantName} />
       </View>
     )
   }

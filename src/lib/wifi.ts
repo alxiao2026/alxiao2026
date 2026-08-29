@@ -68,21 +68,26 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
  * 连接指定 WiFi 并轮询确认真正连上（connectWifi 成功回调不代表已完成切换）。
  * 连接失败/超时都会抛错，由调用方提示。
  */
-export async function connectAndVerify(ssid: string, password: string): Promise<WifiInfo> {
+export async function connectAndVerify(
+  ssid: string,
+  password: string,
+  persist = false,
+): Promise<WifiInfo> {
   if (!(await initWifi())) {
     throw new Error('当前环境不支持 WiFi 功能，请在微信小程序中打开')
   }
-  console.log('[WiFi] 发起连接:', ssid)
+  console.log('[WiFi] 发起连接:', ssid, persist ? '(记住网络)' : '(仅本次)')
   try {
     await Taro.connectWifi({
       SSID: ssid,
       password: password || '',
       // 无密码热点用 maunal 让系统直接连接
       maunal: !password,
-      // 不传 suggestion：该参数会在连接后触发系统级「要保存此网络吗」确认弹窗
-      // （Android 11+ WiFi Suggestion 机制的强制安全确认，App 无法隐藏）。
-      // 按需求改为微信默认直连：无任何确认界面，连接瞬间完成。
-      // 代价：连接为小程序进程级临时连接，退出小程序后系统回落原网络。
+      // persist=true 时触发系统级「保存网络」确认框（Android 固定安全 UI，文案无法修改），
+      // 保存成功后网络进入系统记忆：以后到店自动连接、退出小程序不断网。
+      // persist=false（默认）为微信默认直连：无任何确认界面，但连接仅小程序进程内有效。
+      // 调用方先用自定义引导弹窗预热（告知系统框含义）再传 true，避免用户被突兀框打断。
+      ...(persist ? { suggestion: true } : {}),
     } as any)
   } catch (e: any) {
     const msg = String(e?.errMsg || e?.message || '')
