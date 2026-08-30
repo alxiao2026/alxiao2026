@@ -714,7 +714,7 @@ export class UserService {
       if (packageIds.length > 0) {
         const { data: allOrders } = await supabase
           .from('orders')
-          .select('id, status, price, quantity, verified_count, refunded_quantity, verified_at, created_at')
+          .select('id, status, price, quantity, verified_count, refunded_quantity, refund_amount, verified_at, created_at')
           .in('package_id', packageIds);
         orders = allOrders || [];
         merchantOrderIds = new Set(orders.map(o => o.id));
@@ -725,7 +725,7 @@ export class UserService {
       // 系统管理员：返回全平台统计数据
       const { data: allOrders } = await supabase
         .from('orders')
-        .select('status, price, quantity, verified_count, refunded_quantity, verified_at, created_at');
+        .select('status, price, quantity, verified_count, refunded_quantity, refund_amount, verified_at, created_at');
       orders = allOrders || [];
     } else {
       // 普通消费者：无权限查看商家统计，返回空数据
@@ -737,7 +737,18 @@ export class UserService {
     // - 核销金额 = 单价 × 实际核销份数（核销一份记一份，部分核销也计入；已撤销的核销 verified_count 已回减，天然不计入）
     const effQty = (o: any) => Math.max((Number(o.quantity) || 0) - (Number(o.refunded_quantity) || 0), 0);
     const verAmt = (o: any) => Number(o.price || 0) * (Number(o.verified_count) || 0);
-    const refAmt = (o: any) => Number(o.price || 0) * (Number(o.refunded_quantity) || 0);
+    // 退款金额口径：orders.refund_amount 为消费者退款的真实打款金额
+    // （主动退款与过期退款均按「实付 − 中奖返现 − 已退」写入，霸王餐/折扣券返现已扣除），
+    // 直接取该权威值，避免与下方「中奖返现合计」叠加造成同一笔钱双重统计；
+    // 仅历史数据缺该字段时按 份数×单价 估算
+    const refAmt = (o: any) => {
+      const qty = Number(o.refunded_quantity) || 0;
+      if (qty <= 0) return 0;
+      if (o.refund_amount !== undefined && o.refund_amount !== null) {
+        return Number(o.refund_amount) || 0;
+      }
+      return Number(o.price || 0) * qty;
+    };
     // 已核销口径：已核销份数的金额永远计入——已核销份数不可退款，与订单后续状态无关。
     // 「部分核销 + 剩余份数退款」的订单状态会变为 refunded，若按状态排除会把已核销金额整单消减（BUG），
     // cancelled 订单未支付不可能有核销份数，verified_count>0 天然将其排除。
@@ -829,7 +840,7 @@ export class UserService {
     const windowStart = new Date(Math.min(todayStart.getTime(), rangeStartDate.getTime()));
     const { data: todayLotteryRows } = await supabase
       .from('lottery_records')
-      .select('order_id, user_id, refund_amount, is_winner, created_at, prizes(prize_type)')
+      .select('order_id, user_id, refund_amount, is_winner, refund_status, refunded_at, created_at, prizes(prize_type)')
       .gte('created_at', windowStart.toISOString())
       .lte('created_at', rangeEndDate.toISOString());
     const scopeLotteryRecords = (todayLotteryRows || []).filter((r: any) => {
@@ -847,18 +858,24 @@ export class UserService {
     const todayFreeMealRecords = todayLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     // 中奖人数按去重用户统计（同一用户多次中奖只算 1 人）
     const todayFreeMealWinners = new Set(todayFreeMealRecords.map((r: any) => r.user_id)).size;
-    // 退款金额 = 消费者申请退款金额 + 中奖返现金额（霸王餐免单 + 折扣券差额，均为退回消费者的钱）
+    // 退款金额 = 消费者申请退款金额（真实打款，已扣返现） + 已到账中奖返现（霸王餐免单 + 折扣券差额）。
+    // 返现仅统计 refunded_at 非空的记录（微信/mock 返现受理成功后回写）：未打款的 pending 与
+    // 过期退款时作废未打款的记录不计入，避免「钱未退但统计先算」；refunded_at 非空的 voided 记录
+    // 表示返现已真实到账后权益作废，仍应计入（与 payment.service 退款扣减返现的判定口径一致）
+    const isCashBackSettled = (r: any) => !!r.refunded_at;
     const todayRefundAmount = (
-      todayLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + todayConsumerRefund
+      todayLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r) && isCashBackSettled(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + todayConsumerRefund
     ).toFixed(2);
     // 范围抽奖统计（与今日口径相同的计算逻辑）
     const rangeLotteryUsers = new Set(rangeLotteryRecords.map((r: any) => r.user_id)).size;
     const rangeFreeMealRecords = rangeLotteryRecords.filter((r: any) => r.is_winner && isFreeMeal(r));
     const rangeFreeMealWinners = new Set(rangeFreeMealRecords.map((r: any) => r.user_id)).size;
     const rangeRefundAmount = (
-      rangeLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + rangeConsumerRefund
+      rangeLotteryRecords.filter((r: any) => r.is_winner && isCashBack(r) && isCashBackSettled(r)).reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0) + rangeConsumerRefund
     ).toFixed(2);
-    // 累计中奖返现（无时间窗：商家按门店订单过滤，平台管理员统计全平台）
+    // 累计中奖返现（无时间窗：商家按门店订单过滤，平台管理员统计全平台）。
+    // 只统计已到账返现（refunded_at 非空，与今日/范围口径一致）：未打款的 pending 与
+    // 过期退款作废未打款的不计；返现到账后才作废（voided 但 refunded_at 非空）的仍计入
     let totalCashBackRows: any[] = [];
     if (merchantOrderIds) {
       if (merchantOrderIds.size > 0) {
@@ -867,7 +884,8 @@ export class UserService {
           .select('refund_amount')
           .in('order_id', Array.from(merchantOrderIds))
           .eq('is_winner', true)
-          .gt('refund_amount', 0);
+          .gt('refund_amount', 0)
+          .not('refunded_at', 'is', null);
         totalCashBackRows = data || [];
       }
     } else {
@@ -875,10 +893,11 @@ export class UserService {
         .from('lottery_records')
         .select('refund_amount')
         .eq('is_winner', true)
-        .gt('refund_amount', 0);
+        .gt('refund_amount', 0)
+        .not('refunded_at', 'is', null);
       totalCashBackRows = data || [];
     }
-    // 累计退款金额 = 消费者退款 + 全部中奖返现（霸王餐 + 折扣券）
+    // 累计退款金额 = 消费者退款（orders.refund_amount 真实打款，已扣中奖返现）+ 已到账中奖返现（霸王餐 + 折扣券）
     const totalRefundAmount = (
       totalConsumerRefundAmount + totalCashBackRows.reduce((sum: number, r: any) => sum + Number(r.refund_amount || 0), 0)
     ).toFixed(2);
