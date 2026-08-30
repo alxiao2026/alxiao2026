@@ -261,9 +261,11 @@ const UserCenterPage = () => {
     return (
       <View className="min-h-screen bg-gray-50">
         <View className="bg-[#FF4757] px-5 pt-16 pb-10 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
-          <View className="w-20 h-20 rounded-full bg-white bg-opacity-20 border-2 border-white flex items-center justify-center">
-            <User size={40} color="#FFFFFF" />
-          </View>
+          <Image
+            src="https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/brand-logo_d33944f7.png?sign=2103434968-809efe1d85-0-7a85d416121a09ab75578e38d453a3b5fd270381270c6477aa68b95192386655"
+            className="w-20 h-20 rounded-full bg-white"
+            mode="aspectFit"
+          />
           <Text className="block text-white text-xl font-bold mt-4">登录膨胀团</Text>
           <Text className="block text-white text-sm mt-2" style={{ opacity: 0.8 }}>
             团购下单、抽奖免单、种树领券，一个账号全搞定
