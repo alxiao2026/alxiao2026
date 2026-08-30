@@ -108,7 +108,9 @@ export default function MerchantBalancePage() {
       }
     } catch (error) {
       console.error('提现申请失败:', error);
-      Taro.showToast({ title: '提现申请失败', icon: 'none' });
+      // 透出后端校验信息（如「每日仅可申请 1 次提现」「单笔最低 ¥1」），便于用户对照提现规则
+      const backendMsg = (error as any)?.data?.message || (error as any)?.data?.msg;
+      Taro.showToast({ title: backendMsg || '提现申请失败', icon: 'none' });
     } finally {
       setWithdrawing(false);
     }
@@ -183,8 +185,30 @@ export default function MerchantBalancePage() {
               {withdrawing ? '申请中...' : '申请提现'}
             </Button>
             <Text className="block text-xs text-gray-400 mt-2 text-center">
-              提现将转入您绑定的银行账户，T+7 到账
+              提现将转入您绑定的银行账户，审核通过后 T+7 个工作日到账
             </Text>
+          </View>
+
+          {/* 提现规则（审核要求清晰公示：额度/次数/时间/到账） */}
+          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+            <View className="flex items-center mb-3">
+              <Clock size={16} color="#6B7280" className="mr-2" />
+              <Text className="block text-base font-semibold text-gray-800">提现规则</Text>
+            </View>
+            <View className="flex flex-col">
+              {[
+                ['可提现额度', '账户可提现余额全额可提，单笔最低 ¥1'],
+                ['每日提现次数', '每个自然日限申请 1 次'],
+                ['提现受理时间', '全天可提交申请，平台工作日（周一至周五 9:00-18:00）审核处理'],
+                ['到账时间', '审核通过后 T+7 个工作日内转入您绑定的银行账户'],
+                ['手续费', '平台不收取提现手续费'],
+              ].map(([label, value]) => (
+                <View key={label} className="flex py-2 border-b border-gray-100 last:border-b-0">
+                  <Text className="block text-xs text-gray-500 w-24 flex-shrink-0">{label}</Text>
+                  <Text className="block text-xs text-gray-700 flex-1">{value}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {/* 提现记录 */}

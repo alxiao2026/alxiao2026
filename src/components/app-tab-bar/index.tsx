@@ -1,8 +1,6 @@
 import { View, Text, Image } from '@tarojs/components';
-import Taro from '@tarojs/taro';
 import { House, CircleUserRound } from 'lucide-react-taro';
 import { navigateToTabBar } from '@/utils/navigate';
-import { isRealLogin } from '@/utils/auth-guard';
 import logoImg from '@/assets/tabbar/tuantuan-active.png';
 import './index.css';
 
@@ -27,11 +25,7 @@ const MINE_PATH = '/pages/user-center/index';
 export default function AppTabBar({ current }: AppTabBarProps) {
   const go = (path: string) => {
     if (current !== path) {
-      // 未真实登录（含静默游客账号）点击「我的」→ 跳登录页，避免进入空白个人中心
-      if (path === MINE_PATH && !isRealLogin()) {
-        Taro.navigateTo({ url: '/pages/login/index' });
-        return;
-      }
+      // 未登录点「我的」也正常进入个人中心（页面内展示登录引导），避免级联跳转时序问题
       navigateToTabBar(path);
     }
   };

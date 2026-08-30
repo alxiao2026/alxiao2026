@@ -326,6 +326,26 @@ export class SettlementService {
       throw new BadRequestException('提现金额必须大于0');
     }
 
+    // 单笔最低起提金额（与前端公示的提现规则一致）
+    const MIN_WITHDRAW_AMOUNT = 1;
+    if (amount < MIN_WITHDRAW_AMOUNT) {
+      throw new BadRequestException(`单笔提现金额不能低于 ¥${MIN_WITHDRAW_AMOUNT}`);
+    }
+
+    // 每个自然日限提 1 次（与前端公示的提现规则一致）
+    const today = new Date();
+    const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+    const { count: todayCount } = await this.supabase
+      .from('withdrawal_records')
+      .select('id', { count: 'exact', head: true })
+      .gte('requested_at', dayStart)
+      .lt('requested_at', dayEnd)
+      .eq('merchant_id', merchant_id);
+    if ((todayCount ?? 0) > 0) {
+      throw new BadRequestException('每日仅可申请 1 次提现，请明天再试');
+    }
+
     // 查询余额
     const balance = await this.getBalance(merchant_id);
 

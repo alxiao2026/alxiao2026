@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { getNavSafeAreaTop } from '@/lib/utils';
 import { isRealLogin } from '@/utils/auth-guard';
 import AppTabBar from '@/components/app-tab-bar';
@@ -144,20 +145,16 @@ const UserCenterPage = () => {
     Promise.all([fetchProfile(uid), fetchStats(uid), fetchPermissions(uid), fetchLotteryCount(uid)]).finally(() => setLoading(false));
   }, [profile, fetchProfile, fetchStats, fetchPermissions, fetchLotteryCount]);
 
-  // 每次进入页面都校验登录态：未真实登录（含静默游客账号）直接跳登录页，不再静默登录生成空白账号
-  // 先切回首页再压入登录页，保证用户从登录页返回时落在首页，不会反复横跳
+  // 每次进入页面都校验登录态：未真实登录（含静默游客账号）在本页展示登录引导。
+  // 不做 switchTab+navigateTo 级联跳转——真机上连续跳转存在时序失败，用户点「我的」后
+  // 会被弹回首页且登录页未弹出，表现为「点击无响应」。
   useDidShow(() => {
     const savedUserId = Taro.getStorageSync('user_id');
 
     if (!isRealLogin() || !savedUserId) {
-      console.log('[UserCenter] 未登录（或为静默游客账号），跳转登录页');
+      console.log('[UserCenter] 未登录（或为静默游客账号），本页展示登录引导');
       setLoading(false);
-      Taro.switchTab({
-        url: '/pages/index/index',
-        success: () => {
-          Taro.navigateTo({ url: '/pages/login/index' });
-        }
-      });
+      setUserId('');
       return;
     }
 
@@ -259,11 +256,40 @@ const UserCenterPage = () => {
     );
   }
 
-  // 未登录状态：useDidShow 已触发跳转登录页，此处仅作过渡展示
+  // 未登录状态：完整登录引导页（审核与游客均可直接体验，不再自动跳转）
   if (!userId) {
     return (
-      <View className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Text className="text-gray-400">正在前往登录...</Text>
+      <View className="min-h-screen bg-gray-50">
+        <View className="bg-[#FF4757] px-5 pt-16 pb-10 flex flex-col items-center" style={{ paddingTop: getNavSafeAreaTop() }}>
+          <View className="w-20 h-20 rounded-full bg-white bg-opacity-20 border-2 border-white flex items-center justify-center">
+            <User size={40} color="#FFFFFF" />
+          </View>
+          <Text className="block text-white text-xl font-bold mt-4">登录膨胀团</Text>
+          <Text className="block text-white text-sm mt-2" style={{ opacity: 0.8 }}>
+            团购下单、抽奖免单、种树领券，一个账号全搞定
+          </Text>
+        </View>
+        <View className="mx-4 -mt-6 bg-white rounded-2xl p-5 shadow-sm">
+          <Button className="w-full rounded-full h-12" style={{ backgroundColor: '#FF4757', color: '#fff' }} onClick={handleLogin}>
+            立即登录
+          </Button>
+          <Text className="block text-xs text-gray-400 mt-3 text-center">登录即代表同意《用户协议》与《隐私政策》</Text>
+        </View>
+        <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
+          <Text className="block text-sm font-semibold text-gray-700 mb-3">登录后可以</Text>
+          <View className="flex flex-col">
+            {[
+              { icon: <ShoppingBag size={18} color="#FF4757" />, text: '查看订单与团购券，到店扫码核销' },
+              { icon: <Ticket size={18} color="#F97316" />, text: '参与霸王餐抽奖，中奖免单' },
+              { icon: <Sprout size={18} color="#22C55E" />, text: '每日浇水种树，收获兑换优惠券' },
+            ].map((it) => (
+              <View key={it.text} className="flex items-center py-2">
+                <View className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center mr-3">{it.icon}</View>
+                <Text className="block text-sm text-gray-600 flex-1">{it.text}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
     );
   }
