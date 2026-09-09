@@ -14,6 +14,7 @@ import { UserModule } from './modules/user/user.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { QiniuModule } from './modules/qiniu/qiniu.module';
 import { ShareModule } from './modules/share/share.module';
 import { DistributionModule } from './modules/distribution/distribution.module';
 import { CustomerServiceModule } from './modules/customer-service/customer-service.module';
@@ -40,6 +41,7 @@ import { OrchardModule } from './modules/orchard/orchard.module';
     DistributionModule,
     CustomerServiceModule,
     OrchardModule,
+    QiniuModule,
   ],
   controllers: [AppController],
   providers: [AppService],
