@@ -15,7 +15,9 @@ export default defineAppConfig({
     'pages/lottery/index',
     'pages/lottery-records/index',
     'pages/notification-center/index',
-    'pages/distribution/index'
+    'pages/distribution/index',
+    'pages/agreement/index',
+    'pages/privacy/index'
   ],
   subPackages: [
     // ===== 分包：后台管理页 =====

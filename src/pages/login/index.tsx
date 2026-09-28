@@ -249,9 +249,25 @@ const LoginPage: React.FC = () => {
       </View>
       <Text className="flex-1 text-xs text-gray-500 leading-5">
         我已阅读并同意
-        <Text className="text-[#FF4757]">《用户服务协议》</Text>
+        <Text
+          className="text-[#FF4757]"
+          onClick={(e) => {
+            e.stopPropagation();
+            Taro.navigateTo({ url: '/pages/agreement/index' });
+          }}
+        >
+          《用户服务协议》
+        </Text>
         、
-        <Text className="text-[#FF4757]">《隐私政策》</Text>
+        <Text
+          className="text-[#FF4757]"
+          onClick={(e) => {
+            e.stopPropagation();
+            Taro.navigateTo({ url: '/pages/privacy/index' });
+          }}
+        >
+          《隐私政策》
+        </Text>
         ，未注册的手机号将自动创建账号
       </Text>
     </View>

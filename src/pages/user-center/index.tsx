@@ -11,7 +11,8 @@ import CustomerServiceModal from '@/components/customer-service-modal';
 import {
   ClipboardList, ChevronRight, Pencil,
   Settings, Info, LogOut,
-  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell, HandCoins, Sprout
+  ShoppingBag, CircleCheck, Ticket, Sparkles, User, Phone, Trophy, Store, UtensilsCrossed, Wallet, Bell, HandCoins, Sprout,
+  Check
 } from 'lucide-react-taro';
 
 interface UserProfile {
@@ -56,6 +57,7 @@ const UserCenterPage = () => {
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showCustomerService, setShowCustomerService] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const fetchProfile = useCallback(async (uid: string) => {
     try {
@@ -162,6 +164,10 @@ const UserCenterPage = () => {
   });
 
   const handleLogin = () => {
+    if (!agreed) {
+      Taro.showToast({ title: '请先勾选并同意协议', icon: 'none' });
+      return;
+    }
     Taro.navigateTo({ url: '/pages/login/index' });
   };
 
@@ -275,7 +281,40 @@ const UserCenterPage = () => {
           <Button className="w-full rounded-full h-12" style={{ backgroundColor: '#FF4757', color: '#fff' }} onClick={handleLogin}>
             立即登录
           </Button>
-          <Text className="block text-xs text-gray-400 mt-3 text-center">登录即代表同意《用户协议》与《隐私政策》</Text>
+          <View
+            className="flex flex-row items-center justify-center px-2 py-3"
+            onClick={() => setAgreed(!agreed)}
+          >
+            <View
+              className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 mr-2 ${
+                agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
+              }`}
+            >
+              {agreed && <Check size={10} color="#fff" strokeWidth={3} />}
+            </View>
+            <Text className="flex-1 text-xs text-gray-500 leading-5">
+              我已阅读并同意
+              <Text
+                className="text-[#FF4757]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  Taro.navigateTo({ url: '/pages/agreement/index' });
+                }}
+              >
+                《用户服务协议》
+              </Text>
+              、
+              <Text
+                className="text-[#FF4757]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  Taro.navigateTo({ url: '/pages/privacy/index' });
+                }}
+              >
+                《隐私政策》
+              </Text>
+            </Text>
+          </View>
         </View>
         <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
           <Text className="block text-sm font-semibold text-gray-700 mb-3">登录后可以</Text>
