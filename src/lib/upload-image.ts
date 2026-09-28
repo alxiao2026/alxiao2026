@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
+import { uploadImageToQiniu } from '@/lib/qiniu'
 
 export const isMiniAppEnv = () => {
   const env = Taro.getEnv()
@@ -217,36 +218,25 @@ async function checkConnectivity(): Promise<{ ok: boolean; error: string }> {
 export async function uploadLocalImage(localPath: string, h5File?: File): Promise<string | null> {
   Taro.showLoading({ title: '上传中...', mask: true })
   try {
+    let fileOrPath: string | File
     if (isMiniAppEnv()) {
-      // 小程序端：优先 uploadFile 直传，失败自动降级 base64 通道（绕开真机域名白名单限制）
-      const { url, errorMsg } = await uploadMiniAppImage(localPath)
-      Taro.hideLoading()
-      if (url) return url
-      if (errorMsg) Taro.showToast({ title: errorMsg, icon: 'none' })
-      return null
+      fileOrPath = localPath
+    } else {
+      const file = h5File || (localPath.startsWith('data:') ? dataUrlToFile(localPath) : undefined)
+      if (!file) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '文件读取失败', icon: 'none' })
+        return null
+      }
+      fileOrPath = file
     }
-    // H5 端
-    let file = h5File
-    if (!file) {
-      file = localPath.startsWith('data:') ? dataUrlToFile(localPath) : undefined
-    }
-    if (!file) {
-      Taro.hideLoading()
-      Taro.showToast({ title: '文件读取失败', icon: 'none' })
-      return null
-    }
-    const fd = new FormData()
-    fd.append('file', file)
-    const response = await fetch('/api/upload', { method: 'POST', body: fd })
-    const data = await response.json()
+    const { url } = await uploadImageToQiniu(fileOrPath)
     Taro.hideLoading()
-    if (data.code === 200 && data.data?.url) return data.data.url
-    Taro.showToast({ title: '上传失败', icon: 'none' })
-    return null
-  } catch (error) {
+    return url
+  } catch (error: any) {
     console.error('上传图片失败:', error)
     Taro.hideLoading()
-    Taro.showToast({ title: '上传失败', icon: 'none' })
+    Taro.showToast({ title: error?.message || '上传失败', icon: 'none' })
     return null
   }
 }

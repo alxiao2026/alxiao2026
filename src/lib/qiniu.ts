@@ -17,20 +17,39 @@ export interface QiniuUpToken {
 /**
  * 上传图片到七牛（服务端中转模式，H5/小程序跨端一致）
  *
- * @param filePath 本地临时文件路径（Taro.chooseImage 等返回的 tempFilePath）
- * @param onProgress 可选上传进度回调（0-100）
+ * @param filePathOrFile 小程序本地临时文件路径 或 H5 端 File 对象
+ * @param onProgress 可选上传进度回调（0-100，仅小程序端有效）
  */
 export async function uploadImageToQiniu(
-    filePath: string,
+    filePathOrFile: string | File,
     onProgress?: (percent: number) => void
 ): Promise<QiniuUploadResult> {
-    console.log('[Qiniu] 开始上传图片:', filePath)
+    console.log('[Qiniu] 开始上传图片:', filePathOrFile)
 
-    const uploadTask = Network.uploadFile({
-        url: '/api/qiniu/upload',
-        filePath,
-        name: 'file',
-    })
+    const isH5File = typeof File !== 'undefined' && filePathOrFile instanceof File
+    let uploadTask: any
+
+    if (isH5File) {
+        // H5 端手动构建 FormData，绕过 Taro.uploadFile 对 File 对象的兼容问题
+        const fd = new FormData()
+        fd.append('file', filePathOrFile)
+        const promise = fetch('/api/qiniu/upload', { method: 'POST', body: fd }).then(async (response) => {
+            const text = await response.text()
+            return { statusCode: response.status, data: text }
+        })
+        uploadTask = {
+            then: promise.then.bind(promise),
+            catch: promise.catch.bind(promise),
+            finally: promise.finally.bind(promise),
+            onProgressUpdate: undefined,
+        }
+    } else {
+        uploadTask = Network.uploadFile({
+            url: '/api/qiniu/upload',
+            filePath: filePathOrFile as string,
+            name: 'file',
+        })
+    }
 
     if (onProgress && typeof uploadTask.onProgressUpdate === 'function') {
         uploadTask.onProgressUpdate(res => {
