@@ -61,15 +61,15 @@ const TITLE_CARD_URL =
 
 // 9 个盲盒图片（用户提供的 3D 黏土风 07/08/09，不裁切原始比例，七牛云存储）
 const BOX_IMAGES = [
-  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
-  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9201.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9202.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9203.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9204.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9205.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9206.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9207.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9208.png',
+  'https://pzt.pzt2026.top/qiniu/202609/%E7%9B%B2%E7%9B%9209.png',
 ]
 
 
@@ -676,8 +676,8 @@ export default function Lottery() {
                 }`}
                 style={{ position: 'relative', animationDelay: `${index * 0.3}s` }}
               >
-                {/* 盲盒图片（不裁切，保持原始比例，圆角） */}
-                <View className="rounded-xl overflow-hidden bg-orange-50">
+                {/* 盲盒图片（不裁切，保持原始比例，圆角，透明背景镂空） */}
+                <View className="rounded-xl overflow-hidden">
                   <Image src={img} className="w-full h-auto" style={{ display: 'block' }} mode="widthFix" />
                 </View>
                 {/* 开盒金光粒子 */}
