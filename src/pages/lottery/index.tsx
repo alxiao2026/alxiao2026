@@ -59,14 +59,17 @@ const LOGO_URL =
 const TITLE_CARD_URL =
   'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/title_card_f19ec67b_601edd75.jpg?sign=2102468949-55992ef630-0-ac6068e09be5e3bcc8ed58325ab12f03126ea1d7bf0493fecafe3d9db0dc9e0d'
 
-// 6 个盲盒图片（用户提供的 3D 黏土风，不裁切原始比例，TOS 存储）
+// 9 个盲盒图片（用户提供的 3D 黏土风 07/08/09，不裁切原始比例，七牛云存储）
 const BOX_IMAGES = [
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_01_71b79235_ebe9826c.jpg?sign=2102468947-f10687b3fa-0-95d6d3f20db2090cf7ae098d493ce1142cf80e812f9f29affb4ef089df7bf690',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_02_b67fc1f7_b994a9c8.jpg?sign=2102468947-cd16d9ad55-0-9edb2c21114078acdd84ffaabf6614a6ef261365e3b362624792acf6d3eff438',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_03_ae83f602_256e6e70.jpg?sign=2102468948-d4a0a8625a-0-aed7e6374cc3dff8e661afd16e06a2fe9f75601f0c6301675155e828a7d976e8',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_04_c9420ef2_6fcb8d6b.jpg?sign=2102468948-08df5b5584-0-13547d4bf54513a1be85484a69c5c8dc304c528b0070ede8c35268ef00b984c6',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_05_21225e6f_f29b4261.jpg?sign=2102468948-8a4ed5897c-0-86dacba533ef654689914fe28f0d564e13a6a38dddd9f3485f6d71d1418eb787',
-  'https://coze-coding-project.tos.coze.site/coze_storage_7666397081875218472/lottery/full_box_06_513884ca_64d7d07a.jpg?sign=2102468949-5fa4497b39-0-deeb8f073bae3a2ec3995ae790a8fdbaf8cbed56f2bbddf2ea173f903056854c',
+  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/bdcf3593e7b82bc544c8.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/fc53f5b77b5126f5a6e6.jpg',
+  'https://pzt.pzt2026.top/qiniu/202609/8789f67c4451521e1d46.jpg',
 ]
 
 
