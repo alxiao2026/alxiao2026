@@ -1,5 +1,4 @@
 import Taro from '@tarojs/taro'
-import { Network } from '@/network'
 import { uploadImageToQiniu } from '@/lib/qiniu'
 
 export const isMiniAppEnv = () => {
@@ -49,136 +48,20 @@ export function getUploadFailTip(error: any): string {
   return '上传失败，请检查网络后重试'
 }
 
-/** base64 上传：走 request 通道，返回具体失败原因便于真机定位 */
-async function uploadViaBase64(localPath: string): Promise<{ url: string | null; errDetail: string }> {
-  // 1) 压缩到 800KB 内（base64 后约 1.1MB，确保 wx.request body 不超限）
-  let path = localPath
-  try {
-    const info: any = await Taro.getFileInfo({ filePath: localPath })
-    let size = info?.size || 0
-    console.log('[Upload] 原图:', (size / 1024).toFixed(0), 'KB')
-    if (size > 800 * 1024) {
-      for (const q of [60, 40, 25, 15]) {
-        try {
-          const c = await Taro.compressImage({ src: path, quality: q })
-          const ci: any = await Taro.getFileInfo({ filePath: c.tempFilePath })
-          path = c.tempFilePath
-          size = ci?.size || 0
-          console.log(`[Upload] 压缩 q=${q}:`, (size / 1024).toFixed(0), 'KB')
-          if (size <= 800 * 1024) break
-        } catch (ce: any) {
-          console.warn('[Upload] compressImage 失败:', ce?.errMsg || ce)
-          break
-        }
-      }
-    }
-  } catch (e: any) {
-    console.warn('[Upload] getFileInfo 失败，尝试用原图:', e?.errMsg || e)
-    path = localPath
-  }
-
-  // 2) 读取文件为 base64
-  let base64 = ''
-  try {
-    const fs = Taro.getFileSystemManager()
-    const readRes: any = await new Promise((resolve, reject) => {
-      fs.readFile({ filePath: path, encoding: 'base64', success: resolve, fail: reject })
-    })
-    base64 = (readRes?.data as string) || ''
-    console.log('[Upload] base64 长度:', base64.length)
-  } catch (e: any) {
-    const m = e?.errMsg || e?.message || String(e)
-    console.error('[Upload] readFile 失败:', m)
-    return { url: null, errDetail: `读取文件失败:${m}` }
-  }
-  if (!base64) return { url: null, errDetail: '读取文件内容为空' }
-
-  // 3) 分片上传（每片约 350KB base64 字符，确保单个 wx.request body 不超限）
-  const CHUNK = 350 * 1024
-  const total = Math.ceil(base64.length / CHUNK)
-  const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const filename = /\.png$/i.test(path) ? 'upload.png' : 'upload.jpg'
-  console.log(`[Upload] 分片上传: ${total} 片`)
-  try {
-    for (let i = 0; i < total; i++) {
-      const chunk = base64.slice(i * CHUNK, (i + 1) * CHUNK)
-      const res = await Network.request({
-        url: '/api/upload/base64-chunk',
-        method: 'POST',
-        timeout: 60000,
-        data: { uploadId, index: i, total, chunk, filename }
-      })
-      const body: any = res.data
-      if (res.statusCode !== 200 || body?.code !== 200) {
-        console.error(`[Upload] 分片${i}失败:`, res.statusCode, body?.msg)
-        return { url: null, errDetail: `分片${i + 1}/${total}上传失败:${body?.msg || res.statusCode}` }
-      }
-      if (i === total - 1) {
-        console.log('[Upload] 分片合并完成:', body.data?.url)
-        if (body.data?.url) return { url: body.data.url, errDetail: '' }
-        return { url: null, errDetail: '上传完成但未返回图片地址' }
-      }
-    }
-    return { url: null, errDetail: '分片上传未完成' }
-  } catch (e: any) {
-    const m = e?.errMsg || e?.message || String(e)
-    console.error('[Upload] 分片上传请求失败:', m)
-    return { url: null, errDetail: `请求失败:${m}` }
-  }
-}
 
 /**
- * 小程序端统一上传（全路径覆盖 + 自我诊断）
- * 优先 uploadFile（小程序调试模式下不校验合法域名，multipart 高效，适合大文件）；
- * 失败自动走 base64 + request 通道（强制压缩到 800KB 内）；
- * 最终失败会带回具体原因（读取文件失败/请求失败/上传返回错误等），便于真机定位。
+ * 小程序端统一上传（已接入七牛云）
+ * 底层调用 uploadImageToQiniu，文件直接上传到七牛对象存储。
  */
 export async function uploadMiniAppImage(localPath: string): Promise<{ url: string | null; errorMsg?: string }> {
-  const rawDomain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
-  const host = rawDomain.replace(/^https?:\/\//, '') || '空域名'
-  console.log('[Upload] V84 开始上传:', localPath, '域名:', host)
-
-  // 0) 连通性预检测：先确认后端可达，否则后面的 uploadFile/base64 全都会失败但原因被吞
-  const conn = await checkConnectivity()
-  if (!conn.ok) {
-    return { url: null, errorMsg: `后端不可达\n${conn.error}\n\n请检查微信后台域名白名单：\nrequest 和 uploadFile 都要加 ${host}` }
-  }
-  console.log('[Upload] 连通性正常，开始上传')
-
-  // 1) 优先 uploadFile 直传（收集具体错误用于诊断）
-  let directErr = ''
   try {
-    const res = await Network.uploadFile({ url: '/api/upload', filePath: localPath, name: 'file', timeout: 60000 })
-    console.log('[Upload] uploadFile statusCode:', res.statusCode)
-    if (res.statusCode === 200) {
-      try {
-        const body: any = JSON.parse(res.data)
-        if (body?.code === 200 && body.data?.url) return { url: body.data.url }
-        directErr = `200但业务失败:${body?.msg || '无msg'}`
-      } catch {
-        directErr = '200但返回非JSON'
-      }
-    } else {
-      directErr = `HTTP${res.statusCode}`
-    }
+    const result = await uploadImageToQiniu(localPath)
+    return { url: result.url }
   } catch (e: any) {
-    directErr = e?.errMsg || e?.message || String(e)
+    const msg = e?.message || e?.errMsg || String(e) || '上传失败'
+    console.error('[Upload] 七牛上传失败:', msg)
+    return { url: null, errorMsg: msg }
   }
-  console.warn('[Upload] 直传失败:', directErr)
-
-  // 2) base64 分片降级（整体兜底，防异常逃逸吞掉真实错误）
-  let chunkErr = ''
-  try {
-    const { url, errDetail } = await uploadViaBase64(localPath)
-    if (url) return { url }
-    chunkErr = errDetail || '分片未知失败'
-  } catch (e: any) {
-    chunkErr = `异常:${e?.errMsg || e?.message || String(e)}`
-  }
-  console.warn('[Upload] 分片失败:', chunkErr)
-
-  const errorMsg = `域名:${host}\n直传:${directErr}\n分片:${chunkErr}`
-  return { url: null, errorMsg }
 }
 
 /** 上传失败诊断弹窗：完整展示域名与两条通道的真实错误，便于真机截图反馈定位 */
@@ -193,21 +76,6 @@ export function showUploadFailModal(detail: string, title = '上传失败') {
   })
 }
 
-/** 上传前连通性预检测：先请求 /api/hello 确认后端可达，失败直接返回诊断信息 */
-async function checkConnectivity(): Promise<{ ok: boolean; error: string }> {
-  const rawDomain = (typeof PROJECT_DOMAIN !== 'undefined' && PROJECT_DOMAIN) || ''
-  const host = rawDomain.replace(/^https?:\/\//, '') || '空域名'
-  try {
-    const res = await Network.request({ url: '/api/hello', method: 'GET', timeout: 10000 })
-    console.log('[Upload] 连通性检测:', res.statusCode, res.data)
-    if (res.statusCode === 200) return { ok: true, error: '' }
-    return { ok: false, error: `HTTP${res.statusCode}` }
-  } catch (e: any) {
-    const m = e?.errMsg || e?.message || String(e)
-    console.error('[Upload] 连通性检测失败:', m)
-    return { ok: false, error: `域名:${host}\n请求失败:${m}` }
-  }
-}
 
 /**
  * 上传本地图片到对象存储
