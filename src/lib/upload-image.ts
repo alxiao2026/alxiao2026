@@ -15,14 +15,24 @@ export async function ensurePrivacyAuthorized(): Promise<void> {
   // 仅微信小程序需要隐私授权；抖音/H5 跳过
   if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) return
 
+  // 微信原生隐私授权 API（Taro 尚未封装，直接使用 wx）
+  // @ts-ignore
+  const wxApi = typeof wx !== 'undefined' ? wx : undefined
+  if (!wxApi?.getPrivacySetting || !wxApi?.requirePrivacyAuthorize) {
+    // 基础库不支持隐私授权时跳过，避免阻塞选图
+    console.warn('[Privacy] 当前基础库不支持隐私授权 API，跳过')
+    return
+  }
+
   try {
-    // @ts-ignore Taro 类型尚未同步微信隐私授权 API，但运行时可用
-    const setting = await Taro.getPrivacySetting({})
+    const setting: any = await new Promise((resolve, reject) => {
+      wxApi.getPrivacySetting({ success: resolve, fail: reject })
+    })
     // needAuthorization 为 true 时表示需要用户授权
-    // @ts-ignore
     if (setting?.needAuthorization) {
-      // @ts-ignore
-      await Taro.requirePrivacyAuthorize({})
+      await new Promise((resolve, reject) => {
+        wxApi.requirePrivacyAuthorize({ success: resolve, fail: reject })
+      })
     }
   } catch (e: any) {
     console.error('[Privacy] 隐私授权失败:', e)
