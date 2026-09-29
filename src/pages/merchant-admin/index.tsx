@@ -11,7 +11,7 @@ import { Network } from '@/network';
 import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Wifi, LoaderCircle } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
-import { isMiniAppEnv, chooseImageH5, uploadLocalImage } from '@/lib/upload-image';
+import { isMiniAppEnv, chooseImageH5, uploadLocalImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
 
 interface Merchant {
   id: number;
@@ -253,6 +253,7 @@ export default function MerchantAdmin() {
     if (uploadingLogo || uploadingImages) return;
     try {
       if (isMiniAppEnv()) {
+        await ensurePrivacyAuthorized()
         const res = await Taro.chooseMedia({
           count: 1,
           mediaType: ['image'],

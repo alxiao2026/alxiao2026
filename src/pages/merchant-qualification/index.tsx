@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
-import { uploadMiniAppImage } from '@/lib/upload-image'
+import { uploadMiniAppImage, ensurePrivacyAuthorized } from '@/lib/upload-image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -64,6 +64,7 @@ export default function MerchantQualification() {
   /** 选择图片并上传到对象存储 */
   const pickAndUpload = async (field: UploadField) => {
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'] })
       const filePath = res.tempFiles?.[0]?.tempFilePath
       if (!filePath) return

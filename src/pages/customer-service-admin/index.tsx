@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { uploadLocalImage, chooseImageH5, isMiniAppEnv } from '@/lib/upload-image';
+import { uploadLocalImage, chooseImageH5, isMiniAppEnv, ensurePrivacyAuthorized } from '@/lib/upload-image';
 import { Headphones, ImagePlus, RefreshCw } from 'lucide-react-taro';
 
 interface CustomerServiceConfig {
@@ -56,6 +56,7 @@ const CustomerServiceAdminPage = () => {
       if (isMiniAppEnv()) {
         // 使用 chooseMedia（chooseImage 在部分安卓机选图后会回收小程序导致重启/无响应）
         console.log('[CustomerService] 调起 chooseMedia 选图');
+        await ensurePrivacyAuthorized();
         const choose = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] });
         const path = choose.tempFiles?.[0]?.tempFilePath;
         console.log('[CustomerService] 选图结果 path:', path);

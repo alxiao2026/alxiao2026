@@ -3,7 +3,7 @@ import { View, Text, Image } from '@tarojs/components'
 import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Banknote, CircleCheck, CircleX, Store, Clock, CreditCard, Upload, X } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { uploadMiniAppImage } from '@/lib/upload-image'
+import { uploadMiniAppImage, ensurePrivacyAuthorized } from '@/lib/upload-image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -98,6 +98,7 @@ export default function WithdrawalReview() {
   /** 上传打款凭证图片 */
   const pickProofImage = async () => {
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'] })
       const filePath = res.tempFiles?.[0]?.tempFilePath
       if (!filePath) return

@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Plus, X, ChevronRight, Check, Trash2 } from 'lucide-react-taro'
 import { DOUYIN_CATEGORIES, getCategoryPath } from '@/data/categories'
 import { ImageCropper } from '@/components/image-cropper'
-import { dataUrlToFile, uploadMiniAppImage, showUploadFailModal } from '@/lib/upload-image'
+import { dataUrlToFile, uploadMiniAppImage, showUploadFailModal, ensurePrivacyAuthorized } from '@/lib/upload-image'
 import { format } from 'date-fns'
 
 interface Package {
@@ -849,6 +849,7 @@ export default function PackageAdmin() {
     // 选图前立即保存草稿，防止页面被系统回收后状态丢失
     saveDraftNow()
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({
         count: 1,
         mediaType: ['image'],
@@ -998,6 +999,7 @@ export default function PackageAdmin() {
     // 选图前立即保存草稿，防止页面被系统回收后状态丢失
     saveDraftNow()
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({
         count: remaining,
         mediaType: ['image'],

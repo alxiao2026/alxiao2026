@@ -2,7 +2,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
-import { uploadMiniAppImage } from '@/lib/upload-image';
+import { uploadMiniAppImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, User } from 'lucide-react-taro';
@@ -136,6 +136,7 @@ const ProfileEditPage = () => {
 
     // 小程序端：使用 chooseMedia（chooseImage 已废弃，部分安卓机选图后会回收小程序导致重启跳首页）
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({
         count: 1,
         mediaType: ['image'],

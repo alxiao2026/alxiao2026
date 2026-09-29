@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components';
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
 import { Network } from '@/network';
-import { uploadMiniAppImage } from '@/lib/upload-image';
+import { uploadMiniAppImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -206,6 +206,7 @@ export default function PrizeManagePage() {
 
   const handleUploadPrizeImage = async () => {
     try {
+      await ensurePrivacyAuthorized()
       const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] });
       const tempFilePath = res.tempFiles?.[0]?.tempFilePath;
       if (!tempFilePath) return;
