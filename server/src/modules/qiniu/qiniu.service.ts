@@ -92,7 +92,7 @@ export class QiniuService {
       // 直传回显字段：客户端拿到 key/fsize，中转模式同样兼容
       returnBody: '{"key":"$(key)","hash":"$(etag)","fsize":$(fsize),"bucket":"$(bucket)"}',
     });
-    putPolicy.fsizeLimit = 30 * 1024 * 1024; // 单文件上限 10MB
+    putPolicy.fsizeLimit = 30 * 1024 * 1024; // 单文件上限 30MB
     putPolicy.deadline = Math.floor(Date.now() / 1000) + 3600; // 凭证有效期 1 小时
     return putPolicy.uploadToken(mac);
   }
@@ -116,7 +116,7 @@ export class QiniuService {
       throw new BadRequestException('文件内容为空');
     }
     if (buffer.length > 30 * 1024 * 1024) {
-      throw new BadRequestException('文件过大（上限 10MB）');
+      throw new BadRequestException('文件过大（上限 30MB）');
     }
 
     const key = this.buildKey(filename);

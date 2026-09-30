@@ -25,7 +25,7 @@ import { OrchardModule } from './modules/orchard/orchard.module';
     ScheduleModule.forRoot(),
     MulterModule.register({
       storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      limits: { fileSize: 30 * 1024 * 1024 }, // 30MB，与环境图/资质证照大图上传保持一致
     }),
     PrizeModule,
     OrderModule,
