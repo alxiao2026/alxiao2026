@@ -851,6 +851,7 @@ export default function OrderDetail() {
                     src={communityConfig.community_qrcode_url}
                     className="w-full h-full"
                     mode="aspectFit"
+                    showMenuByLongpress
                   />
                 </View>
               </View>
