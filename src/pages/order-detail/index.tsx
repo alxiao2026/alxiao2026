@@ -44,6 +44,14 @@ interface PackageInfo {
   original_price: string
 }
 
+interface CommunityConfig {
+  community_enabled: boolean
+  community_title: string
+  community_subtitle: string
+  community_button_text: string
+  community_qrcode_url: string | null
+}
+
 interface PrepayInfo {
   prepay_id: string
   channel: string
@@ -108,6 +116,8 @@ export default function OrderDetail() {
   const orchardCouponRef = useRef<string | null>(null)
   const [countdownText, setCountdownText] = useState('')
   const [showPaySuccess, setShowPaySuccess] = useState(false)
+  const [communityConfig, setCommunityConfig] = useState<CommunityConfig | null>(null)
+  const [communityLoading, setCommunityLoading] = useState(true)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -115,6 +125,7 @@ export default function OrderDetail() {
     if (id) {
       loadOrder()
     }
+    loadCommunityConfig()
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current)
     }
@@ -195,6 +206,33 @@ export default function OrderDetail() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadCommunityConfig = async () => {
+    try {
+      const res = await Network.request({ url: '/api/customer-service/config', method: 'GET' })
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      const cfg = body?.data
+      if (cfg) {
+        setCommunityConfig({
+          community_enabled: !!cfg.community_enabled,
+          community_title: cfg.community_title || '加店长领券享88折',
+          community_subtitle: cfg.community_subtitle || '进群抽免单，天天享9折',
+          community_button_text: cfg.community_button_text || '长按识别二维码加店长',
+          community_qrcode_url: cfg.community_qrcode_url || null,
+        })
+      }
+    } catch (err) {
+      console.warn('[OrderDetail] 加载社群营销配置失败:', err)
+    } finally {
+      setCommunityLoading(false)
+    }
+  }
+
+  const handlePreviewCommunityQR = () => {
+    const url = communityConfig?.community_qrcode_url
+    if (!url) return
+    Taro.previewImage({ urls: [url], current: url })
   }
 
   const loadPackageInfo = async (packageId: string) => {
@@ -777,6 +815,45 @@ export default function OrderDetail() {
                   </Text>
                 </View>
               )}
+            </View>
+          </View>
+        )}
+
+        {/* 社群营销卡片 */}
+        {!communityLoading && communityConfig?.community_enabled && communityConfig.community_qrcode_url && (
+          <View className="mx-4 mt-3 rounded-2xl bg-white overflow-hidden">
+            <View className="flex flex-row items-center px-4 pt-4 pb-1">
+              <Text className="block text-sm font-semibold text-gray-900">社群福利</Text>
+            </View>
+            <View className="px-4 py-4">
+              <View className="flex flex-row items-center gap-4">
+                <View className="flex-1 flex flex-col justify-center">
+                  <Text className="block text-lg font-bold text-gray-900 leading-tight">
+                    {communityConfig.community_title}
+                  </Text>
+                  <Text className="block text-sm text-gray-500 mt-2">
+                    {communityConfig.community_subtitle}
+                  </Text>
+                  <View
+                    className="mt-4 self-start px-4 py-2 rounded-full"
+                    style={{ background: 'linear-gradient(135deg, #FF6B7A 0%, #FF4757 100%)' }}
+                  >
+                    <Text className="block text-sm font-semibold text-white">
+                      {communityConfig.community_button_text}
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  className="w-28 h-28 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0"
+                  onClick={handlePreviewCommunityQR}
+                >
+                  <Image
+                    src={communityConfig.community_qrcode_url}
+                    className="w-full h-full"
+                    mode="aspectFit"
+                  />
+                </View>
+              </View>
             </View>
           </View>
         )}

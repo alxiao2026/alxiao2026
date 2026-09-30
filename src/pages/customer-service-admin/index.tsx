@@ -15,6 +15,11 @@ interface CustomerServiceConfig {
   title: string;
   welcome_text: string;
   service_id: string | null;
+  community_enabled: boolean;
+  community_title: string;
+  community_subtitle: string;
+  community_button_text: string;
+  community_qrcode_url: string | null;
 }
 
 const CustomerServiceAdminPage = () => {
@@ -26,6 +31,12 @@ const CustomerServiceAdminPage = () => {
   const [title, setTitle] = useState('联系客服');
   const [welcomeText, setWelcomeText] = useState('扫码添加客服企业微信，有问题随时找我们');
   const [serviceId, setServiceId] = useState('');
+  const [communityEnabled, setCommunityEnabled] = useState(false);
+  const [communityTitle, setCommunityTitle] = useState('加店长领券享88折');
+  const [communitySubtitle, setCommunitySubtitle] = useState('进群抽免单，天天享9折');
+  const [communityButtonText, setCommunityButtonText] = useState('长按识别二维码加店长');
+  const [communityQrcodeUrl, setCommunityQrcodeUrl] = useState('');
+  const [communityUploading, setCommunityUploading] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -38,6 +49,11 @@ const CustomerServiceAdminPage = () => {
         setTitle(cfg.title || '联系客服');
         setWelcomeText(cfg.welcome_text || '');
         setServiceId(cfg.service_id || '');
+        setCommunityEnabled(!!cfg.community_enabled);
+        setCommunityTitle(cfg.community_title || '加店长领券享88折');
+        setCommunitySubtitle(cfg.community_subtitle || '进群抽免单，天天享9折');
+        setCommunityButtonText(cfg.community_button_text || '长按识别二维码加店长');
+        setCommunityQrcodeUrl(cfg.community_qrcode_url || '');
       }
     } catch {
       Taro.showToast({ title: '加载失败', icon: 'none' });
@@ -47,6 +63,33 @@ const CustomerServiceAdminPage = () => {
   };
 
   useEffect(() => { fetchConfig(); }, []);
+
+  const handleChooseCommunityQrcode = async () => {
+    if (communityUploading) return;
+    setCommunityUploading(true);
+    try {
+      let url: string | null = null;
+      if (isMiniAppEnv()) {
+        console.log('[CustomerService] 调起 chooseMedia 选社群二维码');
+        await ensurePrivacyAuthorized();
+        const choose = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] });
+        const path = choose.tempFiles?.[0]?.tempFilePath;
+        console.log('[CustomerService] 选图结果 path:', path);
+        if (path) url = await uploadLocalImage(path);
+      } else {
+        const picked = await chooseImageH5();
+        if (picked) url = await uploadLocalImage(picked.localUrl, picked.file);
+      }
+      if (url) {
+        setCommunityQrcodeUrl(url);
+        Taro.showToast({ title: '二维码已上传', icon: 'success' });
+      }
+    } catch {
+      // 用户取消选择
+    } finally {
+      setCommunityUploading(false);
+    }
+  };
 
   const handleChooseQrcode = async () => {
     if (uploading) return;
@@ -88,7 +131,12 @@ const CustomerServiceAdminPage = () => {
           qrcode_url: qrcodeUrl || null,
           title: title.trim() || '联系客服',
           welcome_text: welcomeText.trim(),
-          service_id: serviceId.trim() || null
+          service_id: serviceId.trim() || null,
+          community_enabled: communityEnabled,
+          community_title: communityTitle.trim(),
+          community_subtitle: communitySubtitle.trim(),
+          community_button_text: communityButtonText.trim(),
+          community_qrcode_url: communityQrcodeUrl || null
         }
       });
       const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
@@ -196,6 +244,79 @@ const CustomerServiceAdminPage = () => {
               onInput={(e) => setServiceId(e.detail.value)}
             />
           </View>
+        </View>
+
+        {/* 社群营销配置 */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+          <View className="flex flex-row items-center justify-between">
+            <View>
+              <Text className="block text-sm font-semibold text-gray-800">社群营销配置</Text>
+              <Text className="block text-xs text-gray-400 mt-1">在订单详情页展示加群/加店长引导卡片</Text>
+            </View>
+            <Switch checked={communityEnabled} onCheckedChange={setCommunityEnabled} />
+          </View>
+
+          {communityEnabled && (
+            <>
+              <View>
+                <Text className="block text-sm font-semibold text-gray-800 mb-2">主标题</Text>
+                <Input
+                  className="bg-gray-50 rounded-xl border-0"
+                  placeholder="如：加店长领券享88折"
+                  value={communityTitle}
+                  onInput={(e) => setCommunityTitle(e.detail.value)}
+                />
+              </View>
+
+              <View>
+                <Text className="block text-sm font-semibold text-gray-800 mb-2">副标题</Text>
+                <Input
+                  className="bg-gray-50 rounded-xl border-0"
+                  placeholder="如：进群抽免单，天天享9折"
+                  value={communitySubtitle}
+                  onInput={(e) => setCommunitySubtitle(e.detail.value)}
+                />
+              </View>
+
+              <View>
+                <Text className="block text-sm font-semibold text-gray-800 mb-2">按钮文案</Text>
+                <Input
+                  className="bg-gray-50 rounded-xl border-0"
+                  placeholder="如：长按识别二维码加店长"
+                  value={communityButtonText}
+                  onInput={(e) => setCommunityButtonText(e.detail.value)}
+                />
+              </View>
+
+              <View>
+                <Text className="block text-sm font-semibold text-gray-800 mb-1">社群二维码</Text>
+                <Text className="block text-xs text-gray-400 mb-3">建议上传清晰的正方形二维码图片，用户长按识别加群</Text>
+                <View className="flex flex-row items-center gap-4">
+                  {communityQrcodeUrl ? (
+                    <View className="rounded-xl overflow-hidden bg-gray-50 p-2 border border-gray-100">
+                      <Image src={communityQrcodeUrl} className="w-32 h-32" mode="aspectFit" />
+                    </View>
+                  ) : (
+                    <View className="w-32 h-32 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
+                      <Text className="text-xs text-gray-300">未上传</Text>
+                    </View>
+                  )}
+                  <View className="flex-1">
+                    <Button
+                      className="w-full bg-[#FF6B7A] text-white rounded-xl"
+                      disabled={communityUploading}
+                      onClick={handleChooseCommunityQrcode}
+                    >
+                      <View className="flex flex-row items-center justify-center gap-1">
+                        {communityQrcodeUrl ? <RefreshCw size={16} color="#fff" /> : <ImagePlus size={16} color="#fff" />}
+                        <Text className="text-white text-sm">{communityUploading ? '上传中...' : communityQrcodeUrl ? '重新上传' : '上传二维码'}</Text>
+                      </View>
+                    </Button>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* 保存 */}

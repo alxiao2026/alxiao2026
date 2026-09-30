@@ -22,6 +22,11 @@ export class CustomerServiceController {
       title?: string;
       welcome_text?: string;
       service_id?: string;
+      community_enabled?: boolean;
+      community_title?: string;
+      community_subtitle?: string;
+      community_button_text?: string;
+      community_qrcode_url?: string;
     },
   ) {
     const data = await this.customerService.updateConfig(body || {});
