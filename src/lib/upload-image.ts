@@ -9,7 +9,7 @@ export const isMiniAppEnv = () => {
 /**
  * 微信小程序隐私授权前置检查
  * 调用 chooseMedia/chooseImage 等涉及相册/相机的 API 前，必须先完成隐私授权。
- * 若用户未同意或小程序未配置隐私保护指引，会抛出对应错误。
+ * 正常返回表示可以继续；抛出 'PRIVACY_NOT_DECLARED' 表示未在后台配置权限。
  */
 export async function ensurePrivacyAuthorized(): Promise<void> {
   // 仅微信小程序需要隐私授权；抖音/H5 跳过
@@ -19,7 +19,6 @@ export async function ensurePrivacyAuthorized(): Promise<void> {
   // @ts-ignore
   const wxApi = typeof wx !== 'undefined' ? wx : undefined
   if (!wxApi?.getPrivacySetting || !wxApi?.requirePrivacyAuthorize) {
-    // 基础库不支持隐私授权时跳过，避免阻塞选图
     console.warn('[Privacy] 当前基础库不支持隐私授权 API，跳过')
     return
   }
@@ -28,20 +27,35 @@ export async function ensurePrivacyAuthorized(): Promise<void> {
     const setting: any = await new Promise((resolve, reject) => {
       wxApi.getPrivacySetting({ success: resolve, fail: reject })
     })
-    // needAuthorization 为 true 时表示需要用户授权
-    if (setting?.needAuthorization) {
-      await new Promise((resolve, reject) => {
-        wxApi.requirePrivacyAuthorize({ success: resolve, fail: reject })
-      })
+
+    // 已授权或不需要授权，直接放行
+    if (!setting?.needAuthorization) {
+      console.log('[Privacy] 隐私授权已完成或无需授权')
+      return
     }
+
+    // 需要授权时，弹出微信官方授权框
+    await new Promise((resolve, reject) => {
+      wxApi.requirePrivacyAuthorize({ success: resolve, fail: reject })
+    })
+    console.log('[Privacy] 用户已同意隐私授权')
   } catch (e: any) {
     console.error('[Privacy] 隐私授权失败:', e)
-    // 抛出明确错误，方便业务层提示用户
     const errMsg = e?.errMsg || e?.message || String(e) || ''
-    if (/not declared|privacy agreement|privacy/.test(errMsg.toLowerCase())) {
-      throw new Error('请先在小程序后台「用户隐私保护指引」中声明相册/相机权限后重试')
+    const lower = errMsg.toLowerCase()
+
+    // 未在隐私保护指引中声明相册/相机权限
+    if (/not declared|scope.*not.*declared|privacy agreement/.test(lower)) {
+      throw new Error('PRIVACY_NOT_DECLARED')
     }
-    throw e
+
+    // 用户拒绝授权：只给提示，不阻塞（用户可再次点击触发授权框）
+    if (/deny|refuse|reject|cancel|fail auth/.test(lower)) {
+      throw new Error('PRIVACY_DENIED')
+    }
+
+    // 其他未知错误默认放行，避免误杀正常流程
+    console.warn('[Privacy] 未知隐私授权错误，默认放行:', errMsg)
   }
 }
 
@@ -109,13 +123,17 @@ export function showUploadFailModal(detail: string, title = '上传失败') {
   Taro.hideLoading()
   const lower = (detail || '').toLowerCase()
   // 微信小程序隐私协议未配置/未授权时给出可操作的提示
-  if (/not declared|privacy agreement|privacy/.test(lower)) {
+  if (/not declared|privacy agreement/.test(lower) || /PRIVACY_NOT_DECLARED/.test(detail)) {
     Taro.showModal({
       title: '需要授权相册权限',
       content: '请先在小程序后台「设置-基本设置-用户隐私保护指引」中声明「相册/照片」权限，然后重新进入本页。',
       showCancel: false,
       confirmText: '知道了'
     })
+    return
+  }
+  if (/PRIVACY_DENIED/.test(detail)) {
+    Taro.showToast({ title: '需同意隐私授权后方可选图', icon: 'none' })
     return
   }
   Taro.showModal({
