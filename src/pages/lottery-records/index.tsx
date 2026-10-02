@@ -366,13 +366,13 @@ export default function LotteryRecordsPage() {
 
       {/* 核销码弹窗 */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="bg-white rounded-2xl p-6">
-          <DialogHeader>
+        <DialogContent className="bg-white rounded-2xl p-6 mx-auto items-center">
+          <DialogHeader className="w-full items-center">
             <DialogTitle className="text-center text-base font-semibold text-gray-900">
               {currentRecord?.prize_name || '核销码'}
             </DialogTitle>
           </DialogHeader>
-          <View className="flex flex-col items-center mt-2">
+          <View className="w-full flex flex-col items-center mt-2">
             {/* 具体商品（霸王餐显示所购套餐） */}
             {currentRecord?.product_name && (
               <Text className="block text-sm text-gray-600 mb-2 text-center">
@@ -382,37 +382,22 @@ export default function LotteryRecordsPage() {
             {/* 商家信息卡片：店名 + 地址 + 导航 */}
             {currentRecord?.shop_name && (
               <View
-                className="w-full bg-gray-50 rounded-xl p-3 mb-3 flex flex-row items-center overflow-hidden"
+                className="w-full bg-gray-50 rounded-xl p-4 mb-3 flex flex-col items-center text-center"
                 onClick={() => handleNavigateToShop()}
               >
-                <View
-                  className="flex-1 min-w-0 overflow-hidden"
-                  style={{ flex: '1 1 0', minWidth: 0 }}
-                >
-                  <Text className="block text-sm font-semibold text-gray-800 truncate">
-                    {currentRecord.shop_name}
-                  </Text>
-                  {currentRecord.shop_address && (
-                    <View className="flex items-center mt-1 overflow-hidden">
-                      <View className="shrink-0" style={{ flexShrink: 0 }}>
-                        <MapPin size={12} color="#9ca3af" />
-                      </View>
-                      <View
-                        className="flex-1 min-w-0 ml-1 overflow-hidden"
-                        style={{ flex: '1 1 0', minWidth: 0 }}
-                      >
-                        <Text className="block text-xs text-gray-500 truncate">
-                          {currentRecord.shop_address}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
+                <Text className="block text-sm font-semibold text-gray-800 text-center">
+                  {currentRecord.shop_name}
+                </Text>
+                {currentRecord.shop_address && (
+                  <View className="flex flex-row items-center justify-center mt-1">
+                    <MapPin size={12} color="#9ca3af" />
+                    <Text className="block text-xs text-gray-500 ml-1 text-center line-clamp-2">
+                      {currentRecord.shop_address}
+                    </Text>
+                  </View>
+                )}
                 {(currentRecord.shop_latitude && currentRecord.shop_longitude) || currentRecord.shop_address ? (
-                  <View
-                    className="flex items-center justify-center bg-[#FF4757] rounded-full px-3 py-2 ml-2 flex-shrink-0"
-                    style={{ flexShrink: 0 }}
-                  >
+                  <View className="flex items-center justify-center bg-[#FF4757] rounded-full px-3 py-2 mt-2">
                     <Navigation size={12} color="#ffffff" />
                     <Text className="text-xs text-white ml-1">导航</Text>
                   </View>
