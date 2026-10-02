@@ -98,7 +98,12 @@ interface HomeCache {
 const readHomeCache = (): HomeCache => {
   try {
     const v = Taro.getStorageSync(HOME_CACHE_KEY);
-    return v && typeof v === 'object' ? (v as HomeCache) : {};
+    if (!v || typeof v !== 'object') return {};
+    return {
+      rankShops: Array.isArray(v.rankShops) ? v.rankShops : [],
+      packages: Array.isArray(v.packages) ? v.packages : [],
+      winners: Array.isArray(v.winners) ? v.winners : [],
+    };
   } catch (err) {
     console.log('[首页] 读取本地缓存失败:', err);
     return {};
@@ -117,9 +122,9 @@ const persistHomeCache = (patch: HomeCache) => {
 const IndexPage = () => {
   // SWR 本地缓存：二次打开秒出首屏（缓存先渲染，网络回来后静默替换）
   const initialCache = useMemo(readHomeCache, []);
-  const [rankShops, setRankShops] = useState<RankShop[]>(initialCache.rankShops || []);
-  const [packages, setPackages] = useState<Package[]>(initialCache.packages || []);
-  const [winners, setWinners] = useState<WinnerRecord[]>(initialCache.winners || []);
+  const [rankShops, setRankShops] = useState<RankShop[]>(Array.isArray(initialCache.rankShops) ? initialCache.rankShops : []);
+  const [packages, setPackages] = useState<Package[]>(Array.isArray(initialCache.packages) ? initialCache.packages : []);
+  const [winners, setWinners] = useState<WinnerRecord[]>(Array.isArray(initialCache.winners) ? initialCache.winners : []);
   // 套餐加载态：无缓存时为 true（显示团团加载动画），网络返回后置 false
   const [pkgLoading, setPkgLoading] = useState(!initialCache.packages);
   const [lotteryResult, setLotteryResult] = useState<LotteryResult | null>(null);
@@ -248,7 +253,8 @@ const IndexPage = () => {
     try {
       const res = await Network.request({ url: '/api/merchants/free-meal-rank' });
       console.log('[首页] 霸王餐人气榜:', res.data);
-      const data = (res.data as any)?.data || [];
+      const raw = (res.data as any)?.data;
+      const data = Array.isArray(raw) ? raw : [];
       setRankShops(data);
       persistHomeCache({ rankShops: data });
     } catch (err) {
@@ -259,7 +265,8 @@ const IndexPage = () => {
   const fetchPackages = async () => {
     try {
       const res = await Network.request({ url: '/api/packages/active' });
-      const data = (res.data as any)?.data || (res.data as Package[]) || [];
+      const raw = (res.data as any)?.data ?? (res.data as Package[]);
+      const data = Array.isArray(raw) ? raw : [];
       setPackages(data);
       persistHomeCache({ packages: data });
     } catch (err) {
@@ -272,7 +279,8 @@ const IndexPage = () => {
   const fetchWinners = async () => {
     try {
       const res = await Network.request({ url: '/api/lottery/winners' });
-      const data = (res.data as any)?.data || (res.data as WinnerRecord[]) || [];
+      const raw = (res.data as any)?.data ?? (res.data as WinnerRecord[]);
+      const data = Array.isArray(raw) ? raw : [];
       setWinners(data);
       persistHomeCache({ winners: data });
     } catch (err) {
