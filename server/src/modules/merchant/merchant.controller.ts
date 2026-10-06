@@ -65,6 +65,16 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  @Get('code/:code')
+  @HttpCode(HttpStatus.OK)
+  async findByCode(@Param('code') code: string) {
+    const data = await this.merchantService.findByCode(code);
+    if (!data) {
+      return { code: 404, msg: '商家不存在', data: null };
+    }
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   async findById(@Param('id') id: string) {

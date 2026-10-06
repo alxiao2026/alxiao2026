@@ -30,11 +30,14 @@ interface Merchant {
   settlement_price?: number;
   wifi_ssid?: string;
   wifi_password?: string;
+  merchant_code?: string;
 }
 
 export default function MerchantAdmin() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchCode, setSearchCode] = useState('');
+  const [searching, setSearching] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -531,10 +534,59 @@ export default function MerchantAdmin() {
     }
   };
 
+  const handleSearchByCode = async () => {
+    const code = searchCode.trim().toUpperCase();
+    if (!code) {
+      Taro.showToast({ title: '请输入商家编码', icon: 'none' });
+      return;
+    }
+    if (!/^PP\d{9}$/.test(code)) {
+      Taro.showToast({ title: '编码格式为 PP + 9 位数字', icon: 'none' });
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await Network.request({ url: `/api/merchants/code/${code}`, method: 'GET' });
+      console.log('按编码查询商家响应:', res.data);
+      if (res.data?.code === 200 && res.data?.data) {
+        const merchant = res.data.data as Merchant;
+        Taro.navigateTo({ url: `/pages/merchant/index?id=${merchant.id}` });
+      } else {
+        Taro.showToast({ title: res.data?.msg || '商家不存在', icon: 'none' });
+      }
+    } catch (error) {
+      console.error('按编码查询商家失败:', error);
+      Taro.showToast({ title: '查询失败', icon: 'none' });
+    } finally {
+      setSearching(false);
+    }
+  };
+
   return (
     <View className="min-h-screen bg-gray-50">
+      {/* 按编码搜索 */}
+      <View className="p-4 pb-2">
+        <View style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <View style={{ flex: 1 }}>
+            <Input
+              className="w-full"
+              placeholder="输入商家编码 PP + 9 位数字"
+              value={searchCode}
+              onInput={(e) => setSearchCode(e.detail.value)}
+            />
+          </View>
+          <Button
+            className="bg-[#FF4757] text-white"
+            onClick={handleSearchByCode}
+            disabled={searching}
+          >
+            <Text className="text-white text-sm">{searching ? '查询中' : '查找'}</Text>
+          </Button>
+        </View>
+      </View>
+
       {/* 添加按钮 */}
-      <View className="p-4">
+      <View className="p-4 pt-2">
         <Button
           className="w-full flex items-center justify-center gap-2 bg-[#FF4757]"
           onClick={handleAdd}
@@ -582,6 +634,11 @@ export default function MerchantAdmin() {
                       {merchant.phone && (
                         <Text className="block text-xs text-gray-500 mt-1">
                           {merchant.phone}
+                        </Text>
+                      )}
+                      {merchant.merchant_code && (
+                        <Text className="block text-xs text-gray-500 mt-1">
+                          商家编码：{merchant.merchant_code}
                         </Text>
                       )}
                     </View>

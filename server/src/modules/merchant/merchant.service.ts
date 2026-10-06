@@ -80,6 +80,8 @@ export interface Merchant {
   settlement_price?: number;
   wifi_ssid?: string;
   wifi_password?: string;
+  /** 商家唯一编码，格式 PP + 9 位数字 */
+  merchant_code?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -174,6 +176,34 @@ export class MerchantService {
       .maybeSingle();
     if (error) throw new Error(`查询商家失败：${error.message}`);
     return data as Merchant | null;
+  }
+
+  async findByCode(code: string): Promise<Merchant | null> {
+    const normalized = (code || '').trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('商家编码不能为空');
+    if (!/^PP\d{9}$/.test(normalized)) {
+      throw new BadRequestException('商家编码格式不正确，应为 PP + 9 位数字');
+    }
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('*')
+      .eq('merchant_code', normalized)
+      .maybeSingle();
+    if (error) throw new Error(`按编码查询商家失败：${error.message}`);
+    return data as Merchant | null;
+  }
+
+  /** 生成唯一商家编码：PP + 9 位数字 */
+  private async generateMerchantCode(retries = 10): Promise<string> {
+    for (let i = 0; i < retries; i++) {
+      const suffix = Math.floor(Math.random() * 1_000_000_000)
+        .toString()
+        .padStart(9, '0');
+      const code = `PP${suffix}`;
+      const existing = await this.findByCode(code);
+      if (!existing) return code;
+    }
+    throw new Error('生成商家编码失败，请重试');
   }
 
   /** 消费者端获取店内免费 WiFi 信息（小程序 connectWifi 需要真实账号密码） */
@@ -346,6 +376,8 @@ export class MerchantService {
     if (!body.admin_password) throw new BadRequestException('管理员登录密码不能为空');
     validateSettlementConfig(body);
 
+    const merchantCode = await this.generateMerchantCode();
+
     const { data, error } = await this.client
       .from('merchants')
       .insert({
@@ -364,6 +396,7 @@ export class MerchantService {
         settlement_price: 0,
         wifi_ssid: (body.wifi_ssid || '').trim() || null,
         wifi_password: (body.wifi_password || '').trim() || null,
+        merchant_code: merchantCode,
       })
       .select()
       .single();

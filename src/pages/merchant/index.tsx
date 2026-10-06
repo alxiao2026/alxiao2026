@@ -40,6 +40,7 @@ interface Merchant {
   latitude?: string | number
   longitude?: string | number
   wifi_ssid?: string
+  merchant_code?: string
 }
 
 interface Prize {
@@ -375,6 +376,11 @@ export default function MerchantPage() {
                 {merchant.category && (
                   <Badge className="bg-gray-100 text-gray-600 border-transparent rounded-md">
                     <Text className="text-xs">{merchant.category}</Text>
+                  </Badge>
+                )}
+                {merchant.merchant_code && (
+                  <Badge className="bg-red-50 text-[#FF4757] border-transparent rounded-md">
+                    <Text className="text-xs">编码 {merchant.merchant_code}</Text>
                   </Badge>
                 )}
                 {prizes.length > 0 && (
