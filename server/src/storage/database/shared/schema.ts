@@ -1,334 +1,609 @@
-import { pgTable, serial, timestamp, varchar, text, boolean, numeric, integer, index, jsonb } from "drizzle-orm/pg-core"
+import { pgTable, serial, timestamp, text, check, integer, index, unique, varchar, numeric, boolean, foreignKey, uuid, jsonb, date, uniqueIndex, smallint } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+
+
 
 export const healthCheck = pgTable("health_check", {
 	id: serial().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
-// 商家表
-export const merchants = pgTable("merchants", {
-	id: serial().primaryKey(),
-	name: varchar("name", { length: 255 }).notNull(),
-	logo: varchar("logo", { length: 512 }),
-	images: jsonb("images"), // 商家环境图 URL 数组
-	address: varchar("address", { length: 512 }),
-	phone: varchar("phone", { length: 50 }),
-	business_hours: varchar("business_hours", { length: 100 }),
-	category: varchar("category", { length: 100 }),
-	description: text("description"),
-	latitude: varchar("latitude", { length: 32 }),
-	longitude: varchar("longitude", { length: 32 }),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
-	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+export const notificationTemplateConfigs = pgTable("notification_template_configs", {
+	type: text().primaryKey().notNull(),
+	templateId: text("template_id").default('').notNull(),
+	remark: text().default(''),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
-// 用户表（角色：consumer=普通消费者，merchant=商家用户，admin=系统管理员）
-export const users = pgTable("users", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	user_id: varchar("user_id", { length: 128 }).notNull().unique(),
-	nick_name: varchar("nick_name", { length: 128 }),
-	avatar_url: varchar("avatar_url", { length: 512 }),
-	phone: varchar("phone", { length: 20 }).unique(),
-	password: varchar("password", { length: 128 }),
-	login_type: varchar("login_type", { length: 20 }).notNull().default("password"), // password/sms/wechat
-	open_id: varchar("open_id", { length: 128 }),
-	gender: varchar("gender", { length: 10 }).notNull().default("unknown"),
-	birthday: varchar("birthday", { length: 20 }),
-	member_level: varchar("member_level", { length: 20 }).notNull().default("normal"),
-	points: integer("points").notNull().default(0),
-	total_orders: integer("total_orders").notNull().default(0),
-	total_spent: numeric("total_spent", { precision: 12, scale: 2 }).notNull().default("0"),
-	is_active: boolean("is_active").notNull().default(true),
-	role: varchar("role", { length: 20 }).notNull().default("consumer"), // consumer/merchant/admin
-	merchant_id: integer("merchant_id").references(() => merchants.id),
-	share_count: integer("share_count").notNull().default(0), // 分享次数（抽奖权重）
-	social_post_count: integer("social_post_count").notNull().default(0), // 社媒发布次数（抽奖权重）
-	last_login_at: timestamp("last_login_at", { withTimezone: true }),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }),
+export const wechatConfig = pgTable("wechat_config", {
+	id: integer().default(1).primaryKey().notNull(),
+	appid: text().default(''),
+	secret: text().default(''),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	mchId: text("mch_id").default(''),
+	mchSerialNo: text("mch_serial_no").default(''),
+	privateKey: text("private_key").default(''),
+	apiV3Key: text("api_v3_key").default(''),
+	payPublicKey: text("pay_public_key").default(''),
+	payPublicKeyId: text("pay_public_key_id").default(''),
+	payNotifyUrl: text("pay_notify_url").default(''),
 }, (table) => [
-	index("users_phone_idx").on(table.phone),
-	index("users_role_idx").on(table.role),
-	index("users_merchant_id_idx").on(table.merchant_id),
+	check("single_row", sql`id = 1`),
 ]);
 
-// 奖品表
-export const prizes = pgTable("prizes", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	name: varchar("name", { length: 128 }).notNull(),
-	description: text("description"),
-	probability: numeric("probability", { precision: 5, scale: 2 }).notNull().default("0"), // 概率百分比 0-100
-	image_url: varchar("image_url", { length: 512 }),
-	stock: integer("stock").notNull().default(0),
-	is_active: boolean("is_active").notNull().default(true),
-	prize_type: varchar("prize_type", { length: 20 }).notNull().default("coupon"), // coupon=优惠券 / product=实物
-	coupon_amount: numeric("coupon_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券面额（旧字段，折扣券模式不再使用）
-	coupon_min_spend: numeric("coupon_min_spend", { precision: 10, scale: 2 }).notNull().default("0"), // 优惠券最低消费（旧字段，折扣券模式不再使用）
-	discount_rate: numeric("discount_rate", { precision: 4, scale: 1 }).notNull().default("0"), // 折扣券折扣（如 8.5 表示 8.5 折）
-	discount_cap: numeric("discount_cap", { precision: 10, scale: 2 }).notNull().default("0"), // 折扣券单笔最高优惠金额（0 表示不封顶）
-	product_name: varchar("product_name", { length: 128 }).notNull().default(""), // 实物奖品名称
-	product_value: numeric("product_value", { precision: 10, scale: 2 }).notNull().default("0"), // 实物奖品价值
-	merchant_id: integer("merchant_id"), // 所属商家（空为平台奖品）
-	validity_hours: integer("validity_hours"), // 奖品兑换有效期（小时），空则跟随全局设置
-	daily_quota: integer("daily_quota"), // 每日最多中出份数（空/0 表示不限）
-	is_fallback: boolean("is_fallback").notNull().default(false), // 兜底奖：永远有货，承接兜底区间
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-	index("prizes_is_active_idx").on(table.is_active),
-	index("prizes_merchant_id_idx").on(table.merchant_id),
-]);
-
-// 订单表
-export const orders = pgTable("orders", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	user_id: varchar("user_id", { length: 128 }).notNull(),
-	nick_name: varchar("nick_name", { length: 128 }),
-	avatar_url: varchar("avatar_url", { length: 512 }),
-	package_id: varchar("package_id", { length: 36 }), // 关联套餐 ID（历史订单保留，不加强外键）
-	package_name: varchar("package_name", { length: 128 }).notNull().default("基础套餐"),
-	price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
-	original_price: numeric("original_price", { precision: 10, scale: 2 }),
-	quantity: integer("quantity").notNull().default(1), // 购买份数
-	verified_count: integer("verified_count").notNull().default(0), // 已核销份数
-	verification_code: varchar("verification_code", { length: 32 }), // 核销码
-	verified_at: timestamp("verified_at", { withTimezone: true }), // 最近核销时间
-	expire_at: timestamp("expire_at", { withTimezone: true }), // 过期时间
-	shop_name: varchar("shop_name", { length: 128 }), // 消费门店名称
-	order_no: varchar("order_no", { length: 64 }), // 订单编号
-	status: varchar("status", { length: 20 }).notNull().default("created"), // created=待支付 / paid=已支付待使用 / used=已核销 / closed=超时关闭 / expired=已过期 / refunded=已退款
-	original_amount: numeric("original_amount", { precision: 10, scale: 2 }), // 原始金额（后端算价：单价×数量）
-	discount_amount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 折扣券/霸王餐抵扣金额
-	pay_amount: numeric("pay_amount", { precision: 10, scale: 2 }), // 实付金额（原始金额-抵扣，≥0.01）
-	paid_at: timestamp("paid_at", { withTimezone: true }), // 支付完成时间
-	pay_expire_at: timestamp("pay_expire_at", { withTimezone: true }), // 支付截止时间（创建+15分钟）
-	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }), // 实际退款金额（=实付金额）
-	refunded_quantity: integer("refunded_quantity").notNull().default(0), // 已退款份数（部分退款累计）
-	shared: boolean("shared").notNull().default(false),
-	verified_by: varchar("verified_by", { length: 128 }), // 最近核销人账号ID
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-	index("orders_user_id_idx").on(table.user_id),
-	index("orders_status_idx").on(table.status),
-	index("orders_created_at_idx").on(table.created_at),
-	index("orders_package_id_idx").on(table.package_id),
-	index("orders_verification_code_idx").on(table.verification_code),
-	index("orders_order_no_idx").on(table.order_no),
-]);
-
-// 支付流水表（Mock 通道，未来对接微信支付）
-export const payments = pgTable("payments", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	order_id: varchar("order_id", { length: 36 }).notNull(), // 关联订单
-	user_id: varchar("user_id", { length: 128 }).notNull(),
-	prepay_id: varchar("prepay_id", { length: 64 }), // 预支付订单号（Mock 生成，未来为微信 prepay_id）
-	transaction_id: varchar("transaction_id", { length: 64 }), // 支付流水号（幂等键）
-	channel: varchar("channel", { length: 20 }).notNull().default("mock"), // mock / wechat
-	status: varchar("status", { length: 20 }).notNull().default("prepay"), // prepay/paid/failed/refunding/refunded
-	original_amount: numeric("original_amount", { precision: 10, scale: 2 }).notNull(), // 原始金额
-	discount_amount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"), // 抵扣金额
-	pay_amount: numeric("pay_amount", { precision: 10, scale: 2 }).notNull(), // 实付金额
-	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }).default("0"), // 已退金额
-	lottery_record_id: varchar("lottery_record_id", { length: 36 }), // 抵扣所用中奖记录
-	notify_count: integer("notify_count").notNull().default(0), // 回调次数（幂等审计）
-	paid_at: timestamp("paid_at", { withTimezone: true }),
-	refunded_at: timestamp("refunded_at", { withTimezone: true }),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-	index("payments_order_id_idx").on(table.order_id),
-	index("payments_user_id_idx").on(table.user_id),
-	index("payments_status_idx").on(table.status),
-]);
-
-// 基础套餐表
-export const packages = pgTable("packages", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	name: varchar("name", { length: 128 }).notNull(),
-	description: text("description"),
-	price: numeric("price", { precision: 10, scale: 2 }).notNull().default("9.90"),
-	original_price: numeric("original_price", { precision: 10, scale: 2 }),
-	badge: varchar("badge", { length: 64 }),
-	features: text("features"), // JSON array of feature strings
-	cover_image: varchar("cover_image", { length: 512 }), // 商品头图 URL
-	environment_images: text("environment_images"), // JSON array of environment image URLs
-	stock: integer("stock").notNull().default(0), // 库存数量
-	sale_start_date: varchar("sale_start_date", { length: 20 }), // 售卖开始日期
-	sale_end_date: varchar("sale_end_date", { length: 20 }), // 售卖结束日期
-	auto_renew: boolean("auto_renew").notNull().default(false), // 自动延期
-	category: text("category"), // 商品品类
-	package_type: varchar("package_type", { length: 20 }), // 团购类型：combo/voucher
-	merchant_id: varchar("merchant_id", { length: 36 }), // 商家 ID
-	combinations: jsonb("combinations"), // 商品搭配 JSON
-	// 交易规则
-	purchase_limit: integer("purchase_limit").default(0), // 限购数量，0为不限制
-	purchase_limit_type: varchar("purchase_limit_type", { length: 20 }).default("unlimited"), // unlimited/limited
-	purchase_limit_per_day: integer("purchase_limit_per_day").default(0), // 每人每天限购
-	purchase_limit_per_month: integer("purchase_limit_per_month").default(0), // 每人每月限购
-	valid_days: integer("valid_days").default(60), // 有效天数
-	valid_from_purchase: boolean("valid_from_purchase").default(true), // 购买当天可用
-	valid_date_type: varchar("valid_date_type", { length: 20 }).default("days"), // days/date
-	valid_date_start: varchar("valid_date_start", { length: 20 }), // 指定日期开始
-	valid_date_end: varchar("valid_date_end", { length: 20 }), // 指定日期结束
-	unavailable_dates: jsonb("unavailable_dates"), // 不可用日期 JSON
-	unavailable_date_type: varchar("unavailable_date_type", { length: 20 }).default("all"), // all/partial
-	unavailable_weekdays: jsonb("unavailable_weekdays"), // 每周几不可用
-	unavailable_holidays: jsonb("unavailable_holidays"), // 节假日不可用
-	available_time_type: varchar("available_time_type", { length: 20 }).default("business_hours"), // business_hours/specified
-	available_time_start: varchar("available_time_start", { length: 10 }), // 可用时段开始
-	available_time_end: varchar("available_time_end", { length: 10 }), // 可用时段结束
-	limit_usage_count: boolean("limit_usage_count").default(false), // 限制使用张数
-	usage_count_limit: integer("usage_count_limit"), // 限用张数上限
-	need_reservation: boolean("need_reservation").default(false), // 需要预约
-	reservation_hours: integer("reservation_hours"), // 需提前预约小时数
-	// 消费规则
-	other_discount: text("other_discount"), // 店内其他优惠
-	private_room: text("private_room"), // 包间说明
-	dine_in_type: varchar("dine_in_type", { length: 20 }).default("all"), // 堂食外带约定
-	has_extra_fee: boolean("has_extra_fee").default(false), // 是否有额外费用
-	extra_fees: jsonb("extra_fees"), // 额外费用 JSON
-	other_notes: text("other_notes"), // 其他说明
-	is_active: boolean("is_active").notNull().default(true),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-	index("packages_is_active_idx").on(table.is_active),
-]);
-
-// 抽奖记录表
-export const lotteryRecords = pgTable("lottery_records", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	order_id: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
-	user_id: varchar("user_id", { length: 128 }).notNull(),
-	prize_id: varchar("prize_id", { length: 36 }).references(() => prizes.id),
-	prize_name: varchar("prize_name", { length: 128 }),
-	is_winner: boolean("is_winner").notNull().default(false),
-	redemption_code: varchar("redemption_code", { length: 32 }),
-	refund_amount: numeric("refund_amount", { precision: 10, scale: 2 }),
-	refund_status: varchar("refund_status", { length: 32 }),
-	redeemed_at: timestamp("redeemed_at", { withTimezone: true }),
-	redeemed_by: varchar("redeemed_by", { length: 128 }),
-	user_weight: numeric("user_weight", { precision: 6, scale: 2 }).notNull().default("1"), // 用户权重倍数
-	ip_address: varchar("ip_address", { length: 64 }),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-	index("lottery_records_order_id_idx").on(table.order_id),
-	index("lottery_records_user_id_idx").on(table.user_id),
-	index("lottery_records_prize_id_idx").on(table.prize_id),
-]);
-
-// 抽奖设置表（键值对存储）
-export const lotterySettings = pgTable("lottery_settings", {
-	setting_key: varchar("setting_key", { length: 64 }).primaryKey(),
-	setting_value: text("setting_value"),
-	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-// 抽奖接口限流表（按 IP 滑动窗口）
-export const lotteryRateLimits = pgTable("lottery_rate_limits", {
-	ip_address: varchar("ip_address", { length: 64 }).primaryKey(),
-	request_count: integer("request_count").notNull().default(0),
-	window_start: timestamp("window_start", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// 抽奖操作日志表
-export const lotteryLogs = pgTable("lottery_logs", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	user_id: varchar("user_id", { length: 128 }).notNull(),
-	order_id: varchar("order_id", { length: 36 }),
-	action: varchar("action", { length: 32 }).notNull(),
-	user_weight: numeric("user_weight", { precision: 6, scale: 2 }).notNull().default("1"), // 用户权重倍数
-	prize_id: varchar("prize_id", { length: 36 }),
-	prize_name: varchar("prize_name", { length: 128 }),
-	is_winner: boolean("is_winner").notNull().default(false),
-	ip_address: varchar("ip_address", { length: 64 }),
-	user_agent: varchar("user_agent", { length: 512 }),
-	detail: jsonb("detail"),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-	index("lottery_logs_user_id_idx").on(table.user_id),
-	index("lottery_logs_order_id_idx").on(table.order_id),
-	index("lottery_logs_created_at_idx").on(table.created_at),
-]);
-
-// ============ 果园打卡模块（ orchard ） ============
-
-// 果园用户状态表（与 users 表通过 user_id 关联；积分直接共用 users.points）
-export const orchardUsers = pgTable("orchard_users", {
-	userId: varchar("user_id", { length: 128 }).primaryKey(),
-	growth: integer("growth").notNull().default(0), // 当前树累计水滴（克）
-	stage: integer("stage").notNull().default(0), // 当前阶段 0-5
-	harvested: integer("harvested").notNull().default(0), // 已收获棵数
-	availableTrees: integer("available_trees").notNull().default(0), // 果树库存（兑券货币）
-	plantedAt: timestamp("planted_at", { withTimezone: true }).defaultNow(),
-	cycleMakeupUsed: integer("cycle_makeup_used").notNull().default(0), // 本周期已用补浇卡
-	treeHistory: jsonb("tree_history").notNull().default([]), // 种植历史
-	wateredDates: jsonb("watered_dates").notNull().default([]), // 已浇水日期 ['YYYY-MM-DD']
-	currentStreak: integer("current_streak").notNull().default(0),
-	maxStreak: integer("max_streak").notNull().default(0),
-	lastWaterDate: varchar("last_water_date", { length: 20 }),
-	makeupCards: integer("makeup_cards").notNull().default(0), // 补浇卡
-	tasksState: jsonb("tasks_state").notNull().default({}), // 任务进度 { [taskId]: { progress, done, completedAt } }
-	taskDate: varchar("task_date", { length: 20 }), // 日常任务归属日期
-	mealsClaimed: jsonb("meals_claimed").notNull().default({}), // 三餐已领 { morning, noon, evening }
-	mealsDate: varchar("meals_date", { length: 20 }),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-// 水滴流水表
-export const orchardRecords = pgTable("orchard_records", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	userId: varchar("user_id", { length: 128 }).notNull(),
-	amount: integer("amount").notNull().default(0),
-	reason: varchar("reason", { length: 30 }).notNull(),
-	remark: varchar("remark", { length: 255 }),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-}, (table) => [
-	index("orchard_records_user_idx").on(table.userId),
-]);
-
-// 果园优惠券表（种树收获兑换；可在膨胀团下单时抵扣）
 export const orchardCoupons = pgTable("orchard_coupons", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	code: varchar("code", { length: 32 }).notNull().unique(),
+	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	code: varchar({ length: 32 }).notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	defId: varchar("def_id", { length: 20 }).notNull(),
-	type: varchar("type", { length: 20 }).notNull().default("amount"), // amount=满减券
-	title: varchar("title", { length: 128 }).notNull(),
-	threshold: numeric("threshold", { precision: 10, scale: 2 }).notNull().default("0"), // 满减门槛（元）
-	amount: numeric("amount", { precision: 10, scale: 2 }).notNull().default("0"), // 减免金额（元）
-	status: varchar("status", { length: 20 }).notNull().default("unused"), // unused/locked/used/expired
-	claimedAt: timestamp("claimed_at", { withTimezone: true }).defaultNow(),
-	usedAt: timestamp("used_at", { withTimezone: true }),
-	expireAt: timestamp("expire_at", { withTimezone: true }),
-	fromTree: integer("from_tree").notNull().default(0),
-	verifyOrderId: varchar("verify_order_id", { length: 36 }), // 锁定/核销关联的订单
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	type: varchar({ length: 20 }).default('amount').notNull(),
+	title: varchar({ length: 128 }).notNull(),
+	threshold: numeric({ precision: 10, scale:  2 }).default('0').notNull(),
+	amount: numeric({ precision: 10, scale:  2 }).default('0').notNull(),
+	status: varchar({ length: 20 }).default('unused').notNull(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
+	expireAt: timestamp("expire_at", { withTimezone: true, mode: 'string' }),
+	fromTree: integer("from_tree").default(0).notNull(),
+	verifyOrderId: varchar("verify_order_id", { length: 36 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("orchard_coupons_user_idx").on(table.userId),
-	index("orchard_coupons_code_idx").on(table.code),
+	index("orchard_coupons_code_idx").using("btree", table.code.asc().nullsLast().op("text_ops")),
+	index("orchard_coupons_user_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("orchard_coupons_code_key").on(table.code),
 ]);
 
-// 好友助力记录表
 export const orchardHelps = pgTable("orchard_helps", {
-	id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-	shareUserId: varchar("share_user_id", { length: 128 }).notNull(), // 被助力人
-	helperUserId: varchar("helper_user_id", { length: 128 }).notNull(), // 助力好友
+	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	shareUserId: varchar("share_user_id", { length: 128 }).notNull(),
+	helperUserId: varchar("helper_user_id", { length: 128 }).notNull(),
 	helperName: varchar("helper_name", { length: 128 }),
-	date: varchar("date", { length: 20 }).notNull(), // 助力日期（每日限 1 次）
-	claimed: boolean("claimed").notNull().default(false), // 奖励是否已结算
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	date: varchar({ length: 20 }).notNull(),
+	claimed: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("orchard_helps_share_idx").on(table.shareUserId),
-	index("orchard_helps_helper_idx").on(table.helperUserId),
+	index("orchard_helps_helper_idx").using("btree", table.helperUserId.asc().nullsLast().op("text_ops")),
+	index("orchard_helps_share_idx").using("btree", table.shareUserId.asc().nullsLast().op("text_ops")),
 ]);
 
-// 果园运营配置表（单行 id=1，设置后台读写）
+export const lotteryRecords = pgTable("lottery_records", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	orderId: varchar("order_id", { length: 36 }).notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	prizeId: varchar("prize_id", { length: 36 }),
+	prizeName: varchar("prize_name", { length: 128 }),
+	isWinner: boolean("is_winner").default(false).notNull(),
+	redemptionCode: varchar("redemption_code", { length: 64 }),
+	refundAmount: numeric("refund_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	refundStatus: varchar("refund_status", { length: 20 }).default('').notNull(),
+	userWeight: numeric("user_weight", { precision: 10, scale:  2 }).default('0').notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }).default('').notNull(),
+	nickName: varchar("nick_name", { length: 128 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	refundedAt: timestamp("refunded_at", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	redeemedAt: timestamp("redeemed_at", { withTimezone: true, mode: 'string' }),
+	redeemedBy: text("redeemed_by"),
+}, (table) => [
+	index("lottery_records_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("lottery_records_is_winner_idx").using("btree", table.isWinner.asc().nullsLast().op("bool_ops")),
+	index("lottery_records_order_id_idx").using("btree", table.orderId.asc().nullsLast().op("text_ops")),
+	index("lottery_records_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.prizeId],
+			foreignColumns: [prizes.id],
+			name: "lottery_records_prize_id_fkey"
+		}),
+]);
+
+export const shareQrCodes = pgTable("share_qr_codes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	code: varchar({ length: 16 }).notNull(),
+	page: varchar({ length: 128 }).notNull(),
+	params: jsonb().default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("share_qr_codes_code_key").on(table.code),
+]);
+
+export const merchantQualifications = pgTable("merchant_qualifications", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	businessLicenseUrl: text("business_license_url"),
+	foodLicenseUrl: text("food_license_url"),
+	otherLicenseUrls: jsonb("other_license_urls").default([]).notNull(),
+	bankAccountName: varchar("bank_account_name", { length: 100 }),
+	bankCardNo: varchar("bank_card_no", { length: 32 }),
+	bankName: varchar("bank_name", { length: 100 }),
+	bankBranch: varchar("bank_branch", { length: 200 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("merchant_qualifications_merchant_id_key").on(table.merchantId),
+]);
+
 export const orchardConfig = pgTable("orchard_config", {
-	id: integer("id").primaryKey().default(1),
-	config: jsonb("config").notNull().default({}),
-	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+	id: integer().default(1).primaryKey().notNull(),
+	config: jsonb().default({}).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	orderId: uuid("order_id").notNull(),
+	userId: text("user_id").notNull(),
+	prepayId: text("prepay_id"),
+	transactionId: text("transaction_id"),
+	channel: text().default('mock').notNull(),
+	status: text().default('prepay').notNull(),
+	originalAmount: numeric("original_amount", { precision: 10, scale:  2 }).notNull(),
+	discountAmount: numeric("discount_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	payAmount: numeric("pay_amount", { precision: 10, scale:  2 }).notNull(),
+	refundAmount: numeric("refund_amount", { precision: 10, scale:  2 }).default('0'),
+	lotteryRecordId: uuid("lottery_record_id"),
+	notifyCount: integer("notify_count").default(0).notNull(),
+	paidAt: timestamp("paid_at", { withTimezone: true, mode: 'string' }),
+	refundedAt: timestamp("refunded_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	orchardCouponCode: varchar("orchard_coupon_code", { length: 32 }),
+}, (table) => [
+	index("payments_orchard_coupon_idx").using("btree", table.orchardCouponCode.asc().nullsLast().op("text_ops")),
+	unique("payments_prepay_id_key").on(table.prepayId),
+	unique("payments_transaction_id_key").on(table.transactionId),
+]);
+
+export const settlementRevocations = pgTable("settlement_revocations", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	orderId: uuid("order_id").notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	packageId: uuid("package_id"),
+	revokeCount: integer("revoke_count").default(0).notNull(),
+	rollbackAmount: numeric("rollback_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	rollbackCommission: numeric("rollback_commission", { precision: 10, scale:  2 }).default('0').notNull(),
+	operatorId: text("operator_id"),
+	operatorName: text("operator_name"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_settlement_revocations_order").using("btree", table.orderId.asc().nullsLast().op("uuid_ops")),
+]);
+
+export const packageSettlementConfigs = pgTable("package_settlement_configs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	packageId: varchar("package_id").notNull(),
+	settlementType: integer("settlement_type").default(1).notNull(),
+	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
+	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }).default('0'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("package_settlement_configs_package_id_key").on(table.packageId),
+	check("package_settlement_configs_settlement_type_check", sql`settlement_type = ANY (ARRAY[1, 2])`),
+]);
+
+export const merchantBalances = pgTable("merchant_balances", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	balance: numeric({ precision: 10, scale:  2 }).default('0'),
+	totalSettled: numeric("total_settled", { precision: 10, scale:  2 }).default('0'),
+	totalWithdrawn: numeric("total_withdrawn", { precision: 10, scale:  2 }).default('0'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("merchant_balances_merchant_id_key").on(table.merchantId),
+]);
+
+export const lotteryLogs = pgTable("lottery_logs", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	orderId: varchar("order_id", { length: 36 }),
+	action: varchar({ length: 64 }).notNull(),
+	userWeight: numeric("user_weight", { precision: 10, scale:  2 }).default('0').notNull(),
+	prizeId: varchar("prize_id", { length: 36 }),
+	prizeName: varchar("prize_name", { length: 128 }),
+	isWinner: boolean("is_winner").default(false).notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }).default('').notNull(),
+	userAgent: text("user_agent"),
+	detail: jsonb(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("lottery_logs_action_idx").using("btree", table.action.asc().nullsLast().op("text_ops")),
+	index("lottery_logs_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("lottery_logs_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const lotteryRateLimits = pgTable("lottery_rate_limits", {
+	ipAddress: varchar("ip_address", { length: 45 }).primaryKey().notNull(),
+	requestCount: integer("request_count").default(1).notNull(),
+	windowStart: timestamp("window_start", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
+
+export const lotterySettings = pgTable("lottery_settings", {
+	settingKey: varchar("setting_key", { length: 64 }).primaryKey().notNull(),
+	settingValue: text("setting_value").notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
+
+export const orders = pgTable("orders", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	nickName: varchar("nick_name", { length: 128 }),
+	avatarUrl: varchar("avatar_url", { length: 512 }),
+	packageId: varchar("package_id", { length: 36 }),
+	packageName: varchar("package_name", { length: 128 }).notNull(),
+	price: numeric({ precision: 10, scale:  2 }).notNull(),
+	originalPrice: numeric("original_price", { precision: 10, scale:  2 }),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	shared: boolean().default(false).notNull(),
+	quantity: integer().default(1).notNull(),
+	verifiedCount: integer("verified_count").default(0).notNull(),
+	verificationCode: varchar("verification_code", { length: 20 }),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	expireAt: timestamp("expire_at", { withTimezone: true, mode: 'string' }),
+	shopName: varchar("shop_name", { length: 128 }),
+	orderNo: varchar("order_no", { length: 64 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	couponRecordId: text("coupon_record_id"),
+	couponDiscount: numeric("coupon_discount", { precision: 10, scale:  2 }),
+	verifiedBy: text("verified_by"),
+	refundAmount: numeric("refund_amount", { precision: 10, scale:  2 }),
+	payAmount: numeric("pay_amount", { precision: 10, scale:  2 }),
+	originalAmount: numeric("original_amount", { precision: 10, scale:  2 }),
+	discountAmount: numeric("discount_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	paidAt: timestamp("paid_at", { withTimezone: true, mode: 'string' }),
+	payExpireAt: timestamp("pay_expire_at", { withTimezone: true, mode: 'string' }),
+	refundedQuantity: integer("refunded_quantity").default(0).notNull(),
+	pointsAwarded: integer("points_awarded").default(0).notNull(),
+}, (table) => [
+	index("orders_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("orders_package_id_idx").using("btree", table.packageId.asc().nullsLast().op("text_ops")),
+	index("orders_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("orders_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.packageId],
+			foreignColumns: [packages.id],
+			name: "orders_package_id_fkey"
+		}),
+]);
+
+export const merchants = pgTable("merchants", {
+	id: serial().primaryKey().notNull(),
+	name: varchar({ length: 128 }).notNull(),
+	logo: varchar({ length: 512 }),
+	images: jsonb(),
+	address: text(),
+	phone: varchar({ length: 20 }),
+	businessHours: varchar("business_hours", { length: 128 }),
+	category: varchar({ length: 64 }),
+	description: text(),
+	latitude: varchar({ length: 20 }),
+	longitude: varchar({ length: 20 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	settlementType: integer("settlement_type"),
+	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }),
+	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }),
+	wifiSsid: varchar("wifi_ssid", { length: 64 }),
+	wifiPassword: varchar("wifi_password", { length: 64 }),
+	merchantCode: varchar("merchant_code"),
+	marketingFeatures: jsonb("marketing_features").default({"wifi":true}),
+}, (table) => [
+	unique("merchants_merchant_code_key").on(table.merchantCode),
+]);
+
+export const merchantMarketingActivities = pgTable("merchant_marketing_activities", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+	type: varchar({ length: 50 }).default('coupon').notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	status: varchar({ length: 20 }).default('draft').notNull(),
+	startTime: timestamp("start_time", { withTimezone: true, mode: 'string' }),
+	endTime: timestamp("end_time", { withTimezone: true, mode: 'string' }),
+	config: jsonb().default({}).notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("merchant_marketing_activities_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("merchant_marketing_activities_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("merchant_marketing_activities_sort_idx").using("btree", table.sortOrder.asc().nullsLast().op("int4_ops")),
+]);
+
+export const prizes = pgTable("prizes", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	name: varchar({ length: 128 }).notNull(),
+	description: text(),
+	probability: numeric({ precision: 10, scale:  4 }).default('0').notNull(),
+	imageUrl: varchar("image_url", { length: 512 }),
+	stock: integer().default(0).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	prizeType: varchar("prize_type", { length: 20 }).default('coupon').notNull(),
+	couponAmount: numeric("coupon_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	couponMinSpend: numeric("coupon_min_spend", { precision: 10, scale:  2 }).default('0').notNull(),
+	productName: varchar("product_name", { length: 128 }).default('').notNull(),
+	productValue: numeric("product_value", { precision: 10, scale:  2 }).default('0').notNull(),
+	merchantId: integer("merchant_id"),
+	validityHours: integer("validity_hours"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	dailyQuota: integer("daily_quota"),
+	isFallback: boolean("is_fallback").default(false),
+	discountRate: numeric("discount_rate", { precision: 4, scale:  1 }).default('0').notNull(),
+	discountCap: numeric("discount_cap", { precision: 10, scale:  2 }).default('0').notNull(),
+}, (table) => [
+	index("prizes_is_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
+	index("prizes_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("prizes_stock_idx").using("btree", table.stock.asc().nullsLast().op("int4_ops")),
+]);
+
+export const packages = pgTable("packages", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	merchantId: varchar("merchant_id", { length: 36 }),
+	name: varchar({ length: 128 }).notNull(),
+	description: text(),
+	price: numeric({ precision: 10, scale:  2 }).notNull(),
+	originalPrice: numeric("original_price", { precision: 10, scale:  2 }),
+	badge: varchar({ length: 64 }),
+	features: text(),
+	coverImage: varchar("cover_image", { length: 512 }),
+	environmentImages: text("environment_images"),
+	stock: integer().default(0).notNull(),
+	saleStartDate: varchar("sale_start_date", { length: 20 }),
+	saleEndDate: varchar("sale_end_date", { length: 20 }),
+	autoRenew: boolean("auto_renew").default(false).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	purchaseLimit: integer("purchase_limit"),
+	purchaseLimitType: varchar("purchase_limit_type", { length: 20 }),
+	purchaseLimitPerPerson: integer("purchase_limit_per_person"),
+	purchaseLimitPerDay: integer("purchase_limit_per_day"),
+	purchaseLimitPerMonth: integer("purchase_limit_per_month"),
+	validDays: integer("valid_days"),
+	validFromPurchase: boolean("valid_from_purchase"),
+	validDateType: varchar("valid_date_type", { length: 20 }),
+	validDateStart: varchar("valid_date_start", { length: 20 }),
+	validDateEnd: varchar("valid_date_end", { length: 20 }),
+	unavailableDates: jsonb("unavailable_dates"),
+	unavailableDateType: varchar("unavailable_date_type", { length: 20 }),
+	unavailableWeekdays: jsonb("unavailable_weekdays"),
+	unavailableHolidays: jsonb("unavailable_holidays"),
+	availableTimeType: varchar("available_time_type", { length: 20 }),
+	availableTimeStart: varchar("available_time_start", { length: 10 }),
+	availableTimeEnd: varchar("available_time_end", { length: 10 }),
+	limitUsageCount: boolean("limit_usage_count"),
+	usageCountLimit: integer("usage_count_limit"),
+	needReservation: boolean("need_reservation"),
+	reservationHours: integer("reservation_hours"),
+	otherDiscount: text("other_discount"),
+	privateRoom: varchar("private_room", { length: 20 }),
+	dineInType: varchar("dine_in_type", { length: 20 }),
+	hasExtraFee: boolean("has_extra_fee"),
+	extraFees: jsonb("extra_fees"),
+	otherNotes: text("other_notes"),
+	category: varchar({ length: 64 }),
+	packageType: varchar("package_type", { length: 20 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	combinations: jsonb(),
+}, (table) => [
+	index("packages_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("packages_is_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
+	index("packages_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("text_ops")),
+]);
+
+export const users = pgTable("users", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	nickName: varchar("nick_name", { length: 128 }),
+	avatarUrl: varchar("avatar_url", { length: 512 }),
+	phone: varchar({ length: 20 }),
+	password: varchar({ length: 255 }),
+	loginType: varchar("login_type", { length: 20 }).default('wechat').notNull(),
+	openId: varchar("open_id", { length: 128 }),
+	gender: varchar({ length: 10 }).default('unknown').notNull(),
+	birthday: varchar({ length: 20 }),
+	memberLevel: varchar("member_level", { length: 20 }).default('normal').notNull(),
+	points: integer().default(0).notNull(),
+	totalOrders: integer("total_orders").default(0).notNull(),
+	totalSpent: numeric("total_spent", { precision: 12, scale:  2 }).default('0').notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	role: varchar({ length: 20 }).default('consumer').notNull(),
+	merchantId: integer("merchant_id"),
+	shareCount: integer("share_count").default(0).notNull(),
+	socialPostCount: integer("social_post_count").default(0).notNull(),
+	lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("users_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("users_phone_idx").using("btree", table.phone.asc().nullsLast().op("text_ops")),
+	index("users_role_idx").using("btree", table.role.asc().nullsLast().op("text_ops")),
+	index("users_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("users_phone_unique").on(table.phone),
+]);
+
+export const customerServiceConfig = pgTable("customer_service_config", {
+	id: serial().primaryKey().notNull(),
+	enabled: boolean().default(true),
+	qrcodeUrl: varchar("qrcode_url", { length: 500 }),
+	title: varchar({ length: 64 }).default('联系客服'),
+	welcomeText: varchar("welcome_text", { length: 255 }).default('扫码添加客服企业微信，有问题随时找我们'),
+	serviceId: varchar("service_id", { length: 64 }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	communityEnabled: boolean("community_enabled").default(false),
+	communityTitle: varchar("community_title").default('加店长领券享88折'),
+	communitySubtitle: varchar("community_subtitle").default('进群抽免单，天天享9折'),
+	communityButtonText: varchar("community_button_text").default('长按识别二维码加店长'),
+	communityQrcodeUrl: varchar("community_qrcode_url"),
+});
+
+export const withdrawalRecords = pgTable("withdrawal_records", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	amount: numeric({ precision: 10, scale:  2 }).notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	failureReason: text("failure_reason"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	paymentProofImage: text("payment_proof_image"),
+	paymentTransactionNo: varchar("payment_transaction_no", { length: 100 }),
+	paymentProofNote: text("payment_proof_note"),
+});
+
+export const distributionConfigs = pgTable("distribution_configs", {
+	id: serial().primaryKey().notNull(),
+	enabled: boolean().default(true),
+	level1Rate: numeric("level1_rate", { precision: 5, scale:  2 }).default('10.00'),
+	level2Rate: numeric("level2_rate", { precision: 5, scale:  2 }).default('5.00'),
+	level3Rate: numeric("level3_rate", { precision: 5, scale:  2 }).default('2.00'),
+	minWithdraw: numeric("min_withdraw", { precision: 10, scale:  2 }).default('10.00'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	bindExpireDays: integer("bind_expire_days").default(0),
+	merchantRate: numeric("merchant_rate").default('70'),
+	poolRate: numeric("pool_rate").default('20'),
+	platformRate: numeric("platform_rate").default('10'),
+	coolingDays: integer("cooling_days").default(7),
+});
+
+export const orchardRecords = pgTable("orchard_records", {
+	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	amount: integer().default(0).notNull(),
+	reason: varchar({ length: 30 }).notNull(),
+	remark: varchar({ length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("orchard_records_user_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const settlementRecords = pgTable("settlement_records", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	orderId: varchar("order_id").notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	packageId: varchar("package_id").notNull(),
+	orderAmount: numeric("order_amount", { precision: 10, scale:  2 }).notNull(),
+	settlementType: integer("settlement_type").notNull(),
+	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
+	commissionAmount: numeric("commission_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	settlementAmount: numeric("settlement_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	settlementDate: date("settlement_date").notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	settledAt: timestamp("settled_at", { withTimezone: true, mode: 'string' }),
+	withdrawnAt: timestamp("withdrawn_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	verifiedQty: integer("verified_qty").default(0).notNull(),
+	rebateAmount: numeric("rebate_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.orderId],
+			foreignColumns: [orders.id],
+			name: "settlement_records_order_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.packageId],
+			foreignColumns: [packages.id],
+			name: "settlement_records_package_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "settlement_records_merchant_id_fkey"
+		}),
+	unique("settlement_records_order_id_key").on(table.orderId),
+]);
+
+export const distributionWithdraws = pgTable("distribution_withdraws", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id", { length: 64 }).notNull(),
+	amount: numeric({ precision: 12, scale:  2 }).notNull(),
+	status: varchar({ length: 16 }).default('pending'),
+	rejectReason: varchar("reject_reason", { length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_dist_withdraws_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const distributionCommissions = pgTable("distribution_commissions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	orderNo: varchar("order_no", { length: 64 }).notNull(),
+	buyerId: varchar("buyer_id", { length: 64 }).notNull(),
+	beneficiaryId: varchar("beneficiary_id", { length: 64 }).notNull(),
+	level: smallint().notNull(),
+	orderAmount: numeric("order_amount", { precision: 12, scale:  2 }).notNull(),
+	commissionAmount: numeric("commission_amount", { precision: 12, scale:  2 }).notNull(),
+	status: varchar({ length: 16 }).default('settled'),
+	remark: varchar({ length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	settleStatus: varchar("settle_status").default('settled'),
+	availableAt: timestamp("available_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_dist_commissions_beneficiary").using("btree", table.beneficiaryId.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
+	uniqueIndex("uq_dist_commissions_order_level").using("btree", table.orderNo.asc().nullsLast().op("int2_ops"), table.beneficiaryId.asc().nullsLast().op("int2_ops"), table.level.asc().nullsLast().op("int2_ops")),
+]);
+
+export const notifications = pgTable("notifications", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id").notNull(),
+	type: varchar().notNull(),
+	title: varchar().notNull(),
+	content: text().notNull(),
+	data: jsonb(),
+	isRead: boolean("is_read").default(false),
+	wechatSent: boolean("wechat_sent").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_notifications_user").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.isRead.asc().nullsLast().op("bool_ops"), table.createdAt.desc().nullsFirst().op("bool_ops")),
+]);
+
+export const notificationRemindLogs = pgTable("notification_remind_logs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	remindType: varchar("remind_type").notNull(),
+	targetId: varchar("target_id").notNull(),
+	remindPoint: varchar("remind_point").notNull(),
+	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("notification_remind_logs_remind_type_target_id_remind_point_key").on(table.remindType, table.targetId, table.remindPoint),
+]);
+
+export const distributionMembers = pgTable("distribution_members", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id", { length: 64 }).notNull(),
+	inviterId: varchar("inviter_id", { length: 64 }),
+	status: varchar({ length: 16 }).default('active'),
+	totalCommission: numeric("total_commission", { precision: 12, scale:  2 }).default('0'),
+	availableCommission: numeric("available_commission", { precision: 12, scale:  2 }).default('0'),
+	withdrawnCommission: numeric("withdrawn_commission", { precision: 12, scale:  2 }).default('0'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	boundAt: timestamp("bound_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	pendingCommission: numeric("pending_commission").default('0'),
+}, (table) => [
+	index("idx_dist_members_inviter").using("btree", table.inviterId.asc().nullsLast().op("text_ops")),
+	unique("distribution_members_user_id_key").on(table.userId),
+]);
+
+export const orchardUsers = pgTable("orchard_users", {
+	userId: varchar("user_id", { length: 128 }).primaryKey().notNull(),
+	growth: integer().default(0).notNull(),
+	stage: integer().default(0).notNull(),
+	harvested: integer().default(0).notNull(),
+	availableTrees: integer("available_trees").default(0).notNull(),
+	plantedAt: timestamp("planted_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	cycleMakeupUsed: integer("cycle_makeup_used").default(0).notNull(),
+	treeHistory: jsonb("tree_history").default([]).notNull(),
+	wateredDates: jsonb("watered_dates").default([]).notNull(),
+	currentStreak: integer("current_streak").default(0).notNull(),
+	maxStreak: integer("max_streak").default(0).notNull(),
+	lastWaterDate: varchar("last_water_date", { length: 20 }),
+	makeupCards: integer("makeup_cards").default(0).notNull(),
+	tasksState: jsonb("tasks_state").default({}).notNull(),
+	taskDate: varchar("task_date", { length: 20 }),
+	mealsClaimed: jsonb("meals_claimed").default({}).notNull(),
+	mealsDate: varchar("meals_date", { length: 20 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });

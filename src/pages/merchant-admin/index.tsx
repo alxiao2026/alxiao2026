@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Wifi, LoaderCircle } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Wifi, LoaderCircle, Megaphone } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
 import { isMiniAppEnv, chooseImageH5, uploadLocalImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
@@ -656,6 +656,16 @@ export default function MerchantAdmin() {
                       )}
                     </View>
                     <View className="flex items-center gap-2 ml-4">
+                      <View
+                        className="p-2 rounded-lg bg-red-50"
+                        onClick={() =>
+                          Taro.navigateTo({
+                            url: `/pages/merchant-marketing/index?merchant_id=${merchant.id}`,
+                          })
+                        }
+                      >
+                        <Megaphone size={16} color="#FF4757" />
+                      </View>
                       <View
                         className="p-2 rounded-lg bg-red-50"
                         onClick={() =>

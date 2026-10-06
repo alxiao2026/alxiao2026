@@ -19,6 +19,7 @@ import { ShareModule } from './modules/share/share.module';
 import { DistributionModule } from './modules/distribution/distribution.module';
 import { CustomerServiceModule } from './modules/customer-service/customer-service.module';
 import { OrchardModule } from './modules/orchard/orchard.module';
+import { MerchantMarketingModule } from './modules/merchant-marketing/merchant-marketing.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { OrchardModule } from './modules/orchard/orchard.module';
     DistributionModule,
     CustomerServiceModule,
     OrchardModule,
+    MerchantMarketingModule,
     QiniuModule,
   ],
   controllers: [AppController],
