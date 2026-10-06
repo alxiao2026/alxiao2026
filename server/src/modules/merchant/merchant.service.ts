@@ -224,6 +224,23 @@ export class MerchantService {
     };
   }
 
+  /** 管理端：仅更新门店 WiFi 信息 */
+  async updateWifi(id: number, body: { wifi_ssid?: string; wifi_password?: string }) {
+    const { data, error } = await this.client
+      .from('merchants')
+      .update({
+        wifi_ssid: (body.wifi_ssid || '').trim() || null,
+        wifi_password: (body.wifi_password || '').trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(`更新 WiFi 失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+    return data;
+  }
+
   /**
    * 商家详情 + 该商家上架奖品 + 团购套餐（商家首页用）
    */

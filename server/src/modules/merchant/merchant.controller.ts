@@ -65,6 +65,17 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 管理端：更新门店 WiFi 信息 */
+  @Put(':id/wifi')
+  @HttpCode(HttpStatus.OK)
+  async updateWifi(
+    @Param('id') id: string,
+    @Body() body: { wifi_ssid?: string; wifi_password?: string },
+  ) {
+    const data = await this.merchantService.updateWifi(Number(id), body);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('code/:code')
   @HttpCode(HttpStatus.OK)
   async findByCode(@Param('code') code: string) {
