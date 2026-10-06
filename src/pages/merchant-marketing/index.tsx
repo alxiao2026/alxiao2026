@@ -27,14 +27,13 @@ export default function MerchantMarketingPage() {
   const [merchantId, setMerchantId] = useState('')
   const [ssid, setSsid] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [fetchingWifi, setFetchingWifi] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({})
 
-  const hasEnabledModule = Object.values(marketingFeatures).some(Boolean)
   const wifiModuleEnabled = !!marketingFeatures.wifi
 
   useEffect(() => {
@@ -80,31 +79,21 @@ export default function MerchantMarketingPage() {
     }
   }
 
-  const enabled = !!marketingFeatures.wifi
   const keywordMatch =
     !searchKeyword.trim() ||
     MODULE_NAME.includes(searchKeyword.trim()) ||
     MODULE_TAG.includes(searchKeyword.trim())
 
-  const handleToggle = async (checked: boolean) => {
-    if (!merchantId) return
-    setSaving(true)
-    try {
-      const nextFeatures = { ...marketingFeatures, wifi: checked }
-      const res = await Network.request({
-        url: `/api/merchants/${merchantId}/marketing-features`,
-        method: 'PUT',
-        data: { features: nextFeatures },
+  const handleCardClick = () => {
+    if (!wifiModuleEnabled) {
+      Taro.showToast({
+        title: '请联系系统管理员打开该功能后，再进入设置',
+        icon: 'none',
+        duration: 2500,
       })
-      console.log('updateMarketingFeatures res', res)
-      setMarketingFeatures(nextFeatures)
-      Taro.showToast({ title: checked ? '已启用' : '已停用', icon: 'success' })
-    } catch (err) {
-      console.error('updateMarketingFeatures err', err)
-      Taro.showToast({ title: '操作失败', icon: 'none' })
-    } finally {
-      setSaving(false)
+      return
     }
+    setDialogOpen(true)
   }
 
   const handleFetchCurrentWifi = async () => {
@@ -170,32 +159,26 @@ export default function MerchantMarketingPage() {
     <View className="min-h-screen bg-gray-50">
       <View className="px-4 pt-5 pb-3">
         <View className="flex items-baseline gap-2 mb-1">
-          <Text className="block text-xl font-bold text-gray-900">
-            营销模块管理
-          </Text>
-          <Text className="block text-sm text-gray-500">
-            方可进入配置营销参数
-          </Text>
+          <Text className="block text-xl font-bold text-gray-900">营销模块管理</Text>
+          <Text className="block text-sm text-gray-500">方可进入配置营销参数</Text>
         </View>
-        <Text className="block text-xs text-gray-400">
-          开启模块后，方可进入配置营销参数
-        </Text>
+        <Text className="block text-xs text-gray-400">开启模块后，方可进入配置营销参数</Text>
       </View>
 
       <View className="px-4 pb-3">
         <View className="flex items-center gap-2">
           <View className="flex items-center gap-1 bg-white rounded-lg px-3 py-2 border border-gray-200">
-            <Text className="block text-sm text-gray-600">模块状态</Text>
+            <Text className="text-sm text-gray-600">模块状态</Text>
             <ChevronDown size={14} color="#999" />
           </View>
           <View className="flex items-center gap-1 bg-white rounded-lg px-3 py-2 border border-gray-200">
-            <Text className="block text-sm text-gray-600">搜索</Text>
+            <Text className="text-sm text-gray-600">搜索</Text>
             <ChevronDown size={14} color="#999" />
           </View>
           <View className="flex-1 flex items-center gap-1 bg-white rounded-lg px-3 py-2 border border-gray-200">
             <Search size={14} color="#999" />
             <Input
-              className="flex-1 text-sm bg-transparent"
+              className="flex-1 text-sm border-0 focus-visible:ring-0"
               placeholder="搜索营销模块名称"
               value={searchKeyword}
               onInput={(e) => setSearchKeyword(e.detail.value)}
@@ -205,82 +188,69 @@ export default function MerchantMarketingPage() {
       </View>
 
       <View className="px-4 pb-20">
-        {!hasEnabledModule ? (
-          <View className="flex flex-col items-center justify-center py-20 px-8">
-            <View className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Wifi size={28} color="#9ca3af" />
-            </View>
-            <Text className="block text-base font-bold text-gray-700 mb-2">暂无可用营销模块</Text>
-            <Text className="block text-sm text-gray-400 text-center leading-relaxed">
-              请联系系统管理员打开该功能后，再进入设置
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View className="grid grid-cols-2 gap-3">
-              {wifiModuleEnabled && keywordMatch && (
-                <View
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
-                  onClick={() => setDialogOpen(true)}
-                >
-                  <View className="flex items-start justify-between mb-3">
-                    <View className="flex items-center gap-2">
-                      <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                        <Wifi size={20} color="#ef4444" />
-                      </View>
-                      <Text className="block text-base font-bold text-gray-900 leading-tight">
-                        {MODULE_NAME}
-                      </Text>
-                    </View>
-                    <View className="shrink-0 ml-2">
-                      <Switch
-                        checked={enabled}
-                        onCheckedChange={handleToggle}
-                        disabled={saving || loading}
-                      />
-                    </View>
-                  </View>
-
-                  <View className="mb-3">
-                    <Text className="inline-block text-xs font-medium text-red-500 bg-red-50 px-2 py-1 rounded">
-                      {MODULE_TAG}
-                    </Text>
-                  </View>
-
-                  <Text className="block text-xs text-gray-500 leading-relaxed mb-4">
-                    {MODULE_DESC}
-                  </Text>
-
-                  <View className="flex items-center justify-between">
-                    <Text className="block text-xs text-gray-400">
-                      {enabled ? '已启用' : '已停用'}
-                    </Text>
-                    <View
-                      className={cn(
-                        'px-3 py-1 rounded-full',
-                        enabled ? 'bg-red-500' : 'bg-gray-200'
-                      )}
-                    >
-                      <Text
-                        className={cn(
-                          'block text-xs font-medium',
-                          enabled ? 'text-white' : 'text-gray-600'
-                        )}
-                      >
-                        {enabled ? '已启用' : '已停用'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {!keywordMatch && (
-              <View className="flex items-center justify-center py-20">
-                <Text className="block text-sm text-gray-400">未找到匹配模块</Text>
-              </View>
+        {keywordMatch && (
+          <View
+            className={cn(
+              'bg-white rounded-2xl p-4 border border-gray-100 shadow-sm',
+              !wifiModuleEnabled && 'opacity-70'
             )}
-          </>
+            onClick={handleCardClick}
+          >
+            <View className="flex items-start justify-between mb-3">
+              <View className="flex items-center gap-2">
+                <View
+                  className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center',
+                    wifiModuleEnabled ? 'bg-red-50' : 'bg-gray-100'
+                  )}
+                >
+                  <Wifi size={20} color={wifiModuleEnabled ? '#ef4444' : '#9ca3af'} />
+                </View>
+                <Text
+                  className={cn(
+                    'block text-base font-bold',
+                    wifiModuleEnabled ? 'text-gray-900' : 'text-gray-500'
+                  )}
+                >
+                  {MODULE_NAME}
+                </Text>
+              </View>
+              <Switch checked={wifiModuleEnabled} disabled />
+            </View>
+            <View className="mb-3">
+              <Text
+                className={cn(
+                  'inline-block text-xs font-medium px-2 py-1 rounded',
+                  wifiModuleEnabled ? 'text-red-500 bg-red-50' : 'text-gray-500 bg-gray-100'
+                )}
+              >
+                {MODULE_TAG}
+              </Text>
+            </View>
+            <Text className="block text-xs text-gray-500 leading-relaxed mb-4">
+              {MODULE_DESC}
+            </Text>
+            <View className="flex items-center justify-between">
+              <Text className="block text-xs text-gray-400">
+                {wifiModuleEnabled ? '已启用' : '未启用'}
+              </Text>
+              <View
+                className={cn(
+                  'px-3 py-1 rounded-full',
+                  wifiModuleEnabled ? 'bg-red-500' : 'bg-gray-200'
+                )}
+              >
+                <Text
+                  className={cn(
+                    'text-xs font-medium',
+                    wifiModuleEnabled ? 'text-white' : 'text-gray-600'
+                  )}
+                >
+                  {wifiModuleEnabled ? '已启用' : '未启用'}
+                </Text>
+              </View>
+            </View>
+          </View>
         )}
       </View>
 
@@ -289,64 +259,66 @@ export default function MerchantMarketingPage() {
           <DialogHeader>
             <DialogTitle>门店WiFi链接模块</DialogTitle>
           </DialogHeader>
+          <View className="py-2">
+            <View className="bg-red-50 rounded-xl p-3 mb-4">
+              <View className="flex flex-row items-center mb-1">
+                <Wifi size={16} color="#ef4444" />
+                <Text className="block text-sm font-medium text-gray-800 ml-1">店内免费 WiFi</Text>
+                <View className="ml-2 px-2 py-1 bg-red-500 rounded">
+                  <Text className="text-xs font-bold text-white">FREE</Text>
+                </View>
+              </View>
+              <Text className="block text-xs text-gray-500 leading-relaxed">
+                配置后消费者在商家页可一键连接店内 WiFi；手机连上店内 WiFi 时点「获取当前」可自动填入名称，密码需手动输入
+              </Text>
+            </View>
 
-          <View className="mt-2">
-            <Text className="block text-sm font-medium text-gray-800 mb-2">
-              WiFi 名称（SSID）
-            </Text>
-            <View style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-              <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
+            <View className="mb-4">
+              <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 名称（SSID）</Text>
+              <View className="flex items-center gap-2">
+                <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
+                  <Input
+                    className="w-full bg-transparent border-0 focus-visible:ring-0 p-0"
+                    placeholder="请输入 WiFi 名称"
+                    value={ssid}
+                    onInput={(e) => setSsid(e.detail.value)}
+                  />
+                </View>
+                <Button
+                  size="sm"
+                  className="bg-red-500 shrink-0"
+                  onClick={handleFetchCurrentWifi}
+                  disabled={fetchingWifi}
+                >
+                  {fetchingWifi ? (
+                    <LoaderCircle size={16} color="#fff" className="animate-spin mr-1" />
+                  ) : (
+                    <Wifi size={16} color="#fff" className="mr-1" />
+                  )}
+                  <Text className="text-white text-sm">获取当前</Text>
+                </Button>
+              </View>
+            </View>
+
+            <View className="mb-4">
+              <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 密码</Text>
+              <View className="bg-gray-50 rounded-xl px-4 py-3">
                 <Input
-                  className="w-full bg-transparent"
-                  placeholder="请输入 WiFi 名称"
-                  value={ssid}
-                  onInput={(e) => setSsid(e.detail.value)}
+                  className="w-full bg-transparent border-0 focus-visible:ring-0 p-0"
+                  placeholder="请输入 WiFi 密码"
+                  value={password}
+                  onInput={(e) => setPassword(e.detail.value)}
                 />
               </View>
-              <View
-                className="flex items-center gap-1 px-3 py-3 rounded-xl shrink-0"
-                style={{
-                  background: fetchingWifi
-                    ? '#fca5a5'
-                    : 'linear-gradient(135deg, #ef4444, #f97316)',
-                }}
-                onClick={handleFetchCurrentWifi}
-              >
-                {fetchingWifi ? (
-                  <LoaderCircle size={14} color="#fff" />
-                ) : (
-                  <Wifi size={14} color="#fff" />
-                )}
-                <Text className="block text-xs font-bold text-white whitespace-nowrap">
-                  {fetchingWifi ? '获取中' : '获取当前'}
-                </Text>
-              </View>
+              <Text className="block text-xs text-gray-400 mt-2">留空 WiFi 名称则商家页不展示连接入口</Text>
             </View>
-          </View>
 
-          <View className="mt-4">
-            <Text className="block text-sm font-medium text-gray-800 mb-2">
-              WiFi 密码
-            </Text>
-            <View className="bg-gray-50 rounded-xl px-4 py-3">
-              <Input
-                className="w-full bg-transparent"
-                placeholder="请输入 WiFi 密码（手动填写）"
-                value={password}
-                onInput={(e) => setPassword(e.detail.value)}
-              />
-            </View>
-          </View>
-
-          <View className="mt-6">
             <Button
-              className="w-full bg-red-500 text-white rounded-xl py-3"
+              className="w-full bg-red-500"
               onClick={handleSave}
               disabled={saving}
             >
-              <Text className="block text-white font-medium">
-                {saving ? '保存中...' : '保存'}
-              </Text>
+              <Text className="text-white">{saving ? '保存中...' : '保存'}</Text>
             </Button>
           </View>
         </DialogContent>

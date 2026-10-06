@@ -280,7 +280,7 @@ const AdminPage = () => {
             { icon: 'megaphone', label: '营销模块', color: '#FF4757', bg: '#fef2f2', page: '', action: 'marketing', adminOnly: false, merchantOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
-          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1) && (item.action !== 'marketing' || hasEnabledMarketing)).map((item) => (
+          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
             <View
               key={item.label}
               className="flex flex-col items-center py-2"
@@ -288,6 +288,10 @@ const AdminPage = () => {
                 if (item.action === 'marketing') {
                   if (!merchantId) {
                     Taro.showToast({ title: '未获取到商家信息', icon: 'none' });
+                    return;
+                  }
+                  if (!hasEnabledMarketing) {
+                    Taro.showToast({ title: '请联系系统管理员打开该功能后，再进入设置', icon: 'none', duration: 2500 });
                     return;
                   }
                   Taro.navigateTo({ url: `/pages/merchant-marketing/index?merchant_id=${merchantId}` });
