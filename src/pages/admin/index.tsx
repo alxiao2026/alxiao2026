@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout, Truck, Warehouse } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout, Truck, Warehouse, Copy } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -21,6 +21,7 @@ const AdminPage = () => {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [merchantName, setMerchantName] = useState('');
   const [merchantLogo, setMerchantLogo] = useState('');
+  const [merchantCode, setMerchantCode] = useState('');
   const [roleCode, setRoleCode] = useState<number>(0);
   const [overviewStats, setOverviewStats] = useState({
     total_users: 0, consumers: 0, merchants: 0,
@@ -51,10 +52,21 @@ const AdminPage = () => {
         const merchant = (merchantRes.data as any)?.data;
         if (merchant?.name) setMerchantName(merchant.name);
         if (merchant?.logo) setMerchantLogo(merchant.logo);
+        if (merchant?.merchant_code) setMerchantCode(merchant.merchant_code);
       } catch { /* 非商家用户忽略 */ }
     } catch (err) {
       console.error('[Admin] 权限检查失败:', err);
       setHasAccess(false);
+    }
+  };
+
+  const copyMerchantCode = async () => {
+    if (!merchantCode) return;
+    try {
+      await Taro.setClipboardData({ data: merchantCode });
+      Taro.showToast({ title: '编码已复制', icon: 'success' });
+    } catch {
+      Taro.showToast({ title: '复制失败', icon: 'none' });
     }
   };
 
@@ -172,8 +184,8 @@ const AdminPage = () => {
     <View className="min-h-screen bg-gray-100">
       {/* 红色渐变数据头部 */}
       <View className="bg-gradient-to-b from-[#FF4757] to-[#ff6b7a] px-4 pt-4 pb-8">
-        {/* 店铺名 + 切换按钮 */}
-        <View className="flex flex-row items-center justify-between mb-5">
+        {/* 店铺名 + 商家编码 + 切换按钮 */}
+        <View className="flex flex-row items-center justify-between mb-3">
           <View className="flex flex-row items-center gap-2">
             {merchantLogo ? (
               <Image src={merchantLogo} className="w-8 h-8 rounded-lg" mode="aspectFill" />
@@ -190,6 +202,20 @@ const AdminPage = () => {
             <Text className="block text-[#FF4757] text-xs">我的</Text>
           </View>
         </View>
+
+        {/* 商家编码 + 一键复制 */}
+        {merchantCode && (
+          <View className="flex flex-row items-center gap-2 mb-4">
+            <Text className="block text-red-100 text-xs">商家编码：{merchantCode}</Text>
+            <View
+              className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-2 py-1"
+              onClick={copyMerchantCode}
+            >
+              <Copy size={10} color="#ffffff" />
+              <Text className="block text-white text-xs">复制</Text>
+            </View>
+          </View>
+        )}
 
         {/* 数据统计行 */}
         <View className="flex flex-row">

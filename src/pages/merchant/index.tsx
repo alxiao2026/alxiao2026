@@ -378,11 +378,6 @@ export default function MerchantPage() {
                     <Text className="text-xs">{merchant.category}</Text>
                   </Badge>
                 )}
-                {merchant.merchant_code && (
-                  <Badge className="bg-red-50 text-[#FF4757] border-transparent rounded-md">
-                    <Text className="text-xs">编码 {merchant.merchant_code}</Text>
-                  </Badge>
-                )}
                 {prizes.length > 0 && (
                   <Badge className="bg-amber-50 text-amber-600 border-amber-200 rounded-md">
                     <View className="flex flex-row items-center gap-1">
