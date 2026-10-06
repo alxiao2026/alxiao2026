@@ -1,3 +1,11 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ navigationBarTitleText: '门店WiFi管理' })
-  : { navigationBarTitleText: '门店WiFi管理' }
+  ? definePageConfig({
+      navigationBarTitleText: '营销模块管理',
+      navigationBarBackgroundColor: '#FF4757',
+      navigationBarTextStyle: 'white',
+    })
+  : {
+      navigationBarTitleText: '营销模块管理',
+      navigationBarBackgroundColor: '#FF4757',
+      navigationBarTextStyle: 'white',
+    }
