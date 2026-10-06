@@ -62,6 +62,8 @@ export interface UpdateMerchantDto {
   wifi_ssid?: string;
   /** 店内免费 WiFi 密码 */
   wifi_password?: string;
+  /** 营销功能开关配置 */
+  marketing_features?: Record<string, any>;
 }
 
 export interface Merchant {
@@ -82,6 +84,8 @@ export interface Merchant {
   wifi_password?: string;
   /** 商家唯一编码，格式 PP + 9 位数字 */
   merchant_code?: string;
+  /** 营销功能开关配置 */
+  marketing_features?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
 }
@@ -210,18 +214,83 @@ export class MerchantService {
   async getWifiInfo(id: number) {
     const { data, error } = await this.client
       .from('merchants')
-      .select('id, name, wifi_ssid, wifi_password')
+      .select('id, name, wifi_ssid, wifi_password, marketing_features')
       .eq('id', id)
       .maybeSingle();
     if (error) throw new Error(`查询商家 WiFi 失败：${error.message}`);
     if (!data) throw new NotFoundException('商家不存在');
+
+    const features = (data.marketing_features || {}) as Record<string, any>;
+    const wifiEnabled = features.wifi !== false;
+    const hasSsid = !!data.wifi_ssid;
     return {
       merchant_id: data.id,
       merchant_name: data.name,
-      has_wifi: !!data.wifi_ssid,
-      ssid: data.wifi_ssid || '',
-      password: data.wifi_password || '',
+      has_wifi: wifiEnabled && hasSsid,
+      ssid: wifiEnabled ? (data.wifi_ssid || '') : '',
+      password: wifiEnabled ? (data.wifi_password || '') : '',
     };
+  }
+
+  /** 获取商家营销功能配置 */
+  async getMarketingFeatures(id: number) {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('id, name, wifi_ssid, wifi_password, marketing_features')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(`查询营销功能失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+
+    const features = (data.marketing_features || {}) as Record<string, any>;
+    return {
+      merchant_id: data.id,
+      merchant_name: data.name,
+      wifi_ssid: data.wifi_ssid || '',
+      wifi_password: data.wifi_password || '',
+      features: {
+        wifi: features.wifi !== false,
+      },
+    };
+  }
+
+  /** 保存商家营销功能配置 */
+  async updateMarketingFeatures(id: number, body: { features?: Record<string, any>; wifi_ssid?: string; wifi_password?: string }) {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data: merchant, error: findError } = await this.client
+      .from('merchants')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+    if (findError) throw new Error(`查询商家失败：${findError.message}`);
+    if (!merchant) throw new NotFoundException('商家不存在');
+
+    const payload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (body.features !== undefined) {
+      payload.marketing_features = body.features;
+    }
+    if (body.wifi_ssid !== undefined) {
+      payload.wifi_ssid = (body.wifi_ssid || '').trim() || null;
+    }
+    if (body.wifi_password !== undefined) {
+      payload.wifi_password = (body.wifi_password || '').trim() || null;
+    }
+
+    const { data, error } = await this.client
+      .from('merchants')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(`保存营销功能失败：${error.message}`);
+    return data;
   }
 
   /**
@@ -397,6 +466,7 @@ export class MerchantService {
         wifi_ssid: (body.wifi_ssid || '').trim() || null,
         wifi_password: (body.wifi_password || '').trim() || null,
         merchant_code: merchantCode,
+        marketing_features: { wifi: true },
       })
       .select()
       .single();
@@ -467,13 +537,15 @@ export class MerchantService {
     validateSettlementConfig(restFields);
 
     const type = Number(restFields.settlement_type);
+    const { marketing_features, ...otherRest } = restFields;
     const { data, error } = await this.client
       .from('merchants')
       .update({
-        ...restFields,
+        ...otherRest,
         ...(location !== undefined && { address: location }),
         ...(restFields.wifi_ssid !== undefined && { wifi_ssid: (restFields.wifi_ssid || '').trim() || null }),
         ...(restFields.wifi_password !== undefined && { wifi_password: (restFields.wifi_password || '').trim() || null }),
+        ...(marketing_features !== undefined && { marketing_features }),
         settlement_type: type,
         commission_rate: type === 1 ? Number(restFields.commission_rate) : 0,
         settlement_price: 0,

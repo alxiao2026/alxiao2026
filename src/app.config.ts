@@ -24,6 +24,7 @@ export default defineAppConfig({
     { root: 'pages/admin', pages: ['index'] },
     { root: 'pages/package-admin', pages: ['index'] },
     { root: 'pages/merchant-admin', pages: ['index'] },
+    { root: 'pages/marketing-manage', pages: ['index'] },
     { root: 'pages/merchant-qualification', pages: ['index'] },
     { root: 'pages/verification', pages: ['index'] },
     { root: 'pages/product-manage', pages: ['index'] },

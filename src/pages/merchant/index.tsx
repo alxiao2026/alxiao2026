@@ -41,6 +41,7 @@ interface Merchant {
   longitude?: string | number
   wifi_ssid?: string
   merchant_code?: string
+  marketing_features?: { wifi?: boolean; [key: string]: any }
 }
 
 interface Prize {
@@ -493,8 +494,8 @@ export default function MerchantPage() {
                 </View>
               )}
 
-              {/* 链接店内WiFi 入口（商家已配置时展示，置于门店地址下方） */}
-              {!!merchant?.wifi_ssid && (
+              {/* 链接店内WiFi 入口（商家已开启 WiFi 营销功能且配置了 SSID 时展示） */}
+              {!!merchant?.marketing_features?.wifi && !!merchant?.wifi_ssid && (
                 <View
                   className="flex flex-row items-center justify-between mt-3 rounded-2xl px-4 py-3"
                   style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF7A59 55%, #FFA502 100%)', boxShadow: '0 8px 20px rgba(255,71,87,0.28)' }}
