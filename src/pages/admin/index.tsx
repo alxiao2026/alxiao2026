@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { navigateToTabBar } from '@/utils/navigate';
-import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout, Truck, Warehouse, Copy } from 'lucide-react-taro';
+import { Store, ScanLine, Banknote, BellRing, ShieldCheck, Package, Gift, Settings, TrendingUp, ShoppingBag, CircleCheck, Lock, Users, Coins, UtensilsCrossed, Trophy, User, CalendarDays, ClipboardList, Wallet, PiggyBank, Receipt, HandCoins, Headphones, Sprout, Truck, Warehouse, Copy, Megaphone } from 'lucide-react-taro';
 
 const AdminPage = () => {
   const [merchantStats, setMerchantStats] = useState({
@@ -22,6 +22,7 @@ const AdminPage = () => {
   const [merchantName, setMerchantName] = useState('');
   const [merchantLogo, setMerchantLogo] = useState('');
   const [merchantCode, setMerchantCode] = useState('');
+  const [merchantId, setMerchantId] = useState<number | null>(null);
   const [roleCode, setRoleCode] = useState<number>(0);
   const [overviewStats, setOverviewStats] = useState({
     total_users: 0, consumers: 0, merchants: 0,
@@ -50,6 +51,7 @@ const AdminPage = () => {
       try {
         const merchantRes = await Network.request({ url: `/api/users/${userId}/merchant` });
         const merchant = (merchantRes.data as any)?.data;
+        if (merchant?.id) setMerchantId(merchant.id);
         if (merchant?.name) setMerchantName(merchant.name);
         if (merchant?.logo) setMerchantLogo(merchant.logo);
         if (merchant?.merchant_code) setMerchantCode(merchant.merchant_code);
@@ -269,13 +271,24 @@ const AdminPage = () => {
             { icon: 'truck', label: '驿站查询', color: '#ff6b35', bg: '#fff3ea', page: '/packages/station/pages/home/index', adminOnly: true },
             // 驿站参数设置：驿站名称/编码/菜鸟stationId/地址/营业时间/团购列表（本地存储 mock）
             { icon: 'warehouse', label: '驿站设置', color: '#ea580c', bg: '#ffedd5', page: '/packages/station/pages/admin/index', adminOnly: true },
+            { icon: 'megaphone', label: '营销模块', color: '#FF4757', bg: '#fef2f2', page: '', action: 'marketing', adminOnly: false, merchantOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
           ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
             <View
               key={item.label}
               className="flex flex-col items-center py-2"
-              onClick={() => Taro.navigateTo({ url: item.page })}
+              onClick={() => {
+                if (item.action === 'marketing') {
+                  if (!merchantId) {
+                    Taro.showToast({ title: '未获取到商家信息', icon: 'none' });
+                    return;
+                  }
+                  Taro.navigateTo({ url: `/pages/merchant-marketing/index?merchant_id=${merchantId}` });
+                } else {
+                  Taro.navigateTo({ url: item.page });
+                }
+              }}
             >
               <View className="w-14 h-14 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: item.bg }}>
                 {item.icon === 'scan' && <ScanLine size={28} color={item.color} />}
@@ -296,6 +309,7 @@ const AdminPage = () => {
                 {item.icon === 'warehouse' && <Warehouse size={28} color={item.color} />}
                 {item.icon === 'piggy' && <PiggyBank size={28} color={item.color} />}
                 {item.icon === 'receipt' && <Receipt size={28} color={item.color} />}
+                {item.icon === 'megaphone' && <Megaphone size={28} color={item.color} />}
               </View>
               <Text className="block text-xs text-gray-600 text-center">{item.label}</Text>
             </View>
