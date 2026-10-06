@@ -206,13 +206,13 @@ const AdminPage = () => {
         {/* 商家编码 + 一键复制 */}
         {merchantCode && (
           <View className="flex flex-row items-center gap-2 mb-4">
-            <Text className="block text-red-100 text-xs">商家编码：{merchantCode}</Text>
+            <Text className="block text-white text-xs">商家编码：{merchantCode}</Text>
             <View
-              className="flex flex-row items-center gap-1 bg-white bg-opacity-20 rounded-full px-2 py-1"
+              className="flex flex-row items-center gap-1 bg-white rounded-full px-2 py-1"
               onClick={copyMerchantCode}
             >
-              <Copy size={10} color="#ffffff" />
-              <Text className="block text-white text-xs">复制</Text>
+              <Copy size={10} color="#FF4757" />
+              <Text className="block text-[#FF4757] text-xs">复制</Text>
             </View>
           </View>
         )}
