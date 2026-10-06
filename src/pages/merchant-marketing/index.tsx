@@ -33,13 +33,17 @@ export default function MerchantMarketingPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({})
+  const [from, setFrom] = useState('')
 
   const wifiModuleEnabled = !!marketingFeatures.wifi
+  const isAdmin = from === 'merchant-admin'
 
   useEffect(() => {
     const instance = Taro.getCurrentInstance()
     const id = instance.router?.params?.merchant_id || ''
+    const fromParam = instance.router?.params?.from || ''
     setMerchantId(id)
+    setFrom(fromParam)
     if (id) {
       loadWifi(id)
       loadMarketingFeatures(id)
@@ -85,7 +89,7 @@ export default function MerchantMarketingPage() {
     MODULE_TAG.includes(searchKeyword.trim())
 
   const handleCardClick = () => {
-    if (!wifiModuleEnabled) {
+    if (!wifiModuleEnabled && !isAdmin) {
       Taro.showToast({
         title: '请联系系统管理员打开该功能后，再进入设置',
         icon: 'none',
@@ -94,6 +98,26 @@ export default function MerchantMarketingPage() {
       return
     }
     setDialogOpen(true)
+  }
+
+  const handleToggleModule = async (checked: boolean) => {
+    if (!merchantId || !isAdmin) return
+    setSaving(true)
+    try {
+      const next = { ...marketingFeatures, wifi: checked }
+      await Network.request({
+        url: `/api/merchants/${merchantId}/marketing-features`,
+        method: 'PUT',
+        data: { features: next },
+      })
+      setMarketingFeatures(next)
+      Taro.showToast({ title: checked ? '已启用' : '已停用', icon: 'success' })
+    } catch (err) {
+      console.error('toggle module err', err)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleFetchCurrentWifi = async () => {
@@ -159,7 +183,9 @@ export default function MerchantMarketingPage() {
     <View className="min-h-screen bg-gray-50">
       <View className="px-4 pt-5 pb-3">
         <View className="flex items-baseline gap-2 mb-1">
-          <Text className="block text-xl font-bold text-gray-900">营销模块管理</Text>
+          <Text className="block text-xl font-bold text-gray-900">
+            {isAdmin ? '商家营销模块管理' : '营销模块管理'}
+          </Text>
           <Text className="block text-sm text-gray-500">方可进入配置营销参数</Text>
         </View>
         <Text className="block text-xs text-gray-400">开启模块后，方可进入配置营销参数</Text>
@@ -215,7 +241,11 @@ export default function MerchantMarketingPage() {
                   {MODULE_NAME}
                 </Text>
               </View>
-              <Switch checked={wifiModuleEnabled} disabled />
+              <Switch
+                checked={wifiModuleEnabled}
+                disabled={!isAdmin || saving}
+                onCheckedChange={isAdmin ? handleToggleModule : undefined}
+              />
             </View>
             <View className="mb-3">
               <Text

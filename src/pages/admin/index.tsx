@@ -294,7 +294,7 @@ const AdminPage = () => {
                     Taro.showToast({ title: '请联系系统管理员打开该功能后，再进入设置', icon: 'none', duration: 2500 });
                     return;
                   }
-                  Taro.navigateTo({ url: `/pages/merchant-marketing/index?merchant_id=${merchantId}` });
+                  Taro.navigateTo({ url: `/pages/merchant-marketing/index?merchant_id=${merchantId}&from=admin` });
                 } else {
                   Taro.navigateTo({ url: item.page });
                 }

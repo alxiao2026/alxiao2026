@@ -692,7 +692,7 @@ export default function MerchantAdmin() {
                         className="p-2 rounded-lg bg-red-50"
                         onClick={() =>
                           Taro.navigateTo({
-                            url: `/pages/merchant-marketing/index?merchant_id=${merchant.id}`,
+                            url: `/pages/merchant-marketing/index?merchant_id=${merchant.id}&from=merchant-admin`,
                           })
                         }
                       >
