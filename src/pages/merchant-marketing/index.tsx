@@ -80,7 +80,7 @@ export default function MerchantMarketingPage() {
     }
   }
 
-  const enabled = !!ssid.trim()
+  const enabled = !!marketingFeatures.wifi
   const keywordMatch =
     !searchKeyword.trim() ||
     MODULE_NAME.includes(searchKeyword.trim()) ||
@@ -88,24 +88,20 @@ export default function MerchantMarketingPage() {
 
   const handleToggle = async (checked: boolean) => {
     if (!merchantId) return
-    if (checked) {
-      setDialogOpen(true)
-      return
-    }
     setSaving(true)
     try {
+      const nextFeatures = { ...marketingFeatures, wifi: checked }
       const res = await Network.request({
-        url: `/api/merchants/${merchantId}/wifi`,
+        url: `/api/merchants/${merchantId}/marketing-features`,
         method: 'PUT',
-        data: { wifi_ssid: '', wifi_password: '' },
+        data: { features: nextFeatures },
       })
-      console.log('disableWifi res', res)
-      setSsid('')
-      setPassword('')
-      Taro.showToast({ title: '已停用', icon: 'success' })
+      console.log('updateMarketingFeatures res', res)
+      setMarketingFeatures(nextFeatures)
+      Taro.showToast({ title: checked ? '已启用' : '已停用', icon: 'success' })
     } catch (err) {
-      console.error('disableWifi err', err)
-      Taro.showToast({ title: '停用失败', icon: 'none' })
+      console.error('updateMarketingFeatures err', err)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
     } finally {
       setSaving(false)
     }
