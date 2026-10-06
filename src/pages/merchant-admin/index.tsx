@@ -35,9 +35,11 @@ interface Merchant {
 
 export default function MerchantAdmin() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [allMerchants, setAllMerchants] = useState<Merchant[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchCode, setSearchCode] = useState('');
   const [searching, setSearching] = useState(false);
+  const [isSearchResult, setIsSearchResult] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -89,7 +91,10 @@ export default function MerchantAdmin() {
       const res = await Network.request({ url: '/api/merchants' });
       console.log('商家列表响应:', res.data);
       if (res.data?.code === 200) {
-        setMerchants(res.data.data || []);
+        const list = Array.isArray(res.data.data) ? res.data.data : [];
+        setMerchants(list);
+        setAllMerchants(list);
+        setIsSearchResult(false);
       }
     } catch (error) {
       console.error('加载商家失败:', error);
@@ -550,7 +555,9 @@ export default function MerchantAdmin() {
       console.log('按编码查询商家响应:', res.data);
       if (res.data?.code === 200 && res.data?.data) {
         const merchant = res.data.data as Merchant;
-        Taro.navigateTo({ url: `/pages/merchant/index?id=${merchant.id}` });
+        setMerchants([merchant]);
+        setIsSearchResult(true);
+        Taro.showToast({ title: '已定位到对应商家', icon: 'none' });
       } else {
         Taro.showToast({ title: res.data?.msg || '商家不存在', icon: 'none' });
       }
@@ -560,6 +567,12 @@ export default function MerchantAdmin() {
     } finally {
       setSearching(false);
     }
+  };
+
+  const handleClearSearch = () => {
+    setSearchCode('');
+    setMerchants(allMerchants);
+    setIsSearchResult(false);
   };
 
   return (
@@ -576,11 +589,11 @@ export default function MerchantAdmin() {
             />
           </View>
           <Button
-            className="bg-[#FF4757] text-white"
-            onClick={handleSearchByCode}
+            className={isSearchResult ? 'bg-gray-400 text-white' : 'bg-[#FF4757] text-white'}
+            onClick={isSearchResult ? handleClearSearch : handleSearchByCode}
             disabled={searching}
           >
-            <Text className="text-white text-sm">{searching ? '查询中' : '查找'}</Text>
+            <Text className="text-white text-sm">{searching ? '查询中' : isSearchResult ? '清除' : '查找'}</Text>
           </Button>
         </View>
       </View>
