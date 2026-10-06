@@ -48,6 +48,9 @@ export default function MerchantMarketingPage() {
       loadWifi(id)
       loadMarketingFeatures(id)
     }
+    Taro.setNavigationBarTitle({
+      title: fromParam === 'merchant-admin' ? '商家营销模块管理' : '营销模块管理',
+    })
   }, [])
 
   const loadMarketingFeatures = async (id: string) => {
@@ -87,6 +90,9 @@ export default function MerchantMarketingPage() {
     !searchKeyword.trim() ||
     MODULE_NAME.includes(searchKeyword.trim()) ||
     MODULE_TAG.includes(searchKeyword.trim())
+
+  const canFetchWifi =
+    Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
 
   const handleCardClick = () => {
     if (!wifiModuleEnabled && !isAdmin) {
@@ -316,16 +322,18 @@ export default function MerchantMarketingPage() {
                 </View>
                 <Button
                   size="sm"
-                  className="bg-red-500 shrink-0"
+                  className={cn('shrink-0', canFetchWifi ? 'bg-red-500' : 'bg-gray-300')}
                   onClick={handleFetchCurrentWifi}
-                  disabled={fetchingWifi}
+                  disabled={!canFetchWifi || fetchingWifi}
                 >
                   {fetchingWifi ? (
                     <LoaderCircle size={16} color="#fff" className="animate-spin mr-1" />
                   ) : (
                     <Wifi size={16} color="#fff" className="mr-1" />
                   )}
-                  <Text className="text-white text-sm">获取当前</Text>
+                  <Text className="text-white text-sm">
+                    {canFetchWifi ? '获取当前' : '小程序可用'}
+                  </Text>
                 </Button>
               </View>
             </View>
