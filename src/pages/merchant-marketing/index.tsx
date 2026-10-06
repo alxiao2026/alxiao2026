@@ -32,6 +32,10 @@ export default function MerchantMarketingPage() {
   const [fetchingWifi, setFetchingWifi] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({})
+
+  const hasEnabledModule = Object.values(marketingFeatures).some(Boolean)
+  const wifiModuleEnabled = !!marketingFeatures.wifi
 
   useEffect(() => {
     const instance = Taro.getCurrentInstance()
@@ -39,8 +43,23 @@ export default function MerchantMarketingPage() {
     setMerchantId(id)
     if (id) {
       loadWifi(id)
+      loadMarketingFeatures(id)
     }
   }, [])
+
+  const loadMarketingFeatures = async (id: string) => {
+    try {
+      const res = await Network.request({
+        url: `/api/merchants/${id}/marketing-features`,
+        method: 'GET',
+      })
+      console.log('loadMarketingFeatures res', res)
+      const features = res?.data?.data || {}
+      setMarketingFeatures(features as Record<string, boolean>)
+    } catch (err) {
+      console.error('loadMarketingFeatures err', err)
+    }
+  }
 
   const loadWifi = async (id: string) => {
     setLoading(true)
@@ -190,68 +209,82 @@ export default function MerchantMarketingPage() {
       </View>
 
       <View className="px-4 pb-20">
-        <View className="grid grid-cols-2 gap-3">
-          {keywordMatch && (
-            <View
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
-              onClick={() => setDialogOpen(true)}
-            >
-              <View className="flex items-start justify-between mb-3">
-                <View className="flex items-center gap-2">
-                  <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                    <Wifi size={20} color="#ef4444" />
-                  </View>
-                  <Text className="block text-base font-bold text-gray-900 leading-tight">
-                    {MODULE_NAME}
-                  </Text>
-                </View>
-                <View className="shrink-0 ml-2">
-                  <Switch
-                    checked={enabled}
-                    onCheckedChange={handleToggle}
-                    disabled={saving || loading}
-                  />
-                </View>
-              </View>
-
-              <View className="mb-3">
-                <Text className="inline-block text-xs font-medium text-red-500 bg-red-50 px-2 py-1 rounded">
-                  {MODULE_TAG}
-                </Text>
-              </View>
-
-              <Text className="block text-xs text-gray-500 leading-relaxed mb-4">
-                {MODULE_DESC}
-              </Text>
-
-              <View className="flex items-center justify-between">
-                <Text className="block text-xs text-gray-400">
-                  {enabled ? '已启用' : '已停用'}
-                </Text>
-                <View
-                  className={cn(
-                    'px-3 py-1 rounded-full',
-                    enabled ? 'bg-red-500' : 'bg-gray-200'
-                  )}
-                >
-                  <Text
-                    className={cn(
-                      'block text-xs font-medium',
-                      enabled ? 'text-white' : 'text-gray-600'
-                    )}
-                  >
-                    {enabled ? '已启用' : '已停用'}
-                  </Text>
-                </View>
-              </View>
+        {!hasEnabledModule ? (
+          <View className="flex flex-col items-center justify-center py-20 px-8">
+            <View className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <Wifi size={28} color="#9ca3af" />
             </View>
-          )}
-        </View>
-
-        {!keywordMatch && (
-          <View className="flex items-center justify-center py-20">
-            <Text className="block text-sm text-gray-400">未找到匹配模块</Text>
+            <Text className="block text-base font-bold text-gray-700 mb-2">暂无可用营销模块</Text>
+            <Text className="block text-sm text-gray-400 text-center leading-relaxed">
+              请联系系统管理员打开该功能后，再进入设置
+            </Text>
           </View>
+        ) : (
+          <>
+            <View className="grid grid-cols-2 gap-3">
+              {wifiModuleEnabled && keywordMatch && (
+                <View
+                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
+                  onClick={() => setDialogOpen(true)}
+                >
+                  <View className="flex items-start justify-between mb-3">
+                    <View className="flex items-center gap-2">
+                      <View className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                        <Wifi size={20} color="#ef4444" />
+                      </View>
+                      <Text className="block text-base font-bold text-gray-900 leading-tight">
+                        {MODULE_NAME}
+                      </Text>
+                    </View>
+                    <View className="shrink-0 ml-2">
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={handleToggle}
+                        disabled={saving || loading}
+                      />
+                    </View>
+                  </View>
+
+                  <View className="mb-3">
+                    <Text className="inline-block text-xs font-medium text-red-500 bg-red-50 px-2 py-1 rounded">
+                      {MODULE_TAG}
+                    </Text>
+                  </View>
+
+                  <Text className="block text-xs text-gray-500 leading-relaxed mb-4">
+                    {MODULE_DESC}
+                  </Text>
+
+                  <View className="flex items-center justify-between">
+                    <Text className="block text-xs text-gray-400">
+                      {enabled ? '已启用' : '已停用'}
+                    </Text>
+                    <View
+                      className={cn(
+                        'px-3 py-1 rounded-full',
+                        enabled ? 'bg-red-500' : 'bg-gray-200'
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          'block text-xs font-medium',
+                          enabled ? 'text-white' : 'text-gray-600'
+                        )}
+                      >
+                        {enabled ? '已启用' : '已停用'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {!keywordMatch && (
+              <View className="flex items-center justify-center py-20">
+                <Text className="block text-sm text-gray-400">未找到匹配模块</Text>
+              </View>
+            )}
+          </>
         )}
       </View>
 

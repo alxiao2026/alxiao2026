@@ -31,6 +31,9 @@ const AdminPage = () => {
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({});
+
+  const hasEnabledMarketing = Object.values(marketingFeatures).some(Boolean);
 
   const checkPermission = async () => {
     try {
@@ -55,6 +58,9 @@ const AdminPage = () => {
         if (merchant?.name) setMerchantName(merchant.name);
         if (merchant?.logo) setMerchantLogo(merchant.logo);
         if (merchant?.merchant_code) setMerchantCode(merchant.merchant_code);
+        if (merchant?.marketing_features) {
+          setMarketingFeatures(merchant.marketing_features as Record<string, boolean>);
+        }
       } catch { /* 非商家用户忽略 */ }
     } catch (err) {
       console.error('[Admin] 权限检查失败:', err);
@@ -274,7 +280,7 @@ const AdminPage = () => {
             { icon: 'megaphone', label: '营销模块', color: '#FF4757', bg: '#fef2f2', page: '', action: 'marketing', adminOnly: false, merchantOnly: true },
             { icon: 'piggy', label: '商家余额', color: '#f97316', bg: '#fff7ed', page: '/pages/merchant-balance/index', adminOnly: false, merchantOnly: true },
             { icon: 'receipt', label: '结算明细', color: '#14b8a6', bg: '#f0fdfa', page: '/pages/settlement-records/index', adminOnly: false, merchantOnly: true },
-          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1)).map((item) => (
+          ].filter(item => (!item.adminOnly || roleCode === 2) && (!('merchantOnly' in item) || !item.merchantOnly || roleCode === 1) && (item.action !== 'marketing' || hasEnabledMarketing)).map((item) => (
             <View
               key={item.label}
               className="flex flex-col items-center py-2"

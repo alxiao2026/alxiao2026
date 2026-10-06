@@ -76,6 +76,25 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 获取商家营销模块配置 */
+  @Get(':id/marketing-features')
+  @HttpCode(HttpStatus.OK)
+  async getMarketingFeatures(@Param('id') id: string) {
+    const data = await this.merchantService.getMarketingFeatures(Number(id));
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 管理端：更新商家营销模块配置 */
+  @Put(':id/marketing-features')
+  @HttpCode(HttpStatus.OK)
+  async updateMarketingFeatures(
+    @Param('id') id: string,
+    @Body() body: { features?: Record<string, boolean> },
+  ) {
+    const data = await this.merchantService.updateMarketingFeatures(Number(id), body.features || {});
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('code/:code')
   @HttpCode(HttpStatus.OK)
   async findByCode(@Param('code') code: string) {

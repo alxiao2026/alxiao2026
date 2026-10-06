@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Megaphone } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Megaphone, Wifi } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
 import { isMiniAppEnv, chooseImageH5, uploadLocalImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
@@ -29,6 +30,7 @@ interface Merchant {
   commission_rate?: number;
   settlement_price?: number;
   merchant_code?: string;
+  marketing_features?: Record<string, boolean> | null;
 }
 
 export default function MerchantAdmin() {
@@ -76,6 +78,7 @@ export default function MerchantAdmin() {
     settlement_type: 0,
     commission_rate: '',
   });
+  const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({ wifi: true });
 
   useEffect(() => {
     loadMerchants();
@@ -117,6 +120,7 @@ export default function MerchantAdmin() {
       settlement_type: 0,
       commission_rate: '',
     });
+    setMarketingFeatures({ wifi: true });
     setPackagePrices([]);
     setShowForm(true);
   };
@@ -171,6 +175,7 @@ export default function MerchantAdmin() {
       settlement_type: merchant.settlement_type || 0,
       commission_rate: merchant.settlement_type === 1 && merchant.commission_rate != null ? String(merchant.commission_rate) : '',
     });
+    setMarketingFeatures((merchant.marketing_features as Record<string, boolean>) || { wifi: true });
     // 结算价模式：回显该商家所有套餐的结算价
     if (merchant.settlement_type === 2) {
       loadPackagePrices(merchant.id);
@@ -483,6 +488,20 @@ export default function MerchantAdmin() {
           loadMerchants();
           return;
         }
+      }
+
+      // 保存商家营销模块配置
+      try {
+        const merchantId = editingMerchant?.id ?? (res.data as any)?.data?.id;
+        if (merchantId) {
+          await Network.request({
+            url: `/api/merchants/${merchantId}/marketing-features`,
+            method: 'PUT',
+            data: { features: marketingFeatures },
+          });
+        }
+      } catch (e) {
+        console.error('保存营销模块配置失败:', e);
       }
 
       Taro.showToast({ title: editingMerchant ? '更新成功' : '添加成功', icon: 'success' });
@@ -995,6 +1014,32 @@ export default function MerchantAdmin() {
                     )}
                   </View>
                 )}
+              </View>
+
+              {/* 营销模块配置（仅系统管理员可见可修改） */}
+              <View className="mb-4 bg-rose-50 rounded-xl p-4 border border-rose-100">
+                <View className="flex flex-row items-center mb-1">
+                  <Wifi size={16} color="#ef4444" />
+                  <Text className="block text-sm font-medium text-gray-800 ml-1">营销模块配置</Text>
+                </View>
+                <Text className="block text-xs text-gray-400 mb-3">关闭后商家后台将不再展示对应营销模块入口</Text>
+                <View className="flex items-center justify-between p-3 bg-white rounded-xl">
+                  <View className="flex items-center gap-2">
+                    <View className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                      <Wifi size={18} color="#ef4444" />
+                    </View>
+                    <View>
+                      <Text className="block text-sm font-medium text-gray-800">门店WiFi链接模块</Text>
+                      <Text className="block text-xs text-gray-500">商家后台可配置店内 WiFi</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    checked={!!marketingFeatures.wifi}
+                    onCheckedChange={(checked) =>
+                      setMarketingFeatures((prev) => ({ ...prev, wifi: checked }))
+                    }
+                  />
+                </View>
               </View>
             </View>
 

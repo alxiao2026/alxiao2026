@@ -82,6 +82,8 @@ export interface Merchant {
   wifi_password?: string;
   /** 商家唯一编码，格式 PP + 9 位数字 */
   merchant_code?: string;
+  /** 商家可使用的营销模块配置，如 { wifi: true } */
+  marketing_features?: Record<string, boolean> | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -237,6 +239,40 @@ export class MerchantService {
       .select()
       .single();
     if (error) throw new Error(`更新 WiFi 失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+    return data;
+  }
+
+  /** 获取商家营销模块配置 */
+  async getMarketingFeatures(id: number): Promise<Record<string, boolean>> {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data, error } = await this.client
+      .from('merchants')
+      .select('marketing_features')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(`查询营销模块失败：${error.message}`);
+    if (!data) throw new NotFoundException('商家不存在');
+    return (data.marketing_features as Record<string, boolean>) || { wifi: false };
+  }
+
+  /** 管理端：更新商家营销模块配置 */
+  async updateMarketingFeatures(id: number, features: Record<string, boolean>) {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data, error } = await this.client
+      .from('merchants')
+      .update({
+        marketing_features: features || { wifi: false },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(`更新营销模块失败：${error.message}`);
     if (!data) throw new NotFoundException('商家不存在');
     return data;
   }

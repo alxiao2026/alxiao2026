@@ -52,6 +52,7 @@ export interface MerchantInfo {
   phone: string | null;
   logo: string | null;
   merchant_code: string | null;
+  marketing_features?: Record<string, boolean> | null;
 }
 
 export interface UserStats {
@@ -618,7 +619,7 @@ export class UserService {
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, name, address, phone, logo, merchant_code')
+      .select('id, name, address, phone, logo, merchant_code, marketing_features')
       .eq('id', user.merchant_id)
       .single();
     return merchant as MerchantInfo | null;
@@ -629,7 +630,7 @@ export class UserService {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('merchants')
-      .select('id, name, address, phone, logo, merchant_code')
+      .select('id, name, address, phone, logo, merchant_code, marketing_features')
       .order('id');
     if (error) throw error;
     return (data || []) as MerchantInfo[];
