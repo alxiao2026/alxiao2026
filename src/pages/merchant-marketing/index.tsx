@@ -18,6 +18,7 @@ import { uploadLocalImage, chooseImageH5, isMiniAppEnv, ensurePrivacyAuthorized 
 interface WifiInfo {
   ssid?: string
   password?: string
+  enabled?: boolean
 }
 
 interface CommunityConfig {
@@ -73,6 +74,7 @@ export default function MerchantMarketingPage() {
   // wifi
   const [ssid, setSsid] = useState('')
   const [password, setPassword] = useState('')
+  const [wifiEnabled, setWifiEnabled] = useState(false)
   const [fetchingWifi, setFetchingWifi] = useState(false)
 
   // community
@@ -137,6 +139,7 @@ export default function MerchantMarketingPage() {
       const data: WifiInfo = res?.data?.data || {}
       setSsid(data.ssid || '')
       setPassword(data.password || '')
+      setWifiEnabled(!!data.enabled)
     } catch (err) {
       console.error('loadWifi err', err)
       Taro.showToast({ title: '加载失败', icon: 'none' })
@@ -281,7 +284,7 @@ export default function MerchantMarketingPage() {
         await Network.request({
           url: `/api/merchants/${merchantId}/wifi`,
           method: 'PUT',
-          data: { wifi_ssid: ssid.trim(), wifi_password: password.trim() },
+          data: { wifi_ssid: ssid.trim(), wifi_password: password.trim(), enabled: wifiEnabled },
         })
       } else if (activeModule === 'community') {
         await Network.request({
@@ -449,6 +452,17 @@ export default function MerchantMarketingPage() {
                   <Text className="block text-xs text-gray-500 leading-relaxed">
                     配置后消费者在商家页可一键连接店内 WiFi；手机连上店内 WiFi 时点「获取当前」可自动填入名称，密码需手动输入
                   </Text>
+                </View>
+
+                <View className="mb-4">
+                  <Text className="block text-sm font-medium text-gray-800 mb-2">启用门店 WiFi</Text>
+                  <View className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                    <Text className="text-sm text-gray-600">在商家页展示连接 WiFi 入口</Text>
+                    <Switch
+                      checked={wifiEnabled}
+                      onCheckedChange={(checked) => setWifiEnabled(checked)}
+                    />
+                  </View>
                 </View>
 
                 <View className="mb-4">

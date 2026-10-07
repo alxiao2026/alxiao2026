@@ -286,6 +286,7 @@ export const merchants = pgTable("merchants", {
 	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }),
 	wifiSsid: varchar("wifi_ssid", { length: 64 }),
 	wifiPassword: varchar("wifi_password", { length: 64 }),
+	wifiEnabled: boolean("wifi_enabled").default(false),
 	merchantCode: varchar("merchant_code"),
 	marketingFeatures: jsonb("marketing_features").default({"wifi":true}),
 }, (table) => [

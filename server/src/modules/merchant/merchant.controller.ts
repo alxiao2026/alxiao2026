@@ -70,7 +70,7 @@ export class MerchantController {
   @HttpCode(HttpStatus.OK)
   async updateWifi(
     @Param('id') id: string,
-    @Body() body: { wifi_ssid?: string; wifi_password?: string },
+    @Body() body: { wifi_ssid?: string; wifi_password?: string; enabled?: boolean },
   ) {
     const data = await this.merchantService.updateWifi(Number(id), body);
     return { code: 200, msg: 'success', data };

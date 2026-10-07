@@ -212,7 +212,7 @@ export class MerchantService {
   async getWifiInfo(id: number) {
     const { data, error } = await this.client
       .from('merchants')
-      .select('id, name, wifi_ssid, wifi_password')
+      .select('id, name, wifi_ssid, wifi_password, wifi_enabled')
       .eq('id', id)
       .maybeSingle();
     if (error) throw new Error(`查询商家 WiFi 失败：${error.message}`);
@@ -220,19 +220,21 @@ export class MerchantService {
     return {
       merchant_id: data.id,
       merchant_name: data.name,
-      has_wifi: !!data.wifi_ssid,
+      has_wifi: !!(data.wifi_enabled && data.wifi_ssid),
+      enabled: !!data.wifi_enabled,
       ssid: data.wifi_ssid || '',
       password: data.wifi_password || '',
     };
   }
 
   /** 管理端：仅更新门店 WiFi 信息 */
-  async updateWifi(id: number, body: { wifi_ssid?: string; wifi_password?: string }) {
+  async updateWifi(id: number, body: { wifi_ssid?: string; wifi_password?: string; enabled?: boolean }) {
     const { data, error } = await this.client
       .from('merchants')
       .update({
         wifi_ssid: (body.wifi_ssid || '').trim() || null,
         wifi_password: (body.wifi_password || '').trim() || null,
+        wifi_enabled: body.enabled ?? false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

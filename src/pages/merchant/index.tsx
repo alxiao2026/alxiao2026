@@ -40,6 +40,7 @@ interface Merchant {
   latitude?: string | number
   longitude?: string | number
   wifi_ssid?: string
+  wifi_enabled?: boolean
   merchant_code?: string
 }
 
@@ -494,7 +495,7 @@ export default function MerchantPage() {
               )}
 
               {/* 链接店内WiFi 入口（商家已配置时展示，置于门店地址下方） */}
-              {!!merchant?.wifi_ssid && (
+              {!!(merchant?.wifi_enabled && merchant?.wifi_ssid) && (
                 <View
                   className="flex flex-row items-center justify-between mt-3 rounded-2xl px-4 py-3"
                   style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF7A59 55%, #FFA502 100%)', boxShadow: '0 8px 20px rgba(255,71,87,0.28)' }}
