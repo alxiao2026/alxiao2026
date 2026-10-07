@@ -192,7 +192,6 @@ export default function MerchantMarketingPage() {
           <Text className="block text-xl font-bold text-gray-900">
             {isAdmin ? '商家营销模块管理' : '营销模块管理'}
           </Text>
-          <Text className="block text-sm text-gray-500">方可进入配置营销参数</Text>
         </View>
         <Text className="block text-xs text-gray-400">开启模块后，方可进入配置营销参数</Text>
       </View>
