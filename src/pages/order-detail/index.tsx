@@ -31,6 +31,7 @@ interface Order {
   discount_amount?: string | null
   paid_at?: string | null
   pay_expire_at?: string | null
+  merchant_id?: number | null
 }
 
 interface PackageInfo {
@@ -125,7 +126,6 @@ export default function OrderDetail() {
     if (id) {
       loadOrder()
     }
-    loadCommunityConfig()
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current)
     }
@@ -136,6 +136,14 @@ export default function OrderDetail() {
       loadPackageInfo(order.package_id)
     }
   }, [order?.package_id])
+
+  useEffect(() => {
+    if (order?.merchant_id) {
+      loadCommunityConfig(order.merchant_id)
+    } else {
+      loadCommunityConfig()
+    }
+  }, [order?.merchant_id])
 
   // 已支付后加载核销二维码
   useEffect(() => {
@@ -208,18 +216,35 @@ export default function OrderDetail() {
     }
   }
 
-  const loadCommunityConfig = async () => {
+  const loadCommunityConfig = async (merchantId?: number) => {
     try {
-      const res = await Network.request({ url: '/api/customer-service/config', method: 'GET' })
-      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-      const cfg = body?.data
+      let cfg: any = null
+      if (merchantId) {
+        try {
+          const merchantRes = await Network.request({
+            url: `/api/merchants/${merchantId}/community-marketing`,
+            method: 'GET',
+          })
+          const merchantBody = typeof merchantRes.data === 'string' ? JSON.parse(merchantRes.data) : merchantRes.data
+          cfg = merchantBody?.data
+        } catch (err) {
+          console.warn('[OrderDetail] 加载门店社群营销配置失败:', err)
+        }
+      }
+      if (!cfg) {
+        const res = await Network.request({ url: '/api/customer-service/config', method: 'GET' })
+        const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+        cfg = body?.data
+      }
       if (cfg) {
+        // 门店配置字段为 enabled/title/subtitle/button_text/qrcode_url，系统配置字段为 community_ 前缀
+        const isMerchantConfig = merchantId && cfg.enabled !== undefined && cfg.community_enabled === undefined
         setCommunityConfig({
-          community_enabled: !!cfg.community_enabled,
-          community_title: cfg.community_title || '加店长领券享88折',
-          community_subtitle: cfg.community_subtitle || '进群抽免单，天天享9折',
-          community_button_text: cfg.community_button_text || '长按识别二维码加店长',
-          community_qrcode_url: cfg.community_qrcode_url || null,
+          community_enabled: isMerchantConfig ? !!cfg.enabled : !!cfg.community_enabled,
+          community_title: (isMerchantConfig ? cfg.title : cfg.community_title) || '加店长领券享88折',
+          community_subtitle: (isMerchantConfig ? cfg.subtitle : cfg.community_subtitle) || '进群抽免单，天天享9折',
+          community_button_text: (isMerchantConfig ? cfg.button_text : cfg.community_button_text) || '长按识别二维码加店长',
+          community_qrcode_url: (isMerchantConfig ? cfg.qrcode_url : cfg.community_qrcode_url) || null,
         })
       }
     } catch (err) {

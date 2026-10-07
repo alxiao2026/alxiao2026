@@ -277,6 +277,54 @@ export class MerchantService {
     return data;
   }
 
+  /** 获取商家社群营销配置 */
+  async getCommunityMarketing(id: number) {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const { data, error } = await this.client
+      .from('merchant_community_configs')
+      .select('enabled, title, subtitle, button_text, qrcode_url')
+      .eq('merchant_id', id)
+      .maybeSingle();
+    if (error) throw new Error(`查询社群营销配置失败：${error.message}`);
+    return data || null;
+  }
+
+  /** 管理端：更新商家社群营销配置 */
+  async updateCommunityMarketing(
+    id: number,
+    body: {
+      enabled?: boolean;
+      title?: string;
+      subtitle?: string;
+      button_text?: string;
+      qrcode_url?: string | null;
+    },
+  ) {
+    if (!id || Number.isNaN(id)) {
+      throw new BadRequestException('商家 ID 无效');
+    }
+    const existing = await this.getCommunityMarketing(id);
+    const payload = {
+      merchant_id: id,
+      enabled: body.enabled !== undefined ? !!body.enabled : existing?.enabled ?? false,
+      title: body.title !== undefined ? String(body.title).trim() : existing?.title ?? '加店长领券享88折',
+      subtitle: body.subtitle !== undefined ? String(body.subtitle).trim() : existing?.subtitle ?? '进群抽免单，天天享9折',
+      button_text:
+        body.button_text !== undefined
+          ? String(body.button_text).trim()
+          : existing?.button_text ?? '长按识别二维码加店长',
+      qrcode_url: body.qrcode_url !== undefined ? body.qrcode_url || null : existing?.qrcode_url || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = existing
+      ? await this.client.from('merchant_community_configs').update(payload).eq('merchant_id', id).select().single()
+      : await this.client.from('merchant_community_configs').insert(payload).select().single();
+    if (error) throw new Error(`保存社群营销配置失败：${error.message}`);
+    return data;
+  }
+
   /**
    * 商家详情 + 该商家上架奖品 + 团购套餐（商家首页用）
    */

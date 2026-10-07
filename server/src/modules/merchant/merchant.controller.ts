@@ -95,6 +95,25 @@ export class MerchantController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 获取商家社群营销配置 */
+  @Get(':id/community-marketing')
+  @HttpCode(HttpStatus.OK)
+  async getCommunityMarketing(@Param('id') id: string) {
+    const data = await this.merchantService.getCommunityMarketing(Number(id));
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** 管理端：更新商家社群营销配置 */
+  @Put(':id/community-marketing')
+  @HttpCode(HttpStatus.OK)
+  async updateCommunityMarketing(
+    @Param('id') id: string,
+    @Body() body: { enabled?: boolean; title?: string; subtitle?: string; button_text?: string; qrcode_url?: string | null },
+  ) {
+    const data = await this.merchantService.updateCommunityMarketing(Number(id), body);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('code/:code')
   @HttpCode(HttpStatus.OK)
   async findByCode(@Param('code') code: string) {
