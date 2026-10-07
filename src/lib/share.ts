@@ -258,7 +258,8 @@ export function buildPackageShare(pkg: SharePackageInput, ratio: CoverRatio): Sh
   const title = renderTemplate('package', seedKey, { name, price, save })
   const cover = (pkg.cover_image || '').trim()
   const cat = mapCategoryToCover(pkg.category)
-  return { title, imageUrl: cover || getBrandCoverUrl(cat, ratio) }
+  // 封面走后端代理：服务端会抓取封面图并校验，失败自动回退品牌底图，避免微信抓取失败导致灰图
+  return { title, imageUrl: getBrandCoverUrl(cat, ratio, cover || undefined) }
 }
 
 /** 好友助力分享内容：突出「帮我助力 + 奖品吸引力（种果树），不承诺必得」 */
@@ -283,7 +284,7 @@ export function buildMerchantShare(merchantName: string | null | undefined, feat
   const title = renderTemplate('merchant', seedKey, { merchant })
   const cover = (featured?.cover_image || '').trim()
   const cat = mapCategoryToCover(featured?.category)
-  return { title, imageUrl: cover || getBrandCoverUrl(cat, ratio) }
+  return { title, imageUrl: getBrandCoverUrl(cat, ratio, cover || undefined) }
 }
 
 /** 中奖炫耀分享：只描述事实与喜悦；封面 = 奖品图优先，无图用 win 主题庆祝底图（永远有图） */
@@ -315,8 +316,7 @@ export function buildBrandShare(featured?: SharePackageInput | null, ratio: Cove
   const name = clipName(featured?.name, 8)
   const title = renderTemplate('brand', seedKey, { name })
   const cover = (featured?.cover_image || '').trim()
-  if (cover) return { title, imageUrl: cover }
-  return { title, imageUrl: getBrandCoverUrl('play', ratio) }
+  return { title, imageUrl: getBrandCoverUrl('play', ratio, cover || undefined) }
 }
 
 /**

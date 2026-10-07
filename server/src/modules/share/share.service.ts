@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { S3Storage } from 'coze-coding-dev-sdk';
 import { randomBytes } from 'crypto';
+import * as QRCode from 'qrcode';
 import { getWechatCredentials } from '../user/wechat-config';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
@@ -290,8 +291,36 @@ export class ShareService {
       throw new BadRequestException('生成太阳码失败，请稍后重试');
     }
     // 统一落地首页，由首页中转（首页必然已发布，避免目标页未发布导致生成失败）
-    const { url } = await this.getMiniProgramQrCode('pages/index/index', code);
-    return { url, code };
+    try {
+      const { url } = await this.getMiniProgramQrCode('pages/index/index', code);
+      return { url, code };
+    } catch (err: any) {
+      this.logger.warn(`太阳码生成失败，降级为普通二维码: ${err?.message}`);
+      // 降级：生成普通二维码图片，扫码后由 H5 中转页解析短码并引导进入小程序
+      const domain = (
+        process.env.COZE_PROJECT_DOMAIN_DEFAULT ||
+        process.env.PROJECT_DOMAIN ||
+        ''
+      ).replace(/\/+$/, '');
+      const fallbackUrl = domain ? `${domain}/api/share/resolve/${code}` : '';
+      if (!fallbackUrl) {
+        throw new BadRequestException('生成二维码失败：未配置项目域名');
+      }
+      const buffer = await QRCode.toBuffer(fallbackUrl, {
+        type: 'png',
+        width: 560,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+      });
+      const key = await this.storage.uploadFile({
+        fileContent: buffer,
+        fileName: `qrcode-fallback-${Date.now()}.png`,
+        contentType: 'image/png',
+      });
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 2592000 });
+      this.logger.log(`普通二维码已生成: code=${code} url=${url}`);
+      return { url, code };
+    }
   }
 
   /** 根据短码取回真实目标页与参数 */
