@@ -2034,17 +2034,26 @@ export default function PackageAdmin() {
 
                 {/* 限制使用张数 */}
                 <View
-                  className="flex items-center justify-between py-3 border-b border-gray-100"
+                  className="flex items-center justify-between py-3 border-b border-gray-100 active:bg-gray-50"
                   onClick={() => {
                     setTempLimitUsageCount(formData.usage_count_limit || 1);
                     setShowLimitUsageModal(true);
                   }}
                 >
                   <Text className="block text-sm text-gray-800">限制使用张数</Text>
-                  <Switch
-                    checked={formData.limit_usage_count}
-                    onCheckedChange={(checked) => updateFormData('limit_usage_count', checked)}
-                  />
+                  <View
+                    className="p-2 -mr-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTempLimitUsageCount(formData.usage_count_limit || 1);
+                      setShowLimitUsageModal(true);
+                    }}
+                  >
+                    <Switch
+                      checked={formData.limit_usage_count}
+                      onCheckedChange={(checked) => updateFormData('limit_usage_count', checked)}
+                    />
+                  </View>
                 </View>
                 {formData.limit_usage_count && (
                   <View className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
