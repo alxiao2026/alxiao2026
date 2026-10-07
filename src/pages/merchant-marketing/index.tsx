@@ -548,7 +548,12 @@ export default function MerchantMarketingPage() {
                   <View className="flex flex-row items-center gap-4">
                     {communityConfig.qrcode_url ? (
                       <View className="rounded-xl overflow-hidden bg-gray-50 p-2 border border-gray-100">
-                        <Image src={communityConfig.qrcode_url} className="w-32 h-32" mode="aspectFit" />
+                        <Image
+                          src={communityConfig.qrcode_url}
+                          className="w-32 h-32"
+                          mode="aspectFit"
+                          onError={(e: any) => console.warn('[MerchantMarketing] 二维码加载失败:', e?.detail?.errMsg || e)}
+                        />
                       </View>
                     ) : (
                       <View className="w-32 h-32 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">

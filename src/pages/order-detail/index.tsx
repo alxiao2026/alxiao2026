@@ -260,6 +260,10 @@ export default function OrderDetail() {
     Taro.previewImage({ urls: [url], current: url })
   }
 
+  const handleImageError = (source: string) => (e: any) => {
+    console.warn('[OrderDetail] 图片加载失败:', source, e?.detail?.errMsg || e)
+  }
+
   const loadPackageInfo = async (packageId: string) => {
     try {
       console.log('[OrderDetail] 请求套餐详情, package_id:', packageId)
@@ -712,6 +716,7 @@ export default function OrderDetail() {
                     src={qrcode}
                     style={{ width: '170px', height: '170px' }}
                     mode="aspectFit"
+                    onError={handleImageError('qrcode')}
                   />
                 </View>
               ) : (
@@ -784,6 +789,7 @@ export default function OrderDetail() {
                   src={packageInfo.cover_image}
                   style={{ width: '100%', height: '100%' }}
                   mode="aspectFill"
+                  onError={handleImageError('cover_image')}
                 />
               ) : (
                 <View className="w-full h-full flex items-center justify-center">
@@ -877,6 +883,7 @@ export default function OrderDetail() {
                     className="w-full h-full"
                     mode="aspectFit"
                     showMenuByLongpress
+                    onError={handleImageError('community_qrcode')}
                   />
                 </View>
               </View>
