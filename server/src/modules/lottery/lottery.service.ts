@@ -1254,6 +1254,26 @@ export class LotteryService {
       (users || []).forEach((u: any) => userMap.set(u.user_id, u));
     }
 
+    // 补充奖品对应的商家名称
+    const prizeIds = [...new Set(records.map(r => r.prize_id).filter(Boolean))];
+    const prizeMerchantMap = new Map<string, number | null>();
+    const merchantNameMap = new Map<number, string>();
+    if (prizeIds.length > 0) {
+      const { data: prizes } = await this.client
+        .from('prizes')
+        .select('id, merchant_id')
+        .in('id', prizeIds);
+      (prizes || []).forEach((p: any) => prizeMerchantMap.set(p.id, p.merchant_id ?? null));
+    }
+    const merchantIds = [...new Set(Array.from(prizeMerchantMap.values()).filter(Boolean))] as number[];
+    if (merchantIds.length > 0) {
+      const { data: merchants } = await this.client
+        .from('merchants')
+        .select('id, merchant_name')
+        .in('id', merchantIds);
+      (merchants || []).forEach((m: any) => merchantNameMap.set(m.id, m.merchant_name || ''));
+    }
+
     const globalExpiryHours = await this.getRedemptionExpiryHours();
 
     return records.map(r => {
@@ -1262,12 +1282,14 @@ export class LotteryService {
       const prizeVh = prizeInfo?.validity_hours;
       const expiryHours = (typeof prizeVh === 'number' && prizeVh > 0 ? prizeVh : null) ?? globalExpiryHours;
       const u = userMap.get(r.user_id);
+      const merchantId = prizeMerchantMap.get(r.prize_id);
       const result: any = {
         ...r,
         prizes: undefined,
         prize_type: prizeType || '',
         user_nick_name: u?.nick_name || '',
         user_phone: u?.phone || '',
+        merchant_name: merchantId ? merchantNameMap.get(merchantId) || '' : '',
       };
       if (r.redemption_code) {
         const createdAt = new Date(r.created_at).getTime();
@@ -1304,14 +1326,28 @@ export class LotteryService {
       ? records.filter(r => getRecordStatus(r).key === status)
       : records;
 
-    const headers = ['序号', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '抽奖时间'];
+    const headers = ['序号', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '商家名称', '核销/过期时间', '抽奖时间'];
     const escapeCsv = (value: unknown) => {
       const str = String(value ?? '');
       if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
       return str;
     };
+    const formatTime = (value: unknown) => {
+      if (!value) return '';
+      try {
+        return new Date(String(value)).toLocaleString('zh-CN');
+      } catch {
+        return String(value);
+      }
+    };
     const rows = filtered.map((r, index) => {
       const statusInfo = getRecordStatus(r);
+      let actionTime = '';
+      if (statusInfo.key === 'redeemed' || statusInfo.key === 'refunded') {
+        actionTime = formatTime(r.redeemed_at);
+      } else if (statusInfo.key === 'expired' || statusInfo.key === 'pending') {
+        actionTime = formatTime(r.expiry_date);
+      }
       return [
         index + 1,
         r.user_nick_name || '匿名用户',
@@ -1322,6 +1358,8 @@ export class LotteryService {
         statusInfo.label,
         r.redemption_code || '',
         r.refund_amount || '',
+        r.merchant_name || '',
+        actionTime,
         r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '',
       ].map(escapeCsv).join(',');
     });
