@@ -32,7 +32,7 @@ export const wechatConfig = pgTable("wechat_config", {
 ]);
 
 export const orchardCoupons = pgTable("orchard_coupons", {
-	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	code: varchar({ length: 32 }).notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	defId: varchar("def_id", { length: 20 }).notNull(),
@@ -54,7 +54,7 @@ export const orchardCoupons = pgTable("orchard_coupons", {
 ]);
 
 export const orchardHelps = pgTable("orchard_helps", {
-	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	shareUserId: varchar("share_user_id", { length: 128 }).notNull(),
 	helperUserId: varchar("helper_user_id", { length: 128 }).notNull(),
 	helperName: varchar("helper_name", { length: 128 }),
@@ -67,7 +67,7 @@ export const orchardHelps = pgTable("orchard_helps", {
 ]);
 
 export const lotteryRecords = pgTable("lottery_records", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	orderId: varchar("order_id", { length: 36 }).notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	prizeId: varchar("prize_id", { length: 36 }),
@@ -194,7 +194,7 @@ export const merchantBalances = pgTable("merchant_balances", {
 ]);
 
 export const lotteryLogs = pgTable("lottery_logs", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	orderId: varchar("order_id", { length: 36 }),
 	action: varchar({ length: 64 }).notNull(),
@@ -225,7 +225,7 @@ export const lotterySettings = pgTable("lottery_settings", {
 });
 
 export const orders = pgTable("orders", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	nickName: varchar("nick_name", { length: 128 }),
 	avatarUrl: varchar("avatar_url", { length: 512 }),
@@ -293,7 +293,7 @@ export const merchants = pgTable("merchants", {
 ]);
 
 export const merchantMarketingActivities = pgTable("merchant_marketing_activities", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
 	type: varchar({ length: 50 }).default('coupon').notNull(),
 	title: varchar({ length: 200 }).notNull(),
@@ -311,7 +311,7 @@ export const merchantMarketingActivities = pgTable("merchant_marketing_activitie
 ]);
 
 export const prizes = pgTable("prizes", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 128 }).notNull(),
 	description: text(),
 	probability: numeric({ precision: 10, scale:  4 }).default('0').notNull(),
@@ -338,7 +338,7 @@ export const prizes = pgTable("prizes", {
 ]);
 
 export const packages = pgTable("packages", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	merchantId: varchar("merchant_id", { length: 36 }),
 	name: varchar({ length: 128 }).notNull(),
 	description: text(),
@@ -392,7 +392,7 @@ export const packages = pgTable("packages", {
 ]);
 
 export const users = pgTable("users", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	nickName: varchar("nick_name", { length: 128 }),
 	avatarUrl: varchar("avatar_url", { length: 512 }),
@@ -469,7 +469,7 @@ export const distributionConfigs = pgTable("distribution_configs", {
 });
 
 export const orchardRecords = pgTable("orchard_records", {
-	id: varchar({ length: 36 }).default((gen_random_uuid())).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	amount: integer().default(0).notNull(),
 	reason: varchar({ length: 30 }).notNull(),
