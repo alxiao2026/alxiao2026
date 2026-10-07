@@ -337,12 +337,12 @@ export class OrderService {
 
   /** 获取用户未参与抽奖的订单（有效状态且无抽奖记录），补充套餐封面与订单总额 */
   async findUnparticipatedByUserId(userId: string): Promise<any[]> {
-    // 1. 获取用户有效状态的订单（created 待支付 / paid 待使用 / used 已核销，均可参与抽奖）
+    // 1. 获取用户已支付的订单（paid 待使用 / used 已核销，才可参与抽奖；created 待支付不配发抽奖机会）
     const { data: orders, error } = await this.client
       .from('orders')
       .select('*')
       .eq('user_id', userId)
-      .in('status', ['created', 'paid', 'used'])
+      .in('status', ['paid', 'used'])
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户订单失败: ${error.message}`);
     const allOrders = (orders as Order[]) || [];
