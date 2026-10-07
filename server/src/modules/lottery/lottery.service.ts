@@ -1269,9 +1269,9 @@ export class LotteryService {
     if (merchantIds.length > 0) {
       const { data: merchants } = await this.client
         .from('merchants')
-        .select('id, merchant_name')
+        .select('id, name')
         .in('id', merchantIds);
-      (merchants || []).forEach((m: any) => merchantNameMap.set(m.id, m.merchant_name || ''));
+      (merchants || []).forEach((m: any) => merchantNameMap.set(m.id, m.name || ''));
     }
 
     const globalExpiryHours = await this.getRedemptionExpiryHours();
