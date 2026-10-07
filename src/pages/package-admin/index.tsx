@@ -2036,26 +2036,56 @@ export default function PackageAdmin() {
                   <Text className="block text-sm text-gray-800">限制使用张数</Text>
                   <Switch
                     checked={formData.limit_usage_count}
-                    onCheckedChange={(checked) => updateFormData('limit_usage_count', checked)}
+                    onCheckedChange={(checked) => {
+                      updateFormData('limit_usage_count', checked)
+                      if (checked && (!formData.usage_count_limit || formData.usage_count_limit < 1)) {
+                        updateFormData('usage_count_limit', 1)
+                      }
+                    }}
                   />
                 </View>
                 {formData.limit_usage_count && (
                   <View className="bg-gray-50 rounded-lg px-4 py-3 mt-2 mb-2">
-                    <View className="flex items-center gap-2">
+                    <View className="flex items-center gap-3">
                       <Text className="block text-sm text-gray-600">每单限</Text>
-                      <View className="w-20">
-                        <Input
-                          className="bg-white border border-gray-200 rounded-md px-2 py-1 text-center text-sm"
-                          type="number"
-                          value={String(formData.usage_count_limit || '')}
-                          placeholder="1"
-                          onInput={(e) => {
-                            const val = parseInt(e.detail.value) || 0
-                            if (val >= 1) {
-                              updateFormData('usage_count_limit', val)
+                      <View className="flex items-center bg-white border border-gray-200 rounded-md overflow-hidden">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 rounded-none px-0 text-base"
+                          onClick={() => {
+                            const current = formData.usage_count_limit || 1
+                            if (current > 1) {
+                              updateFormData('usage_count_limit', current - 1)
                             }
                           }}
-                        />
+                        >
+                          <Text className="block">-</Text>
+                        </Button>
+                        <View className="w-12 border-x border-gray-200">
+                          <Input
+                            className="border-0 px-0 py-1 text-center text-sm bg-transparent"
+                            type="number"
+                            value={String(formData.usage_count_limit || 1)}
+                            onInput={(e) => {
+                              const val = parseInt(e.detail.value) || 0
+                              if (val >= 1) {
+                                updateFormData('usage_count_limit', val)
+                              }
+                            }}
+                          />
+                        </View>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 rounded-none px-0 text-base"
+                          onClick={() => {
+                            const current = formData.usage_count_limit || 1
+                            updateFormData('usage_count_limit', current + 1)
+                          }}
+                        >
+                          <Text className="block">+</Text>
+                        </Button>
                       </View>
                       <Text className="block text-sm text-gray-600">张</Text>
                     </View>
