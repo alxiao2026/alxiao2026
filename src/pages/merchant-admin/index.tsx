@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Megaphone } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Rocket } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
 import { isMiniAppEnv, chooseImageH5, uploadLocalImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
@@ -623,7 +623,7 @@ export default function MerchantAdmin() {
                           })
                         }
                       >
-                        <Megaphone size={16} color="#FF4757" />
+                        <Rocket size={16} color="#FF4757" />
                       </View>
                       <View
                         className="p-2 rounded-lg bg-red-50"
