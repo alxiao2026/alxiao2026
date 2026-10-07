@@ -40,6 +40,17 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 导出门店抽奖记录 */
+  @Post('merchant-records/:userId/export')
+  @HttpCode(200)
+  async exportMerchantRecords(
+    @Param('userId') userId: string,
+    @Body('status') status?: string,
+  ) {
+    const data = await this.lotteryService.exportMerchantRecords(userId, status);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('winners')
   async getWinners(@Query('merchant_id') merchantId?: string) {
     const data = await this.lotteryService.getWinners(merchantId);

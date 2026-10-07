@@ -39,14 +39,6 @@ const STATUS_FILTER_TABS: { key: StatusFilterKey; label: string }[] = [
   { key: 'voided', label: '已作废' },
 ];
 
-const PRIZE_TYPE_MAP: Record<string, string> = {
-  free_meal: '霸王餐',
-  coupon: '消费券',
-  discount: '折扣券',
-  product: '实物奖品',
-  empty: '未中奖',
-};
-
 const AdminLotteryRecordsPage = () => {
   const [records, setRecords] = useState<MerchantLotteryRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,12 +73,6 @@ const AdminLotteryRecordsPage = () => {
     if (!timeStr) return '';
     const date = new Date(timeStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  };
-
-  const formatFullTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
   };
 
   const maskPhone = (phone: string) => {
@@ -124,60 +110,53 @@ const AdminLotteryRecordsPage = () => {
     return <Text className="block text-xs text-amber-600 mt-1">待核销</Text>;
   };
 
-  const escapeCsv = (value: string | number | undefined) => {
-    const str = value === undefined || value === null ? '' : String(value);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-  };
-
   const exportRecords = useCallback(async () => {
     if (filteredRecords.length === 0) {
       Taro.showToast({ title: '没有可导出的记录', icon: 'none' });
       return;
     }
+    const userId = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || '';
+    if (!userId) {
+      Taro.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
     try {
-      const headers = ['序号', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '抽奖时间'];
-      const rows = filteredRecords.map((r, index) => {
-        const status = getRecordStatus(r);
-        return [
-          index + 1,
-          r.user_nick_name || '匿名用户',
-          r.user_phone || '',
-          r.is_winner ? r.prize_name : '未中奖',
-          PRIZE_TYPE_MAP[r.prize_type] || r.prize_type || '',
-          r.is_winner ? '已中奖' : '未中奖',
-          status.label,
-          r.redemption_code || '',
-          r.refund_amount || '',
-          formatFullTime(r.created_at),
-        ].map(escapeCsv).join(',');
+      Taro.showLoading({ title: '正在生成...', mask: true });
+      const res = await Network.request({
+        url: `/api/lottery/merchant-records/${userId}/export`,
+        method: 'POST',
+        data: { status: filter }
       });
-      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-      const fileName = `抽奖记录_${new Date().toISOString().slice(0, 10)}.csv`;
-
+      console.log('[AdminLotteryRecords] 导出响应:', res.data);
+      const envelope: any = (res as any)?.data || res;
+      const url = envelope?.data?.url;
+      if (!url) {
+        Taro.showToast({ title: '导出链接为空', icon: 'none' });
+        return;
+      }
       if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
+        link.href = url;
+        link.download = `抽奖记录_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
       } else {
-        const fs = Taro.getFileSystemManager();
-        const filePath = `${Taro.env.USER_DATA_PATH || Taro.env.TEMP_PATH || ''}/${fileName}`;
-        fs.writeFileSync(filePath, csvContent, 'utf8');
-        await Taro.openDocument({ filePath });
+        await Taro.setClipboardData({ data: url });
+        Taro.showModal({
+          title: '导出成功',
+          content: '下载链接已复制到剪贴板，请粘贴到浏览器下载',
+          showCancel: false
+        });
       }
-      Taro.showToast({ title: '导出成功', icon: 'success' });
     } catch (e) {
       console.error('[AdminLotteryRecords] 导出失败:', e);
       Taro.showToast({ title: '导出失败', icon: 'none' });
+    } finally {
+      Taro.hideLoading();
     }
-  }, [filteredRecords]);
+  }, [filter, filteredRecords]);
 
   return (
     <View className="min-h-screen bg-gray-100 pb-6">

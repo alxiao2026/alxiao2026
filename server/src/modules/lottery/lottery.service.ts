@@ -1280,6 +1280,69 @@ export class LotteryService {
     });
   }
 
+  /** 导出门店抽奖记录为 CSV 并上传到对象存储 */
+  async exportMerchantRecords(userId: string, status?: string): Promise<{ url: string }> {
+    const records = await this.getMerchantLotteryRecords(userId);
+
+    const getRecordStatus = (r: any): { key: string; label: string } => {
+      if (!r.is_winner) return { key: 'loser', label: '未中奖' };
+      if (r.refund_status === 'voided') return { key: 'voided', label: '已作废' };
+      if (r.refund_status === 'redeemed') return { key: 'redeemed', label: '已核销' };
+      if (r.refund_status === 'refunded') return { key: 'refunded', label: '已返现' };
+      if (r.expired) return { key: 'expired', label: '已过期' };
+      if (!r.refund_status) return { key: 'pending', label: '待核销' };
+      return { key: 'unknown', label: '未知' };
+    };
+
+    const prizeTypeMap: Record<string, string> = {
+      coupon: '优惠券',
+      product: '商品',
+      free_meal: '霸王餐',
+    };
+
+    const filtered = status && status !== 'all'
+      ? records.filter(r => getRecordStatus(r).key === status)
+      : records;
+
+    const headers = ['序号', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '抽奖时间'];
+    const escapeCsv = (value: unknown) => {
+      const str = String(value ?? '');
+      if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+      return str;
+    };
+    const rows = filtered.map((r, index) => {
+      const statusInfo = getRecordStatus(r);
+      return [
+        index + 1,
+        r.user_nick_name || '匿名用户',
+        r.user_phone || '',
+        r.is_winner ? r.prize_name : '未中奖',
+        prizeTypeMap[r.prize_type] || r.prize_type || '',
+        r.is_winner ? '已中奖' : '未中奖',
+        statusInfo.label,
+        r.redemption_code || '',
+        r.refund_amount || '',
+        r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '',
+      ].map(escapeCsv).join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const fileName = `lottery-records-${Date.now()}.csv`;
+
+    const key = await this.storage.uploadFile({
+      fileContent: Buffer.from(csvContent, 'utf-8'),
+      fileName,
+      contentType: 'text/csv; charset=utf-8',
+    });
+
+    const url = await this.storage.generatePresignedUrl({
+      key,
+      expireTime: 2592000, // 30 天有效期
+    });
+
+    return { url };
+  }
+
   /** 获取往期中奖名单（中奖记录 + 用户昵称，按时间倒序，最多50条） */
   async getWinners(merchantId?: string): Promise<Array<{
     id: string;
