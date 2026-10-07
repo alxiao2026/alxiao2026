@@ -43,6 +43,7 @@ interface PackageInfo {
   shop_phone: string | null
   price: string
   original_price: string
+  merchant_id?: string | number | null
 }
 
 interface CommunityConfig {
@@ -138,12 +139,13 @@ export default function OrderDetail() {
   }, [order?.package_id])
 
   useEffect(() => {
-    if (order?.merchant_id) {
-      loadCommunityConfig(order.merchant_id)
+    const merchantId = packageInfo?.merchant_id || order?.merchant_id
+    if (merchantId) {
+      loadCommunityConfig(Number(merchantId))
     } else {
       loadCommunityConfig()
     }
-  }, [order?.merchant_id])
+  }, [packageInfo?.merchant_id, order?.merchant_id])
 
   // 已支付后加载核销二维码
   useEffect(() => {

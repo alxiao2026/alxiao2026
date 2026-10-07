@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,6 +86,12 @@ export default function MerchantMarketingPage() {
 
   const isAdmin = from === 'merchant-admin'
 
+  const loadAll = (id: string) => {
+    loadWifi(id)
+    loadCommunityConfig(id)
+    loadMarketingFeatures(id)
+  }
+
   useEffect(() => {
     const instance = Taro.getCurrentInstance()
     const id = instance.router?.params?.merchant_id || ''
@@ -93,14 +99,18 @@ export default function MerchantMarketingPage() {
     setMerchantId(id)
     setFrom(fromParam)
     if (id) {
-      loadWifi(id)
-      loadCommunityConfig(id)
-      loadMarketingFeatures(id)
+      loadAll(id)
     }
     Taro.setNavigationBarTitle({
       title: fromParam === 'merchant-admin' ? '商家营销模块管理' : '营销模块管理',
     })
   }, [])
+
+  useDidShow(() => {
+    if (merchantId) {
+      loadAll(merchantId)
+    }
+  })
 
   const loadMarketingFeatures = async (id: string) => {
     try {
@@ -361,11 +371,24 @@ export default function MerchantMarketingPage() {
                     {module.name}
                   </Text>
                 </View>
-                <Switch
-                  checked={enabled}
-                  disabled={!isAdmin || saving}
-                  onCheckedChange={isAdmin ? (checked) => handleToggleModule(module.key, checked) : undefined}
-                />
+                <View
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!isAdmin) {
+                      Taro.showToast({
+                        title: '模块启用状态由系统管理员控制',
+                        icon: 'none',
+                        duration: 2000,
+                      })
+                    }
+                  }}
+                >
+                  <Switch
+                    checked={enabled}
+                    disabled={!isAdmin || saving}
+                    onCheckedChange={isAdmin ? (checked) => handleToggleModule(module.key, checked) : undefined}
+                  />
+                </View>
               </View>
               <View className="mb-3">
                 <Text
