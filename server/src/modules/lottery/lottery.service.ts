@@ -1309,8 +1309,15 @@ export class LotteryService {
     const getRecordStatus = (r: any): { key: string; label: string } => {
       if (!r.is_winner) return { key: 'loser', label: '未中奖' };
       if (r.refund_status === 'voided') return { key: 'voided', label: '已作废' };
+      // 已返现：折扣券中奖即返现、霸王餐原路退款后、或明确标记 refunded
+      if (
+        r.refund_status === 'refunded' ||
+        (r.prize_type === 'coupon' && r.refund_status === 'redeemed') ||
+        (r.prize_type === 'free_meal' && r.refunded_at)
+      ) {
+        return { key: 'refunded', label: '已返现' };
+      }
       if (r.refund_status === 'redeemed') return { key: 'redeemed', label: '已核销' };
-      if (r.refund_status === 'refunded') return { key: 'refunded', label: '已返现' };
       if (r.expired) return { key: 'expired', label: '已过期' };
       if (!r.refund_status) return { key: 'pending', label: '待核销' };
       return { key: 'unknown', label: '未知' };
@@ -1343,7 +1350,9 @@ export class LotteryService {
     const rows = filtered.map((r, index) => {
       const statusInfo = getRecordStatus(r);
       let actionTime = '';
-      if (statusInfo.key === 'redeemed' || statusInfo.key === 'refunded') {
+      if (statusInfo.key === 'refunded') {
+        actionTime = formatTime(r.refunded_at || r.redeemed_at);
+      } else if (statusInfo.key === 'redeemed') {
         actionTime = formatTime(r.redeemed_at);
       } else if (statusInfo.key === 'expired' || statusInfo.key === 'pending') {
         actionTime = formatTime(r.expiry_date);

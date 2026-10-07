@@ -20,6 +20,7 @@ interface MerchantLotteryRecord {
   redemption_code?: string;
   refund_status?: string;
   refund_amount?: string;
+  refunded_at?: string;
   redeemed_at?: string;
   expired?: boolean;
   expiry_date?: string;
@@ -82,9 +83,15 @@ const AdminLotteryRecordsPage = () => {
 
   const getRecordStatus = (record: MerchantLotteryRecord): { key: StatusFilterKey; label: string; color: string } => {
     if (!record.is_winner) return { key: 'loser', label: '未中奖', color: 'text-gray-500' };
-    if (record.refund_status === 'redeemed') return { key: 'redeemed', label: '已核销', color: 'text-green-600' };
-    if (record.refund_status === 'refunded') return { key: 'refunded', label: '已返现', color: 'text-blue-600' };
     if (record.refund_status === 'voided') return { key: 'voided', label: '已作废', color: 'text-gray-500' };
+    if (
+      record.refund_status === 'refunded' ||
+      (record.prize_type === 'coupon' && record.refund_status === 'redeemed') ||
+      (record.prize_type === 'free_meal' && record.refunded_at)
+    ) {
+      return { key: 'refunded', label: '已返现', color: 'text-blue-600' };
+    }
+    if (record.refund_status === 'redeemed') return { key: 'redeemed', label: '已核销', color: 'text-green-600' };
     if (record.expired) return { key: 'expired', label: '已过期', color: 'text-red-500' };
     return { key: 'pending', label: '待核销', color: 'text-amber-600' };
   };
@@ -100,9 +107,17 @@ const AdminLotteryRecordsPage = () => {
 
   const renderRedemptionBadge = (record: MerchantLotteryRecord) => {
     if (!record.is_winner || !record.redemption_code) return null;
-    if (record.refund_status === 'redeemed') {
-      const isCoupon = record.prize_type === 'coupon';
-      return <Text className="block text-xs text-green-600 mt-1">{isCoupon ? '✓ 已返现（原路退回）' : '✓ 已核销'}{record.redeemed_at ? ` ${formatTime(record.redeemed_at)}` : ''}</Text>;
+    const status = getRecordStatus(record);
+    if (status.key === 'refunded') {
+      return (
+        <Text className="block text-xs text-blue-600 mt-1">
+          ✓ 已返现（原路退回）
+          {record.refunded_at ? ` ${formatTime(record.refunded_at)}` : record.redeemed_at ? ` ${formatTime(record.redeemed_at)}` : ''}
+        </Text>
+      );
+    }
+    if (status.key === 'redeemed') {
+      return <Text className="block text-xs text-green-600 mt-1">✓ 已核销{record.redeemed_at ? ` ${formatTime(record.redeemed_at)}` : ''}</Text>;
     }
     if (record.expired) {
       return <Text className="block text-xs text-red-500 mt-1">已过期未核销</Text>;
