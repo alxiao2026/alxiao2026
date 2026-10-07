@@ -228,7 +228,11 @@ export default function OrderDetail() {
             method: 'GET',
           })
           const merchantBody = typeof merchantRes.data === 'string' ? JSON.parse(merchantRes.data) : merchantRes.data
-          cfg = merchantBody?.data
+          const merchantCfg = merchantBody?.data
+          // 门店关闭或未配置时，自动回退到系统账号配置
+          if (merchantCfg && merchantCfg.enabled) {
+            cfg = merchantCfg
+          }
         } catch (err) {
           console.warn('[OrderDetail] 加载门店社群营销配置失败:', err)
         }
