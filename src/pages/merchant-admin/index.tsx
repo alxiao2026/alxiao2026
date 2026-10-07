@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
 import { Network } from '@/network';
-import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Megaphone, Wifi, LoaderCircle } from 'lucide-react-taro';
+import { Plus, Pencil, Trash2, X, Store, ChevronLeft, ChevronRight, Image as ImageIcon, Percent, Coins, ShieldCheck, Megaphone } from 'lucide-react-taro';
 import { DOUYIN_CATEGORIES } from '@/data/categories';
 import { ImageCropper } from '@/components/image-cropper';
 import { isMiniAppEnv, chooseImageH5, uploadLocalImage, ensurePrivacyAuthorized } from '@/lib/upload-image';
@@ -78,10 +77,6 @@ export default function MerchantAdmin() {
     settlement_type: 0,
     commission_rate: '',
   });
-  const [marketingFeatures, setMarketingFeatures] = useState<Record<string, boolean>>({ wifi: true });
-  const [wifiSsid, setWifiSsid] = useState('');
-  const [wifiPassword, setWifiPassword] = useState('');
-  const [fetchingWifi, setFetchingWifi] = useState(false);
 
   useEffect(() => {
     loadMerchants();
@@ -123,9 +118,6 @@ export default function MerchantAdmin() {
       settlement_type: 0,
       commission_rate: '',
     });
-    setMarketingFeatures({ wifi: true });
-    setWifiSsid('');
-    setWifiPassword('');
     setPackagePrices([]);
     setShowForm(true);
   };
@@ -180,18 +172,6 @@ export default function MerchantAdmin() {
       settlement_type: merchant.settlement_type || 0,
       commission_rate: merchant.settlement_type === 1 && merchant.commission_rate != null ? String(merchant.commission_rate) : '',
     });
-    setMarketingFeatures((merchant.marketing_features as Record<string, boolean>) || { wifi: true });
-    // 加载并回显该商家的 WiFi 配置
-    try {
-      const wifiRes = await Network.request({ url: `/api/merchants/${merchant.id}/wifi`, method: 'GET' });
-      const wifiData = wifiRes?.data?.data || {};
-      setWifiSsid(wifiData.ssid || '');
-      setWifiPassword(wifiData.password || '');
-    } catch (error) {
-      console.log('获取 WiFi 配置失败:', error);
-      setWifiSsid('');
-      setWifiPassword('');
-    }
     // 结算价模式：回显该商家所有套餐的结算价
     if (merchant.settlement_type === 2) {
       loadPackagePrices(merchant.id);
@@ -235,31 +215,6 @@ export default function MerchantAdmin() {
   };
 
   // 获取当前连接的 WiFi 名称（仅微信小程序支持）
-  const handleFetchCurrentWifi = async () => {
-    if (!isMiniAppEnv()) {
-      Taro.showToast({ title: '请在小程序中获取当前 WiFi', icon: 'none' });
-      return;
-    }
-    setFetchingWifi(true);
-    try {
-      const res = await Taro.getConnectedWifi();
-      console.log('当前 WiFi:', res);
-      const wifiInfo = (res as any)?.wifi;
-      if (wifiInfo?.SSID) {
-        setWifiSsid(wifiInfo.SSID);
-        Taro.showToast({ title: '已获取当前 WiFi', icon: 'success' });
-      } else {
-        Taro.showToast({ title: '未获取到 WiFi 信息', icon: 'none' });
-      }
-    } catch (error: any) {
-      console.error('获取当前 WiFi 失败:', error);
-      const msg = error?.errMsg || '获取失败';
-      Taro.showToast({ title: msg.includes('cancel') ? '用户取消' : '获取失败，请手动输入', icon: 'none' });
-    } finally {
-      setFetchingWifi(false);
-    }
-  };
-
   // 选择图片（首图/环境图统一入口），选择后弹裁剪窗调节显示区域
   const pickImage = async (target: 'logo' | 'env') => {
     if (uploadingLogo || uploadingImages) return;
@@ -530,34 +485,6 @@ export default function MerchantAdmin() {
           loadMerchants();
           return;
         }
-      }
-
-      // 保存商家营销模块配置
-      try {
-        const merchantId = editingMerchant?.id ?? (res.data as any)?.data?.id;
-        if (merchantId) {
-          await Network.request({
-            url: `/api/merchants/${merchantId}/marketing-features`,
-            method: 'PUT',
-            data: { features: marketingFeatures },
-          });
-        }
-      } catch (e) {
-        console.error('保存营销模块配置失败:', e);
-      }
-
-      // 保存门店 WiFi 配置
-      try {
-        const merchantId = editingMerchant?.id ?? (res.data as any)?.data?.id;
-        if (merchantId) {
-          await Network.request({
-            url: `/api/merchants/${merchantId}/wifi`,
-            method: 'PUT',
-            data: { wifi_ssid: wifiSsid.trim(), wifi_password: wifiPassword.trim() },
-          });
-        }
-      } catch (e) {
-        console.error('保存 WiFi 配置失败:', e);
       }
 
       Taro.showToast({ title: editingMerchant ? '更新成功' : '添加成功', icon: 'success' });
@@ -1014,61 +941,6 @@ export default function MerchantAdmin() {
                   </View>
                 </RadioGroup>
 
-                {/* 门店WiFi链接模块配置 */}
-                <View className="mt-5 bg-rose-50 rounded-xl p-4 border border-rose-100">
-                  <View className="flex flex-row items-center mb-1">
-                    <Wifi size={16} color="#ef4444" />
-                    <Text className="block text-sm font-medium text-gray-800 ml-1">门店WiFi链接模块</Text>
-                    <View className="ml-2 px-2 py-1 bg-red-500 rounded-full">
-                      <Text className="block text-xs text-white font-bold">FREE</Text>
-                    </View>
-                  </View>
-                  <Text className="block text-xs text-gray-400 mb-3">
-                    配置后消费者在商家页可一键连接店内 WiFi；手机连上店内 WiFi 时点「获取当前」可自动填入名称，密码需手动输入
-                  </Text>
-
-                  <View className="mb-3">
-                    <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 名称（SSID）</Text>
-                    <View className="flex flex-row gap-2">
-                      <View className="flex-1 bg-white rounded-xl px-4 py-3">
-                        <Input
-                          className="w-full text-sm"
-                          placeholder="请输入WiFi名称"
-                          value={wifiSsid}
-                          onInput={(e) => setWifiSsid(e.detail.value)}
-                        />
-                      </View>
-                      <Button
-                        variant="outline"
-                        className="shrink-0 border-red-500 text-red-500 bg-white"
-                        disabled={fetchingWifi}
-                        onClick={handleFetchCurrentWifi}
-                      >
-                        {fetchingWifi ? (
-                          <LoaderCircle size={16} color="#ef4444" className="animate-spin" />
-                        ) : (
-                          <Wifi size={16} color="#ef4444" />
-                        )}
-                        <Text className="block text-sm ml-1 text-red-500">获取当前</Text>
-                      </Button>
-                    </View>
-                  </View>
-
-                  <View className="mb-2">
-                    <Text className="block text-sm font-medium text-gray-800 mb-2">WiFi 密码</Text>
-                    <View className="bg-white rounded-xl px-4 py-3">
-                      <Input
-                        className="w-full text-sm"
-                        placeholder="请输入WiFi密码"
-                        value={wifiPassword}
-                        onInput={(e) => setWifiPassword(e.detail.value)}
-                      />
-                    </View>
-                  </View>
-
-                  <Text className="block text-xs text-gray-400">留空 WiFi 名称则商家页不展示连接入口</Text>
-                </View>
-
                 {formData.settlement_type === 1 && (
                   <View className="mt-3">
                     <Text className="block text-sm font-medium text-gray-800 mb-2">佣金百分比（%）</Text>
@@ -1127,31 +999,6 @@ export default function MerchantAdmin() {
                 )}
               </View>
 
-              {/* 营销模块配置（仅系统管理员可见可修改） */}
-              <View className="mb-4 bg-rose-50 rounded-xl p-4 border border-rose-100">
-                <View className="flex flex-row items-center mb-1">
-                  <Wifi size={16} color="#ef4444" />
-                  <Text className="block text-sm font-medium text-gray-800 ml-1">营销模块配置</Text>
-                </View>
-                <Text className="block text-xs text-gray-400 mb-3">关闭后商家后台将不再展示对应营销模块入口</Text>
-                <View className="flex items-center justify-between p-3 bg-white rounded-xl">
-                  <View className="flex items-center gap-2">
-                    <View className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
-                      <Wifi size={18} color="#ef4444" />
-                    </View>
-                    <View>
-                      <Text className="block text-sm font-medium text-gray-800">门店WiFi链接模块</Text>
-                      <Text className="block text-xs text-gray-500">商家后台可配置店内 WiFi</Text>
-                    </View>
-                  </View>
-                  <Switch
-                    checked={!!marketingFeatures.wifi}
-                    onCheckedChange={(checked) =>
-                      setMarketingFeatures((prev) => ({ ...prev, wifi: checked }))
-                    }
-                  />
-                </View>
-              </View>
             </View>
 
             {/* 底部按钮 */}
