@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
@@ -68,25 +68,20 @@ export default function TeamLotteryPage() {
   const [drawing, setDrawing] = useState(false)
   const [toast, setToast] = useState('')
 
-  useDidShow(() => {
+  useEffect(() => {
     const uid = Taro.getStorageSync('user_id') || ''
     setUserId(uid)
     if (merchantId && uid) {
       loadAll(uid)
+    } else if (!uid) {
+      setLoading(false)
     }
-  })
-
-  useEffect(() => {
-    if (merchantId && userId) {
-      loadAll(userId)
-    }
-  }, [merchantId, userId])
+  }, [merchantId])
 
   useShareAppMessage(() => {
     if (!group) return { title: '组队抽奖' }
     return {
       title: status?.share_title || '快来组队抽奖，团长必得奖品！',
-      desc: status?.share_desc || `满${status?.team_size || 3}人即可开奖`,
       path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}&invite_code=${group.invite_code}`,
       imageUrl: status?.share_image_url || undefined,
     }
@@ -102,14 +97,14 @@ export default function TeamLotteryPage() {
     try {
       const [statusRes, ordersRes, myGroupsRes] = await Promise.all([
         Network.request({ url: `/api/team-lottery/merchants/${merchantId}/status` }),
-        Network.request({ url: `/api/orders?user_id=${uid}&merchant_id=${merchantId}&status=paid,used` }),
+        Network.request({ url: `/api/team-lottery/orders/${uid}/${merchantId}` }),
         Network.request({ url: `/api/team-lottery/my-groups/${uid}` }),
       ])
       console.log('[TeamLottery] status', statusRes.data)
       console.log('[TeamLottery] orders', ordersRes.data)
       console.log('[TeamLottery] myGroups', myGroupsRes.data)
       setStatus(statusRes.data?.data || null)
-      setOrders((ordersRes.data?.data || []).filter((o: Order) => !packageId || o.package_id === packageId))
+      setOrders(ordersRes.data?.data || [])
 
       const groups: Group[] = myGroupsRes.data?.data || []
       const active = groups.find(
@@ -227,6 +222,23 @@ export default function TeamLotteryPage() {
         <Skeleton className="h-48 w-full rounded-2xl mb-4" />
         <Skeleton className="h-32 w-full rounded-2xl mb-4" />
         <Skeleton className="h-32 w-full rounded-2xl" />
+      </View>
+    )
+  }
+
+  if (!userId) {
+    return (
+      <View className="min-h-screen bg-gradient-to-b from-[#FF4757] to-[#ff6b81] flex items-center justify-center p-6">
+        <Card className="w-full rounded-2xl border-0 shadow-xl">
+          <CardContent className="p-8 text-center">
+            <CircleAlert size={48} color="#FF4757" className="mx-auto mb-4" />
+            <Text className="block text-lg font-bold text-gray-900 mb-2">请先登录</Text>
+            <Text className="block text-sm text-gray-500 mb-6">登录后即可参与组队抽奖</Text>
+            <Button onClick={() => Taro.navigateTo({ url: '/pages/login/index' })} className="w-full bg-[#FF4757] text-white rounded-full">
+              去登录
+            </Button>
+          </CardContent>
+        </Card>
       </View>
     )
   }
@@ -372,7 +384,7 @@ export default function TeamLotteryPage() {
               <View className="mt-4">
                 <Button
                   openType="share"
-                  className="w-full bg-[#FF4757] text-white rounded-full h-12 leading-[48px] text-base font-bold border-0"
+                  className="w-full bg-[#FF4757] text-white rounded-full h-12 text-base font-bold border-0"
                 >
                   <View className="flex flex-row items-center justify-center gap-2">
                     <Share2 size={18} color="#ffffff" />
@@ -409,7 +421,13 @@ export default function TeamLotteryPage() {
                 <>
                   <Text className="block text-sm text-gray-600 mb-4">暂无可用订单，购买本店套餐支付成功后才可开团</Text>
                   <Button
-                    onClick={() => Taro.navigateTo({ url: `/pages/package-detail/index?id=${packageId}` })}
+                    onClick={() => {
+                      if (packageId) {
+                        Taro.navigateTo({ url: `/pages/package-detail/index?id=${packageId}` })
+                      } else {
+                        Taro.navigateBack()
+                      }
+                    }}
                     className="w-full bg-[#FF4757] text-white rounded-full h-12 text-base font-bold"
                   >
                     去购买套餐

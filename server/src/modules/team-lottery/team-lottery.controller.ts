@@ -5,6 +5,7 @@ import {
   Put,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
   BadRequestException,
@@ -67,12 +68,23 @@ export class TeamLotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** C端：获取用户在某商家的可开团订单 */
+  @Get('orders/:userId/:merchantId')
+  @HttpCode(HttpStatus.OK)
+  async getUserOrders(
+    @Param('userId') userId: string,
+    @Param('merchantId') merchantId: string,
+  ) {
+    const data = await this.teamLotteryService.getUserOrders(userId, Number(merchantId));
+    return { code: 200, msg: 'success', data };
+  }
+
   /** C端：获取队伍详情 */
   @Get('groups/:id')
   @HttpCode(HttpStatus.OK)
   async getGroupDetail(
     @Param('id') id: string,
-    @Body('user_id') userId?: string,
+    @Query('user_id') userId?: string,
   ) {
     const data = await this.teamLotteryService.getGroupDetail(id, userId);
     return { code: 200, msg: 'success', data };

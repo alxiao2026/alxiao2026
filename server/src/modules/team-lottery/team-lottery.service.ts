@@ -192,6 +192,33 @@ export class TeamLotteryService {
     };
   }
 
+  /** C端：查询用户在某商家的可开团订单 */
+  async getUserOrders(userId: string, merchantId: number) {
+    const { data: packages, error: pkgError } = await this.client
+      .from('packages')
+      .select('id')
+      .eq('merchant_id', merchantId);
+    if (pkgError) throw new Error(`查询商家套餐失败: ${pkgError.message}`);
+    const packageIds = (packages || []).map((p: any) => p.id);
+    if (packageIds.length === 0) return [];
+
+    const { data: orders, error } = await this.client
+      .from('orders')
+      .select('id, package_id, package_name, status, paid_at, created_at')
+      .eq('user_id', userId)
+      .in('package_id', packageIds)
+      .in('status', ['paid', 'used'])
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`查询订单失败: ${error.message}`);
+    return (orders || []).map((o: any) => ({
+      id: o.id,
+      package_id: o.package_id,
+      package_name: o.package_name,
+      status: o.status,
+      paid_at: o.paid_at,
+    }));
+  }
+
   /** 检查并解散过期队伍 */
   async expireGroups() {
     const now = this.now();
@@ -433,7 +460,7 @@ export class TeamLotteryService {
     return this.getGroupDetail((group as any).id, dto.user_id);
   }
 
-  private async buildMemberView(members: any[], currentUserId?: string) {
+  private async buildMemberView(members: any[], leaderUserId: string, currentUserId?: string) {
     const userIds = members.map((m) => m.user_id);
     let users: any[] = [];
     if (userIds.length > 0) {
@@ -442,12 +469,15 @@ export class TeamLotteryService {
     }
     return members.map((m) => {
       const u = users.find((x) => x.id === m.user_id);
+      const isLeader = m.user_id === leaderUserId;
       return {
         id: m.id,
         user_id: m.user_id,
+        role: isLeader ? 'leader' : 'member',
         nick_name: u?.nick_name || '神秘好友',
         avatar_url: u?.avatar_url || '',
         is_self: currentUserId ? m.user_id === currentUserId : false,
+        is_leader: isLeader,
         is_winner: m.is_winner,
         prize_name: m.prize_name,
         prize_type: m.prize_type,
@@ -476,6 +506,13 @@ export class TeamLotteryService {
     const isMember = (members || []).some((m: any) => m.user_id === currentUserId);
     const leftCount = Math.max(0, g.team_size - g.current_count);
 
+    let leaderPrizeName: string | null = null;
+    const config = await this.getConfigRow(g.merchant_id);
+    if (config?.leader_prize_id) {
+      const prize = await this.getPrizeById(config.leader_prize_id);
+      leaderPrizeName = prize?.name || null;
+    }
+
     return {
       id: g.id,
       merchant_id: g.merchant_id,
@@ -489,7 +526,8 @@ export class TeamLotteryService {
       created_at: g.created_at,
       is_leader: isLeader,
       is_member: isMember,
-      members: await this.buildMemberView(members || [], currentUserId),
+      leader_prize_name: leaderPrizeName,
+      members: await this.buildMemberView(members || [], g.leader_user_id, currentUserId),
     };
   }
 
