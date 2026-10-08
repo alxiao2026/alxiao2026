@@ -6,7 +6,7 @@ import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subs
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift, Sprout } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift, Sprout, Users } from 'lucide-react-taro'
 import { orchardApi, type OrchardCoupon } from '@/lib/orchard-api'
 
 interface Order {
@@ -120,6 +120,7 @@ export default function OrderDetail() {
   const [showPaySuccess, setShowPaySuccess] = useState(false)
   const [communityConfig, setCommunityConfig] = useState<CommunityConfig | null>(null)
   const [communityLoading, setCommunityLoading] = useState(true)
+  const [teamLotteryEnabled, setTeamLotteryEnabled] = useState(false)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -217,6 +218,28 @@ export default function OrderDetail() {
       setLoading(false)
     }
   }
+
+  const loadTeamLotteryStatus = async () => {
+    try {
+      const merchantId = packageInfo?.merchant_id || order?.merchant_id
+      if (!merchantId) return
+      const res = await Network.request({
+        url: `/api/team-lottery/merchants/${merchantId}/status`,
+        method: 'GET',
+      })
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      setTeamLotteryEnabled(!!body?.data?.enabled)
+    } catch (err) {
+      console.warn('[OrderDetail] 加载组队抽奖状态失败:', err)
+    }
+  }
+
+  useEffect(() => {
+    const merchantId = packageInfo?.merchant_id || order?.merchant_id
+    if (merchantId && (order?.status === 'paid' || order?.status === 'used')) {
+      loadTeamLotteryStatus()
+    }
+  }, [packageInfo?.merchant_id, order?.merchant_id, order?.status])
 
   const loadCommunityConfig = async (merchantId?: number) => {
     try {
@@ -1001,6 +1024,55 @@ export default function OrderDetail() {
           </View>
         </View>
 
+        {/* 已支付订单：抽奖入口 */}
+        {(isPaid || order.status === 'used') && (
+          <View className="mx-4 mt-3">
+            {teamLotteryEnabled ? (
+              <View style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    className="w-full h-11 rounded-xl border-0"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)' }}
+                    onClick={() => {
+                      const merchantId = packageInfo?.merchant_id || order?.merchant_id
+                      const packageId = order?.package_id
+                      Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
+                    }}
+                  >
+                    <View className="flex flex-row items-center gap-1">
+                      <Users size={16} color="#FFFFFF" />
+                      <Text className="block text-sm font-semibold text-white">组队抽奖</Text>
+                    </View>
+                  </Button>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    className="w-full h-11 rounded-xl border-0"
+                    style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)' }}
+                    onClick={() => Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })}
+                  >
+                    <View className="flex flex-row items-center gap-1">
+                      <Gift size={16} color="#FFFFFF" />
+                      <Text className="block text-sm font-semibold text-white">普通抽奖</Text>
+                    </View>
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <Button
+                className="w-full h-11 rounded-xl border-0"
+                style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)' }}
+                onClick={() => Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })}
+              >
+                <View className="flex flex-row items-center gap-2">
+                  <Gift size={16} color="#FFFFFF" />
+                  <Text className="block text-sm font-semibold text-white">去抽奖赢免单</Text>
+                </View>
+              </Button>
+            )}
+          </View>
+        )}
+
         {/* 退款入口：已支付且有未核销份数（已核销份数不可退） */}
         {canRefund && (
           <View className="mx-4 mt-3">
@@ -1090,21 +1162,57 @@ export default function OrderDetail() {
 
             {/* 文案 */}
             <Text className="block text-xl font-bold text-gray-900 mt-5">支付成功啦</Text>
-            <Text className="block text-sm text-gray-500 mt-2 text-center">好运已到账，快去抽奖赢霸王餐吧</Text>
+            {teamLotteryEnabled ? (
+              <Text className="block text-sm text-gray-500 mt-2 text-center">选择抽奖方式，好运等你来</Text>
+            ) : (
+              <Text className="block text-sm text-gray-500 mt-2 text-center">好运已到账，快去抽奖赢霸王餐吧</Text>
+            )}
 
             {/* 按钮组 */}
-            <Button
-              className="w-full h-12 rounded-full mt-6 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] border-0 shadow-lg"
-              onClick={() => {
-                setShowPaySuccess(false)
-                Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
-              }}
-            >
-              <View className="flex flex-row items-center gap-2">
-                <Gift size={18} color="#FFFFFF" />
-                <Text className="block text-base font-semibold text-white">去抽奖赢免单</Text>
-              </View>
-            </Button>
+            {teamLotteryEnabled ? (
+              <>
+                <Button
+                  className="w-full h-12 rounded-full mt-6 border-0 shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)' }}
+                  onClick={() => {
+                    setShowPaySuccess(false)
+                    const merchantId = packageInfo?.merchant_id || order?.merchant_id
+                    const packageId = order?.package_id
+                    Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
+                  }}
+                >
+                  <View className="flex flex-row items-center gap-2">
+                    <Users size={18} color="#FFFFFF" />
+                    <Text className="block text-base font-semibold text-white">组队抽奖</Text>
+                  </View>
+                </Button>
+                <Button
+                  className="w-full h-11 rounded-full mt-3 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] border-0 shadow-lg"
+                  onClick={() => {
+                    setShowPaySuccess(false)
+                    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+                  }}
+                >
+                  <View className="flex flex-row items-center gap-2">
+                    <Gift size={18} color="#FFFFFF" />
+                    <Text className="block text-base font-semibold text-white">普通抽奖</Text>
+                  </View>
+                </Button>
+              </>
+            ) : (
+              <Button
+                className="w-full h-12 rounded-full mt-6 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] border-0 shadow-lg"
+                onClick={() => {
+                  setShowPaySuccess(false)
+                  Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+                }}
+              >
+                <View className="flex flex-row items-center gap-2">
+                  <Gift size={18} color="#FFFFFF" />
+                  <Text className="block text-base font-semibold text-white">去抽奖赢免单</Text>
+                </View>
+              </Button>
+            )}
             <Button
               variant="outline"
               className="w-full h-11 rounded-full mt-3 border-gray-200"
