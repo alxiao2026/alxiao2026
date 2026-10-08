@@ -42,6 +42,7 @@ export default defineAppConfig({
     { root: 'pages/distribution-audit', pages: ['index'] },
     { root: 'pages/customer-service-admin', pages: ['index'] },
     { root: 'pages/merchant-marketing', pages: ['index'] },
+    { root: 'pages/marketing-config', pages: ['index'] },
     // ===== 分包：果园模块 =====
     { root: 'pages/orchard-tasks', pages: ['index'] },
     { root: 'pages/orchard-coupons', pages: ['index'] },
