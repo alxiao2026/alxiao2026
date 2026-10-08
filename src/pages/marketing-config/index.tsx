@@ -44,6 +44,7 @@ interface TeamLotteryConfig {
   share_title: string
   share_desc: string
   share_image_url: string | null
+  logo_image_url: string | null
 }
 
 const DEFAULT_COMMUNITY: CommunityConfig = {
@@ -63,6 +64,7 @@ const DEFAULT_TEAM_LOTTERY: TeamLotteryConfig = {
   share_title: '组队抽大奖',
   share_desc: '我组了个队，快来一起免费抽奖',
   share_image_url: null,
+  logo_image_url: null,
 }
 
 const MODULE_META: Record<string, { name: string; icon: typeof Wifi; color: string }> = {
@@ -147,6 +149,7 @@ export default function MarketingConfigPage() {
             share_title: data.share_title || DEFAULT_TEAM_LOTTERY.share_title,
             share_desc: data.share_desc || DEFAULT_TEAM_LOTTERY.share_desc,
             share_image_url: data.share_image_url || null,
+            logo_image_url: data.logo_image_url || null,
           })
         }
         const list = prizesRes?.data?.data || []
@@ -243,6 +246,31 @@ export default function MarketingConfigPage() {
     }
   }
 
+  const handleChooseTeamLotteryLogoImage = async () => {
+    if (teamLotteryUploading) return
+    setTeamLotteryUploading(true)
+    try {
+      let url: string | null = null
+      if (isMiniAppEnv()) {
+        await ensurePrivacyAuthorized()
+        const choose = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'] })
+        const path = choose.tempFiles?.[0]?.tempFilePath
+        if (path) url = await uploadLocalImage(path)
+      } else {
+        const picked = await chooseImageH5()
+        if (picked) url = await uploadLocalImage(picked.localUrl, picked.file)
+      }
+      if (url) {
+        setTeamLotteryConfig((prev) => ({ ...prev, logo_image_url: url }))
+        Taro.showToast({ title: 'Logo 已上传', icon: 'success' })
+      }
+    } catch {
+      // 用户取消选择
+    } finally {
+      setTeamLotteryUploading(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!merchantId || !moduleKey) return
     setSaving(true)
@@ -278,6 +306,7 @@ export default function MarketingConfigPage() {
             share_title: teamLotteryConfig.share_title.trim(),
             share_desc: teamLotteryConfig.share_desc.trim(),
             share_image_url: teamLotteryConfig.share_image_url,
+            logo_image_url: teamLotteryConfig.logo_image_url,
           },
         })
       }
@@ -698,6 +727,41 @@ export default function MarketingConfigPage() {
                         value={teamLotteryConfig.share_desc}
                         onInput={(e) => setTeamLotteryConfig((prev) => ({ ...prev, share_desc: e.detail.value }))}
                       />
+                    </View>
+                  </View>
+
+                  <View className="mb-4">
+                    <Text className="block text-sm font-medium text-gray-800 mb-1">页面 Logo 图</Text>
+                    <Text className="block text-xs text-gray-400 mb-3">建议上传正方形 Logo，展示在组队抽奖页面顶部</Text>
+                    <View className="flex flex-row items-center gap-4">
+                      {teamLotteryConfig.logo_image_url ? (
+                        <View className="rounded-xl overflow-hidden bg-gray-50 p-2 border border-gray-100">
+                          <Image
+                            src={teamLotteryConfig.logo_image_url}
+                            className="w-16 h-16 rounded-lg"
+                            mode="aspectFill"
+                            onError={(e: any) => console.warn('[MarketingConfig] Logo 加载失败:', e?.detail?.errMsg || e)}
+                          />
+                        </View>
+                      ) : (
+                        <View className="w-16 h-16 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
+                          <Text className="text-xs text-gray-300">未上传</Text>
+                        </View>
+                      )}
+                      <View className="flex-1">
+                        <Button className="w-full bg-red-500" disabled={teamLotteryUploading} onClick={handleChooseTeamLotteryLogoImage}>
+                          <View className="flex flex-row items-center justify-center gap-1">
+                            {teamLotteryUploading ? (
+                              <LoaderCircle size={16} color="#fff" className="animate-spin" />
+                            ) : teamLotteryConfig.logo_image_url ? (
+                              <RefreshCw size={16} color="#fff" />
+                            ) : (
+                              <ImagePlus size={16} color="#fff" />
+                            )}
+                            <Text className="block text-white text-sm">{teamLotteryConfig.logo_image_url ? '更换 Logo' : '上传 Logo'}</Text>
+                          </View>
+                        </Button>
+                      </View>
                     </View>
                   </View>
 

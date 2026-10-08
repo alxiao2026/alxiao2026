@@ -90,7 +90,18 @@ export class TeamLotteryController {
     return { code: 200, msg: 'success', data };
   }
 
-  /** C端：加入队伍 */
+  /** C端：通过邀请码查询队伍 */
+  @Get('groups/by-code/:code')
+  @HttpCode(HttpStatus.OK)
+  async getGroupByInviteCode(
+    @Param('code') code: string,
+    @Query('user_id') userId?: string,
+  ) {
+    const data = await this.teamLotteryService.getGroupByInviteCode(code, userId);
+    return { code: 200, msg: 'success', data };
+  }
+
+  /** C端：加入队伍（支持 groupId 或 invite_code） */
   @Post('groups/:id/join')
   @HttpCode(HttpStatus.OK)
   async joinGroup(@Param('id') id: string, @Body() dto: JoinGroupDto) {

@@ -15,6 +15,7 @@ interface TeamStatus {
   share_title: string
   share_desc: string
   share_image_url: string | null
+  logo_image_url: string | null
 }
 
 interface Member {
@@ -121,7 +122,7 @@ export default function TeamLotteryPage() {
   }
 
   const loadGroup = async (groupId: string, uid: string) => {
-    const res = await Network.request({ url: `/api/team-lottery/groups/${groupId}`, data: { user_id: uid } })
+    const res = await Network.request({ url: `/api/team-lottery/groups/${groupId}?user_id=${uid}` })
     console.log('[TeamLottery] group detail', res.data)
     setGroup(res.data?.data || null)
   }
@@ -162,14 +163,8 @@ export default function TeamLotteryPage() {
     if (!code) return
     setJoining(true)
     try {
-      const detail = await Network.request({ url: `/api/team-lottery/groups/${code}` })
-      const gid = detail.data?.data?.id
-      if (!gid) {
-        showToast('邀请码无效')
-        return
-      }
       const res = await Network.request({
-        url: `/api/team-lottery/groups/${gid}/join`,
+        url: `/api/team-lottery/groups/${code}/join`,
         method: 'POST',
         data: { user_id: uid },
       })
@@ -264,8 +259,12 @@ export default function TeamLotteryPage() {
     <View className="min-h-screen bg-gradient-to-b from-[#FF4757] via-[#ff5e6e] to-[#ffe4e7] p-4 pb-24">
       {/* 顶部活动区 */}
       <View className="pt-8 pb-6 text-center">
-        <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-20 backdrop-blur mb-4">
-          <Gift size={36} color="#ffffff" />
+        <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-20 backdrop-blur mb-4 overflow-hidden">
+          {status.logo_image_url ? (
+            <Image src={status.logo_image_url} className="w-full h-full" mode="aspectFill" />
+          ) : (
+            <Gift size={36} color="#ffffff" />
+          )}
         </View>
         <Text className="block text-2xl font-extrabold text-white mb-2">组队免费抽奖</Text>
         <Text className="block text-white text-opacity-90 text-sm">
@@ -309,23 +308,29 @@ export default function TeamLotteryPage() {
             </View>
 
             {/* 成员头像 */}
-            <View className="flex flex-row items-center justify-center gap-4 mb-5">
+            <View className="flex flex-row items-center justify-center gap-3 mb-5 flex-wrap">
               {Array.from({ length: status.team_size }).map((_, idx) => {
                 const member = group.members[idx]
+                const displayName = member?.nickname || (member?.role === 'leader' ? '团长' : '团员')
+                const initial = displayName.slice(0, 1)
                 return (
                   <View key={idx} className="flex flex-col items-center">
-                    <View className="w-12 h-12 rounded-full bg-gray-100 border-2 border-white shadow overflow-hidden flex items-center justify-center">
+                    <View className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-white shadow overflow-hidden flex items-center justify-center">
                       {member?.avatar_url ? (
                         <Image src={member.avatar_url} className="w-full h-full" mode="aspectFill" />
                       ) : (
-                        <Text className="block text-lg text-gray-300">?</Text>
+                        <Text className="block text-base font-bold text-gray-400">{initial}</Text>
                       )}
                     </View>
-                    {member?.role === 'leader' && (
-                      <View className="mt-1 px-2 py-1 rounded bg-yellow-400">
-                        <Text className="block text-xs font-bold text-white">团长</Text>
-                      </View>
-                    )}
+                    <View
+                      className={`mt-1 px-2 py-1 rounded ${
+                        member?.role === 'leader' ? 'bg-yellow-400' : 'bg-gray-200'
+                      }`}
+                    >
+                      <Text className={`block text-xs font-bold ${member?.role === 'leader' ? 'text-white' : 'text-gray-600'}`}>
+                        {member?.role === 'leader' ? '团长' : '团员'}
+                      </Text>
+                    </View>
                   </View>
                 )
               })}

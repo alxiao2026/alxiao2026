@@ -1,12 +1,7 @@
-import { pgTable, serial, timestamp, text, check, integer, index, unique, varchar, numeric, boolean, foreignKey, uuid, jsonb, date, uniqueIndex, smallint } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, serial, index, unique, varchar, numeric, integer, boolean, foreignKey, uuid, jsonb, check, date, uniqueIndex, smallint } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
-
-export const healthCheck = pgTable("health_check", {
-	id: serial().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-});
 
 export const notificationTemplateConfigs = pgTable("notification_template_configs", {
 	type: text().primaryKey().notNull(),
@@ -15,21 +10,10 @@ export const notificationTemplateConfigs = pgTable("notification_template_config
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
-export const wechatConfig = pgTable("wechat_config", {
-	id: integer().default(1).primaryKey().notNull(),
-	appid: text().default(''),
-	secret: text().default(''),
+export const healthCheck = pgTable("health_check", {
+	id: serial().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	mchId: text("mch_id").default(''),
-	mchSerialNo: text("mch_serial_no").default(''),
-	privateKey: text("private_key").default(''),
-	apiV3Key: text("api_v3_key").default(''),
-	payPublicKey: text("pay_public_key").default(''),
-	payPublicKeyId: text("pay_public_key_id").default(''),
-	payNotifyUrl: text("pay_notify_url").default(''),
-}, (table) => [
-	check("single_row", sql`id = 1`),
-]);
+});
 
 export const orchardCoupons = pgTable("orchard_coupons", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
@@ -153,19 +137,16 @@ export const payments = pgTable("payments", {
 	unique("payments_transaction_id_key").on(table.transactionId),
 ]);
 
-export const settlementRevocations = pgTable("settlement_revocations", {
+export const merchantBalances = pgTable("merchant_balances", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	orderId: uuid("order_id").notNull(),
 	merchantId: integer("merchant_id").notNull(),
-	packageId: uuid("package_id"),
-	revokeCount: integer("revoke_count").default(0).notNull(),
-	rollbackAmount: numeric("rollback_amount", { precision: 10, scale:  2 }).default('0').notNull(),
-	rollbackCommission: numeric("rollback_commission", { precision: 10, scale:  2 }).default('0').notNull(),
-	operatorId: text("operator_id"),
-	operatorName: text("operator_name"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	balance: numeric({ precision: 10, scale:  2 }).default('0'),
+	totalSettled: numeric("total_settled", { precision: 10, scale:  2 }).default('0'),
+	totalWithdrawn: numeric("total_withdrawn", { precision: 10, scale:  2 }).default('0'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("idx_settlement_revocations_order").using("btree", table.orderId.asc().nullsLast().op("uuid_ops")),
+	unique("merchant_balances_merchant_id_key").on(table.merchantId),
 ]);
 
 export const packageSettlementConfigs = pgTable("package_settlement_configs", {
@@ -181,16 +162,19 @@ export const packageSettlementConfigs = pgTable("package_settlement_configs", {
 	check("package_settlement_configs_settlement_type_check", sql`settlement_type = ANY (ARRAY[1, 2])`),
 ]);
 
-export const merchantBalances = pgTable("merchant_balances", {
+export const settlementRevocations = pgTable("settlement_revocations", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
+	orderId: uuid("order_id").notNull(),
 	merchantId: integer("merchant_id").notNull(),
-	balance: numeric({ precision: 10, scale:  2 }).default('0'),
-	totalSettled: numeric("total_settled", { precision: 10, scale:  2 }).default('0'),
-	totalWithdrawn: numeric("total_withdrawn", { precision: 10, scale:  2 }).default('0'),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	packageId: uuid("package_id"),
+	revokeCount: integer("revoke_count").default(0).notNull(),
+	rollbackAmount: numeric("rollback_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	rollbackCommission: numeric("rollback_commission", { precision: 10, scale:  2 }).default('0').notNull(),
+	operatorId: text("operator_id"),
+	operatorName: text("operator_name"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	unique("merchant_balances_merchant_id_key").on(table.merchantId),
+	index("idx_settlement_revocations_order").using("btree", table.orderId.asc().nullsLast().op("uuid_ops")),
 ]);
 
 export const lotteryLogs = pgTable("lottery_logs", {
@@ -211,12 +195,6 @@ export const lotteryLogs = pgTable("lottery_logs", {
 	index("lottery_logs_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	index("lottery_logs_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 ]);
-
-export const lotteryRateLimits = pgTable("lottery_rate_limits", {
-	ipAddress: varchar("ip_address", { length: 45 }).primaryKey().notNull(),
-	requestCount: integer("request_count").default(1).notNull(),
-	windowStart: timestamp("window_start", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-});
 
 export const lotterySettings = pgTable("lottery_settings", {
 	settingKey: varchar("setting_key", { length: 64 }).primaryKey().notNull(),
@@ -286,56 +264,11 @@ export const merchants = pgTable("merchants", {
 	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }),
 	wifiSsid: varchar("wifi_ssid", { length: 64 }),
 	wifiPassword: varchar("wifi_password", { length: 64 }),
-	wifiEnabled: boolean("wifi_enabled").default(false),
 	merchantCode: varchar("merchant_code"),
 	marketingFeatures: jsonb("marketing_features").default({"wifi":true}),
+	wifiEnabled: boolean("wifi_enabled").default(false),
 }, (table) => [
 	unique("merchants_merchant_code_key").on(table.merchantCode),
-]);
-
-export const merchantMarketingActivities = pgTable("merchant_marketing_activities", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
-	type: varchar({ length: 50 }).default('coupon').notNull(),
-	title: varchar({ length: 200 }).notNull(),
-	status: varchar({ length: 20 }).default('draft').notNull(),
-	startTime: timestamp("start_time", { withTimezone: true, mode: 'string' }),
-	endTime: timestamp("end_time", { withTimezone: true, mode: 'string' }),
-	config: jsonb().default({}).notNull(),
-	sortOrder: integer("sort_order").default(0).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("merchant_marketing_activities_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
-	index("merchant_marketing_activities_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("merchant_marketing_activities_sort_idx").using("btree", table.sortOrder.asc().nullsLast().op("int4_ops")),
-]);
-
-export const prizes = pgTable("prizes", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	name: varchar({ length: 128 }).notNull(),
-	description: text(),
-	probability: numeric({ precision: 10, scale:  4 }).default('0').notNull(),
-	imageUrl: varchar("image_url", { length: 512 }),
-	stock: integer().default(0).notNull(),
-	isActive: boolean("is_active").default(true).notNull(),
-	prizeType: varchar("prize_type", { length: 20 }).default('coupon').notNull(),
-	couponAmount: numeric("coupon_amount", { precision: 10, scale:  2 }).default('0').notNull(),
-	couponMinSpend: numeric("coupon_min_spend", { precision: 10, scale:  2 }).default('0').notNull(),
-	productName: varchar("product_name", { length: 128 }).default('').notNull(),
-	productValue: numeric("product_value", { precision: 10, scale:  2 }).default('0').notNull(),
-	merchantId: integer("merchant_id"),
-	validityHours: integer("validity_hours"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-	dailyQuota: integer("daily_quota"),
-	isFallback: boolean("is_fallback").default(false),
-	discountRate: numeric("discount_rate", { precision: 4, scale:  1 }).default('0').notNull(),
-	discountCap: numeric("discount_cap", { precision: 10, scale:  2 }).default('0').notNull(),
-}, (table) => [
-	index("prizes_is_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
-	index("prizes_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
-	index("prizes_stock_idx").using("btree", table.stock.asc().nullsLast().op("int4_ops")),
 ]);
 
 export const packages = pgTable("packages", {
@@ -423,6 +356,33 @@ export const users = pgTable("users", {
 	unique("users_phone_unique").on(table.phone),
 ]);
 
+export const prizes = pgTable("prizes", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	name: varchar({ length: 128 }).notNull(),
+	description: text(),
+	probability: numeric({ precision: 10, scale:  4 }).default('0').notNull(),
+	imageUrl: varchar("image_url", { length: 512 }),
+	stock: integer().default(0).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	prizeType: varchar("prize_type", { length: 20 }).default('coupon').notNull(),
+	couponAmount: numeric("coupon_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	couponMinSpend: numeric("coupon_min_spend", { precision: 10, scale:  2 }).default('0').notNull(),
+	productName: varchar("product_name", { length: 128 }).default('').notNull(),
+	productValue: numeric("product_value", { precision: 10, scale:  2 }).default('0').notNull(),
+	merchantId: integer("merchant_id"),
+	validityHours: integer("validity_hours"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	dailyQuota: integer("daily_quota"),
+	isFallback: boolean("is_fallback").default(false),
+	discountRate: numeric("discount_rate", { precision: 4, scale:  1 }).default('0').notNull(),
+	discountCap: numeric("discount_cap", { precision: 10, scale:  2 }).default('0').notNull(),
+}, (table) => [
+	index("prizes_is_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
+	index("prizes_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("prizes_stock_idx").using("btree", table.stock.asc().nullsLast().op("int4_ops")),
+]);
+
 export const customerServiceConfig = pgTable("customer_service_config", {
 	id: serial().primaryKey().notNull(),
 	enabled: boolean().default(true),
@@ -436,21 +396,6 @@ export const customerServiceConfig = pgTable("customer_service_config", {
 	communitySubtitle: varchar("community_subtitle").default('进群抽免单，天天享9折'),
 	communityButtonText: varchar("community_button_text").default('长按识别二维码加店长'),
 	communityQrcodeUrl: varchar("community_qrcode_url"),
-});
-
-export const withdrawalRecords = pgTable("withdrawal_records", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	merchantId: integer("merchant_id").notNull(),
-	amount: numeric({ precision: 10, scale:  2 }).notNull(),
-	status: varchar({ length: 20 }).default('pending').notNull(),
-	failureReason: text("failure_reason"),
-	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	paymentProofImage: text("payment_proof_image"),
-	paymentTransactionNo: varchar("payment_transaction_no", { length: 100 }),
-	paymentProofNote: text("payment_proof_note"),
 });
 
 export const distributionConfigs = pgTable("distribution_configs", {
@@ -468,6 +413,33 @@ export const distributionConfigs = pgTable("distribution_configs", {
 	platformRate: numeric("platform_rate").default('10'),
 	coolingDays: integer("cooling_days").default(7),
 });
+
+export const withdrawalRecords = pgTable("withdrawal_records", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	amount: numeric({ precision: 10, scale:  2 }).notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	failureReason: text("failure_reason"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	paymentProofImage: text("payment_proof_image"),
+	paymentTransactionNo: varchar("payment_transaction_no", { length: 100 }),
+	paymentProofNote: text("payment_proof_note"),
+});
+
+export const distributionWithdraws = pgTable("distribution_withdraws", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id", { length: 64 }).notNull(),
+	amount: numeric({ precision: 12, scale:  2 }).notNull(),
+	status: varchar({ length: 16 }).default('pending'),
+	rejectReason: varchar("reject_reason", { length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_dist_withdraws_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
 
 export const orchardRecords = pgTable("orchard_records", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
@@ -516,16 +488,28 @@ export const settlementRecords = pgTable("settlement_records", {
 	unique("settlement_records_order_id_key").on(table.orderId),
 ]);
 
-export const distributionWithdraws = pgTable("distribution_withdraws", {
+export const notificationRemindLogs = pgTable("notification_remind_logs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: varchar("user_id", { length: 64 }).notNull(),
-	amount: numeric({ precision: 12, scale:  2 }).notNull(),
-	status: varchar({ length: 16 }).default('pending'),
-	rejectReason: varchar("reject_reason", { length: 255 }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	remindType: varchar("remind_type").notNull(),
+	targetId: varchar("target_id").notNull(),
+	remindPoint: varchar("remind_point").notNull(),
+	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("idx_dist_withdraws_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("notification_remind_logs_remind_type_target_id_remind_point_key").on(table.remindType, table.targetId, table.remindPoint),
+]);
+
+export const notifications = pgTable("notifications", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id").notNull(),
+	type: varchar().notNull(),
+	title: varchar().notNull(),
+	content: text().notNull(),
+	data: jsonb(),
+	isRead: boolean("is_read").default(false),
+	wechatSent: boolean("wechat_sent").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_notifications_user").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.isRead.asc().nullsLast().op("bool_ops"), table.createdAt.desc().nullsFirst().op("bool_ops")),
 ]);
 
 export const distributionCommissions = pgTable("distribution_commissions", {
@@ -546,28 +530,27 @@ export const distributionCommissions = pgTable("distribution_commissions", {
 	uniqueIndex("uq_dist_commissions_order_level").using("btree", table.orderNo.asc().nullsLast().op("int2_ops"), table.beneficiaryId.asc().nullsLast().op("int2_ops"), table.level.asc().nullsLast().op("int2_ops")),
 ]);
 
-export const notifications = pgTable("notifications", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: varchar("user_id").notNull(),
-	type: varchar().notNull(),
-	title: varchar().notNull(),
-	content: text().notNull(),
-	data: jsonb(),
-	isRead: boolean("is_read").default(false),
-	wechatSent: boolean("wechat_sent").default(false),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+export const merchantMarketingActivities = pgTable("merchant_marketing_activities", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	type: varchar({ length: 50 }).default('coupon').notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	status: varchar({ length: 20 }).default('draft').notNull(),
+	startTime: timestamp("start_time", { withTimezone: true, mode: 'string' }),
+	endTime: timestamp("end_time", { withTimezone: true, mode: 'string' }),
+	config: jsonb().default({}).notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_notifications_user").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.isRead.asc().nullsLast().op("bool_ops"), table.createdAt.desc().nullsFirst().op("bool_ops")),
-]);
-
-export const notificationRemindLogs = pgTable("notification_remind_logs", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	remindType: varchar("remind_type").notNull(),
-	targetId: varchar("target_id").notNull(),
-	remindPoint: varchar("remind_point").notNull(),
-	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	unique("notification_remind_logs_remind_type_target_id_remind_point_key").on(table.remindType, table.targetId, table.remindPoint),
+	index("merchant_marketing_activities_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("merchant_marketing_activities_sort_idx").using("btree", table.sortOrder.asc().nullsLast().op("int4_ops")),
+	index("merchant_marketing_activities_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "merchant_marketing_activities_merchant_id_merchants_id_fk"
+		}).onDelete("cascade"),
 ]);
 
 export const distributionMembers = pgTable("distribution_members", {
@@ -611,7 +594,7 @@ export const orchardUsers = pgTable("orchard_users", {
 
 export const merchantCommunityConfigs = pgTable("merchant_community_configs", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+	merchantId: integer("merchant_id").notNull(),
 	enabled: boolean().default(false).notNull(),
 	title: varchar({ length: 120 }).default('加店长领券享88折').notNull(),
 	subtitle: varchar({ length: 200 }).default('进群抽免单，天天享9折').notNull(),
@@ -621,71 +604,34 @@ export const merchantCommunityConfigs = pgTable("merchant_community_configs", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("merchant_community_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "merchant_community_configs_merchant_id_merchants_id_fk"
+		}).onDelete("cascade"),
 	unique("merchant_community_configs_merchant_id_key").on(table.merchantId),
 ]);
 
-export const merchantTeamLotteryConfigs = pgTable("merchant_team_lottery_configs", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	merchantId: integer("merchant_id").notNull(),
-	enabled: boolean().default(false).notNull(),
-	teamSize: integer("team_size").default(3).notNull(),
-	durationHours: integer("duration_hours").default(24).notNull(),
-	leaderPrizeId: varchar("leader_prize_id", { length: 36 }),
-	memberPrizeIds: jsonb("member_prize_ids").default([]).notNull(),
-	shareTitle: varchar("share_title", { length: 120 }).default('组队抽奖，免费抽大奖').notNull(),
-	shareDesc: varchar("share_desc", { length: 240 }).default('好友组队，满员开奖，100%中奖').notNull(),
-	shareImageUrl: varchar("share_image_url", { length: 512 }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("merchant_team_lottery_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
-	unique("merchant_team_lottery_configs_merchant_id_key").on(table.merchantId),
-	foreignKey({
-			columns: [table.merchantId],
-			foreignColumns: [merchants.id],
-			name: "merchant_team_lottery_configs_merchant_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.leaderPrizeId],
-			foreignColumns: [prizes.id],
-			name: "merchant_team_lottery_configs_leader_prize_id_fkey"
-		}).onDelete("set null"),
-]);
+export const lotteryRateLimits = pgTable("lottery_rate_limits", {
+	ipAddress: varchar("ip_address", { length: 45 }).primaryKey().notNull(),
+	requestCount: integer("request_count").default(1).notNull(),
+	windowStart: timestamp("window_start", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
 
-export const teamLotteryGroups = pgTable("team_lottery_groups", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	merchantId: integer("merchant_id").notNull(),
-	packageId: varchar("package_id", { length: 36 }).notNull(),
-	leaderOrderId: varchar("leader_order_id", { length: 36 }).notNull(),
-	leaderUserId: varchar("leader_user_id", { length: 128 }).notNull(),
-	teamSize: integer("team_size").notNull(),
-	currentCount: integer("current_count").default(1).notNull(),
-	status: varchar("status", { length: 20 }).default('active').notNull(),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+export const wechatConfig = pgTable("wechat_config", {
+	id: integer().default(1).primaryKey().notNull(),
+	appid: text().default(''),
+	secret: text().default(''),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	mchId: text("mch_id").default(''),
+	mchSerialNo: text("mch_serial_no").default(''),
+	privateKey: text("private_key").default(''),
+	apiV3Key: text("api_v3_key").default(''),
+	payPublicKey: text("pay_public_key").default(''),
+	payPublicKeyId: text("pay_public_key_id").default(''),
+	payNotifyUrl: text("pay_notify_url").default(''),
 }, (table) => [
-	index("team_lottery_groups_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
-	index("team_lottery_groups_package_id_idx").using("btree", table.packageId.asc().nullsLast().op("text_ops")),
-	index("team_lottery_groups_leader_user_id_idx").using("btree", table.leaderUserId.asc().nullsLast().op("text_ops")),
-	index("team_lottery_groups_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("team_lottery_groups_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
-	foreignKey({
-			columns: [table.merchantId],
-			foreignColumns: [merchants.id],
-			name: "team_lottery_groups_merchant_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.packageId],
-			foreignColumns: [packages.id],
-			name: "team_lottery_groups_package_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.leaderOrderId],
-			foreignColumns: [orders.id],
-			name: "team_lottery_groups_leader_order_id_fkey"
-		}).onDelete("cascade"),
-	unique("team_lottery_groups_leader_order_id_key").on(table.leaderOrderId),
+	check("single_row", sql`id = 1`),
 ]);
 
 export const teamLotteryMembers = pgTable("team_lottery_members", {
@@ -717,4 +663,71 @@ export const teamLotteryMembers = pgTable("team_lottery_members", {
 			name: "team_lottery_members_order_id_fkey"
 		}).onDelete("set null"),
 	unique("team_lottery_members_group_user_key").on(table.groupId, table.userId),
+]);
+
+export const merchantTeamLotteryConfigs = pgTable("merchant_team_lottery_configs", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	enabled: boolean().default(false).notNull(),
+	teamSize: integer("team_size").default(3).notNull(),
+	durationHours: integer("duration_hours").default(24).notNull(),
+	leaderPrizeId: varchar("leader_prize_id", { length: 36 }),
+	memberPrizeIds: jsonb("member_prize_ids").default([]).notNull(),
+	shareTitle: varchar("share_title", { length: 120 }).default('组队抽奖，免费抽大奖').notNull(),
+	shareDesc: varchar("share_desc", { length: 240 }).default('好友组队，满员开奖，100%中奖').notNull(),
+	shareImageUrl: varchar("share_image_url", { length: 512 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	logoImageUrl: varchar("logo_image_url", { length: 512 }),
+}, (table) => [
+	index("merchant_team_lottery_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "merchant_team_lottery_configs_merchant_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.leaderPrizeId],
+			foreignColumns: [prizes.id],
+			name: "merchant_team_lottery_configs_leader_prize_id_fkey"
+		}).onDelete("set null"),
+	unique("merchant_team_lottery_configs_merchant_id_key").on(table.merchantId),
+]);
+
+export const teamLotteryGroups = pgTable("team_lottery_groups", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	packageId: varchar("package_id", { length: 36 }).notNull(),
+	leaderOrderId: varchar("leader_order_id", { length: 36 }).notNull(),
+	leaderUserId: varchar("leader_user_id", { length: 128 }).notNull(),
+	teamSize: integer("team_size").notNull(),
+	currentCount: integer("current_count").default(1).notNull(),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	inviteCode: varchar("invite_code", { length: 32 }),
+}, (table) => [
+	index("team_lottery_groups_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
+	index("team_lottery_groups_leader_user_id_idx").using("btree", table.leaderUserId.asc().nullsLast().op("text_ops")),
+	index("team_lottery_groups_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("team_lottery_groups_package_id_idx").using("btree", table.packageId.asc().nullsLast().op("text_ops")),
+	index("team_lottery_groups_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "team_lottery_groups_merchant_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.packageId],
+			foreignColumns: [packages.id],
+			name: "team_lottery_groups_package_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.leaderOrderId],
+			foreignColumns: [orders.id],
+			name: "team_lottery_groups_leader_order_id_fkey"
+		}).onDelete("cascade"),
+	unique("team_lottery_groups_leader_order_id_key").on(table.leaderOrderId),
+	unique("team_lottery_groups_invite_code_key").on(table.inviteCode),
 ]);

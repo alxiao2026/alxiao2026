@@ -56,19 +56,20 @@ const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
     )
 
     // 小程序开放能力场景（分享/获取手机号等）：必须使用原生 Button 才能触发对应能力
+    // 外层 View 负责视觉样式，内层原生 Button 全透明覆盖以触发开放能力
     if (openType) {
       return (
-        <TaroButton
-          openType={openType}
-          disabled={disabled}
-          plain
-          className={cls}
-          onGetPhoneNumber={onGetPhoneNumber}
-          onChooseAvatar={onChooseAvatar}
-          {...props}
-        >
+        <View className={cls} style={{ position: 'relative' }} {...props}>
+          <TaroButton
+            openType={openType}
+            disabled={disabled}
+            plain
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: 10 }}
+            onGetPhoneNumber={onGetPhoneNumber}
+            onChooseAvatar={onChooseAvatar}
+          />
           {children}
-        </TaroButton>
+        </View>
       )
     }
 

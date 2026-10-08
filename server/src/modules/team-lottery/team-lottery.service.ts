@@ -17,6 +17,7 @@ export interface UpdateTeamLotteryConfigDto {
   share_title?: string;
   share_desc?: string;
   share_image_url?: string | null;
+  logo_image_url?: string | null;
 }
 
 export interface CreateGroupDto {
@@ -51,6 +52,10 @@ export class TeamLotteryService {
   private randomCode(prefix: string, len = 5) {
     const rand = crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, len);
     return `${prefix}${Date.now()}${rand}`;
+  }
+
+  private generateInviteCode() {
+    return crypto.randomBytes(4).toString('hex').toUpperCase();
   }
 
   private async getMerchant(merchantId: number) {
@@ -90,6 +95,7 @@ export class TeamLotteryService {
       share_title: config?.share_title || '组队抽大奖',
       share_desc: config?.share_desc || '我组了个队，快来一起免费抽奖',
       share_image_url: config?.share_image_url || null,
+      logo_image_url: config?.logo_image_url || null,
     };
   }
 
@@ -112,6 +118,7 @@ export class TeamLotteryService {
       share_title: dto.share_title?.trim() || existing?.share_title || '组队抽大奖',
       share_desc: dto.share_desc?.trim() || existing?.share_desc || '我组了个队，快来一起免费抽奖',
       share_image_url: dto.share_image_url ?? existing?.share_image_url ?? null,
+      logo_image_url: dto.logo_image_url ?? existing?.logo_image_url ?? null,
       updated_at: this.now(),
     };
 
@@ -146,6 +153,7 @@ export class TeamLotteryService {
       share_title: data.share_title,
       share_desc: data.share_desc,
       share_image_url: data.share_image_url,
+      logo_image_url: data.logo_image_url,
     };
   }
 
@@ -176,19 +184,20 @@ export class TeamLotteryService {
     const merchant = await this.getMerchant(merchantId);
     const features = (merchant.marketing_features as Record<string, boolean>) || {};
     if (!features.team_lottery) {
-      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null };
+      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null, logo_image_url: null };
     }
     const config = await this.getConfigRow(merchantId);
     if (!config || !config.enabled) {
-      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null };
+      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null, logo_image_url: null };
     }
     return {
       enabled: true,
-      team_size: config.team_size,
-      duration_hours: config.duration_hours,
-      share_title: config.share_title,
-      share_desc: config.share_desc,
-      share_image_url: config.share_image_url,
+      team_size: config.team_size || 3,
+      duration_hours: config.duration_hours || 24,
+      share_title: config.share_title || '',
+      share_desc: config.share_desc || '',
+      share_image_url: config.share_image_url || null,
+      logo_image_url: config.logo_image_url || null,
     };
   }
 
@@ -431,6 +440,7 @@ export class TeamLotteryService {
 
     const expiresAt = this.addHours(Number(config.duration_hours || 24));
     const teamSize = Number(config.team_size || 3);
+    const inviteCode = this.generateInviteCode();
 
     const { data: group, error: groupError } = await this.client
       .from('team_lottery_groups')
@@ -441,6 +451,7 @@ export class TeamLotteryService {
         leader_user_id: dto.user_id,
         team_size: teamSize,
         current_count: 1,
+        invite_code: inviteCode,
         status: 'active',
         expires_at: expiresAt,
       })
@@ -518,6 +529,7 @@ export class TeamLotteryService {
       merchant_id: g.merchant_id,
       package_id: g.package_id,
       leader_user_id: g.leader_user_id,
+      invite_code: g.invite_code,
       team_size: g.team_size,
       current_count: g.current_count,
       left_count: leftCount,
@@ -531,10 +543,33 @@ export class TeamLotteryService {
     };
   }
 
-  /** 加入队伍 */
+  /** 通过邀请码查询队伍 */
+  async getGroupByInviteCode(inviteCode: string, currentUserId?: string) {
+    const { data: group, error } = await this.client
+      .from('team_lottery_groups')
+      .select('*')
+      .eq('invite_code', inviteCode)
+      .maybeSingle();
+    if (error) throw new Error(`查询队伍失败: ${error.message}`);
+    if (!group) throw new NotFoundException('邀请码无效');
+    return this.getGroupDetail((group as any).id, currentUserId);
+  }
+
+  /** 加入队伍（支持 groupId 或 invite_code） */
   async joinGroup(groupId: string, dto: JoinGroupDto) {
     let group = await this.refreshGroupStatus(groupId);
-    if (!group) throw new NotFoundException('队伍不存在');
+    if (!group) {
+      // 尝试按邀请码查询
+      const { data: g2, error } = await this.client
+        .from('team_lottery_groups')
+        .select('*')
+        .eq('invite_code', groupId)
+        .maybeSingle();
+      if (error) throw new Error(`查询队伍失败: ${error.message}`);
+      if (!g2) throw new NotFoundException('队伍不存在');
+      group = await this.refreshGroupStatus((g2 as any).id);
+      if (!group) throw new NotFoundException('队伍不存在');
+    }
     const g = group as any;
     if (g.status !== 'active') {
       throw new BadRequestException(g.status === 'expired' ? '队伍已过期解散' : '队伍已满');
