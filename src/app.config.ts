@@ -16,6 +16,7 @@ export default defineAppConfig({
     'pages/lottery-records/index',
     'pages/notification-center/index',
     'pages/distribution/index',
+    'pages/team-lottery/index',
     'pages/agreement/index',
     'pages/privacy/index'
   ],

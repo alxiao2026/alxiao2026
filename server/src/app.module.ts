@@ -20,6 +20,7 @@ import { DistributionModule } from './modules/distribution/distribution.module';
 import { CustomerServiceModule } from './modules/customer-service/customer-service.module';
 import { OrchardModule } from './modules/orchard/orchard.module';
 import { MerchantMarketingModule } from './modules/merchant-marketing/merchant-marketing.module';
+import { TeamLotteryModule } from './modules/team-lottery/team-lottery.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MerchantMarketingModule } from './modules/merchant-marketing/merchant-m
     CustomerServiceModule,
     OrchardModule,
     MerchantMarketingModule,
+    TeamLotteryModule,
     QiniuModule,
   ],
   controllers: [AppController],

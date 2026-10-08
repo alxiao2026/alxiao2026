@@ -608,3 +608,113 @@ export const orchardUsers = pgTable("orchard_users", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
+
+export const merchantCommunityConfigs = pgTable("merchant_community_configs", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+	enabled: boolean().default(false).notNull(),
+	title: varchar({ length: 120 }).default('加店长领券享88折').notNull(),
+	subtitle: varchar({ length: 200 }).default('进群抽免单，天天享9折').notNull(),
+	buttonText: varchar("button_text", { length: 120 }).default('长按识别二维码加店长').notNull(),
+	qrcodeUrl: varchar("qrcode_url", { length: 512 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("merchant_community_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	unique("merchant_community_configs_merchant_id_key").on(table.merchantId),
+]);
+
+export const merchantTeamLotteryConfigs = pgTable("merchant_team_lottery_configs", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	enabled: boolean().default(false).notNull(),
+	teamSize: integer("team_size").default(3).notNull(),
+	durationHours: integer("duration_hours").default(24).notNull(),
+	leaderPrizeId: varchar("leader_prize_id", { length: 36 }),
+	memberPrizeIds: jsonb("member_prize_ids").default([]).notNull(),
+	shareTitle: varchar("share_title", { length: 120 }).default('组队抽奖，免费抽大奖').notNull(),
+	shareDesc: varchar("share_desc", { length: 240 }).default('好友组队，满员开奖，100%中奖').notNull(),
+	shareImageUrl: varchar("share_image_url", { length: 512 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("merchant_team_lottery_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	unique("merchant_team_lottery_configs_merchant_id_key").on(table.merchantId),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "merchant_team_lottery_configs_merchant_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.leaderPrizeId],
+			foreignColumns: [prizes.id],
+			name: "merchant_team_lottery_configs_leader_prize_id_fkey"
+		}).onDelete("set null"),
+]);
+
+export const teamLotteryGroups = pgTable("team_lottery_groups", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	packageId: varchar("package_id", { length: 36 }).notNull(),
+	leaderOrderId: varchar("leader_order_id", { length: 36 }).notNull(),
+	leaderUserId: varchar("leader_user_id", { length: 128 }).notNull(),
+	teamSize: integer("team_size").notNull(),
+	currentCount: integer("current_count").default(1).notNull(),
+	status: varchar("status", { length: 20 }).default('active').notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("team_lottery_groups_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("team_lottery_groups_package_id_idx").using("btree", table.packageId.asc().nullsLast().op("text_ops")),
+	index("team_lottery_groups_leader_user_id_idx").using("btree", table.leaderUserId.asc().nullsLast().op("text_ops")),
+	index("team_lottery_groups_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("team_lottery_groups_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.merchantId],
+			foreignColumns: [merchants.id],
+			name: "team_lottery_groups_merchant_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.packageId],
+			foreignColumns: [packages.id],
+			name: "team_lottery_groups_package_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.leaderOrderId],
+			foreignColumns: [orders.id],
+			name: "team_lottery_groups_leader_order_id_fkey"
+		}).onDelete("cascade"),
+	unique("team_lottery_groups_leader_order_id_key").on(table.leaderOrderId),
+]);
+
+export const teamLotteryMembers = pgTable("team_lottery_members", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	groupId: varchar("group_id", { length: 36 }).notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	orderId: varchar("order_id", { length: 36 }),
+	lotteryRecordId: varchar("lottery_record_id", { length: 36 }),
+	isWinner: boolean("is_winner").default(false).notNull(),
+	prizeId: varchar("prize_id", { length: 36 }),
+	prizeName: varchar("prize_name", { length: 128 }),
+	prizeType: varchar("prize_type", { length: 20 }),
+	redemptionCode: varchar("redemption_code", { length: 64 }),
+	couponCode: varchar("coupon_code", { length: 32 }),
+	refundAmount: numeric("refund_amount", { precision: 10, scale:  2 }).default('0').notNull(),
+	drewAt: timestamp("drew_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("team_lottery_members_group_id_idx").using("btree", table.groupId.asc().nullsLast().op("text_ops")),
+	index("team_lottery_members_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.groupId],
+			foreignColumns: [teamLotteryGroups.id],
+			name: "team_lottery_members_group_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.orderId],
+			foreignColumns: [orders.id],
+			name: "team_lottery_members_order_id_fkey"
+		}).onDelete("set null"),
+	unique("team_lottery_members_group_user_key").on(table.groupId, table.userId),
+]);

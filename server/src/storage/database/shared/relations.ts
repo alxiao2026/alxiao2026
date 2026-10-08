@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { prizes, lotteryRecords, packages, orders, settlementRecords, merchants } from "./schema";
+import { prizes, lotteryRecords, packages, orders, settlementRecords, merchants, merchantMarketingActivities, merchantCommunityConfigs, merchantTeamLotteryConfigs, teamLotteryGroups, teamLotteryMembers } from "./schema";
 
 export const lotteryRecordsRelations = relations(lotteryRecords, ({one}) => ({
 	prize: one(prizes, {
@@ -42,4 +42,60 @@ export const settlementRecordsRelations = relations(settlementRecords, ({one}) =
 
 export const merchantsRelations = relations(merchants, ({many}) => ({
 	settlementRecords: many(settlementRecords),
+	merchantMarketingActivities: many(merchantMarketingActivities),
+	merchantCommunityConfigs: many(merchantCommunityConfigs),
+	merchantTeamLotteryConfigs: many(merchantTeamLotteryConfigs),
+	teamLotteryGroups: many(teamLotteryGroups),
+}));
+
+export const merchantMarketingActivitiesRelations = relations(merchantMarketingActivities, ({one}) => ({
+	merchant: one(merchants, {
+		fields: [merchantMarketingActivities.merchantId],
+		references: [merchants.id]
+	}),
+}));
+
+export const merchantCommunityConfigsRelations = relations(merchantCommunityConfigs, ({one}) => ({
+	merchant: one(merchants, {
+		fields: [merchantCommunityConfigs.merchantId],
+		references: [merchants.id]
+	}),
+}));
+
+export const merchantTeamLotteryConfigsRelations = relations(merchantTeamLotteryConfigs, ({one}) => ({
+	merchant: one(merchants, {
+		fields: [merchantTeamLotteryConfigs.merchantId],
+		references: [merchants.id]
+	}),
+	leaderPrize: one(prizes, {
+		fields: [merchantTeamLotteryConfigs.leaderPrizeId],
+		references: [prizes.id]
+	}),
+}));
+
+export const teamLotteryGroupsRelations = relations(teamLotteryGroups, ({one, many}) => ({
+	merchant: one(merchants, {
+		fields: [teamLotteryGroups.merchantId],
+		references: [merchants.id]
+	}),
+	package: one(packages, {
+		fields: [teamLotteryGroups.packageId],
+		references: [packages.id]
+	}),
+	leaderOrder: one(orders, {
+		fields: [teamLotteryGroups.leaderOrderId],
+		references: [orders.id]
+	}),
+	members: many(teamLotteryMembers),
+}));
+
+export const teamLotteryMembersRelations = relations(teamLotteryMembers, ({one}) => ({
+	group: one(teamLotteryGroups, {
+		fields: [teamLotteryMembers.groupId],
+		references: [teamLotteryGroups.id]
+	}),
+	order: one(orders, {
+		fields: [teamLotteryMembers.orderId],
+		references: [orders.id]
+	}),
 }));
