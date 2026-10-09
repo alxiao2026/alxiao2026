@@ -16,7 +16,7 @@ export const healthCheck = pgTable("health_check", {
 });
 
 export const orchardCoupons = pgTable("orchard_coupons", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`(gen_random_uuid())::text`).primaryKey().notNull(),
 	code: varchar({ length: 32 }).notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	defId: varchar("def_id", { length: 20 }).notNull(),
@@ -38,7 +38,7 @@ export const orchardCoupons = pgTable("orchard_coupons", {
 ]);
 
 export const orchardHelps = pgTable("orchard_helps", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`(gen_random_uuid())::text`).primaryKey().notNull(),
 	shareUserId: varchar("share_user_id", { length: 128 }).notNull(),
 	helperUserId: varchar("helper_user_id", { length: 128 }).notNull(),
 	helperName: varchar("helper_name", { length: 128 }),
@@ -151,7 +151,7 @@ export const merchantBalances = pgTable("merchant_balances", {
 
 export const packageSettlementConfigs = pgTable("package_settlement_configs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	packageId: varchar("package_id", { length: 36 }).notNull(),
+	packageId: varchar("package_id").notNull(),
 	settlementType: integer("settlement_type").default(1).notNull(),
 	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
 	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }).default('0'),
@@ -442,7 +442,7 @@ export const distributionWithdraws = pgTable("distribution_withdraws", {
 ]);
 
 export const orchardRecords = pgTable("orchard_records", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`(gen_random_uuid())::text`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),
 	amount: integer().default(0).notNull(),
 	reason: varchar({ length: 30 }).notNull(),
@@ -454,9 +454,9 @@ export const orchardRecords = pgTable("orchard_records", {
 
 export const settlementRecords = pgTable("settlement_records", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	orderId: varchar("order_id", { length: 36 }).notNull(),
+	orderId: varchar("order_id").notNull(),
 	merchantId: integer("merchant_id").notNull(),
-	packageId: varchar("package_id", { length: 36 }).notNull(),
+	packageId: varchar("package_id").notNull(),
 	orderAmount: numeric("order_amount", { precision: 10, scale:  2 }).notNull(),
 	settlementType: integer("settlement_type").notNull(),
 	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
@@ -550,7 +550,7 @@ export const merchantMarketingActivities = pgTable("merchant_marketing_activitie
 	foreignKey({
 			columns: [table.merchantId],
 			foreignColumns: [merchants.id],
-			name: "merchant_marketing_activities_merchant_id_merchants_id_fk"
+			name: "merchant_marketing_activities_merchant_id_fkey"
 		}).onDelete("cascade"),
 ]);
 
@@ -608,7 +608,7 @@ export const merchantCommunityConfigs = pgTable("merchant_community_configs", {
 	foreignKey({
 			columns: [table.merchantId],
 			foreignColumns: [merchants.id],
-			name: "merchant_community_configs_merchant_id_merchants_id_fk"
+			name: "merchant_community_configs_merchant_id_fkey"
 		}).onDelete("cascade"),
 	unique("merchant_community_configs_merchant_id_key").on(table.merchantId),
 ]);
