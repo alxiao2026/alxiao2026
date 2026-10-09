@@ -33,10 +33,13 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
-  /** 门店全部抽奖记录（商家看本门店，管理员看全平台） */
+  /** 门店全部抽奖记录（商家看本门店，管理员看全平台；包含普通 + 组队） */
   @Get('merchant-records/:userId')
-  async getMerchantLotteryRecords(@Param('userId') userId: string) {
-    const data = await this.lotteryService.getMerchantLotteryRecords(userId);
+  async getMerchantLotteryRecords(
+    @Param('userId') userId: string,
+    @Query('type') type?: string,
+  ) {
+    const data = await this.lotteryService.getMerchantLotteryRecords(userId, type);
     return { code: 200, msg: 'success', data };
   }
 
@@ -46,8 +49,9 @@ export class LotteryController {
   async exportMerchantRecords(
     @Param('userId') userId: string,
     @Body('status') status?: string,
+    @Body('type') type?: string,
   ) {
-    const data = await this.lotteryService.exportMerchantRecords(userId, status);
+    const data = await this.lotteryService.exportMerchantRecords(userId, status, type);
     return { code: 200, msg: 'success', data };
   }
 

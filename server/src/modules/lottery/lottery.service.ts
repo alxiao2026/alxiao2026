@@ -1217,8 +1217,8 @@ export class LotteryService {
     });
   }
 
-  /** 获取门店全部抽奖记录（商家看自己门店，管理员看全平台） */
-  async getMerchantLotteryRecords(userId: string): Promise<any[]> {
+  /** 获取门店全部抽奖记录（商家看自己门店，管理员看全平台；包含普通 + 组队） */
+  async getMerchantLotteryRecords(userId: string, type?: string): Promise<any[]> {
     // 确认用户身份
     const { data: user } = await this.client
       .from('users')
@@ -1229,40 +1229,68 @@ export class LotteryService {
       throw new Error('无权限查看门店抽奖记录');
     }
 
-    // 商家用户：先拿到本门店订单 id 集合，用于过滤抽奖记录
+    // 商家用户：先拿到本门店订单 id 集合与套餐 id 集合，用于过滤两类抽奖记录
     let merchantOrderIds: Set<string> | null = null;
+    let merchantPackageIds: string[] | null = null;
     if (user.role === 'merchant' && user.merchant_id) {
       const { data: packages } = await this.client
         .from('packages')
         .select('id')
         .eq('merchant_id', user.merchant_id);
-      const packageIds = (packages || []).map((p: any) => p.id);
+      merchantPackageIds = (packages || []).map((p: any) => p.id);
       merchantOrderIds = new Set<string>();
-      if (packageIds.length > 0) {
+      if (merchantPackageIds.length > 0) {
         const { data: orders } = await this.client
           .from('orders')
           .select('id')
-          .in('package_id', packageIds);
+          .in('package_id', merchantPackageIds);
         (orders || []).forEach((o: any) => merchantOrderIds!.add(o.id));
       }
     }
 
-    // 查询抽奖记录（联查奖品类型与单品有效期），限制返回条数防止数据过大
-    const { data: rows, error } = await this.client
-      .from('lottery_records')
-      .select('*, prizes(prize_type, validity_hours)')
-      .order('created_at', { ascending: false })
-      .limit(300);
-    if (error) throw new Error(`查询门店抽奖记录失败: ${error.message}`);
+    const globalExpiryHours = await this.getRedemptionExpiryHours();
+    const wantType = type || 'all';
+    let normalRecords: any[] = [];
+    let teamRecords: any[] = [];
 
-    let records = (rows as any[]) || [];
-    if (merchantOrderIds) {
-      records = records.filter(r => r.order_id && merchantOrderIds.has(r.order_id));
+    // 普通抽奖记录
+    if (wantType === 'all' || wantType === 'normal') {
+      const { data: rows, error } = await this.client
+        .from('lottery_records')
+        .select('*, prizes(prize_type, validity_hours)')
+        .order('created_at', { ascending: false })
+        .limit(300);
+      if (error) throw new Error(`查询门店抽奖记录失败: ${error.message}`);
+
+      let records = (rows as any[]) || [];
+      if (merchantOrderIds) {
+        records = records.filter(r => r.order_id && merchantOrderIds.has(r.order_id));
+      }
+      normalRecords = records;
     }
-    if (records.length === 0) return [];
+
+    // 组队抽奖记录
+    if (wantType === 'all' || wantType === 'team') {
+      let teamQuery = this.client
+        .from('team_lottery_members')
+        .select('*, team_lottery_groups!inner(*)')
+        .order('created_at', { ascending: false })
+        .limit(300);
+      if (user.role === 'merchant' && user.merchant_id) {
+        teamQuery = teamQuery.eq('team_lottery_groups.merchant_id', user.merchant_id);
+      }
+      const { data: rows, error } = await teamQuery;
+      if (error) throw new Error(`查询组队抽奖记录失败: ${error.message}`);
+      teamRecords = (rows as any[]) || [];
+    }
+
+    // 合并两类记录的用户 id
+    const recordUserIds = [...new Set([
+      ...normalRecords.map(r => r.user_id).filter(Boolean),
+      ...teamRecords.map(r => r.user_id).filter(Boolean),
+    ])];
 
     // 补充中奖用户信息（昵称、手机号）
-    const recordUserIds = [...new Set(records.map(r => r.user_id).filter(Boolean))];
     const userMap = new Map<string, any>();
     if (recordUserIds.length > 0) {
       const { data: users } = await this.client
@@ -1273,17 +1301,20 @@ export class LotteryService {
     }
 
     // 补充奖品对应的商家名称
-    const prizeIds = [...new Set(records.map(r => r.prize_id).filter(Boolean))];
-    const prizeMerchantMap = new Map<string, number | null>();
+    const prizeIds = [...new Set([
+      ...normalRecords.map(r => r.prize_id).filter(Boolean),
+      ...teamRecords.map(r => r.prize_id).filter(Boolean),
+    ])];
+    const prizeMap = new Map<string, any>();
     const merchantNameMap = new Map<number, string>();
     if (prizeIds.length > 0) {
       const { data: prizes } = await this.client
         .from('prizes')
-        .select('id, merchant_id')
+        .select('id, merchant_id, prize_type, validity_hours')
         .in('id', prizeIds);
-      (prizes || []).forEach((p: any) => prizeMerchantMap.set(p.id, p.merchant_id ?? null));
+      (prizes || []).forEach((p: any) => prizeMap.set(p.id, p));
     }
-    const merchantIds = [...new Set(Array.from(prizeMerchantMap.values()).filter(Boolean))] as number[];
+    const merchantIds = [...new Set(Array.from(prizeMap.values()).map((p: any) => p.merchant_id).filter(Boolean))] as number[];
     if (merchantIds.length > 0) {
       const { data: merchants } = await this.client
         .from('merchants')
@@ -1292,15 +1323,15 @@ export class LotteryService {
       (merchants || []).forEach((m: any) => merchantNameMap.set(m.id, m.name || ''));
     }
 
-    const globalExpiryHours = await this.getRedemptionExpiryHours();
-
-    return records.map(r => {
+    // 映射普通抽奖记录
+    const mappedNormal = normalRecords.map(r => {
       const prizeInfo = Array.isArray(r.prizes) ? r.prizes[0] : r.prizes;
-      const prizeType = prizeInfo?.prize_type;
-      const prizeVh = prizeInfo?.validity_hours;
+      const prize = prizeInfo || prizeMap.get(r.prize_id);
+      const prizeType = prize?.prize_type;
+      const prizeVh = prize?.validity_hours;
       const expiryHours = (typeof prizeVh === 'number' && prizeVh > 0 ? prizeVh : null) ?? globalExpiryHours;
       const u = userMap.get(r.user_id);
-      const merchantId = prizeMerchantMap.get(r.prize_id);
+      const merchantId = prize?.merchant_id ?? null;
       const result: any = {
         ...r,
         prizes: undefined,
@@ -1308,6 +1339,7 @@ export class LotteryService {
         user_nick_name: u?.nick_name || '',
         user_phone: u?.phone || '',
         merchant_name: merchantId ? merchantNameMap.get(merchantId) || '' : '',
+        lottery_type: 'normal',
       };
       if (r.redemption_code) {
         const createdAt = new Date(r.created_at).getTime();
@@ -1318,11 +1350,53 @@ export class LotteryService {
       }
       return result;
     });
+
+    // 映射组队抽奖记录
+    const mappedTeam = teamRecords.map(m => {
+      const group = Array.isArray(m.team_lottery_groups) ? m.team_lottery_groups[0] : m.team_lottery_groups;
+      const prize = prizeMap.get(m.prize_id);
+      const prizeType = prize?.prize_type || m.prize_type;
+      const u = userMap.get(m.user_id);
+      const merchantId = prize?.merchant_id ?? null;
+      const isLeader = m.user_id === group?.leader_user_id;
+      return {
+        id: m.id,
+        order_id: m.order_id || null,
+        user_id: m.user_id,
+        user_nick_name: u?.nick_name || '',
+        user_phone: u?.phone || '',
+        prize_id: m.prize_id || null,
+        prize_name: m.prize_name || (m.is_winner ? '未知奖品' : '未中奖'),
+        prize_type: prizeType || '',
+        is_winner: m.is_winner,
+        redemption_code: m.redemption_code || null,
+        refund_status: null,
+        refund_amount: m.refund_amount || null,
+        refunded_at: null,
+        redeemed_at: null,
+        expired: false,
+        expiry_date: null,
+        created_at: m.created_at || m.drew_at,
+        lottery_type: 'team',
+        team_group_id: m.group_id || null,
+        team_invite_code: group?.invite_code || null,
+        team_role: isLeader ? 'leader' : 'member',
+        team_size: group?.team_size || null,
+        team_current_count: group?.current_count || null,
+        team_status: group?.status || null,
+        merchant_name: merchantId ? merchantNameMap.get(merchantId) || '' : '',
+      };
+    });
+
+    // 合并并按时间倒序
+    const combined = [...mappedNormal, ...mappedTeam];
+    combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return combined.slice(0, 300);
   }
 
   /** 导出门店抽奖记录为 CSV 并上传到对象存储 */
-  async exportMerchantRecords(userId: string, status?: string): Promise<{ url: string }> {
-    const records = await this.getMerchantLotteryRecords(userId);
+  async exportMerchantRecords(userId: string, status?: string, type?: string): Promise<{ url: string }> {
+    const records = await this.getMerchantLotteryRecords(userId, type);
 
     const getRecordStatus = (r: any): { key: string; label: string } => {
       if (!r.is_winner) return { key: 'loser', label: '未中奖' };
@@ -1347,11 +1421,17 @@ export class LotteryService {
       free_meal: '霸王餐',
     };
 
-    const filtered = status && status !== 'all'
-      ? records.filter(r => getRecordStatus(r).key === status)
-      : records;
+    const lotteryTypeMap: Record<string, string> = {
+      normal: '普通抽奖',
+      team: '组队抽奖',
+    };
 
-    const headers = ['序号', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '商家名称', '核销/过期时间', '抽奖时间'];
+    let filtered = records;
+    if (status && status !== 'all') {
+      filtered = filtered.filter(r => getRecordStatus(r).key === status);
+    }
+
+    const headers = ['序号', '抽奖类型', '用户昵称', '手机号', '奖品名称', '奖品类型', '中奖状态', '奖品状态', '兑换码', '返还金额', '商家名称', '队伍角色', '队伍邀请码', '核销/过期时间', '抽奖时间'];
     const escapeCsv = (value: unknown) => {
       const str = String(value ?? '');
       if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
@@ -1377,6 +1457,7 @@ export class LotteryService {
       }
       return [
         index + 1,
+        lotteryTypeMap[r.lottery_type] || r.lottery_type || '普通抽奖',
         r.user_nick_name || '匿名用户',
         r.user_phone || '',
         r.is_winner ? r.prize_name : '未中奖',
@@ -1386,6 +1467,8 @@ export class LotteryService {
         r.redemption_code || '',
         r.refund_amount || '',
         r.merchant_name || '',
+        r.lottery_type === 'team' ? (r.team_role === 'leader' ? '团长' : '团员') : '',
+        r.team_invite_code || '',
         actionTime,
         r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '',
       ].map(escapeCsv).join(',');

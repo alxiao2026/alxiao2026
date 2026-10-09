@@ -1,13 +1,13 @@
 import { View, Text } from '@tarojs/components';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Network } from '@/network';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Users, UtensilsCrossed, Gift, Download } from 'lucide-react-taro';
+import { Trophy, Users, UtensilsCrossed, Gift, Download, Swords } from 'lucide-react-taro';
 
-interface MerchantLotteryRecord {
+interface LotteryRecord {
   id: string;
   order_id: string;
   user_id: string;
@@ -25,9 +25,18 @@ interface MerchantLotteryRecord {
   expired?: boolean;
   expiry_date?: string;
   created_at: string;
+  // 组队抽奖扩展字段
+  lottery_type: 'normal' | 'team';
+  team_group_id?: string;
+  team_invite_code?: string;
+  team_role?: 'leader' | 'member';
+  team_size?: number;
+  team_current_count?: number;
+  team_status?: string;
 }
 
 type StatusFilterKey = 'all' | 'winner' | 'loser' | 'pending' | 'redeemed' | 'refunded' | 'expired' | 'voided';
+type LotteryTypeFilterKey = 'all' | 'normal' | 'team';
 
 const STATUS_FILTER_TABS: { key: StatusFilterKey; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -40,10 +49,17 @@ const STATUS_FILTER_TABS: { key: StatusFilterKey; label: string }[] = [
   { key: 'voided', label: '已作废' },
 ];
 
+const LOTTERY_TYPE_TABS: { key: LotteryTypeFilterKey; label: string }[] = [
+  { key: 'all', label: '全部类型' },
+  { key: 'normal', label: '普通抽奖' },
+  { key: 'team', label: '组队抽奖' },
+];
+
 const AdminLotteryRecordsPage = () => {
-  const [records, setRecords] = useState<MerchantLotteryRecord[]>([]);
+  const [records, setRecords] = useState<LotteryRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<StatusFilterKey>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('all');
+  const [typeFilter, setTypeFilter] = useState<LotteryTypeFilterKey>('all');
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -81,7 +97,7 @@ const AdminLotteryRecordsPage = () => {
     return `${phone.slice(0, 3)}****${phone.slice(-4)}`;
   };
 
-  const getRecordStatus = (record: MerchantLotteryRecord): { key: StatusFilterKey; label: string; color: string } => {
+  const getRecordStatus = (record: LotteryRecord): { key: StatusFilterKey; label: string; color: string } => {
     if (!record.is_winner) return { key: 'loser', label: '未中奖', color: 'text-gray-500' };
     if (record.refund_status === 'voided') return { key: 'voided', label: '已作废', color: 'text-gray-500' };
     if (
@@ -96,16 +112,25 @@ const AdminLotteryRecordsPage = () => {
     return { key: 'pending', label: '待核销', color: 'text-amber-600' };
   };
 
-  const filteredRecords = records.filter(r => {
-    if (filter === 'all') return true;
-    const status = getRecordStatus(r);
-    return status.key === filter;
-  });
+  const filteredRecords = useMemo(() => {
+    return records.filter((r) => {
+      if (typeFilter !== 'all' && r.lottery_type !== typeFilter) return false;
+      if (statusFilter === 'all') return true;
+      const status = getRecordStatus(r);
+      return status.key === statusFilter;
+    });
+  }, [records, statusFilter, typeFilter]);
 
-  const winnerCount = records.filter(r => r.is_winner).length;
-  const freeMealCount = records.filter(r => r.is_winner && r.prize_type === 'free_meal').length;
+  const stats = useMemo(() => {
+    const total = records.length;
+    const winnerCount = records.filter((r) => r.is_winner).length;
+    const freeMealCount = records.filter((r) => r.is_winner && r.prize_type === 'free_meal').length;
+    const teamCount = records.filter((r) => r.lottery_type === 'team').length;
+    const teamWinnerCount = records.filter((r) => r.lottery_type === 'team' && r.is_winner).length;
+    return { total, winnerCount, freeMealCount, teamCount, teamWinnerCount };
+  }, [records]);
 
-  const renderRedemptionBadge = (record: MerchantLotteryRecord) => {
+  const renderRedemptionBadge = (record: LotteryRecord) => {
     if (!record.is_winner || !record.redemption_code) return null;
     const status = getRecordStatus(record);
     if (status.key === 'refunded') {
@@ -140,7 +165,7 @@ const AdminLotteryRecordsPage = () => {
       const res = await Network.request({
         url: `/api/lottery/merchant-records/${userId}/export`,
         method: 'POST',
-        data: { status: filter }
+        data: { status: statusFilter, type: typeFilter },
       });
       console.log('[AdminLotteryRecords] 导出响应:', res.data);
       const envelope: any = (res as any)?.data || res;
@@ -162,7 +187,7 @@ const AdminLotteryRecordsPage = () => {
         Taro.showModal({
           title: '导出成功',
           content: '下载链接已复制到剪贴板，请粘贴到浏览器下载',
-          showCancel: false
+          showCancel: false,
         });
       }
     } catch (e) {
@@ -171,7 +196,7 @@ const AdminLotteryRecordsPage = () => {
     } finally {
       Taro.hideLoading();
     }
-  }, [filter, filteredRecords]);
+  }, [statusFilter, typeFilter, filteredRecords]);
 
   return (
     <View className="min-h-screen bg-gray-100 pb-6">
@@ -183,40 +208,77 @@ const AdminLotteryRecordsPage = () => {
               <Users size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">总抽奖次数</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold text-center w-full">{records.length}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.total}</Text>
           </View>
           <View className="flex-1 items-center">
             <View className="flex flex-row items-center justify-center gap-1 mb-1">
               <Trophy size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">中奖次数</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold text-center w-full">{winnerCount}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.winnerCount}</Text>
           </View>
           <View className="flex-1 items-center">
             <View className="flex flex-row items-center justify-center gap-1 mb-1">
               <UtensilsCrossed size={14} color="#fecaca" />
               <Text className="block text-red-100 text-xs">霸王餐</Text>
             </View>
-            <Text className="block text-white text-2xl font-bold text-center w-full">{freeMealCount}</Text>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.freeMealCount}</Text>
+          </View>
+        </View>
+
+        <View className="flex flex-row mt-5">
+          <View className="flex-1 items-center">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
+              <Swords size={14} color="#fecaca" />
+              <Text className="block text-red-100 text-xs">组队参与</Text>
+            </View>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.teamCount}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
+              <Gift size={14} color="#fecaca" />
+              <Text className="block text-red-100 text-xs">组队中奖</Text>
+            </View>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.teamWinnerCount}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <View className="flex flex-row items-center justify-center gap-1 mb-1">
+              <Users size={14} color="#fecaca" />
+              <Text className="block text-red-100 text-xs">中奖率</Text>
+            </View>
+            <Text className="block text-white text-2xl font-bold text-center w-full">{stats.total ? Math.round((stats.winnerCount / stats.total) * 100) : 0}%</Text>
           </View>
         </View>
       </View>
 
       {/* 筛选 Tabs + 导出 */}
       <View className="bg-white rounded-2xl mx-4 -mt-7 p-3 shadow-sm relative z-10">
+        {/* 抽奖类型筛选 */}
         <View className="flex flex-row flex-wrap gap-2 mb-3">
-          {STATUS_FILTER_TABS.map(tab => (
+          {LOTTERY_TYPE_TABS.map((tab) => (
             <View
               key={tab.key}
-              className={`rounded-full px-3 py-2 ${filter === tab.key ? 'bg-[#FF4757]' : 'bg-gray-100'}`}
-              onClick={() => setFilter(tab.key)}
+              className={`rounded-full px-3 py-2 ${typeFilter === tab.key ? 'bg-[#FF4757]' : 'bg-gray-100'}`}
+              onClick={() => setTypeFilter(tab.key)}
             >
-              <Text className={`block text-xs ${filter === tab.key ? 'text-white font-semibold' : 'text-gray-600'}`}>
-                {tab.label}
-              </Text>
+              <Text className={`block text-xs ${typeFilter === tab.key ? 'text-white font-semibold' : 'text-gray-600'}`}>{tab.label}</Text>
             </View>
           ))}
         </View>
+
+        {/* 状态筛选 */}
+        <View className="flex flex-row flex-wrap gap-2 mb-3">
+          {STATUS_FILTER_TABS.map((tab) => (
+            <View
+              key={tab.key}
+              className={`rounded-full px-3 py-2 ${statusFilter === tab.key ? 'bg-[#FF4757]' : 'bg-gray-100'}`}
+              onClick={() => setStatusFilter(tab.key)}
+            >
+              <Text className={`block text-xs ${statusFilter === tab.key ? 'text-white font-semibold' : 'text-gray-600'}`}>{tab.label}</Text>
+            </View>
+          ))}
+        </View>
+
         <Button variant="outline" size="sm" className="w-full" onClick={exportRecords}>
           <Download size={14} color="#666" className="mr-1" />
           <Text>导出当前筛选记录（{filteredRecords.length} 条）</Text>
@@ -235,15 +297,18 @@ const AdminLotteryRecordsPage = () => {
             <Text className="block text-center text-gray-400 text-sm mt-3">暂无抽奖记录</Text>
           </View>
         ) : (
-          filteredRecords.map(record => {
+          filteredRecords.map((record) => {
             const status = getRecordStatus(record);
             return (
               <Card key={record.id} className="rounded-2xl border-0 shadow-sm p-4">
                 {/* 奖品 + 状态 */}
                 <View className="flex flex-row items-center justify-between mb-2">
-                  <Text className="block text-base font-semibold text-gray-800 flex-1">
-                    {record.is_winner ? record.prize_name : '未中奖'}
-                  </Text>
+                  <View className="flex flex-row items-center flex-1 mr-2">
+                    <Text className="block text-base font-semibold text-gray-800">{record.is_winner ? record.prize_name : '未中奖'}</Text>
+                    {record.lottery_type === 'team' && (
+                      <Badge className="ml-2 border-0 bg-purple-50 text-purple-600">组队</Badge>
+                    )}
+                  </View>
                   <Badge className={`border-0 ${status.key === 'loser' ? 'bg-gray-100 text-gray-500' : status.key === 'redeemed' ? 'bg-green-50 text-green-600' : status.key === 'refunded' ? 'bg-blue-50 text-blue-600' : status.key === 'expired' ? 'bg-red-50 text-red-500' : status.key === 'voided' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
                     {status.label}
                   </Badge>
@@ -258,12 +323,20 @@ const AdminLotteryRecordsPage = () => {
                   <Text className="block text-xs text-gray-400">{formatTime(record.created_at)}</Text>
                 </View>
 
+                {/* 组队信息 */}
+                {record.lottery_type === 'team' && record.team_group_id && (
+                  <View className="bg-purple-50 rounded-lg px-3 py-2 mb-2">
+                    <Text className="block text-xs text-purple-600">
+                      {record.team_role === 'leader' ? '团长' : '团员'} · 邀请码 {record.team_invite_code || '-'}
+                      {record.team_size ? ` · ${record.team_current_count || 1}/${record.team_size}人` : ''}
+                    </Text>
+                  </View>
+                )}
+
                 {/* 霸王餐返还金额 */}
                 {record.is_winner && record.prize_type === 'free_meal' && record.refund_amount && (
                   <View className="bg-orange-50 rounded-lg px-3 py-2 mb-2">
-                    <Text className="block text-xs text-orange-600">
-                      霸王餐返还金额 ¥{record.refund_amount}
-                    </Text>
+                    <Text className="block text-xs text-orange-600">霸王餐返还金额 ¥{record.refund_amount}</Text>
                   </View>
                 )}
 
