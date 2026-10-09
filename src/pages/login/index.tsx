@@ -234,42 +234,42 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // 协议勾选区（两种视图共用）：整行可点击，扩大触控区域
+  // 协议勾选区（两种视图共用）：可点区域均直接绑定事件，避免嵌套 Text 在小程序端事件失效
+  const toggleAgreed = () => setAgreed((v) => !v);
   const renderAgreement = (
-    <View
-      className="flex flex-row items-center justify-center px-6 py-2"
-      onClick={() => setAgreed(!agreed)}
-    >
-      <View
-        className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 mr-2 ${
-          agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
-        }`}
-      >
-        {agreed && <Check size={10} color="#fff" strokeWidth={3} />}
+    <View className="flex flex-row items-center justify-center px-6 py-2">
+      <View className="flex items-center justify-center p-2 shrink-0" onClick={toggleAgreed}>
+        <View
+          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+            agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
+          }`}
+        >
+          {agreed && <Check size={10} color="#fff" strokeWidth={3} />}
+        </View>
       </View>
-      <Text className="flex-1 text-xs text-gray-500 leading-5">
-        我已阅读并同意
-        <Text
-          className="text-[#FF4757]"
+      <View className="flex-1 flex flex-row flex-wrap items-center" onClick={toggleAgreed}>
+        <Text className="text-xs text-gray-500 leading-5">我已阅读并同意</Text>
+        <View
+          className="shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             Taro.navigateTo({ url: '/pages/agreement/index' });
           }}
         >
-          《用户服务协议》
-        </Text>
-        、
-        <Text
-          className="text-[#FF4757]"
+          <Text className="text-xs text-[#FF4757] leading-5">《用户服务协议》</Text>
+        </View>
+        <Text className="text-xs text-gray-500 leading-5">、</Text>
+        <View
+          className="shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             Taro.navigateTo({ url: '/pages/privacy/index' });
           }}
         >
-          《隐私政策》
-        </Text>
-        ，未注册的手机号将自动创建账号
-      </Text>
+          <Text className="text-xs text-[#FF4757] leading-5">《隐私政策》</Text>
+        </View>
+        <Text className="text-xs text-gray-500 leading-5">，未注册的手机号将自动创建账号</Text>
+      </View>
     </View>
   );
 

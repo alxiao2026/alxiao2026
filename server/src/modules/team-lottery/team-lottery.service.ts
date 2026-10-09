@@ -586,10 +586,13 @@ export class TeamLotteryService {
       throw new BadRequestException('你是团长，不能加入自己的队伍');
     }
 
+    // 后续操作统一使用真实队伍 id（入参可能是邀请码）
+    const actualGroupId = (group as any).id as string;
+
     const { data: existing } = await this.client
       .from('team_lottery_members')
       .select('id')
-      .eq('group_id', groupId)
+      .eq('group_id', actualGroupId)
       .eq('user_id', dto.user_id)
       .maybeSingle();
     if (existing) {
@@ -600,7 +603,7 @@ export class TeamLotteryService {
     const { data: freshGroup } = await this.client
       .from('team_lottery_groups')
       .select('*')
-      .eq('id', groupId)
+      .eq('id', actualGroupId)
       .eq('status', 'active')
       .single();
     if (!freshGroup) throw new BadRequestException('队伍状态已变化，请重试');
@@ -611,7 +614,7 @@ export class TeamLotteryService {
 
     const { data: member, error: memberError } = await this.client
       .from('team_lottery_members')
-      .insert({ group_id: groupId, user_id: dto.user_id })
+      .insert({ group_id: actualGroupId, user_id: dto.user_id })
       .select()
       .single();
     if (memberError) throw new Error(`加入队伍失败: ${memberError.message}`);
@@ -625,7 +628,7 @@ export class TeamLotteryService {
         status: isFull ? 'full' : 'active',
         updated_at: this.now(),
       })
-      .eq('id', groupId)
+      .eq('id', actualGroupId)
       .eq('current_count', fg.current_count)
       .select()
       .single();
@@ -635,7 +638,7 @@ export class TeamLotteryService {
       throw new BadRequestException('加入失败，请重试');
     }
 
-    return this.getGroupDetail(groupId, dto.user_id);
+    return this.getGroupDetail(actualGroupId, dto.user_id);
   }
 
   /** 队员抽奖 */

@@ -177,10 +177,10 @@ export default function TeamLotteryPage() {
         setGroup(res.data.data)
         showToast('加入队伍成功')
       } else {
-        showToast(res.data?.msg || '加入失败')
+        showToast(res.data?.msg || (res.data as any)?.message || '加入失败，请稍后重试')
       }
     } catch (e: any) {
-      showToast(e?.message || '加入失败')
+      showToast(e?.message || '加入失败，请稍后重试')
     } finally {
       setJoining(false)
     }
@@ -213,6 +213,21 @@ export default function TeamLotteryPage() {
     if (!group?.invite_code) return
     Taro.setClipboardData({ data: group.invite_code })
     showToast('邀请码已复制')
+  }
+
+  const pasteCode = async () => {
+    try {
+      const { data } = await Taro.getClipboardData()
+      const code = String(data || '').trim().toUpperCase()
+      if (!code) {
+        showToast('剪贴板为空，请先复制邀请码')
+        return
+      }
+      setCodeInput(code.slice(0, 8))
+      showToast('已粘贴邀请码')
+    } catch {
+      showToast('读取剪贴板失败，请手动输入')
+    }
   }
 
   if (loading) {
@@ -449,14 +464,22 @@ export default function TeamLotteryPage() {
                 <Text className="block text-base font-bold text-gray-900">加入队伍</Text>
               </View>
               <Text className="block text-sm text-gray-600 mb-3">输入好友分享的邀请码，加入队伍一起抽奖</Text>
-              <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4">
-                <Input
-                  className="w-full bg-transparent text-center text-lg font-bold text-gray-900"
-                  placeholder="请输入邀请码"
-                  value={codeInput}
-                  onInput={(e) => setCodeInput(String(e.detail.value || '').toUpperCase())}
-                  maxlength={8}
-                />
+              <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4 flex flex-row items-center">
+                <View style={{ flex: 1 }}>
+                  <Input
+                    className="w-full bg-transparent text-center text-lg font-bold text-gray-900"
+                    placeholder="请输入邀请码"
+                    value={codeInput}
+                    onInput={(e) => setCodeInput(String(e.detail.value || '').toUpperCase())}
+                    maxlength={8}
+                  />
+                </View>
+                <View
+                  onClick={pasteCode}
+                  className="ml-2 px-3 py-2 bg-white rounded-full border border-[#FFD6DC] shrink-0"
+                >
+                  <Text className="block text-xs text-[#FF4757]">粘贴</Text>
+                </View>
               </View>
               <Button
                 onClick={() => joinByCode(codeInput, userId)}
