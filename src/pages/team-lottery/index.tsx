@@ -531,6 +531,60 @@ export default function TeamLotteryPage() {
         </>
       )}
 
+      {/* 奖品展示 */}
+      {(status.leader_prize || (status.member_prizes && status.member_prizes.length > 0)) && (
+        <Card className="rounded-2xl border-0 shadow-xl mb-4">
+          <CardContent className="p-5">
+            <View className="flex items-center gap-2 mb-4">
+              <Gift size={20} color="#FF4757" />
+              <Text className="block text-base font-bold text-gray-900">奖品展示</Text>
+            </View>
+            {status.leader_prize && (
+              <View className="mb-4">
+                <View className="flex items-center gap-2 mb-2">
+                  <Trophy size={16} color="#f59e0b" />
+                  <Text className="block text-sm font-bold text-gray-900">团长必中奖品</Text>
+                </View>
+                <View className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-3 flex items-center gap-3">
+                  <View className="w-16 h-16 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
+                    {status.leader_prize.image_url ? (
+                      <Image src={status.leader_prize.image_url} className="w-full h-full" mode="aspectFill" />
+                    ) : (
+                      <Trophy size={28} color="#f59e0b" />
+                    )}
+                  </View>
+                  <View className="flex-1 min-w-0">
+                    <Text className="block text-sm font-bold text-gray-900 mb-1">{status.leader_prize.name}</Text>
+                    <View className="inline-block px-2 py-1 bg-yellow-400 rounded">
+                      <Text className="block text-xs text-white font-bold">团长必中</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+            {status.member_prizes && status.member_prizes.length > 0 && (
+              <View>
+                <View className="flex items-center gap-2 mb-3">
+                  <Users size={16} color="#3B82F6" />
+                  <Text className="block text-sm font-bold text-gray-900">团员奖品池</Text>
+                </View>
+                <View className="grid grid-cols-3 gap-3">
+                  {status.member_prizes.map((p) => (
+                    <View key={p.id} className="bg-gray-50 rounded-xl p-3 text-center">
+                      <View className="w-12 h-12 rounded-lg bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
+                        {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={22} color="#3B82F6" />}
+                      </View>
+                      <Text className="block text-xs text-gray-900 font-bold truncate mb-1">{p.name}</Text>
+                      <Text className="block text-xs text-[#3B82F6]">{p.probability}%</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* 门店与套餐信息 */}
       {(status.merchant || status.package) && (
         <Card className="rounded-2xl border-0 shadow-xl mb-4">
@@ -581,79 +635,6 @@ export default function TeamLotteryPage() {
                       <Text className="block text-xs text-gray-400 line-through">¥{Number(status.package.original_price).toFixed(2)}</Text>
                     )}
                   </View>
-                </View>
-              </View>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 奖品展示 */}
-      {(status.leader_prize || (status.member_prizes && status.member_prizes.length > 0)) && (
-        <Card className="rounded-2xl border-0 shadow-xl mb-4">
-          <CardContent className="p-5">
-            <View className="flex items-center gap-2 mb-4">
-              <Gift size={20} color="#FF4757" />
-              <Text className="block text-base font-bold text-gray-900">奖品展示</Text>
-            </View>
-            {status.leader_prize && (
-              <View className="mb-4">
-                <View className="flex items-center gap-2 mb-2">
-                  <Trophy size={16} color="#f59e0b" />
-                  <Text className="block text-sm font-bold text-gray-900">团长必中奖品</Text>
-                </View>
-                <View className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-3 flex items-center gap-3">
-                  <View className="w-16 h-16 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
-                    {status.leader_prize.image_url ? (
-                      <Image src={status.leader_prize.image_url} className="w-full h-full" mode="aspectFill" />
-                    ) : (
-                      <Trophy size={28} color="#f59e0b" />
-                    )}
-                  </View>
-                  <View className="flex-1 min-w-0">
-                    <Text className="block text-sm font-bold text-gray-900 mb-1">{status.leader_prize.name}</Text>
-                    <View className="inline-block px-2 py-1 bg-yellow-400 rounded">
-                      <Text className="block text-xs text-white font-bold">团长必中</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
-            {status.leader_bonus_prizes && status.leader_bonus_prizes.length > 0 && (
-              <View className="mb-4">
-                <View className="flex items-center gap-2 mb-2">
-                  <Sparkles size={16} color="#FF4757" />
-                  <Text className="block text-sm font-bold text-gray-900">团长加码奖品（{status.leader_bonus_rate || 0}%概率）</Text>
-                </View>
-                <View className="flex flex-row gap-3 overflow-x-auto pb-2">
-                  {status.leader_bonus_prizes.map((p) => (
-                    <View key={p.id} className="shrink-0 w-28 bg-gray-50 rounded-xl p-3 text-center">
-                      <View className="w-14 h-14 rounded-lg bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
-                        {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={24} color="#FF4757" />}
-                      </View>
-                      <Text className="block text-xs text-gray-900 font-bold truncate mb-1">{p.name}</Text>
-                      <Text className="block text-xs text-[#FF4757]">{p.probability}%</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {status.member_prizes && status.member_prizes.length > 0 && (
-              <View>
-                <View className="flex items-center gap-2 mb-2">
-                  <Users size={16} color="#3B82F6" />
-                  <Text className="block text-sm font-bold text-gray-900">团员奖品池</Text>
-                </View>
-                <View className="flex flex-row gap-3 overflow-x-auto pb-2">
-                  {status.member_prizes.map((p) => (
-                    <View key={p.id} className="shrink-0 w-28 bg-gray-50 rounded-xl p-3 text-center">
-                      <View className="w-14 h-14 rounded-lg bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
-                        {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={24} color="#3B82F6" />}
-                      </View>
-                      <Text className="block text-xs text-gray-900 font-bold truncate mb-1">{p.name}</Text>
-                      <Text className="block text-xs text-[#3B82F6]">{p.probability}%</Text>
-                    </View>
-                  ))}
                 </View>
               </View>
             )}
