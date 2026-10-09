@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight, MapPin, Phone, Store } from 'lucide-react-taro'
+import { Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight } from 'lucide-react-taro'
 
 interface PrizeItem {
   id: string
@@ -585,59 +585,35 @@ export default function TeamLotteryPage() {
         </Card>
       )}
 
-      {/* 门店与套餐信息 */}
-      {(status.merchant || status.package) && (
+      {/* 推荐团购套餐 */}
+      {status.package && (
         <Card className="rounded-2xl border-0 shadow-xl mb-4">
           <CardContent className="p-5">
-            {status.merchant && (
-              <View className="flex items-start gap-3 mb-4">
-                <View className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  {status.merchant.logo ? (
-                    <Image src={status.merchant.logo} className="w-full h-full" mode="aspectFill" />
-                  ) : (
-                    <Store size={24} color="#9CA3AF" />
-                  )}
-                </View>
-                <View className="flex-1 min-w-0">
-                  <Text className="block text-base font-bold text-gray-900 mb-1">{status.merchant.name}</Text>
-                  {status.merchant.address && (
-                    <View className="flex items-start gap-1 mb-1">
-                      <MapPin size={14} color="#9CA3AF" className="mt-1 shrink-0" />
-                      <Text className="block text-xs text-gray-500 leading-5">{status.merchant.address}</Text>
-                    </View>
-                  )}
-                  {status.merchant.phone && (
-                    <View className="flex items-center gap-1">
-                      <Phone size={14} color="#9CA3AF" className="shrink-0" />
-                      <Text className="block text-xs text-gray-500">{status.merchant.phone}</Text>
-                    </View>
+            <View className="flex items-center gap-2 mb-4">
+              <Sparkles size={18} color="#FF4757" />
+              <Text className="text-base font-bold text-gray-900">推荐更多团购套餐</Text>
+            </View>
+            <View className="flex items-start gap-3">
+              <View className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                {status.package.cover_image ? (
+                  <Image src={status.package.cover_image} className="w-full h-full" mode="aspectFill" />
+                ) : (
+                  <Gift size={28} color="#9CA3AF" />
+                )}
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className="block text-base font-bold text-gray-900 mb-1">{status.package.name}</Text>
+                {status.package.description && (
+                  <Text className="block text-xs text-gray-500 leading-5 mb-2">{status.package.description}</Text>
+                )}
+                <View className="flex items-baseline gap-2">
+                  <Text className="block text-lg font-bold text-[#FF4757]">¥{Number(status.package.price || 0).toFixed(2)}</Text>
+                  {status.package.original_price && Number(status.package.original_price) > 0 && (
+                    <Text className="block text-xs text-gray-400 line-through">¥{Number(status.package.original_price).toFixed(2)}</Text>
                   )}
                 </View>
               </View>
-            )}
-            {status.package && (
-              <View className={`flex items-start gap-3 ${status.merchant ? 'pt-4 border-t border-gray-100' : ''}`}>
-                <View className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  {status.package.cover_image ? (
-                    <Image src={status.package.cover_image} className="w-full h-full" mode="aspectFill" />
-                  ) : (
-                    <Gift size={28} color="#9CA3AF" />
-                  )}
-                </View>
-                <View className="flex-1 min-w-0">
-                  <Text className="block text-base font-bold text-gray-900 mb-1">{status.package.name}</Text>
-                  {status.package.description && (
-                    <Text className="block text-xs text-gray-500 leading-5 mb-2">{status.package.description}</Text>
-                  )}
-                  <View className="flex items-baseline gap-2">
-                    <Text className="block text-lg font-bold text-[#FF4757]">¥{Number(status.package.price || 0).toFixed(2)}</Text>
-                    {status.package.original_price && Number(status.package.original_price) > 0 && (
-                      <Text className="block text-xs text-gray-400 line-through">¥{Number(status.package.original_price).toFixed(2)}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            )}
+            </View>
           </CardContent>
         </Card>
       )}
