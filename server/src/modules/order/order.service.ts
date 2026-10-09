@@ -356,6 +356,22 @@ export class OrderService {
       .in('order_id', orderIds);
     const participatedIds = new Set((records || []).map((r: any) => r.order_id));
 
+    // 2.5 排除已用于组队抽奖的订单（开团或团员加入），组队资格与普通抽奖互斥
+    const { data: teamGroups } = await this.client
+      .from('team_lottery_groups')
+      .select('leader_order_id')
+      .in('leader_order_id', orderIds);
+    (teamGroups || []).forEach((r: any) => {
+      if (r.leader_order_id) participatedIds.add(r.leader_order_id);
+    });
+    const { data: teamMembers } = await this.client
+      .from('team_lottery_members')
+      .select('order_id')
+      .in('order_id', orderIds);
+    (teamMembers || []).forEach((r: any) => {
+      if (r.order_id) participatedIds.add(r.order_id);
+    });
+
     // 3. 过滤出未参与抽奖的订单
     const unparticipated = allOrders.filter(o => !participatedIds.has(o.id));
     if (unparticipated.length === 0) return [];

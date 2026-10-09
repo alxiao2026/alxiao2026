@@ -14,6 +14,8 @@ export interface UpdateTeamLotteryConfigDto {
   duration_hours?: number;
   leader_prize_id?: string | null;
   member_prize_ids?: string[];
+  leader_bonus_prize_ids?: string[];
+  leader_bonus_rate?: number;
   share_title?: string;
   share_desc?: string;
   share_image_url?: string | null;
@@ -92,6 +94,8 @@ export class TeamLotteryService {
       duration_hours: config?.duration_hours || 24,
       leader_prize_id: config?.leader_prize_id || null,
       member_prize_ids: (config?.member_prize_ids as string[]) || [],
+      leader_bonus_prize_ids: (config?.leader_bonus_prize_ids as string[]) || [],
+      leader_bonus_rate: Number(config?.leader_bonus_rate ?? 0),
       share_title: config?.share_title || '组队抽大奖',
       share_desc: config?.share_desc || '我组了个队，快来一起免费抽奖',
       share_image_url: config?.share_image_url || null,
@@ -108,6 +112,10 @@ export class TeamLotteryService {
     const memberPrizeIds = Array.isArray(dto.member_prize_ids)
       ? dto.member_prize_ids.filter((id) => typeof id === 'string' && id.length > 0).slice(0, 10)
       : (existing?.member_prize_ids as string[]) || [];
+    const leaderBonusPrizeIds = Array.isArray(dto.leader_bonus_prize_ids)
+      ? dto.leader_bonus_prize_ids.filter((id) => typeof id === 'string' && id.length > 0).slice(0, 10)
+      : (existing?.leader_bonus_prize_ids as string[]) || [];
+    const leaderBonusRate = Math.max(0, Math.min(100, Number(dto.leader_bonus_rate ?? existing?.leader_bonus_rate ?? 0)));
     const payload = {
       merchant_id: merchantId,
       enabled: dto.enabled ?? existing?.enabled ?? false,
@@ -115,6 +123,8 @@ export class TeamLotteryService {
       duration_hours: durationHours,
       leader_prize_id: dto.leader_prize_id ?? existing?.leader_prize_id ?? null,
       member_prize_ids: memberPrizeIds,
+      leader_bonus_prize_ids: leaderBonusPrizeIds,
+      leader_bonus_rate: leaderBonusRate,
       share_title: dto.share_title?.trim() || existing?.share_title || '组队抽大奖',
       share_desc: dto.share_desc?.trim() || existing?.share_desc || '我组了个队，快来一起免费抽奖',
       share_image_url: dto.share_image_url ?? existing?.share_image_url ?? null,
@@ -150,6 +160,8 @@ export class TeamLotteryService {
       duration_hours: data.duration_hours,
       leader_prize_id: data.leader_prize_id,
       member_prize_ids: data.member_prize_ids as string[],
+      leader_bonus_prize_ids: (data.leader_bonus_prize_ids as string[]) || [],
+      leader_bonus_rate: Number(data.leader_bonus_rate ?? 0),
       share_title: data.share_title,
       share_desc: data.share_desc,
       share_image_url: data.share_image_url,
@@ -358,6 +370,31 @@ export class TeamLotteryService {
     return pool[idx] as any;
   }
 
+  /** 团长抽奖：先按配置概率抽加码奖品（更高层级奖品，如霸王餐），未抽中或无库存则必得团长奖品 */
+  private async drawLeaderPrize(config: any): Promise<any | null> {
+    const rate = Number(config?.leader_bonus_rate ?? 0);
+    const bonusIds = (config?.leader_bonus_prize_ids as string[]) || [];
+    const leaderPrize = config?.leader_prize_id ? await this.getPrizeById(config.leader_prize_id) : null;
+
+    if (rate > 0 && bonusIds.length > 0) {
+      if (Math.random() * 100 < rate) {
+        const { data: prizes } = await this.client
+          .from('prizes')
+          .select('*')
+          .in('id', bonusIds)
+          .eq('is_active', true);
+        const pool = (prizes || []).filter(
+          (p: any) => Number(p.stock || 0) > 0 && (!leaderPrize || p.id !== leaderPrize.id),
+        );
+        if (pool.length > 0) {
+          return pool[crypto.randomInt(0, pool.length)] as any;
+        }
+      }
+    }
+
+    return leaderPrize;
+  }
+
   /** 创建队伍（团长） */
   async createGroup(dto: CreateGroupDto) {
     const merchant = await this.getMerchant(dto.merchant_id);
@@ -387,6 +424,16 @@ export class TeamLotteryService {
     }
     if (String(orderData.package_id || '') !== dto.package_id) {
       throw new BadRequestException('订单与套餐不匹配');
+    }
+
+    // 资格互斥：订单已用于普通抽奖，不能再发起组队
+    const { data: usedLottery } = await this.client
+      .from('lottery_records')
+      .select('id')
+      .eq('order_id', dto.order_id)
+      .limit(1);
+    if (usedLottery && usedLottery.length > 0) {
+      throw new BadRequestException('该订单已参与普通抽奖，不能再发起组队');
     }
 
     // 校验是否已创建
@@ -616,14 +663,11 @@ export class TeamLotteryService {
     const config = await this.getConfigRow(g.merchant_id);
     if (!config) throw new BadRequestException('商家配置不存在');
 
-    // 团长参加抽奖：团长抽团长奖品（必得），队员从队员奖品池随机抽
+    // 团长参加抽奖：先按概率抽加码奖品（更高层级奖品，如霸王餐），未中则必得团长奖品；队员从队员奖品池随机抽
     const isLeader = g.leader_user_id === dto.user_id;
     let prize: any = null;
     if (isLeader) {
-      if (!config.leader_prize_id) {
-        throw new BadRequestException('该活动未配置团长奖品');
-      }
-      prize = await this.getPrizeById(config.leader_prize_id);
+      prize = await this.drawLeaderPrize(config);
     } else {
       prize = await this.pickMemberPrize(config);
     }

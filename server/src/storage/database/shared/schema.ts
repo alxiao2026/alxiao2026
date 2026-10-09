@@ -680,6 +680,8 @@ export const merchantTeamLotteryConfigs = pgTable("merchant_team_lottery_configs
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	logoImageUrl: varchar("logo_image_url", { length: 512 }),
+	leaderBonusPrizeIds: jsonb("leader_bonus_prize_ids").default([]).notNull(),
+	leaderBonusRate: integer("leader_bonus_rate").default(0).notNull(),
 }, (table) => [
 	index("merchant_team_lottery_configs_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
 	foreignKey({

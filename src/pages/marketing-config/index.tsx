@@ -41,6 +41,8 @@ interface TeamLotteryConfig {
   duration_hours: number
   leader_prize_id: string | null
   member_prize_ids: string[]
+  leader_bonus_prize_ids: string[]
+  leader_bonus_rate: number
   share_title: string
   share_desc: string
   share_image_url: string | null
@@ -61,6 +63,8 @@ const DEFAULT_TEAM_LOTTERY: TeamLotteryConfig = {
   duration_hours: 24,
   leader_prize_id: null,
   member_prize_ids: [],
+  leader_bonus_prize_ids: [],
+  leader_bonus_rate: 0,
   share_title: '组队抽大奖',
   share_desc: '我组了个队，快来一起免费抽奖',
   share_image_url: null,
@@ -146,6 +150,8 @@ export default function MarketingConfigPage() {
             duration_hours: Number(data.duration_hours) || 24,
             leader_prize_id: data.leader_prize_id || null,
             member_prize_ids: Array.isArray(data.member_prize_ids) ? data.member_prize_ids : [],
+            leader_bonus_prize_ids: Array.isArray(data.leader_bonus_prize_ids) ? data.leader_bonus_prize_ids : [],
+            leader_bonus_rate: Number(data.leader_bonus_rate ?? 0),
             share_title: data.share_title || DEFAULT_TEAM_LOTTERY.share_title,
             share_desc: data.share_desc || DEFAULT_TEAM_LOTTERY.share_desc,
             share_image_url: data.share_image_url || null,
@@ -303,6 +309,8 @@ export default function MarketingConfigPage() {
             duration_hours: teamLotteryConfig.duration_hours,
             leader_prize_id: teamLotteryConfig.leader_prize_id,
             member_prize_ids: teamLotteryConfig.member_prize_ids,
+            leader_bonus_prize_ids: teamLotteryConfig.leader_bonus_prize_ids,
+            leader_bonus_rate: Math.max(0, Math.min(100, Number(teamLotteryConfig.leader_bonus_rate) || 0)),
             share_title: teamLotteryConfig.share_title.trim(),
             share_desc: teamLotteryConfig.share_desc.trim(),
             share_image_url: teamLotteryConfig.share_image_url,
@@ -608,7 +616,7 @@ export default function MarketingConfigPage() {
 
                   <View className="mb-4">
                     <Text className="block text-sm font-medium text-gray-800 mb-2">团长奖品（必得）</Text>
-                    <Text className="block text-xs text-gray-400 mb-2">团长抽奖时必中该奖品</Text>
+                    <Text className="block text-xs text-gray-400 mb-2">团长抽奖时的保底奖品（若配置加码奖品，先按概率抽加码奖品，未中必得该奖品）</Text>
                     <View className="border border-gray-100 rounded-xl">
                       {teamLotteryPrizes.length === 0 ? (
                         <View className="p-4">
@@ -703,6 +711,81 @@ export default function MarketingConfigPage() {
                           )
                         })
                       )}
+                    </View>
+                  </View>
+
+                  <View className="mb-4">
+                    <Text className="block text-sm font-medium text-gray-800 mb-2">团长加码奖品（可选）</Text>
+                    <Text className="block text-xs text-gray-400 mb-2">配置更高价值奖品（如霸王餐），团长抽奖时有概率获得，未抽中仍必得团长奖品</Text>
+                    <View className="border border-gray-100 rounded-xl">
+                      {teamLotteryPrizes.length === 0 ? (
+                        <View className="p-4">
+                          <Text className="block text-xs text-gray-400">该商家暂无可选奖品，请先去奖品管理添加</Text>
+                        </View>
+                      ) : (
+                        teamLotteryPrizes.map((p) => {
+                          const checked = teamLotteryConfig.leader_bonus_prize_ids.includes(p.id)
+                          return (
+                            <View
+                              key={p.id}
+                              onClick={() =>
+                                setTeamLotteryConfig((prev) => ({
+                                  ...prev,
+                                  leader_bonus_prize_ids: checked
+                                    ? prev.leader_bonus_prize_ids.filter((id) => id !== p.id)
+                                    : [...prev.leader_bonus_prize_ids, p.id],
+                                }))
+                              }
+                              className={cn(
+                                'flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0',
+                                checked ? 'bg-red-50' : 'bg-white'
+                              )}
+                            >
+                              <View>
+                                <Text className={cn('block text-sm', checked ? 'text-red-600 font-medium' : 'text-gray-800')}>
+                                  {p.name}
+                                </Text>
+                                <Text className="block text-xs text-gray-400">
+                                  {p.prize_type === 'coupon'
+                                    ? `券额 ¥${p.coupon_amount} / 最低消费 ¥${p.coupon_min_spend}`
+                                    : p.prize_type === 'product'
+                                      ? `实物 ${p.product_name || p.name}`
+                                      : '其他'}
+                                  · 库存 {p.stock}
+                                </Text>
+                              </View>
+                              <View
+                                className={cn(
+                                  'w-5 h-5 rounded border-2 flex items-center justify-center',
+                                  checked ? 'border-red-500 bg-red-500' : 'border-gray-300'
+                                )}
+                              >
+                                {checked && <Text className="text-white text-xs">✓</Text>}
+                              </View>
+                            </View>
+                          )
+                        })
+                      )}
+                    </View>
+                  </View>
+
+                  <View className="mb-4">
+                    <Text className="block text-sm font-medium text-gray-800 mb-2">加码中奖概率</Text>
+                    <Text className="block text-xs text-gray-400 mb-2">团长抽奖时抽中加码奖品的概率，0 表示不开启加码</Text>
+                    <View className="flex flex-row items-center bg-gray-50 rounded-xl px-4 py-3">
+                      <Input
+                        className="flex-1 bg-transparent border-0 focus-visible:ring-0 p-0"
+                        type="number"
+                        value={String(teamLotteryConfig.leader_bonus_rate)}
+                        onInput={(e) => {
+                          const v = parseInt(e.detail.value, 10)
+                          setTeamLotteryConfig((prev) => ({
+                            ...prev,
+                            leader_bonus_rate: Number.isNaN(v) || v < 0 ? 0 : v > 100 ? 100 : v,
+                          }))
+                        }}
+                      />
+                      <Text className="text-sm text-gray-500 ml-2">%</Text>
                     </View>
                   </View>
 

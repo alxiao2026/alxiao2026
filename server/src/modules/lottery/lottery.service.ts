@@ -450,6 +450,24 @@ export class LotteryService {
       throw new BadRequestException('该订单已抽过奖，不能重复抽奖');
     }
 
+    // 3.5 资格互斥：订单已用于组队抽奖（开团或团员加入），不能再参与普通抽奖
+    const { data: teamGroup } = await this.client
+      .from('team_lottery_groups')
+      .select('id')
+      .eq('leader_order_id', orderId)
+      .limit(1);
+    if (teamGroup && teamGroup.length > 0) {
+      throw new BadRequestException('该订单已用于组队抽奖，不能再参与普通抽奖');
+    }
+    const { data: teamMemberOrder } = await this.client
+      .from('team_lottery_members')
+      .select('id')
+      .eq('order_id', orderId)
+      .limit(1);
+    if (teamMemberOrder && teamMemberOrder.length > 0) {
+      throw new BadRequestException('该订单已用于组队抽奖，不能再参与普通抽奖');
+    }
+
     // 4. 计算用户权重（留痕）与霸王餐分享加成系数
     const userWeight = await this.calculateUserWeight(userId);
     const shareBoost = await this.getShareBoost(userId);
