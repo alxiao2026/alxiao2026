@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Network } from '@/network';
 import { uploadMiniAppImage } from '@/lib/upload-image';
-import { ChevronLeft, Check, Camera, Phone, Lock, User } from 'lucide-react-taro';
+import { ChevronLeft, Camera, Phone, Lock, User } from 'lucide-react-taro';
 import './index.css';
 
 type UserRole = 'platform_admin' | 'merchant_admin' | 'user';
@@ -29,6 +29,53 @@ interface ApiResponse<T> {
   msg: string;
   data: T;
 }
+
+/**
+ * 协议勾选条（模块级函数组件）
+ * - Taro 会将模块级组件编译为独立小程序模板，事件绑定最可靠；
+ *   而组件函数体内定义的 JSX 变量在多个 return 分支复用时，data-e 事件属性可能丢失，导致点击无效
+ * - 勾选图标用纯文本 ✓，避免极小尺寸 data-uri 图片在某些环境渲染失败
+ */
+const AgreementBar: React.FC<{
+  agreed: boolean;
+  onToggle: () => void;
+  onOpen: (url: string) => void;
+}> = ({ agreed, onToggle, onOpen }) => (
+  <View className="flex flex-row items-center justify-center px-4 py-2">
+    <View className="flex items-center justify-center p-2 shrink-0" onClick={onToggle}>
+      <View
+        className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+          agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
+        }`}
+      >
+        {agreed && <Text className="text-xs text-white leading-none">✓</Text>}
+      </View>
+    </View>
+    <View className="flex-1 flex flex-row flex-wrap items-center" onClick={onToggle}>
+      <Text className="text-xs text-gray-500 leading-5">我已阅读并同意</Text>
+      <View
+        className="shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen('/pages/agreement/index');
+        }}
+      >
+        <Text className="text-xs text-[#FF4757] leading-5">《用户服务协议》</Text>
+      </View>
+      <Text className="text-xs text-gray-500 leading-5">、</Text>
+      <View
+        className="shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen('/pages/privacy/index');
+        }}
+      >
+        <Text className="text-xs text-[#FF4757] leading-5">《隐私政策》</Text>
+      </View>
+      <Text className="text-xs text-gray-500 leading-5">，未注册的手机号将自动创建账号</Text>
+    </View>
+  </View>
+);
 
 const LoginPage: React.FC = () => {
   const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
@@ -234,44 +281,10 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // 协议勾选区（两种视图共用）：可点区域均直接绑定事件，避免嵌套 Text 在小程序端事件失效
-  const toggleAgreed = () => setAgreed((v) => !v);
-  const renderAgreement = (
-    <View className="flex flex-row items-center justify-center px-6 py-2">
-      <View className="flex items-center justify-center p-2 shrink-0" onClick={toggleAgreed}>
-        <View
-          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-            agreed ? 'bg-[#FF4757] border-[#FF4757]' : 'bg-white border-gray-300'
-          }`}
-        >
-          {agreed && <Check size={10} color="#fff" strokeWidth={3} />}
-        </View>
-      </View>
-      <View className="flex-1 flex flex-row flex-wrap items-center" onClick={toggleAgreed}>
-        <Text className="text-xs text-gray-500 leading-5">我已阅读并同意</Text>
-        <View
-          className="shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            Taro.navigateTo({ url: '/pages/agreement/index' });
-          }}
-        >
-          <Text className="text-xs text-[#FF4757] leading-5">《用户服务协议》</Text>
-        </View>
-        <Text className="text-xs text-gray-500 leading-5">、</Text>
-        <View
-          className="shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            Taro.navigateTo({ url: '/pages/privacy/index' });
-          }}
-        >
-          <Text className="text-xs text-[#FF4757] leading-5">《隐私政策》</Text>
-        </View>
-        <Text className="text-xs text-gray-500 leading-5">，未注册的手机号将自动创建账号</Text>
-      </View>
-    </View>
-  );
+  // 协议链接跳转（勾选与切换逻辑封装在模块级 AgreementBar 组件内，规避 JSX 变量模板复用导致的小程序端事件失效）
+  const openProtocol = (url: string) => {
+    Taro.navigateTo({ url });
+  };
 
   // 带图标输入框（白底淡红边框 + 深色文字，输入内容清晰可见）
   const renderField = (
@@ -344,7 +357,9 @@ const LoginPage: React.FC = () => {
         </View>
 
         {/* 协议 */}
-        <View className="mt-10">{renderAgreement}</View>
+        <View className="mt-10">
+          <AgreementBar agreed={agreed} onToggle={() => setAgreed((v) => !v)} onOpen={openProtocol} />
+        </View>
       </View>
     );
   }
@@ -396,7 +411,9 @@ const LoginPage: React.FC = () => {
       </View>
 
       {/* 协议勾选 */}
-      <View className="mt-14">{renderAgreement}</View>
+      <View className="mt-14">
+        <AgreementBar agreed={agreed} onToggle={() => setAgreed((v) => !v)} onOpen={openProtocol} />
+      </View>
 
       {/* 登录成功后的微信资料完善弹窗（头像 + 昵称） */}
       <Dialog
