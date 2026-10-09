@@ -151,7 +151,7 @@ export const merchantBalances = pgTable("merchant_balances", {
 
 export const packageSettlementConfigs = pgTable("package_settlement_configs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	packageId: varchar("package_id").notNull(),
+	packageId: varchar("package_id", { length: 36 }).notNull(),
 	settlementType: integer("settlement_type").default(1).notNull(),
 	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
 	settlementPrice: numeric("settlement_price", { precision: 10, scale:  2 }).default('0'),
@@ -454,9 +454,9 @@ export const orchardRecords = pgTable("orchard_records", {
 
 export const settlementRecords = pgTable("settlement_records", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	orderId: varchar("order_id").notNull(),
+	orderId: uuid("order_id").notNull(),
 	merchantId: integer("merchant_id").notNull(),
-	packageId: varchar("package_id").notNull(),
+	packageId: uuid("package_id").notNull(),
 	orderAmount: numeric("order_amount", { precision: 10, scale:  2 }).notNull(),
 	settlementType: integer("settlement_type").notNull(),
 	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
@@ -470,16 +470,6 @@ export const settlementRecords = pgTable("settlement_records", {
 	verifiedQty: integer("verified_qty").default(0).notNull(),
 	rebateAmount: numeric("rebate_amount", { precision: 10, scale:  2 }).default('0').notNull(),
 }, (table) => [
-	foreignKey({
-			columns: [table.orderId],
-			foreignColumns: [orders.id],
-			name: "settlement_records_order_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.packageId],
-			foreignColumns: [packages.id],
-			name: "settlement_records_package_id_fkey"
-		}),
 	foreignKey({
 			columns: [table.merchantId],
 			foreignColumns: [merchants.id],
@@ -531,7 +521,7 @@ export const distributionCommissions = pgTable("distribution_commissions", {
 ]);
 
 export const merchantMarketingActivities = pgTable("merchant_marketing_activities", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: uuid().defaultRandom().primaryKey().notNull(),
 	merchantId: integer("merchant_id").notNull(),
 	type: varchar({ length: 50 }).default('coupon').notNull(),
 	title: varchar({ length: 200 }).notNull(),
@@ -539,6 +529,7 @@ export const merchantMarketingActivities = pgTable("merchant_marketing_activitie
 	startTime: timestamp("start_time", { withTimezone: true, mode: 'string' }),
 	endTime: timestamp("end_time", { withTimezone: true, mode: 'string' }),
 	config: jsonb().default({}).notNull(),
+	description: text(),
 	sortOrder: integer("sort_order").default(0).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -593,13 +584,13 @@ export const orchardUsers = pgTable("orchard_users", {
 });
 
 export const merchantCommunityConfigs = pgTable("merchant_community_configs", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: uuid().defaultRandom().primaryKey().notNull(),
 	merchantId: integer("merchant_id").notNull(),
 	enabled: boolean().default(false).notNull(),
-	title: varchar({ length: 120 }).default('加店长领券享88折').notNull(),
+	title: varchar({ length: 200 }).default('加店长领券享88折').notNull(),
 	subtitle: varchar({ length: 200 }).default('进群抽免单，天天享9折').notNull(),
-	buttonText: varchar("button_text", { length: 120 }).default('长按识别二维码加店长').notNull(),
-	qrcodeUrl: varchar("qrcode_url", { length: 512 }),
+	buttonText: varchar("button_text", { length: 200 }).default('长按识别二维码加店长').notNull(),
+	qrcodeUrl: text("qrcode_url"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
