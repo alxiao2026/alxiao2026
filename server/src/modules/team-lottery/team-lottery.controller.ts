@@ -52,8 +52,11 @@ export class TeamLotteryController {
   /** C端：查询商家组队抽奖状态 */
   @Get('merchants/:merchantId/status')
   @HttpCode(HttpStatus.OK)
-  async getMerchantStatus(@Param('merchantId') merchantId: string) {
-    const data = await this.teamLotteryService.getMerchantStatus(Number(merchantId));
+  async getMerchantStatus(
+    @Param('merchantId') merchantId: string,
+    @Query('package_id') packageId?: string,
+  ) {
+    const data = await this.teamLotteryService.getMerchantStatus(Number(merchantId), packageId);
     return { code: 200, msg: 'success', data };
   }
 

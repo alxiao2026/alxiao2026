@@ -191,17 +191,118 @@ export class TeamLotteryService {
     }));
   }
 
+  /** 查询奖品详情（返回百分比概率） */
+  private async getPrizeDetails(prizeIds: string[]): Promise<any[]> {
+    if (!prizeIds?.length) return [];
+    const validIds = prizeIds.filter((id) => typeof id === 'string' && id.length > 0);
+    if (!validIds.length) return [];
+    const { data, error } = await this.client
+      .from('prizes')
+      .select('id, name, probability, image_url, prize_type')
+      .in('id', validIds)
+      .eq('is_active', true);
+    if (error) throw new Error(`查询奖品详情失败: ${error.message}`);
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      // 数据库中 probability 已按百分比存储（如 30 表示 30%）
+      probability: Number(p.probability || 0),
+      image_url: p.image_url || null,
+      prize_type: p.prize_type || 'coupon',
+    }));
+  }
+
   /** C端：查询商家组队抽奖是否可用 */
-  async getMerchantStatus(merchantId: number) {
+  async getMerchantStatus(merchantId: number, packageId?: string) {
     const merchant = await this.getMerchant(merchantId);
     const features = (merchant.marketing_features as Record<string, boolean>) || {};
+
+    const merchantInfo = {
+      id: merchant.id,
+      name: merchant.name || '',
+      address: merchant.address || null,
+      phone: merchant.phone || null,
+      logo: merchant.logo || null,
+    };
+
     if (!features.team_lottery) {
-      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null, logo_image_url: null };
+      return {
+        enabled: false,
+        team_size: 3,
+        duration_hours: 24,
+        share_title: '',
+        share_desc: '',
+        share_image_url: null,
+        logo_image_url: null,
+        merchant: merchantInfo,
+        package: null,
+        leader_prize: null,
+        member_prizes: [],
+        leader_bonus_prizes: [],
+        leader_bonus_rate: 0,
+      };
     }
     const config = await this.getConfigRow(merchantId);
     if (!config || !config.enabled) {
-      return { enabled: false, team_size: 3, duration_hours: 24, share_title: '', share_desc: '', share_image_url: null, logo_image_url: null };
+      return {
+        enabled: false,
+        team_size: 3,
+        duration_hours: 24,
+        share_title: '',
+        share_desc: '',
+        share_image_url: null,
+        logo_image_url: null,
+        merchant: merchantInfo,
+        package: null,
+        leader_prize: null,
+        member_prizes: [],
+        leader_bonus_prizes: [],
+        leader_bonus_rate: 0,
+      };
     }
+
+    // 查询套餐信息：优先使用传入的 package_id，否则取商家第一个有效套餐
+    let packageInfo: any = null;
+    if (packageId) {
+      const { data: pkg } = await this.client.from('packages').select('*').eq('id', packageId).maybeSingle();
+      if (pkg) {
+        packageInfo = {
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description || null,
+          price: Number(pkg.price || 0),
+          original_price: pkg.original_price ? Number(pkg.original_price) : null,
+          cover_image: pkg.cover_image || pkg.coverImage || null,
+        };
+      }
+    }
+    if (!packageInfo) {
+      const { data: pkg } = await this.client
+        .from('packages')
+        .select('*')
+        .eq('merchant_id', merchantId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (pkg) {
+        packageInfo = {
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description || null,
+          price: Number(pkg.price || 0),
+          original_price: pkg.original_price ? Number(pkg.original_price) : null,
+          cover_image: pkg.cover_image || pkg.coverImage || null,
+        };
+      }
+    }
+
+    const [leaderPrizeDetails, memberPrizeDetails, leaderBonusPrizeDetails] = await Promise.all([
+      config.leader_prize_id ? this.getPrizeDetails([config.leader_prize_id as string]) : Promise.resolve([]),
+      this.getPrizeDetails((config.member_prize_ids as string[]) || []),
+      this.getPrizeDetails((config.leader_bonus_prize_ids as string[]) || []),
+    ]);
+
     return {
       enabled: true,
       team_size: config.team_size || 3,
@@ -210,6 +311,12 @@ export class TeamLotteryService {
       share_desc: config.share_desc || '',
       share_image_url: config.share_image_url || null,
       logo_image_url: config.logo_image_url || null,
+      merchant: merchantInfo,
+      package: packageInfo,
+      leader_prize: leaderPrizeDetails[0] || null,
+      member_prizes: memberPrizeDetails,
+      leader_bonus_prizes: leaderBonusPrizeDetails,
+      leader_bonus_rate: Number(config.leader_bonus_rate ?? 0),
     };
   }
 
@@ -532,6 +639,39 @@ export class TeamLotteryService {
       leaderPrizeName = prize?.name || null;
     }
 
+    // 查询队伍关联的商家、套餐、奖品详情
+    const [merchantRow, packageRow] = await Promise.all([
+      this.client.from('merchants').select('id, name, address, phone, logo').eq('id', g.merchant_id).maybeSingle(),
+      this.client.from('packages').select('*').eq('id', g.package_id).maybeSingle(),
+    ]);
+
+    const merchantInfo = merchantRow.data
+      ? {
+          id: merchantRow.data.id,
+          name: merchantRow.data.name || '',
+          address: merchantRow.data.address || null,
+          phone: merchantRow.data.phone || null,
+          logo: merchantRow.data.logo || null,
+        }
+      : null;
+
+    const packageInfo = packageRow.data
+      ? {
+          id: packageRow.data.id,
+          name: packageRow.data.name,
+          description: packageRow.data.description || null,
+          price: Number(packageRow.data.price || 0),
+          original_price: packageRow.data.original_price ? Number(packageRow.data.original_price) : null,
+          cover_image: packageRow.data.cover_image || packageRow.data.coverImage || null,
+        }
+      : null;
+
+    const [leaderPrizeDetails, memberPrizeDetails, leaderBonusPrizeDetails] = await Promise.all([
+      config?.leader_prize_id ? this.getPrizeDetails([config.leader_prize_id as string]) : Promise.resolve([]),
+      this.getPrizeDetails((config?.member_prize_ids as string[]) || []),
+      this.getPrizeDetails((config?.leader_bonus_prize_ids as string[]) || []),
+    ]);
+
     return {
       id: g.id,
       merchant_id: g.merchant_id,
@@ -548,6 +688,12 @@ export class TeamLotteryService {
       is_member: isMember,
       leader_prize_name: leaderPrizeName,
       members: await this.buildMemberView(members || [], g.leader_user_id, currentUserId),
+      merchant: merchantInfo,
+      package: packageInfo,
+      leader_prize: leaderPrizeDetails[0] || null,
+      member_prizes: memberPrizeDetails,
+      leader_bonus_prizes: leaderBonusPrizeDetails,
+      leader_bonus_rate: Number(config?.leader_bonus_rate ?? 0),
     };
   }
 
