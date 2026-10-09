@@ -34,7 +34,7 @@ const MODULES: MarketingModule[] = [
     key: 'team_lottery',
     name: '组队抽奖营销模块',
     tag: '组队抽奖',
-    description: '消费者下单后可发起组队，邀请好友加入，满员后全员免费抽奖，团长必得奖品',
+    description: '消费者下单后可发起组队，邀请好友加入，满员后所有成员（含团长）均可免费抽奖，团长必中团长奖品',
     icon: Gift,
   },
 ]

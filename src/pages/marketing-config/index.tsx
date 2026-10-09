@@ -536,7 +536,7 @@ export default function MarketingConfigPage() {
                       </View>
                     </View>
                     <Text className="block text-xs text-gray-500 leading-relaxed">
-                      消费者下单支付成功后可发起组队，邀请好友加入，满员后全员免费抽奖，团长必得奖品
+                      消费者下单支付成功后可发起组队，邀请好友加入，满员后所有成员（含团长）均可免费抽奖，团长必中团长奖品
                     </Text>
                   </View>
 
@@ -608,7 +608,7 @@ export default function MarketingConfigPage() {
 
                   <View className="mb-4">
                     <Text className="block text-sm font-medium text-gray-800 mb-2">团长奖品（必得）</Text>
-                    <Text className="block text-xs text-gray-400 mb-2">队伍满员后自动发放给团长</Text>
+                    <Text className="block text-xs text-gray-400 mb-2">团长抽奖时必中该奖品</Text>
                     <View className="border border-gray-100 rounded-xl">
                       {teamLotteryPrizes.length === 0 ? (
                         <View className="p-4">

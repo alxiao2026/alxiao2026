@@ -358,45 +358,6 @@ export class TeamLotteryService {
     return pool[idx] as any;
   }
 
-  private async fulfillGroup(groupId: string, config: any) {
-    // 团长必得奖品
-    if (config.leader_prize_id) {
-      const { data: leaderMember } = await this.client
-        .from('team_lottery_members')
-        .select('*')
-        .eq('group_id', groupId)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
-      if (leaderMember) {
-        const lm = leaderMember as any;
-        if (!lm.prize_id) {
-          const prize = await this.getPrizeById(config.leader_prize_id);
-          if (prize && Number(prize.stock || 0) > 0) {
-            const newStock = await this.atomicDecrementStock(prize.id);
-            if (newStock >= 0) {
-              const result = await this.grantPrize(lm.user_id, prize);
-              if (result) {
-                await this.client
-                  .from('team_lottery_members')
-                  .update({
-                    is_winner: result.is_winner,
-                    prize_id: result.prize_id,
-                    prize_name: result.prize_name,
-                    prize_type: result.prize_type,
-                    coupon_code: result.coupon_code || null,
-                    redemption_code: result.redemption_code || null,
-                    drew_at: this.now(),
-                  })
-                  .eq('id', lm.id);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   /** 创建队伍（团长） */
   async createGroup(dto: CreateGroupDto) {
     const merchant = await this.getMerchant(dto.merchant_id);
@@ -627,11 +588,6 @@ export class TeamLotteryService {
       throw new BadRequestException('加入失败，请重试');
     }
 
-    if (isFull) {
-      const config = await this.getConfigRow(g.merchant_id);
-      if (config) await this.fulfillGroup(groupId, config);
-    }
-
     return this.getGroupDetail(groupId, dto.user_id);
   }
 
@@ -660,9 +616,19 @@ export class TeamLotteryService {
     const config = await this.getConfigRow(g.merchant_id);
     if (!config) throw new BadRequestException('商家配置不存在');
 
-    const prize = await this.pickMemberPrize(config);
+    // 团长参加抽奖：团长抽团长奖品（必得），队员从队员奖品池随机抽
+    const isLeader = g.leader_user_id === dto.user_id;
+    let prize: any = null;
+    if (isLeader) {
+      if (!config.leader_prize_id) {
+        throw new BadRequestException('该活动未配置团长奖品');
+      }
+      prize = await this.getPrizeById(config.leader_prize_id);
+    } else {
+      prize = await this.pickMemberPrize(config);
+    }
     if (!prize) {
-      throw new BadRequestException('奖品已发完');
+      throw new BadRequestException(isLeader ? '团长奖品库存不足' : '奖品已发完');
     }
 
     const newStock = await this.atomicDecrementStock(prize.id);

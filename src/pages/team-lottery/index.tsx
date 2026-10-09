@@ -86,7 +86,7 @@ export default function TeamLotteryPage() {
   useShareAppMessage(() => {
     if (!group) return { title: '组队抽奖' }
     return {
-      title: status?.share_title || '快来组队抽奖，团长必得奖品！',
+      title: status?.share_title || '快来组队抽奖，人人都能抽奖品！',
       path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}&invite_code=${group.invite_code}`,
       imageUrl: status?.share_image_url || undefined,
     }
@@ -267,7 +267,7 @@ export default function TeamLotteryPage() {
         </View>
         <Text className="block text-2xl font-extrabold text-white mb-2">组队免费抽奖</Text>
         <Text className="block text-white text-opacity-90 text-sm">
-          满 {status.team_size} 人成团，团员均可抽奖，团长必得奖品
+          满 {status.team_size} 人成团，团长和团员都能抽奖，团长必中团长奖品
         </Text>
       </View>
 
@@ -355,7 +355,7 @@ export default function TeamLotteryPage() {
               <View className="flex items-center gap-2 bg-yellow-50 rounded-xl p-3 mb-4">
                 <Trophy size={18} color="#f59e0b" />
                 <Text className="block text-sm text-yellow-700">
-                  团长必得：<Text className="font-bold">{group.leader_prize_name}</Text>
+                  团长奖品：<Text className="font-bold">{group.leader_prize_name}</Text>
                 </Text>
               </View>
             )}
@@ -476,7 +476,7 @@ export default function TeamLotteryPage() {
         <Text className="block text-xs text-white text-opacity-80 text-center leading-5">
           1. 购买本店套餐支付成功后可开团{'\n'}
           2. 邀请好友加入队伍，满 {status.team_size} 人即可开奖{'\n'}
-          3. 成团后团长必得奖品，团员可抽奖一次{'\n'}
+          3. 成团后所有成员（含团长）均可抽奖一次，团长必中团长奖品{'\n'}
           4. 队伍 {status.duration_hours} 小时内未满员将自动解散
         </Text>
       </View>
