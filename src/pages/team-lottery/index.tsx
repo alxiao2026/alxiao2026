@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight } from 'lucide-react-taro'
 
 interface TeamStatus {
@@ -70,14 +71,17 @@ export default function TeamLotteryPage() {
   const [toast, setToast] = useState('')
 
   useEffect(() => {
-    const uid = Taro.getStorageSync('user_id') || ''
-    setUserId(uid)
-    if (merchantId && uid) {
-      loadAll(uid)
-    } else if (!uid) {
+    if (merchantId && userId) {
+      loadAll(userId)
+    } else if (merchantId && !userId) {
       setLoading(false)
     }
-  }, [merchantId])
+  }, [merchantId, userId])
+
+  useDidShow(() => {
+    const uid = Taro.getStorageSync('user_id') || ''
+    setUserId(uid)
+  })
 
   useShareAppMessage(() => {
     if (!group) return { title: '组队抽奖' }
@@ -221,23 +225,6 @@ export default function TeamLotteryPage() {
     )
   }
 
-  if (!userId) {
-    return (
-      <View className="min-h-screen bg-gradient-to-b from-[#FF4757] to-[#ff6b81] flex items-center justify-center p-6">
-        <Card className="w-full rounded-2xl border-0 shadow-xl">
-          <CardContent className="p-8 text-center">
-            <CircleAlert size={48} color="#FF4757" className="mx-auto mb-4" />
-            <Text className="block text-lg font-bold text-gray-900 mb-2">请先登录</Text>
-            <Text className="block text-sm text-gray-500 mb-6">登录后即可参与组队抽奖</Text>
-            <Button onClick={() => Taro.navigateTo({ url: '/pages/login/index' })} className="w-full bg-[#FF4757] text-white rounded-full">
-              去登录
-            </Button>
-          </CardContent>
-        </Card>
-      </View>
-    )
-  }
-
   if (!status?.enabled) {
     return (
       <View className="min-h-screen bg-gradient-to-b from-[#FF4757] to-[#ff6b81] flex items-center justify-center p-6">
@@ -257,6 +244,18 @@ export default function TeamLotteryPage() {
 
   return (
     <View className="min-h-screen bg-gradient-to-b from-[#FF4757] via-[#ff5e6e] to-[#ffe4e7] p-4 pb-24">
+      <Dialog open={!userId}>
+        <DialogContent className="sm:max-w-[320px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg">请先登录</DialogTitle>
+            <DialogDescription className="text-center text-sm text-gray-500">登录后即可参与组队抽奖</DialogDescription>
+          </DialogHeader>
+          <Button onClick={() => Taro.navigateTo({ url: '/pages/login/index' })} className="w-full bg-[#FF4757] text-white rounded-full mt-2">
+            去登录
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {/* 顶部活动区 */}
       <View className="pt-8 pb-6 text-center">
         <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-20 backdrop-blur mb-4 overflow-hidden">
