@@ -454,9 +454,9 @@ export const orchardRecords = pgTable("orchard_records", {
 
 export const settlementRecords = pgTable("settlement_records", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	orderId: uuid("order_id").notNull(),
+	orderId: varchar("order_id", { length: 36 }).notNull(),
 	merchantId: integer("merchant_id").notNull(),
-	packageId: uuid("package_id").notNull(),
+	packageId: varchar("package_id", { length: 36 }).notNull(),
 	orderAmount: numeric("order_amount", { precision: 10, scale:  2 }).notNull(),
 	settlementType: integer("settlement_type").notNull(),
 	commissionRate: numeric("commission_rate", { precision: 5, scale:  2 }).default('0'),
@@ -470,6 +470,16 @@ export const settlementRecords = pgTable("settlement_records", {
 	verifiedQty: integer("verified_qty").default(0).notNull(),
 	rebateAmount: numeric("rebate_amount", { precision: 10, scale:  2 }).default('0').notNull(),
 }, (table) => [
+	foreignKey({
+			columns: [table.orderId],
+			foreignColumns: [orders.id],
+			name: "settlement_records_order_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.packageId],
+			foreignColumns: [packages.id],
+			name: "settlement_records_package_id_fkey"
+		}),
 	foreignKey({
 			columns: [table.merchantId],
 			foreignColumns: [merchants.id],
