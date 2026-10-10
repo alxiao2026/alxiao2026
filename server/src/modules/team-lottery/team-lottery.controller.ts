@@ -104,6 +104,17 @@ export class TeamLotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** C端：通过订单查询对应队伍（每笔订单对应一个队伍） */
+  @Get('by-order/:orderId')
+  @HttpCode(HttpStatus.OK)
+  async getGroupByOrder(
+    @Param('orderId') orderId: string,
+    @Query('user_id') userId?: string,
+  ) {
+    const data = await this.teamLotteryService.getGroupByOrder(orderId, userId);
+    return { code: 200, msg: 'success', data };
+  }
+
   /** C端：加入队伍（支持 groupId 或 invite_code） */
   @Post('groups/:id/join')
   @HttpCode(HttpStatus.OK)
@@ -125,8 +136,12 @@ export class TeamLotteryController {
   /** C端：查询我的队伍 */
   @Get('my-groups/:userId')
   @HttpCode(HttpStatus.OK)
-  async listMyGroups(@Param('userId') userId: string) {
-    const data = await this.teamLotteryService.listMyGroups(userId);
+  async listMyGroups(
+    @Param('userId') userId: string,
+    @Query('merchant_id') merchantId?: string,
+  ) {
+    const mid = merchantId ? Number(merchantId) : undefined
+    const data = await this.teamLotteryService.listMyGroups(userId, mid);
     return { code: 200, msg: 'success', data };
   }
 

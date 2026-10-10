@@ -30,6 +30,7 @@ interface DrawResultData {
   image_url?: string
   redemption_code?: string
   refund_amount?: string
+  coupon_code?: string
   coupon_amount?: string
   coupon_min_spend?: string
   discount_rate?: number
@@ -85,6 +86,9 @@ export default function Lottery() {
   const router = useRouter()
   const orderId = router.params?.orderId || ''
   const recordId = router.params?.recordId || ''
+  // 组队抽奖模式：从 team-lottery 页跳转时带 team_group_id 参数
+  const teamGroupId = router.params?.team_group_id || ''
+  const isTeamDraw = Boolean(teamGroupId)
 
   const [stage, setStage] = useState<Stage>('loading')
   const [userId, setUserId] = useState('')
@@ -100,8 +104,8 @@ export default function Lottery() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
   const [showQrView, setShowQrView] = useState(false)
 
-  const stateRef = useRef({ sharePending, orderId, selectedBox, stage })
-  stateRef.current = { sharePending, orderId, selectedBox, stage }
+  const stateRef = useRef({ sharePending, orderId, selectedBox, stage, isTeamDraw, teamGroupId, userId })
+  stateRef.current = { sharePending, orderId, selectedBox, stage, isTeamDraw, teamGroupId, userId }
 
   const env = Taro.getEnv()
   const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
@@ -306,6 +310,16 @@ export default function Lottery() {
       const uid = Taro.getStorageSync('user_id') || ''
       setUserId(uid)
       void fetchPrizePool()
+      // 组队抽奖模式：不需要订单/记录校验，直接进入选盒阶段
+      if (isTeamDraw) {
+        if (!uid) {
+          Taro.showToast({ title: '请先登录', icon: 'none' })
+          setTimeout(() => Taro.redirectTo({ url: '/pages/login/index' }), 1200)
+          return
+        }
+        setStage('select')
+        return
+      }
       if (!orderId && !recordId) {
         Taro.showToast({ title: '缺少订单参数', icon: 'none' })
         setTimeout(() => Taro.navigateBack(), 1200)
@@ -402,35 +416,77 @@ export default function Lottery() {
     setStage('opening')
 
     try {
-      console.log('[Lottery] 发起抽奖', {
-        url: '/api/lottery/draw',
-        method: 'POST',
-        data: { order_id: orderId, user_id: userId },
-      })
+      const isTeam = stateRef.current.isTeamDraw
+      const url = isTeam
+        ? `/api/team-lottery/groups/${stateRef.current.teamGroupId}/draw`
+        : '/api/lottery/draw'
+      const data = isTeam
+        ? { user_id: stateRef.current.userId }
+        : { order_id: stateRef.current.orderId, user_id: stateRef.current.userId }
+      console.log('[Lottery] 发起抽奖', { url, method: 'POST', data })
       const [res] = await Promise.all([
-        Network.request({
-          url: '/api/lottery/draw',
-          method: 'POST',
-          data: { order_id: orderId, user_id: userId },
-        }),
-        delay(2400), // 保证开奖动画完整播放
+        Network.request({ url, method: 'POST', data }),
+        delay(isTeam ? 2400 : 2400), // 保证开奖动画完整播放
       ])
       console.log('[Lottery] 抽奖响应', res.data)
       const envelope = res.data as any
       if (envelope?.code === 200 && envelope?.data) {
-        // 统一走记录接口拉取富化数据（prize_type/有效期/核销状态），保证与再次进入时一致
-        // autoStage=false：结果页切换由下方爆开动画完成后统一执行
-        await fetchRecord(false)
+        if (isTeam) {
+          // 组队抽奖：直接把后端返回作为 drawResult 使用，不走 record 接口
+          const d = envelope.data
+          const result: DrawResultData = {
+            record_id: d.record_id || '',
+            prize_type: d.prize_type || 'coupon',
+            prize_name: d.prize_name || '谢谢参与',
+            is_winner: d.is_winner !== false,
+            redemption_code: d.redemption_code || '',
+            coupon_code: d.coupon_code || '',
+            refund_amount: d.refund_amount != null ? String(Number(d.refund_amount).toFixed(2)) : '0',
+            refund_status: d.refund_status || null,
+            discount_rate: d.discount_rate,
+            discount_cap: d.discount_cap,
+            discount_capped: d.discount_capped,
+            coupon_amount: d.coupon_amount != null ? String(Number(d.coupon_amount).toFixed(2)) : '',
+            coupon_min_spend: d.coupon_min_spend != null ? String(d.coupon_min_spend) : '',
+            product_name: d.product_name,
+            image_url: d.prize_image || d.image_url || '',
+            expiry_date: d.expiry_date || null,
+            prize_image: d.prize_image || '',
+          }
+          setDrawResult(result)
+          // 预取二维码
+          if (result.redemption_code) {
+            try {
+              const qrRes = await Network.request({ url: `/api/lottery/qrcode/${result.record_id}`, method: 'GET' })
+              const qrEnvelope = qrRes.data as any
+              if (qrEnvelope?.code === 200 && qrEnvelope.data?.qrcode_url) {
+                setQrCodeUrl(qrEnvelope.data.qrcode_url)
+              }
+            } catch (e) {
+              console.warn('[Lottery] 二维码预取失败', e)
+            }
+          }
+          Taro.vibrateShort?.({ type: 'heavy' })
+        } else {
+          // 普通抽奖：统一走记录接口拉取富化数据
+          await fetchRecord(false)
+        }
       } else {
         throw new Error(envelope?.msg || '抽奖失败')
       }
     } catch (err: any) {
       console.error('[Lottery] 抽奖失败:', err)
       const msg = err?.data?.msg || err?.message || '抽奖失败，请重试'
-      // 已抽过奖：直接展示已有结果
-      if (String(msg).includes('已抽过奖')) {
+      // 已抽过奖：普通抽奖拉记录；组队抽奖也尝试刷新队伍详情展示团长奖/已有结果
+      if (String(msg).includes('已抽过奖') || String(msg).includes('无需再抽')) {
         try {
-          await fetchRecord()
+          if (stateRef.current.isTeamDraw) {
+            // 返回组队页展示奖品结果
+            Taro.showToast({ title: '你已抽过奖', icon: 'none' })
+            setTimeout(() => Taro.navigateBack(), 800)
+          } else {
+            await fetchRecord()
+          }
           setDrawing(false)
           return
         } catch (e) {

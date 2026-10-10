@@ -944,19 +944,85 @@ export class TeamLotteryService {
       throw new BadRequestException('加入失败，请重试');
     }
 
-    // 满员：给所有成员发"组队成功，去抽奖"订阅消息
+    // 满员：自动给团长发团长奖，并发订阅消息通知所有成员去抽奖
     if (isFull) {
+      // 团长奖：直接发放 leader_prize（不参与盲盒抽取）
+      try {
+        const config = await this.getConfigRow(g.merchant_id);
+        const leaderPrizeId = config?.leader_prize_id as string | null;
+        if (leaderPrizeId) {
+          const { data: leaderOrder, error: loErr } = await this.client
+            .from('orders')
+            .select('*')
+            .eq('id', g.leader_order_id)
+            .maybeSingle();
+          if (loErr) this.logger.warn(`查团长订单失败: ${loErr.message}`);
+          if (leaderOrder) {
+            // 查 leader prize 详情拿 stock/type
+            const prizeRows = await this.getPrizeDetails([leaderPrizeId]);
+            const leaderPrizeRow = prizeRows[0];
+            if (leaderPrizeRow) {
+              // 原子扣库存
+              let stockOk = false;
+              for (let i = 0; i < 3; i++) {
+                const result = await this.atomicDecrementStock(leaderPrizeId);
+                if (result !== -1) { stockOk = true; break; }
+                await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+              }
+              if (stockOk) {
+                const grant = await this.grantPrize(g.leader_user_id, leaderPrizeRow as any, leaderOrder as any);
+                if (grant) {
+                  // 写入团长成员记录
+                  await this.client
+                    .from('team_lottery_members')
+                    .update({
+                      is_winner: grant.is_winner,
+                      prize_id: leaderPrizeId,
+                      prize_name: grant.prize_name,
+                      prize_type: grant.prize_type,
+                      redemption_code: grant.redemption_code || null,
+                      refund_amount: grant.refund_amount || null,
+                      refund_status: grant.refund_status || null,
+                      prize_image: leaderPrizeRow.image_url || null,
+                      drew_at: this.now(),
+                    })
+                    .eq('group_id', actualGroupId)
+                    .eq('user_id', g.leader_user_id);
+                  this.logger.log(`团长奖已自动发放 group=${actualGroupId} leader=${g.leader_user_id} prize=${grant.prize_name}`);
+                  // 发中奖通知
+                  try {
+                    await this.notificationService.notify(g.leader_user_id, 'prize_won', {
+                      prize_name: String(grant.prize_name || '奖品'),
+                      expire_time: `组队成功，您作为团长已获得团长奖`,
+                    });
+                  } catch (e: any) {
+                    this.logger.warn(`团长奖通知失败: ${e?.message}`);
+                  }
+                }
+              } else {
+                this.logger.warn(`团长奖库存不足 group=${actualGroupId} prize=${leaderPrizeId}`);
+              }
+            }
+          }
+        }
+      } catch (e: any) {
+        this.logger.warn(`团长奖自动发放失败 group=${actualGroupId}: ${e?.message}`);
+      }
+
+      // 给所有成员发"组队成功去抽奖"订阅消息（团长已发中奖通知，这里再补发一条组队成功）
       try {
         const { data: allMembers } = await this.client
           .from('team_lottery_members')
           .select('user_id')
           .eq('group_id', actualGroupId);
-        const userIds = Array.from(new Set([g.leader_user_id, ...(allMembers || []).map((m: any) => m.user_id)]));
+        const userIds = Array.from(new Set((allMembers || []).map((m: any) => m.user_id))).filter(
+          (uid) => uid !== g.leader_user_id,
+        );
         await Promise.allSettled(
           userIds.map((uid) =>
             this.notificationService.notify(uid, 'prize_won', {
               prize_name: '组队成功',
-              expire_time: `队伍已满员，快去开奖吧！`,
+              expire_time: `队伍已满员，快去开盲盒抽奖吧！`,
             }),
           ),
         );
@@ -989,12 +1055,15 @@ export class TeamLotteryService {
     if (memberError) throw new Error(`查询成员失败: ${memberError.message}`);
     if (!member) throw new BadRequestException('你不是队伍成员');
     const m = member as any;
+    if (g.leader_user_id === dto.user_id) {
+      throw new BadRequestException('团长奖励已在组队满员时自动发放，无需再抽');
+    }
     if (m.drew_at || m.prize_id) {
       throw new BadRequestException('你已经抽过奖了');
     }
 
-    // 取该成员对应的订单（团长用 leader_order_id，团员用自己的 order_id）
-    const memberOrderId = m.order_id || (g.leader_user_id === dto.user_id ? g.leader_order_id : null);
+    // 取该成员对应的订单
+    const memberOrderId = m.order_id;
     const { data: memberOrder, error: orderErr } = await this.client
       .from('orders')
       .select('*')
@@ -1078,22 +1147,43 @@ export class TeamLotteryService {
     };
   }
 
-  /** 查询用户参与/创建的队伍列表 */
-  async listMyGroups(userId: string, merchantId?: number) {
-    let query = this.client
+  /** 查询某笔订单对应的队伍（订单可能是团长订单或成员订单） */
+  async getGroupByOrder(orderId: string, userId?: string) {
+    // 优先匹配团长订单
+    const { data: byLeader, error: e1 } = await this.client
+      .from('team_lottery_groups')
+      .select('id')
+      .eq('leader_order_id', orderId)
+      .maybeSingle();
+    if (e1) throw new Error(`查询队伍失败: ${e1.message}`);
+    if (byLeader) return this.getGroupDetail((byLeader as any).id, userId);
+    // 再匹配成员订单
+    const { data: byMember, error: e2 } = await this.client
       .from('team_lottery_members')
       .select('group_id')
-      .eq('user_id', userId);
-    if (merchantId !== undefined) {
-      // 需要 join group 表；先查 group 再过滤
-    }
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+      .eq('order_id', orderId)
+      .maybeSingle();
+    if (e2) throw new Error(`查询队伍失败: ${e2.message}`);
+    if (byMember) return this.getGroupDetail((byMember as any).group_id, userId);
+    return null;
+  }
+
+  /** 查询用户参与/创建的队伍列表（支持按 merchantId 过滤） */
+  async listMyGroups(userId: string, merchantId?: number) {
+    const { data: memberRows, error } = await this.client
+      .from('team_lottery_members')
+      .select('group_id, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
     if (error) throw new Error(`查询队伍失败: ${error.message}`);
-    const groupIds = (data || []).map((d: any) => d.group_id);
+    let groupIds = (memberRows || []).map((d: any) => d.group_id);
     const details: any[] = [];
     for (const gid of groupIds) {
       try {
-        details.push(await this.getGroupDetail(gid, userId));
+        const detail = await this.getGroupDetail(gid, userId);
+        if (merchantId !== undefined && detail && detail.merchant_id !== merchantId) continue;
+        details.push(detail);
       } catch {
         // ignore
       }
