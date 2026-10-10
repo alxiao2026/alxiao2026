@@ -34,22 +34,6 @@ interface PackageInfo {
   cover_image: string | null
 }
 
-interface TeamStatus {
-  enabled: boolean
-  team_size: number
-  duration_hours: number
-  share_title: string
-  share_desc: string
-  share_image_url: string | null
-  logo_image_url: string | null
-  merchant?: MerchantInfo
-  package?: PackageInfo
-  leader_prize?: PrizeItem
-  member_prizes?: PrizeItem[]
-  leader_bonus_prizes?: PrizeItem[]
-  leader_bonus_rate?: number
-}
-
 interface Member {
   id: string
   user_id: string
@@ -90,15 +74,6 @@ interface Group {
   leader_bonus_rate?: number
 }
 
-interface Order {
-  id: string
-  package_id: string
-  package_name: string
-  status: string
-  paid_at: string | null
-  merchant_id: number
-}
-
 interface DrawResult {
   record_id: string
   is_winner: boolean
@@ -135,18 +110,17 @@ const BOX_COLORS = [
 
 export default function TeamLotteryPage() {
   const router = useRouter()
-  const rawMerchantId = Number(router.params.merchant_id || 0)
-  const packageId = String(router.params.package_id || '')
-  const inviteCode = String(router.params.invite_code || '').toUpperCase()
+  const [packageId, setPackageId] = useState<string>('')
+  const [inviteCode, setInviteCode] = useState<string>('')
   const [userId, setUserId] = useState<string>('')
   // 邀请链接场景下 merchant_id 会在拉到预览后动态设置为队伍的 merchant_id
-  const [merchantId, setMerchantId] = useState<number>(rawMerchantId || 0)
+  const [merchantId, setMerchantId] = useState<number>(0)
 
-  const [status, setStatus] = useState<TeamStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [orders, setOrders] = useState<Order[]>([])
+  const [teamStatus, setTeamStatus] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [orders, setOrders] = useState<any[]>([])
   const [group, setGroup] = useState<Group | null>(null)
-  const [codeInput, setCodeInput] = useState(inviteCode)
+  const [codeInput, setCodeInput] = useState('')
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [toast, setToast] = useState('')
@@ -155,75 +129,105 @@ export default function TeamLotteryPage() {
   // 邀请链接预览：仅通过 invite_code 拉到的未加入队伍
   const [previewGroup, setPreviewGroup] = useState<Group | null>(null)
 
-  // 盲盒抽奖状态机：idle -> select（可选盲盒）-> shaking（选了后震动）-> bursting（爆开）-> result（结果弹窗）
+  // 盲盒抽奖状态机
   const [drawStage, setDrawStage] = useState<'idle' | 'select' | 'shaking' | 'bursting' | 'result'>('idle')
   const [selectedBox, setSelectedBox] = useState<number>(-1)
   const [drawResult, setDrawResult] = useState<DrawResult | null>(null)
 
-  // 未登录时点邀请链接/开团/入队的拦截提示
+  // 未登录点邀请链接/开团/入队的拦截提示
   const [loginTip, setLoginTip] = useState('')
 
+  // 初始化：useDidShow 时统一读取 router.params，兼容 iOS 场景参数延迟到达
+  useDidShow(() => {
+    const params = router.params || ({} as Record<string, unknown>)
+    const mid = Number((params as any).merchant_id || 0)
+    const pid = String((params as any).package_id || '')
+    const code = String((params as any).invite_code || '').toUpperCase()
+    const uid = Taro.getStorageSync('user_id') || ''
+    setPackageId(pid)
+    setInviteCode(code)
+    setMerchantId((prev) => {
+      if (mid && !prev) return mid
+      return prev
+    })
+    setUserId(uid)
+  })
+
+  // 邀请预览：只要 inviteCode 有值就独立触发（不依赖 userId/merchantId 等）
   useEffect(() => {
-    // 有 merchant_id 且已登录，按"店内组队"流程加载
-    if (merchantId && userId) {
-      loadAll(userId)
-    } else if (inviteCode) {
-      // 邀请链接：无论是否登录、是否有 merchant_id，先拉预览
-      loadInvitePreview()
-    } else {
-      setLoading(false)
+    if (!inviteCode) return
+    let cancelled = false
+    const run = async () => {
+      setLoading(true)
+      setPreviewError('')
+      setPreviewGroup(null)
+      try {
+        const res = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
+        console.log('[TeamLottery] invite preview', inviteCode, res.data)
+        if (cancelled) return
+        const preview = res.data?.data as Group | null
+        if (!preview) {
+          setPreviewError(res.data?.msg || '邀请码无效')
+        } else {
+          setPreviewGroup(preview)
+          if (preview.merchant_id && !merchantId) {
+            setMerchantId(preview.merchant_id)
+          }
+          // 如果当前用户已经在队伍里，直接展示队伍
+          const uid = Taro.getStorageSync('user_id') || ''
+          if (uid && preview.members?.some((m) => m.user_id === uid)) {
+            setGroup(preview)
+            setPreviewGroup(null)
+          }
+        }
+      } catch (e: any) {
+        if (!cancelled) setPreviewError(e?.message || '邀请链接无效')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [merchantId, userId])
+  }, [inviteCode])
 
-  useDidShow(() => {
-    const uid = Taro.getStorageSync('user_id') || ''
-    setUserId(uid)
-    // 如果从未登录变登录，且链接带 invite_code，loadAll 中会自动入队
-  })
+  // codeInput 跟随 inviteCode 同步
+  useEffect(() => {
+    if (inviteCode) setCodeInput(inviteCode)
+  }, [inviteCode])
+
+  // 店内组队加载：有 merchantId + userId 时触发（非邀请预览场景）
+  useEffect(() => {
+    const currentInviteCode = inviteCode
+    const uid = userId
+    const mid = merchantId
+    if (!mid || !uid) return
+    // 邀请链接且已经在队伍/预览中，loadAll 不重复覆盖
+    if (currentInviteCode && group) return
+    loadAll(uid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchantId, userId])
 
   useShareAppMessage(() => {
     if (!group) {
       return {
-        title: status?.share_title || '快来组队抽盲盒，人人有奖！',
+        title: teamStatus?.share_title || '快来组队抽盲盒，人人有奖！',
         path: `/pages/team-lottery/index?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}`,
-        imageUrl: status?.share_image_url || undefined,
+        imageUrl: teamStatus?.share_image_url || undefined,
       }
     }
     return {
-      title: status?.share_title || '快来组队抽盲盒，满员即开奖！',
+      title: teamStatus?.share_title || '快来组队抽盲盒，满员即开奖！',
       path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${group.package_id}&invite_code=${group.invite_code}`,
-      imageUrl: status?.share_image_url || undefined,
+      imageUrl: teamStatus?.share_image_url || undefined,
     }
   })
 
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
-  }
-
-  // 邀请预览：单独方法，不依赖 merchantId / userId
-  const loadInvitePreview = async () => {
-    setLoading(true)
-    setPreviewError('')
-    setPreviewGroup(null)
-    try {
-      const previewRes = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
-      console.log('[TeamLottery] invite preview', previewRes.data)
-      const preview = previewRes.data?.data as Group | null
-      if (preview) {
-        setPreviewGroup(preview)
-        // 把队伍的 merchant_id 写入状态，登录后可直接用
-        if (preview.merchant_id && !merchantId) {
-          setMerchantId(preview.merchant_id)
-        }
-      }
-    } catch (e: any) {
-      console.warn('[TeamLottery] invite preview failed', e)
-      setPreviewError(e?.message || '该邀请码无效或队伍已结束')
-    } finally {
-      setLoading(false)
-    }
   }
 
   const requireLogin = (action: string): boolean => {
@@ -242,77 +246,55 @@ export default function TeamLotteryPage() {
   }
 
   const loadAll = async (uid: string) => {
+    // 仅店内开团/已有队伍的场景使用；邀请链接的预览已由独立 useEffect 处理
+    if (!merchantId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    setPreviewGroup(null)
-    setPreviewError('')
     try {
-      // 如果是邀请链接，先拉队伍预览（无论是否有订单都能看到队伍信息）
-      let preview: Group | null = null
-      if (inviteCode) {
-        try {
-          const previewRes = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
-          console.log('[TeamLottery] preview by code', previewRes.data)
-          if (previewRes.data?.data) preview = previewRes.data.data as Group
-        } catch (e: any) {
-          console.warn('[TeamLottery] preview failed', e)
-          setPreviewError(e?.message || '该邀请码无效或队伍已结束')
-        }
-      }
-
-      // 没有 merchant_id 时（纯邀请链接场景），如果预览到队伍，用队伍的 merchant_id
-      const effectiveMerchantId = merchantId || preview?.merchant_id || 0
-
-      // 未登录：只展示预览，不查订单/我的队伍
-      if (!uid) {
-        if (preview) {
-          setPreviewGroup(preview)
-          if (preview.merchant_id && !merchantId) setMerchantId(preview.merchant_id)
-        }
-        setLoading(false)
-        return
-      }
-
-      if (!effectiveMerchantId) {
-        setLoading(false)
-        return
-      }
-
       const [statusRes, ordersRes, myGroupsRes] = await Promise.all([
-        Network.request({ url: `/api/team-lottery/merchants/${effectiveMerchantId}/status${packageId ? `?package_id=${packageId}` : ''}` }),
-        Network.request({ url: `/api/team-lottery/orders/${uid}/${effectiveMerchantId}` }),
+        Network.request({ url: `/api/team-lottery/merchants/${merchantId}/status${packageId ? `?package_id=${packageId}` : ''}` }),
+        Network.request({ url: `/api/team-lottery/orders/${uid}/${merchantId}` }),
         Network.request({ url: `/api/team-lottery/my-groups/${uid}` }),
       ])
       console.log('[TeamLottery] status', statusRes.data)
       console.log('[TeamLottery] orders', ordersRes.data)
       console.log('[TeamLottery] myGroups', myGroupsRes.data)
-      setStatus(statusRes.data?.data || null)
+      setTeamStatus(statusRes.data?.data || null)
       setOrders(ordersRes.data?.data || [])
 
       const groups: Group[] = myGroupsRes.data?.data || []
-      // 优先匹配：如果邀请码对应的队伍里自己已在成员列表中，直接进入
-      if (preview && preview.members?.some((m) => m.user_id === uid)) {
-        setGroup(preview)
-        setLoading(false)
-        return
-      }
       const candidates = groups.filter(
-        (g) => g.merchant_id === effectiveMerchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
+        (g) => g.merchant_id === merchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
       )
       const active = candidates.find((g) => g.status === 'active') || candidates[0]
       if (active) {
         await loadGroup(active.id, uid)
-      } else if (preview) {
-        // 不在队伍里，展示邀请预览+加入按钮
-        setPreviewGroup(preview)
+        // 已在队伍中则清除预览
+        setPreviewGroup(null)
+        setPreviewError('')
       }
     } finally {
       setLoading(false)
     }
   }
 
+  // 用户已登录且有邀请预览时，自动尝试加入队伍
+  useEffect(() => {
+    if (!userId || !previewGroup) return
+    // 自己已经是成员则直接进队伍
+    if (previewGroup.members?.some((m) => m.user_id === userId)) {
+      setGroup(previewGroup)
+      setPreviewGroup(null)
+      return
+    }
+    // 已登录但还没进队伍：保持在预览页，用户点按钮再加入
+  }, [userId, previewGroup])
+
   const handleJoinInvite = async () => {
     if (!previewGroup) return
-    if (!requireLogin('请先授权手机号登录后再加入队伍')) return
+    if (!requireLogin('请登录账号再入队')) return
     setJoining(true)
     try {
       const res = await Network.request({
@@ -533,7 +515,7 @@ export default function TeamLotteryPage() {
   }
 
   // 未开启活动：非邀请链接场景才展示；邀请链接即使未启用也先看到队伍再提示
-  if (!status?.enabled && !previewGroup && !inviteCode && !previewError) {
+  if (!teamStatus?.enabled && !previewGroup && !inviteCode && !previewError) {
     return (
       <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] flex items-center justify-center p-6">
         <Card className="w-full rounded-2xl border-0 shadow-xl">
@@ -549,6 +531,9 @@ export default function TeamLotteryPage() {
       </View>
     )
   }
+
+  // 邀请码无效/队伍已结束：给出提示但仍可手动输入邀请码
+  const showInviteInvalid = inviteCode && previewError && !previewGroup && !group
 
   return (
     <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] via-[#ff8a29] to-[#ffe8c8] p-4 pb-24">
@@ -573,18 +558,23 @@ export default function TeamLotteryPage() {
       {/* 顶部活动区 */}
       <View className="pt-6 pb-4 text-center">
         <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-25 mb-3 overflow-hidden">
-          {status?.logo_image_url ? (
-            <Image src={status.logo_image_url} className="w-full h-full" mode="aspectFill" />
+          {teamStatus?.logo_image_url ? (
+            <Image src={teamStatus?.logo_image_url} className="w-full h-full" mode="aspectFill" />
           ) : (
             <Gift size={36} color="#ffffff" />
           )}
         </View>
         <Text className="clay-title block text-3xl mb-2">{isPreviewMode ? '好友组队邀请' : '组队抽盲盒'}</Text>
-        <Text className="block text-white text-opacity-95 text-sm font-semibold">
-          {isPreviewMode
-            ? `${displayGroup?.members.length || 1} 位好友已在队中，点击加入即可成团`
-            : `满 ${status?.team_size || 2} 人成团 · 队长皇冠加成 · 人人可抽`}
-        </Text>
+        {showInviteInvalid && (
+          <Text className="block text-white text-sm font-semibold">邀请链接无效，可使用下方邀请码入队</Text>
+        )}
+        {!showInviteInvalid && (
+          <Text className="block text-white text-opacity-95 text-sm font-semibold">
+            {isPreviewMode
+              ? `${displayGroup?.members.length || 1} 位好友已在队中，点击加入即可成团`
+              : `满 ${teamStatus?.team_size || 2} 人成团 · 队长皇冠加成 · 人人可抽`}
+          </Text>
+        )}
       </View>
 
       {/* 队伍卡片 */}
@@ -648,7 +638,7 @@ export default function TeamLotteryPage() {
 
             {/* 成员：头像 + 昵称（团长带皇冠角标） */}
             <View className="flex flex-row items-start justify-center gap-3 mb-5 flex-wrap">
-              {Array.from({ length: Math.max(status?.team_size || 0, g.members.length, 2) }).map((_, idx) => {
+              {Array.from({ length: Math.max(teamStatus?.team_size || 0, g.members.length, 2) }).map((_, idx) => {
                 const member = g.members[idx]
                 const displayName = member?.nick_name ? (member.nick_name.length > 5 ? member.nick_name.slice(0, 5) + '…' : member.nick_name) : (member ? '微信用户' : '等待加入')
                 const initial = displayName.slice(0, 1)
@@ -687,14 +677,14 @@ export default function TeamLotteryPage() {
             {isPreviewMode && !previewFailed && (
               <View className="bg-blue-50 rounded-2xl p-4 mb-4">
                 <Text className="block text-sm text-blue-700 text-center font-semibold mb-3">
-                  队伍还差 {Math.max(0, (status?.team_size || g.members.length + 1) - g.members.length)} 人成团，加入即可一起抽盲盒
+                  队伍还差 {Math.max(0, (teamStatus?.team_size || g.members.length + 1) - g.members.length)} 人成团，加入即可一起抽盲盒
                 </Text>
                 {!userId ? (
                   <Button
                     onClick={goLogin}
                     className="w-full clay-btn h-12 text-base font-extrabold text-white rounded-full"
                   >
-                    授权手机号登录并加入
+                    登录账号并加入
                   </Button>
                 ) : orders.length > 0 ? (
                   <Button
@@ -728,7 +718,7 @@ export default function TeamLotteryPage() {
                   {previewFailed
                     ? (g.status === 'expired' ? '该队伍已过期' : g.leader_refunded ? '团长已退款，队伍已解散' : '该队伍已结束开奖')
                     : teamFailed
-                    ? (g.leader_refunded ? '团长已退款，队伍自动解散' : `超过 ${status?.duration_hours || 24} 小时未成团，队伍已解散`)
+                    ? (g.leader_refunded ? '团长已退款，队伍自动解散' : `超过 ${teamStatus?.duration_hours || 24} 小时未成团，队伍已解散`)
                     : ''}
                 </Text>
               </View>
@@ -788,7 +778,7 @@ export default function TeamLotteryPage() {
                 ) : g.status === 'active' ? (
                   <View className="bg-orange-50 rounded-full py-3 px-4">
                     <Text className="block text-sm font-semibold text-orange-700 text-center">
-                      还差 {Math.max(0, (status?.team_size || 2) - g.members.length)} 人成团，分享给好友一起来抽
+                      还差 {Math.max(0, (teamStatus?.team_size || 2) - g.members.length)} 人成团，分享给好友一起来抽
                     </Text>
                   </View>
                 ) : null}
@@ -896,14 +886,14 @@ export default function TeamLotteryPage() {
       )}
 
       {/* 奖品展示 */}
-      {status && (status.leader_prize || (status.member_prizes && status.member_prizes.length > 0)) && (
+      {teamStatus && (teamStatus?.leader_prize || (teamStatus?.member_prizes && teamStatus?.member_prizes.length > 0)) && (
         <Card className="clay-card border-0 mt-4 mb-4">
           <CardContent className="p-5">
             <View className="flex items-center gap-2 mb-4">
               <Gift size={20} color="#c8410e" />
               <Text className="block text-base font-extrabold text-[#5b2a0c]">盲盒奖池</Text>
             </View>
-            {status.leader_prize && (
+            {teamStatus?.leader_prize && (
               <View className="mb-4">
                 <View className="flex items-center gap-2 mb-2">
                   <Trophy size={16} color="#d97706" />
@@ -911,14 +901,14 @@ export default function TeamLotteryPage() {
                 </View>
                 <View className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-3 flex items-center gap-3">
                   <View className="w-16 h-16 rounded-xl bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
-                    {status.leader_prize.image_url ? (
-                      <Image src={status.leader_prize.image_url} className="w-full h-full" mode="aspectFill" />
+                    {teamStatus?.leader_prize.image_url ? (
+                      <Image src={teamStatus?.leader_prize.image_url} className="w-full h-full" mode="aspectFill" />
                     ) : (
                       <Trophy size={28} color="#d97706" />
                     )}
                   </View>
                   <View className="flex-1 min-w-0">
-                    <Text className="block text-sm font-extrabold text-[#5b2a0c] mb-1">{status.leader_prize.name}</Text>
+                    <Text className="block text-sm font-extrabold text-[#5b2a0c] mb-1">{teamStatus?.leader_prize.name}</Text>
                     <View className="inline-block px-2 py-[2px] bg-amber-500 rounded-full">
                       <Text className="block text-[10px] text-white font-bold">👑 团长必中</Text>
                     </View>
@@ -926,14 +916,14 @@ export default function TeamLotteryPage() {
                 </View>
               </View>
             )}
-            {status.member_prizes && status.member_prizes.length > 0 && (
+            {teamStatus?.member_prizes && teamStatus?.member_prizes.length > 0 && (
               <View>
                 <View className="flex items-center gap-2 mb-3">
                   <Users size={16} color="#c8410e" />
                   <Text className="block text-sm font-bold text-[#5b2a0c]">人人有奖池</Text>
                 </View>
                 <View className="grid grid-cols-3 gap-3">
-                  {status.member_prizes.map((p) => (
+                  {teamStatus?.member_prizes.map((p) => (
                     <View key={p.id} className="bg-orange-50 rounded-2xl p-3 text-center">
                       <View className="w-14 h-14 rounded-xl bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
                         {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={22} color="#c8410e" />}
@@ -950,7 +940,7 @@ export default function TeamLotteryPage() {
       )}
 
       {/* 推荐套餐 */}
-      {status?.package && (
+      {teamStatus?.package && (
         <Card className="clay-card border-0 mt-4 mb-4">
           <CardContent className="p-5">
             <View className="flex items-center gap-2 mb-4">
@@ -959,21 +949,21 @@ export default function TeamLotteryPage() {
             </View>
             <View className="flex items-start gap-3">
               <View className="w-20 h-20 rounded-2xl bg-orange-50 overflow-hidden shrink-0 flex items-center justify-center">
-                {status.package.cover_image ? (
-                  <Image src={status.package.cover_image} className="w-full h-full" mode="aspectFill" />
+                {teamStatus?.package.cover_image ? (
+                  <Image src={teamStatus?.package.cover_image} className="w-full h-full" mode="aspectFill" />
                 ) : (
                   <Gift size={28} color="#c8410e" />
                 )}
               </View>
               <View className="flex-1 min-w-0">
-                <Text className="block text-base font-extrabold text-[#5b2a0c] mb-1">{status.package.name}</Text>
-                {status.package.description && (
-                  <Text className="block text-xs text-[#7a4a22] leading-5 mb-2">{status.package.description}</Text>
+                <Text className="block text-base font-extrabold text-[#5b2a0c] mb-1">{teamStatus?.package.name}</Text>
+                {teamStatus?.package.description && (
+                  <Text className="block text-xs text-[#7a4a22] leading-5 mb-2">{teamStatus?.package.description}</Text>
                 )}
                 <View className="flex items-baseline gap-2">
-                  <Text className="block text-lg font-extrabold text-[#c8410e]">¥{Number(status.package.price || 0).toFixed(2)}</Text>
-                  {status.package.original_price && Number(status.package.original_price) > 0 && (
-                    <Text className="block text-xs text-gray-400 line-through">¥{Number(status.package.original_price).toFixed(2)}</Text>
+                  <Text className="block text-lg font-extrabold text-[#c8410e]">¥{Number(teamStatus?.package.price || 0).toFixed(2)}</Text>
+                  {teamStatus?.package.original_price && Number(teamStatus?.package.original_price) > 0 && (
+                    <Text className="block text-xs text-gray-400 line-through">¥{Number(teamStatus?.package.original_price).toFixed(2)}</Text>
                   )}
                 </View>
               </View>
@@ -987,8 +977,8 @@ export default function TeamLotteryPage() {
         <Text className="block text-xs text-white text-opacity-90 text-center leading-5 font-semibold">
           1. 分享小程序链接给好友，好友点击授权登录即可自动入队{'\n'}
           2. 也可复制邀请码给好友，在下方「输入邀请码加入」备用入队{'\n'}
-          3. 满 {status?.team_size || displayGroup?.members.length || 2} 人成团后全员可抽盲盒，队长必中团长奖{'\n'}
-          4. 队伍 {status?.duration_hours || 24} 小时内未满员将自动解散
+          3. 满 {teamStatus?.team_size || displayGroup?.members.length || 2} 人成团后全员可抽盲盒，队长必中团长奖{'\n'}
+          4. 队伍 {teamStatus?.duration_hours || 24} 小时内未满员将自动解散
         </Text>
       </View>
 
