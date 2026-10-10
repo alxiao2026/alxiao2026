@@ -37,6 +37,14 @@ interface LotteryRecord {
   shop_address?: string
   shop_latitude?: number
   shop_longitude?: number
+  // 抽奖类型与组队实时状态
+  lottery_type?: 'normal' | 'team'
+  team_role?: 'leader' | 'member'
+  team_invite_code?: string
+  team_size?: number | null
+  team_current_count?: number | null
+  team_status?: string
+  team_status_text?: string
 }
 
 interface Order {
@@ -243,12 +251,35 @@ export default function LotteryRecordsPage() {
                           <View className="flex-1 min-w-0">
                             <View className="flex items-center gap-2 mb-2 overflow-hidden">
                               <Text className="text-base font-semibold text-gray-900 truncate">{record.prize_name}</Text>
+                              {record.lottery_type === 'team' ? (
+                                <Badge className="bg-purple-100 text-purple-700 text-xs shrink-0">
+                                  <Text>组队抽奖</Text>
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-blue-100 text-blue-700 text-xs shrink-0">
+                                  <Text>普通抽奖</Text>
+                                </Badge>
+                              )}
                               {record.prize_type ? (
                                 <Badge className={`${getPrizeTypeColor(record.prize_type)} text-xs`}>
                                   <Text>{getPrizeTypeLabel(record.prize_type)}</Text>
                                 </Badge>
                               ) : null}
                             </View>
+                            {/* 组队抽奖实时状态 */}
+                            {record.lottery_type === 'team' && (
+                              <View className="mt-1 mb-1 flex flex-wrap items-center gap-2">
+                                <Badge className={record.team_role === 'leader' ? 'bg-amber-100 text-amber-700 text-xs' : 'bg-sky-100 text-sky-700 text-xs'}>
+                                  <Text>{record.team_role === 'leader' ? '我是团长' : '我是团员'}</Text>
+                                </Badge>
+                                {record.team_invite_code ? (
+                                  <Text className="text-xs text-gray-500">邀请码 {record.team_invite_code}</Text>
+                                ) : null}
+                                {record.team_status_text ? (
+                                  <Text className="text-xs text-orange-500 font-medium">{record.team_status_text}</Text>
+                                ) : null}
+                              </View>
+                            )}
                             {record.prize_type === 'coupon' && record.discount_rate ? (
                               <Text className="block text-sm text-[#FF4757] font-medium">
                                 {record.discount_rate}折 · 已返还 ¥{record.refund_amount}

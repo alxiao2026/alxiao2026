@@ -1211,7 +1211,7 @@ export class LotteryService {
       });
     }
 
-    return records.map(r => {
+    const normalMapped = records.map(r => {
       const prize = (r.prize_id ? prizeMap.get(r.prize_id) : null) || (r.prize_name ? prizeNameMap.get(r.prize_name) : null);
       const orderRow = r.order_id ? orderMap.get(r.order_id) : null;
       const orderPackageName = orderRow?.package_name || '';
@@ -1220,6 +1220,7 @@ export class LotteryService {
       const isFreeMealPrize = prize?.prize_type === 'free_meal' || /霸王餐|免单/.test(r.prize_name || '');
       const result: any = {
         ...r,
+        lottery_type: 'normal',
         prize_type: prize?.prize_type || '',
         coupon_amount: prize?.coupon_amount ?? null,
         coupon_condition: prize?.coupon_min_spend ?? null,
@@ -1246,6 +1247,76 @@ export class LotteryService {
       }
       return result;
     });
+
+    // 合并组队抽奖记录（含实时队伍状态）
+    const { data: teamRows } = await this.client
+      .from('team_lottery_members')
+      .select('*, team_lottery_groups!inner(id, invite_code, team_size, current_count, status, leader_user_id, package_id)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    let teamMapped: any[] = [];
+    if (teamRows && teamRows.length > 0) {
+      const teamList = (teamRows as any[]).map(row => ({
+        ...(row as any),
+        team_lottery_groups: Array.isArray((row as any).team_lottery_groups) ? (row as any).team_lottery_groups[0] : (row as any).team_lottery_groups,
+      }));
+      const teamPkgIds = [...new Set(teamList.map(m => m.team_lottery_groups?.package_id).filter(Boolean))];
+      const teamPkgMap = new Map<string, any>();
+      if (teamPkgIds.length > 0) {
+        const { data: pkgs } = await this.client
+          .from('packages')
+          .select('id, name, cover_image')
+          .in('id', teamPkgIds);
+        (pkgs || []).forEach((p: any) => teamPkgMap.set(p.id, p));
+      }
+      teamMapped = teamList.map(m => {
+        const g = m.team_lottery_groups;
+        const pkg = g?.package_id ? teamPkgMap.get(g.package_id) : null;
+        const isLeader = g ? m.user_id === g.leader_user_id : false;
+        let teamStatusText = '';
+        if (g?.status === 'active') teamStatusText = `组队中 ${g.current_count || 0}/${g.team_size || 0} 人`;
+        else if (g?.status === 'full') teamStatusText = m.is_winner ? '已成团，已开奖' : '已成团';
+        else if (g?.status === 'expired') teamStatusText = '队伍已过期';
+        return {
+          id: m.id,
+          order_id: m.order_id || null,
+          user_id: m.user_id,
+          prize_id: m.prize_id || null,
+          prize_name: m.prize_name || (m.is_winner ? '未知奖品' : '未中奖'),
+          prize_type: '',
+          is_winner: m.is_winner,
+          coupon_amount: null,
+          coupon_condition: null,
+          discount_rate: 0,
+          discount_cap: 0,
+          product_name: pkg?.name || '',
+          product_value: null,
+          prize_image: '',
+          redemption_code: m.redemption_code || null,
+          refund_amount: null,
+          refund_status: null,
+          created_at: m.created_at || m.drew_at,
+          order_package_name: pkg?.name || '',
+          shop_name: '',
+          shop_address: '',
+          shop_latitude: null,
+          shop_longitude: null,
+          lottery_type: 'team',
+          team_group_id: m.group_id,
+          team_invite_code: g?.invite_code || '',
+          team_role: isLeader ? 'leader' : 'member',
+          team_size: g?.team_size ?? null,
+          team_current_count: g?.current_count ?? null,
+          team_status: g?.status ?? null,
+          team_status_text: teamStatusText,
+        };
+      });
+    }
+
+    const combined = [...normalMapped, ...teamMapped].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    return combined;
   }
 
   /** 获取门店全部抽奖记录（商家看自己门店，管理员看全平台；包含普通 + 组队） */
