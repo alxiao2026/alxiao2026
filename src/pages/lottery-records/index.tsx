@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation } from 'lucide-react-taro'
+import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation, Copy } from 'lucide-react-taro'
 import { formatDateTime, formatShortDateTime } from '@/lib/utils'
 
 interface LotteryRecord {
@@ -180,8 +180,24 @@ export default function LotteryRecordsPage() {
   const isRedeemed = (record: LotteryRecord) =>
     record.refund_status === 'redeemed' || record.refund_status === 'completed'
 
+  // 一键复制组队邀请码
+  const copyInviteCode = (code: string) => {
+    if (!code) return
+    Taro.setClipboardData({
+      data: code,
+      success: () => Taro.showToast({ title: '邀请码已复制', icon: 'none' }),
+    })
+  }
+
+  // 组队未开奖（组队中/已成团待开奖）：显示"未开奖"而非"未中奖"
+  const isTeamPendingDraw = (record: LotteryRecord) =>
+    record.lottery_type === 'team' && (record.team_status === 'active' || record.team_status === 'full')
+
   const getRecordBadge = (record: LotteryRecord) => {
     if (!record.is_winner || !record.prize_id) {
+      if (isTeamPendingDraw(record)) {
+        return { label: '未开奖', className: 'bg-orange-100 text-orange-600' }
+      }
       return { label: '未中奖', className: 'bg-gray-100 text-gray-500' }
     }
     if (record.refund_status === 'voided') {
@@ -250,7 +266,9 @@ export default function LotteryRecordsPage() {
                         <View className="flex items-start justify-between">
                           <View className="flex-1 min-w-0">
                             <View className="flex items-center gap-2 mb-2 overflow-hidden">
-                              <Text className="text-base font-semibold text-gray-900 truncate">{record.prize_name}</Text>
+                              <Text className="text-base font-semibold text-gray-900 truncate">
+                                {isTeamPendingDraw(record) ? '未开奖' : record.prize_name}
+                              </Text>
                               {record.lottery_type === 'team' ? (
                                 <Badge className="bg-purple-100 text-purple-700 text-xs shrink-0">
                                   <Text>组队抽奖</Text>
@@ -273,7 +291,13 @@ export default function LotteryRecordsPage() {
                                   <Text>{record.team_role === 'leader' ? '我是团长' : '我是团员'}</Text>
                                 </Badge>
                                 {record.team_invite_code ? (
-                                  <Text className="text-xs text-gray-500">邀请码 {record.team_invite_code}</Text>
+                                  <View
+                                    className="flex items-center"
+                                    onClick={() => copyInviteCode(record.team_invite_code as string)}
+                                  >
+                                    <Text className="text-xs text-gray-500">邀请码 {record.team_invite_code}</Text>
+                                    <Copy size={12} color="#9ca3af" className="ml-1" />
+                                  </View>
                                 ) : null}
                                 {record.team_status_text ? (
                                   <Text className="text-xs text-orange-500 font-medium">{record.team_status_text}</Text>
