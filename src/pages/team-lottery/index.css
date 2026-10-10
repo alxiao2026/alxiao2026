@@ -1,0 +1,311 @@
+/* ===== 组队盲盒 · 3D黏土软萌风（复用普通抽奖动画） ===== */
+
+/* 立体气泡大标题 */
+.clay-title {
+  color: #ffd93d;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-shadow:
+    0 2px 0 #ff9f43,
+    0 4px 0 #f37b21,
+    0 6px 0 #d95a10,
+    0 10px 18px rgba(217, 90, 16, 0.35);
+}
+
+/* 3D 黏土主按钮 */
+.clay-btn {
+  background: linear-gradient(180deg, #ffc53d 0%, #ff7a29 55%, #f74e16 100%);
+  border-radius: 999px;
+  box-shadow:
+    0 6px 0 #c23a0e,
+    0 14px 24px rgba(247, 78, 22, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.clay-btn:active {
+  transform: translateY(4px) scale(0.98);
+  box-shadow:
+    0 2px 0 #c23a0e,
+    0 6px 12px rgba(247, 78, 22, 0.3);
+}
+
+/* 白色悬浮大卡 */
+.clay-card {
+  background: #fffdf6;
+  border-radius: 28px;
+  box-shadow:
+    0 10px 24px rgba(214, 140, 42, 0.18),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* 盲盒动画 */
+.clay-box-float {
+  animation: clayBoxFloat 2.6s ease-in-out infinite;
+}
+@keyframes clayBoxFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.clay-box-shake {
+  animation: clayBoxShake 0.45s ease-in-out infinite;
+}
+@keyframes clayBoxShake {
+  0%, 100% { transform: rotate(0deg) scale(1.06); }
+  25% { transform: rotate(-4deg) scale(1.06); }
+  75% { transform: rotate(4deg) scale(1.06); }
+}
+
+.clay-box-burst {
+  animation: clayBoxBurst 0.85s ease-in forwards;
+}
+@keyframes clayBoxBurst {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  35% { transform: scale(1.18) rotate(-5deg); opacity: 1; }
+  100% { transform: scale(1.65) rotate(10deg) translateY(-36px); opacity: 0; }
+}
+
+.clay-lid {
+  animation: clayLidOpen 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  box-shadow: 0 6px 12px rgba(120, 60, 0, 0.25);
+  z-index: 5;
+}
+@keyframes clayLidOpen {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-120%) rotate(-22deg); opacity: 0; }
+}
+
+.clay-sparkle {
+  animation: claySparkleRise 1.15s ease-out forwards;
+}
+@keyframes claySparkleRise {
+  0% { transform: translateY(0) scale(0.4); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-130px) scale(1.1); opacity: 0; }
+}
+
+.clay-prize-pop {
+  animation: clayPrizePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes clayPrizePop {
+  0% { transform: scale(0.4) translateY(40px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.clay-confetti {
+  animation: clayConfettiFall 2.8s linear forwards;
+}
+@keyframes clayConfettiFall {
+  0% { transform: translateY(-24px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.2; }
+}
+
+.clay-bubble {
+  animation: clayBubbleBreath 1s ease-in-out infinite;
+}
+@keyframes clayBubbleBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
+/* 中奖弹窗 */
+.win-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  background: rgba(74, 36, 0, 0.55);
+  animation: winPopupScrimIn 0.32s ease-out forwards;
+  padding: 32rpx 0 calc(120rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+@keyframes winPopupScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.win-popup-wrap {
+  position: relative;
+  z-index: 1;
+  width: 92%;
+  max-width: 92vw;
+  margin: auto;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.win-popup-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.win-popup-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 28rpx;
+  animation: winPopupTitleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.win-popup-title {
+  font-size: 68rpx;
+  font-weight: 900;
+  letter-spacing: 4rpx;
+  color: #ffe37a;
+  text-shadow:
+    0 2rpx 0 #f7a83b,
+    0 4rpx 0 #e8772a,
+    0 6rpx 0 #c85a18,
+    0 10rpx 18rpx rgba(120, 50, 0, 0.45);
+}
+.win-popup-subtitle {
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #fff3d6;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+.win-popup-freemeal {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #ffe0a3;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+@keyframes winPopupTitleIn {
+  from { opacity: 0; transform: translateY(-40rpx) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.win-popup-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: linear-gradient(180deg, #fff9ec 0%, #fff3d6 100%);
+  border-radius: 40rpx;
+  padding: 40rpx 32rpx 36rpx;
+  box-shadow:
+    0 16rpx 48rpx rgba(120, 50, 0, 0.45),
+    inset 0 4rpx 0 rgba(255, 255, 255, 0.9);
+  border: 4rpx solid #ffe4a1;
+  animation: winPopupCardIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes winPopupCardIn {
+  from { opacity: 0; transform: scale(0.6) translateY(60rpx); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.win-popup-image-wrap {
+  width: 320rpx;
+  height: 320rpx;
+  margin: 0 auto 28rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(200, 100, 20, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.win-popup-prize-name {
+  text-align: center;
+  font-size: 40rpx;
+  font-weight: 900;
+  color: #c8410e;
+  margin-bottom: 12rpx;
+}
+.win-popup-prize-desc {
+  text-align: center;
+  font-size: 26rpx;
+  color: #a0572a;
+  margin-bottom: 24rpx;
+  line-height: 1.6;
+}
+
+.win-popup-code-row {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx dashed #f0b070;
+  margin-bottom: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.win-popup-code-label {
+  font-size: 24rpx;
+  color: #a0572a;
+}
+.win-popup-code-value {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #c8410e;
+  letter-spacing: 2rpx;
+}
+
+.win-popup-refund-row {
+  background: linear-gradient(90deg, #fff1c8 0%, #ffe19a 100%);
+  border-radius: 20rpx;
+  padding: 18rpx 24rpx;
+  margin-bottom: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.win-popup-refund-label {
+  font-size: 24rpx;
+  color: #8a4a10;
+}
+.win-popup-refund-value {
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #d6350e;
+}
+
+.win-popup-tip {
+  font-size: 22rpx;
+  color: #b87744;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 24rpx;
+}
+
+.win-popup-btns {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.win-popup-btn-primary {
+  flex: 1;
+  background: linear-gradient(180deg, #ffb347 0%, #ff8a29 35%, #f74e16 100%);
+  border-radius: 999px;
+  padding: 22rpx 0;
+  text-align: center;
+  color: #fff;
+  font-weight: 900;
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  box-shadow:
+    0 6rpx 0 #c23a0e,
+    0 14rpx 28rpx rgba(247, 78, 22, 0.42);
+}
+.win-popup-btn-secondary {
+  flex: 1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 22rpx 0;
+  text-align: center;
+  color: #c8410e;
+  font-weight: 700;
+  font-size: 28rpx;
+  border: 3rpx solid #ffb870;
+}

@@ -246,11 +246,20 @@ export default function LotteryRecordsPage() {
     Taro.navigateTo({ url: `/pages/lottery/index?orderId=${choiceOrder.id}` })
   }
 
+  // 组队状态判断
+  const isTeamFailed = (record: LotteryRecord) =>
+    record.lottery_type === 'team' && (record.leader_refunded || record.team_status === 'expired')
   // 组队未开奖（组队中/已成团待开奖）：显示"未开奖"而非"未中奖"
   const isTeamPendingDraw = (record: LotteryRecord) =>
     record.lottery_type === 'team' && (record.team_status === 'active' || record.team_status === 'full')
+  // 组队已开奖（有奖品信息）：展示奖品而非组队状态
+  const isTeamDrawed = (record: LotteryRecord) =>
+    record.lottery_type === 'team' && (record.team_status === 'drawed' || !!record.prize_id)
 
   const getRecordBadge = (record: LotteryRecord) => {
+    if (isTeamFailed(record)) {
+      return { label: '组队失败', className: 'bg-gray-200 text-gray-600' }
+    }
     if (!record.is_winner || !record.prize_id) {
       if (isTeamPendingDraw(record)) {
         return { label: '未开奖', className: 'bg-orange-100 text-orange-600' }
@@ -320,25 +329,29 @@ export default function LotteryRecordsPage() {
                           <View className="flex-1 min-w-0">
                             <View className="flex items-center gap-2 mb-2 overflow-hidden">
                               <Text className="text-base font-semibold text-gray-900 truncate">
-                                {isTeamPendingDraw(record) ? '未开奖' : record.prize_name}
+                                {isTeamFailed(record)
+                                  ? '组队失败'
+                                  : isTeamPendingDraw(record)
+                                  ? '未开奖'
+                                  : record.prize_name || (isTeamDrawed(record) ? '已开奖' : '未中奖')}
                               </Text>
                               {record.lottery_type === 'team' ? (
                                 <Badge className="bg-purple-100 text-purple-700 text-xs shrink-0">
-                                  <Text>组队抽奖</Text>
+                                  <Text>组队盲盒</Text>
                                 </Badge>
                               ) : (
                                 <Badge className="bg-blue-100 text-blue-700 text-xs shrink-0">
                                   <Text>普通抽奖</Text>
                                 </Badge>
                               )}
-                              {record.prize_type ? (
+                              {record.prize_type && !isTeamFailed(record) ? (
                                 <Badge className={`${getPrizeTypeColor(record.prize_type)} text-xs`}>
                                   <Text>{getPrizeTypeLabel(record.prize_type)}</Text>
                                 </Badge>
                               ) : null}
                             </View>
                             {/* 组队抽奖实时状态 */}
-                            {record.lottery_type === 'team' && (
+                            {record.lottery_type === 'team' && !isTeamDrawed(record) && !isTeamFailed(record) && (
                               <View className="mt-1 mb-1 flex flex-wrap items-center gap-2">
                                 <Badge className={record.team_role === 'leader' ? 'bg-amber-100 text-amber-700 text-xs' : 'bg-sky-100 text-sky-700 text-xs'}>
                                   <Text>{record.team_role === 'leader' ? '我是团长' : '我是团员'}</Text>
@@ -352,15 +365,16 @@ export default function LotteryRecordsPage() {
                                     <Copy size={12} color="#9ca3af" className="ml-1" />
                                   </View>
                                 ) : null}
-                                {record.leader_refunded ? (
-                                  <Badge className="bg-red-100 text-red-600 text-xs">
-                                    <Text>订单退款</Text>
-                                  </Badge>
-                                ) : null}
                                 {record.team_status_text ? (
                                   <Text className="text-xs text-orange-500 font-medium">{record.team_status_text}</Text>
                                 ) : null}
                               </View>
+                            )}
+                            {/* 组队失败提示 */}
+                            {record.lottery_type === 'team' && isTeamFailed(record) && (
+                              <Text className="block text-xs text-gray-500 mb-1">
+                                {record.leader_refunded ? '团长已退款，队伍自动解散' : '超时未成团，队伍已解散'}
+                              </Text>
                             )}
                             {record.prize_type === 'coupon' && record.discount_rate ? (
                               <Text className="block text-sm text-[#FF4757] font-medium">

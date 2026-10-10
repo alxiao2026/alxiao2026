@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight } from 'lucide-react-taro'
+import { Crown, Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight, X } from 'lucide-react-taro'
+import './index.css'
 
 interface PrizeItem {
   id: string
@@ -60,6 +60,13 @@ interface Member {
   drew_at: string | null
   is_winner: boolean
   prize_name: string | null
+  prize_type?: string | null
+  prize_image?: string | null
+  redemption_code?: string | null
+  refund_amount?: number | null
+  discount_rate?: number | null
+  discount_cap?: number | null
+  product_name?: string | null
 }
 
 interface Group {
@@ -73,6 +80,7 @@ interface Group {
   expires_at: string
   created_at: string
   leader_prize_name: string | null
+  leader_refunded?: boolean
   members: Member[]
   merchant?: MerchantInfo
   package?: PackageInfo
@@ -88,7 +96,42 @@ interface Order {
   package_name: string
   status: string
   paid_at: string | null
+  merchant_id: number
 }
+
+interface DrawResult {
+  record_id: string
+  is_winner: boolean
+  prize_id?: string
+  prize_name: string
+  prize_type: 'coupon' | 'free_meal' | 'product'
+  prize_image?: string
+  redemption_code?: string
+  refund_amount?: number
+  refund_status?: string
+  discount_rate?: number
+  discount_cap?: number
+  discount_capped?: boolean
+  coupon_amount?: number
+  coupon_min_spend?: number
+  product_name?: string
+  image_url?: string
+  expiry_hours?: number
+  expiry_date?: string
+}
+
+// 盲盒图（与普通抽奖一致，这里用 emoji/渐变块代替）
+const BOX_COLORS = [
+  ['#ff8a5c', '#ff5e62'],
+  ['#ffd166', '#ff9f1c'],
+  ['#6bcB77', '#4d96ff'],
+  ['#f78fb3', '#c44569'],
+  ['#786fa6', '#574b90'],
+  ['#f8a5c2', '#cf6a87'],
+  ['#63cdda', '#3dc1d3'],
+  ['#f19066', '#e15f41'],
+  ['#546de5', '#303952'],
+]
 
 export default function TeamLotteryPage() {
   const router = useRouter()
@@ -104,13 +147,20 @@ export default function TeamLotteryPage() {
   const [codeInput, setCodeInput] = useState(inviteCode)
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
-  const [drawing, setDrawing] = useState(false)
   const [toast, setToast] = useState('')
+
+  // 盲盒抽奖状态机：idle -> select（可选盲盒）-> shaking（选了后震动）-> bursting（爆开）-> result（结果弹窗）
+  const [drawStage, setDrawStage] = useState<'idle' | 'select' | 'shaking' | 'bursting' | 'result'>('idle')
+  const [selectedBox, setSelectedBox] = useState<number>(-1)
+  const [drawResult, setDrawResult] = useState<DrawResult | null>(null)
+
+  // 未登录时点邀请链接/开团/入队的拦截提示
+  const [loginTip, setLoginTip] = useState('')
 
   useEffect(() => {
     if (merchantId && userId) {
       loadAll(userId)
-    } else if (merchantId && !userId) {
+    } else {
       setLoading(false)
     }
   }, [merchantId, userId])
@@ -118,13 +168,20 @@ export default function TeamLotteryPage() {
   useDidShow(() => {
     const uid = Taro.getStorageSync('user_id') || ''
     setUserId(uid)
+    // 如果从未登录变登录，且链接带 invite_code，loadAll 中会自动入队
   })
 
   useShareAppMessage(() => {
-    if (!group) return { title: '组队抽奖' }
+    if (!group) {
+      return {
+        title: status?.share_title || '快来组队抽盲盒，人人有奖！',
+        path: `/pages/team-lottery/index?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}`,
+        imageUrl: status?.share_image_url || undefined,
+      }
+    }
     return {
-      title: status?.share_title || '快来组队抽奖，人人都能抽奖品！',
-      path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}&invite_code=${group.invite_code}`,
+      title: status?.share_title || '快来组队抽盲盒，满员即开奖！',
+      path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${group.package_id}&invite_code=${group.invite_code}`,
       imageUrl: status?.share_image_url || undefined,
     }
   })
@@ -132,6 +189,21 @@ export default function TeamLotteryPage() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  const requireLogin = (action: string): boolean => {
+    if (userId) return true
+    setLoginTip(action)
+    return false
+  }
+
+  const goLogin = () => {
+    // 登录后需要回到本页并保留参数（含 invite_code）
+    const pages = Taro.getCurrentPages()
+    const current = pages[pages.length - 1]
+    const fullPath = `/${current?.route || 'pages/team-lottery/index'}?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}${inviteCode ? `&invite_code=${inviteCode}` : ''}`
+    Taro.setStorageSync('login_redirect', fullPath)
+    Taro.navigateTo({ url: '/pages/login/index' })
   }
 
   const loadAll = async (uid: string) => {
@@ -149,15 +221,15 @@ export default function TeamLotteryPage() {
       setOrders(ordersRes.data?.data || [])
 
       const groups: Group[] = myGroupsRes.data?.data || []
-      // 优先展示"组队中"的队伍；若只有满员/已开奖队伍也展示（同时保留开团/加入入口）
       const candidates = groups.filter(
         (g) => g.merchant_id === merchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
       )
       const active = candidates.find((g) => g.status === 'active') || candidates[0]
       if (active) {
         await loadGroup(active.id, uid)
-      } else if (inviteCode && !group) {
-        await joinByCode(inviteCode, uid)
+      } else if (inviteCode) {
+        // 邀请链接入队
+        await joinByCode(inviteCode, uid, true)
       }
     } finally {
       setLoading(false)
@@ -171,6 +243,7 @@ export default function TeamLotteryPage() {
   }
 
   const createGroup = async () => {
+    if (!requireLogin('登录后才能开团哦')) return
     if (!orders.length) {
       showToast('暂无可用订单，购买套餐后即可开团')
       return
@@ -202,50 +275,104 @@ export default function TeamLotteryPage() {
     }
   }
 
-  const joinByCode = async (code: string, uid: string) => {
-    if (!code) return
+  const joinByCode = async (code: string, uid: string, silent = false) => {
+    const trimCode = String(code || '').trim().toUpperCase()
+    if (!trimCode) {
+      if (!silent) showToast('请输入邀请码')
+      return
+    }
     setJoining(true)
     try {
       const res = await Network.request({
-        url: `/api/team-lottery/groups/${code}/join`,
+        url: `/api/team-lottery/groups/${trimCode}/join`,
         method: 'POST',
         data: { user_id: uid },
       })
       console.log('[TeamLottery] join', res.data)
       if (res.data?.data) {
         setGroup(res.data.data)
-        showToast('加入队伍成功')
+        if (!silent) showToast('加入队伍成功')
       } else {
-        showToast(res.data?.msg || (res.data as any)?.message || '加入失败，请稍后重试')
+        const msg = res.data?.msg || (res.data as any)?.message || '加入失败，请稍后重试'
+        if (!silent) showToast(msg)
       }
     } catch (e: any) {
-      showToast(e?.message || '加入失败，请稍后重试')
+      if (!silent) showToast(e?.message || '加入失败，请稍后重试')
     } finally {
       setJoining(false)
     }
   }
 
-  const drawPrize = async () => {
+  // 点击"立即抽奖"：进入盲盒选择界面
+  const onStartDraw = () => {
+    if (!requireLogin('登录后才能抽奖')) return
     if (!group) return
-    setDrawing(true)
-    try {
-      const res = await Network.request({
-        url: `/api/team-lottery/groups/${group.id}/draw`,
-        method: 'POST',
-        data: { user_id: userId },
-      })
-      console.log('[TeamLottery] draw', res.data)
-      if (res.data?.data) {
-        await loadGroup(group.id, userId)
-        showToast(`恭喜获得 ${res.data.data.prize_name || '奖品'}`)
-      } else {
-        showToast(res.data?.msg || (res.data as any)?.message || '抽奖失败')
-      }
-    } catch (e: any) {
-      showToast(e?.message || (e?.response?.data?.message as string) || '抽奖失败')
-    } finally {
-      setDrawing(false)
+    const me = group.members.find((m) => m.user_id === userId)
+    if (!me || me.drew_at) {
+      showToast('你已完成抽奖')
+      return
     }
+    if (group.status !== 'full') {
+      showToast('队伍还未满员，邀请好友成团后再抽')
+      return
+    }
+    if (group.leader_refunded) {
+      showToast('团长订单已退款，队伍已解散')
+      return
+    }
+    setSelectedBox(-1)
+    setDrawResult(null)
+    setDrawStage('select')
+  }
+
+  const onBoxClick = async (idx: number) => {
+    if (drawStage !== 'select' || !group) return
+    setSelectedBox(idx)
+    setDrawStage('shaking')
+    // 轻微震动反馈
+    Taro.vibrateShort && Taro.vibrateShort({ type: 'medium' })
+
+    // 调用后端抽奖（动画期间同时请求，并行）
+    const requestPromise = (async () => {
+      try {
+        const res = await Network.request({
+          url: `/api/team-lottery/groups/${group.id}/draw`,
+          method: 'POST',
+          data: { user_id: userId },
+        })
+        console.log('[TeamLottery] draw', res.data)
+        if (res.data?.data) {
+          return res.data.data as DrawResult
+        }
+        throw new Error(res.data?.msg || (res.data as any)?.message || '抽奖失败')
+      } catch (e: any) {
+        throw new Error(e?.message || e?.response?.data?.message || '抽奖失败')
+      }
+    })()
+
+    // 震动 ~1.2s
+    await new Promise((r) => setTimeout(r, 1200))
+    setDrawStage('bursting')
+
+    try {
+      const [result] = await Promise.all([
+        requestPromise,
+        new Promise((r) => setTimeout(r, 850)), // 爆开动画
+      ])
+      setDrawResult(result)
+      await loadGroup(group.id, userId)
+      setDrawStage('result')
+    } catch (e: any) {
+      setDrawStage('idle')
+      setSelectedBox(-1)
+      showToast(e?.message || '抽奖失败')
+    }
+  }
+
+  const closeDrawResult = () => {
+    setDrawStage('idle')
+    setSelectedBox(-1)
+    setDrawResult(null)
   }
 
   const copyCode = () => {
@@ -253,7 +380,6 @@ export default function TeamLotteryPage() {
     Taro.setClipboardData({
       data: group.invite_code,
       success: () => {
-        // 记录本端最近复制的邀请码，粘贴时可用于核对/兜底
         Taro.setStorageSync('last_copied_invite_code', group.invite_code)
         Taro.setStorageSync('last_copied_invite_code_at', Date.now())
         showToast(`已复制邀请码 ${group.invite_code}`)
@@ -263,7 +389,6 @@ export default function TeamLotteryPage() {
 
   const pasteCode = async () => {
     try {
-      // 30 秒内在本端复制过邀请码：直接回填该码，规避微信剪贴板同步延迟导致"复制与粘贴不一致"
       const lastCopied = String(Taro.getStorageSync('last_copied_invite_code') || '').trim().toUpperCase()
       const lastCopiedAt = Number(Taro.getStorageSync('last_copied_invite_code_at') || 0)
       if (lastCopied && Date.now() - lastCopiedAt < 30_000) {
@@ -278,7 +403,6 @@ export default function TeamLotteryPage() {
         showToast(`已粘贴邀请码 ${code.slice(0, 8)}`)
         return
       }
-      // 剪贴板为空时回退到本端最近复制的邀请码
       if (lastCopied) {
         setCodeInput(lastCopied.slice(0, 8))
         showToast(`已粘贴邀请码 ${lastCopied}`)
@@ -290,9 +414,15 @@ export default function TeamLotteryPage() {
     }
   }
 
+  // 当前登录用户在队伍中的成员
+  const me = useMemo(() => group?.members.find((m) => m.user_id === userId) || null, [group, userId])
+  const teamFailed = !!group?.leader_refunded || group?.status === 'expired'
+  const canDraw = group && !teamFailed && group.status === 'full' && me && !me.drew_at
+  const alreadyDrewPrize = me?.drew_at ? me : null
+
   if (loading) {
     return (
-      <View className="min-h-screen bg-gradient-to-b from-[#FF4757] to-[#ff6b81] p-4">
+      <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] p-4">
         <Skeleton className="h-48 w-full rounded-2xl mb-4" />
         <Skeleton className="h-32 w-full rounded-2xl mb-4" />
         <Skeleton className="h-32 w-full rounded-2xl" />
@@ -302,13 +432,13 @@ export default function TeamLotteryPage() {
 
   if (!status?.enabled) {
     return (
-      <View className="min-h-screen bg-gradient-to-b from-[#FF4757] to-[#ff6b81] flex items-center justify-center p-6">
+      <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] flex items-center justify-center p-6">
         <Card className="w-full rounded-2xl border-0 shadow-xl">
           <CardContent className="p-8 text-center">
-            <CircleAlert size={48} color="#FF4757" className="mx-auto mb-4" />
-            <Text className="block text-lg font-bold text-gray-900 mb-2">该商家暂未开启组队抽奖</Text>
+            <CircleAlert size={48} color="#FF6B1A" className="mx-auto mb-4" />
+            <Text className="block text-lg font-bold text-gray-900 mb-2">该商家暂未开启组队盲盒</Text>
             <Text className="block text-sm text-gray-500 mb-6">去看看其他优惠活动吧</Text>
-            <Button onClick={() => Taro.navigateBack()} className="w-full bg-[#FF4757] text-white rounded-full">
+            <Button onClick={() => Taro.navigateBack()} className="w-full bg-[#FF6B1A] text-white rounded-full">
               返回
             </Button>
           </CardContent>
@@ -318,157 +448,189 @@ export default function TeamLotteryPage() {
   }
 
   return (
-    <View className="min-h-screen bg-gradient-to-b from-[#FF4757] via-[#ff5e6e] to-[#ffe4e7] p-4 pb-24">
-      <Dialog open={!userId}>
-        <DialogContent className="sm:max-w-[320px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg">请先登录</DialogTitle>
-            <DialogDescription className="text-center text-sm text-gray-500">登录后即可参与组队抽奖</DialogDescription>
-          </DialogHeader>
-          <Button onClick={() => Taro.navigateTo({ url: '/pages/login/index' })} className="w-full bg-[#FF4757] text-white rounded-full mt-2">
-            去登录
-          </Button>
-        </DialogContent>
-      </Dialog>
+    <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] via-[#ff8a29] to-[#ffe8c8] p-4 pb-24">
+      {/* 未登录提示弹窗（含邀请链接点击场景） */}
+      {!userId && (
+        <View className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-6">
+          <View className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl">
+            <Text className="block text-center text-lg font-extrabold text-gray-900 mb-2">未登录账号</Text>
+            <Text className="block text-center text-sm text-gray-500 mb-5 leading-6">
+              {loginTip || '请先登录后再参与组队盲盒抽大奖'}
+            </Text>
+            <Button onClick={goLogin} className="w-full clay-btn text-white font-bold h-12 rounded-full">
+              立即登录
+            </Button>
+            <View onClick={() => { setLoginTip(''); Taro.navigateBack({ delta: 1, fail() {} }) }} className="mt-3 text-center">
+              <Text className="text-sm text-gray-400">返回</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 顶部活动区 */}
-      <View className="pt-8 pb-6 text-center">
-        <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-20 backdrop-blur mb-4 overflow-hidden">
+      <View className="pt-6 pb-4 text-center">
+        <View className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white bg-opacity-25 mb-3 overflow-hidden">
           {status.logo_image_url ? (
             <Image src={status.logo_image_url} className="w-full h-full" mode="aspectFill" />
           ) : (
             <Gift size={36} color="#ffffff" />
           )}
         </View>
-        <Text className="block text-2xl font-extrabold text-white mb-2">组队免费抽奖</Text>
-        <Text className="block text-white text-opacity-90 text-sm">
-          满 {status.team_size} 人成团，团长和团员都能抽奖，团长必中团长奖品
+        <Text className="clay-title block text-3xl mb-2">组队抽盲盒</Text>
+        <Text className="block text-white text-opacity-95 text-sm font-semibold">
+          满 {status.team_size} 人成团 · 队长皇冠加成 · 人人可抽
         </Text>
       </View>
 
       {/* 队伍卡片 */}
       {group && (
-        <Card className="rounded-2xl border-0 shadow-xl mb-4 overflow-hidden">
+        <Card className="clay-card border-0 mb-4 overflow-hidden">
           <CardContent className="p-5">
             <View className="flex items-center justify-between mb-4">
               <View className="flex items-center gap-2">
-                <Users size={20} color="#FF4757" />
-                <Text className="block text-base font-bold text-gray-900">我的队伍</Text>
+                <Users size={20} color="#c8410e" />
+                <Text className="block text-base font-extrabold text-[#5b2a0c]">我的队伍</Text>
               </View>
               <View
                 className={`px-3 py-1 rounded-full ${
-                  (group as any).leader_refunded
-                    ? 'bg-red-100'
-                    : group.status === 'full' || group.status === 'drawed'
+                  teamFailed
+                    ? 'bg-gray-200'
+                    : group.status === 'drawed'
                     ? 'bg-green-100'
-                    : group.status === 'expired'
-                    ? 'bg-gray-100'
+                    : group.status === 'full'
+                    ? 'bg-amber-100'
                     : 'bg-orange-100'
                 }`}
               >
                 <Text
-                  className={`block text-xs font-semibold ${
-                    (group as any).leader_refunded
-                      ? 'text-red-600'
-                      : group.status === 'full' || group.status === 'drawed'
-                      ? 'text-green-600'
-                      : group.status === 'expired'
+                  className={`block text-xs font-bold ${
+                    teamFailed
                       ? 'text-gray-600'
-                      : 'text-orange-600'
+                      : group.status === 'drawed'
+                      ? 'text-green-700'
+                      : group.status === 'full'
+                      ? 'text-amber-700'
+                      : 'text-orange-700'
                   }`}
                 >
-                  {(group as any).leader_refunded && '订单已退款'}
-                  {!(group as any).leader_refunded && group.status === 'active' && '组队中'}
-                  {!(group as any).leader_refunded && group.status === 'full' && '已满员'}
-                  {!(group as any).leader_refunded && group.status === 'drawed' && '已开奖'}
-                  {!(group as any).leader_refunded && group.status === 'expired' && '已过期'}
+                  {teamFailed ? '组队失败' : group.status === 'active' ? '组队中' : group.status === 'full' ? '已满员，快去抽盲盒' : '已开奖'}
                 </Text>
               </View>
             </View>
 
-            {/* 成员头像 */}
-            <View className="flex flex-row items-center justify-center gap-3 mb-5 flex-wrap">
+            {/* 成员：头像 + 昵称（团长带皇冠角标） */}
+            <View className="flex flex-row items-start justify-center gap-3 mb-5 flex-wrap">
               {Array.from({ length: status.team_size }).map((_, idx) => {
                 const member = group.members[idx]
-                const displayName = member?.nick_name || (member?.role === 'leader' ? '团长' : '团员')
+                const displayName = member?.nick_name ? (member.nick_name.length > 5 ? member.nick_name.slice(0, 5) + '…' : member.nick_name) : (member ? '微信用户' : '等待加入')
                 const initial = displayName.slice(0, 1)
+                const isLeader = member?.role === 'leader'
+                const isMe = member?.user_id === userId
                 return (
-                  <View key={idx} className="flex flex-col items-center">
-                    <View className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-white shadow overflow-hidden flex items-center justify-center">
-                      {member?.avatar_url ? (
-                        <Image src={member.avatar_url} className="w-full h-full" mode="aspectFill" />
-                      ) : (
-                        <Text className="block text-base font-bold text-gray-400">{initial}</Text>
+                  <View key={idx} className="flex flex-col items-center w-16">
+                    <View className="relative w-14 h-14">
+                      <View className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 border-[3px] border-white shadow-md overflow-hidden flex items-center justify-center">
+                        {member?.avatar_url ? (
+                          <Image src={member.avatar_url} className="w-full h-full" mode="aspectFill" />
+                        ) : (
+                          <Text className="block text-lg font-bold text-[#c8410e]">{member ? initial : '?'}</Text>
+                        )}
+                      </View>
+                      {isLeader && (
+                        <View className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-300 to-amber-500 flex items-center justify-center shadow-md border-2 border-white">
+                          <Crown size={12} color="#ffffff" />
+                        </View>
+                      )}
+                      {member?.is_winner && member.drew_at && (
+                        <View className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-[1px] rounded-full bg-red-500">
+                          <Text className="block text-[10px] text-white font-bold">中奖</Text>
+                        </View>
                       )}
                     </View>
-                    <View
-                      className={`mt-1 px-2 py-1 rounded ${
-                        member?.role === 'leader' ? 'bg-yellow-400' : 'bg-gray-200'
-                      }`}
-                    >
-                      <Text className={`block text-xs font-bold ${member?.role === 'leader' ? 'text-white' : 'text-gray-600'}`}>
-                        {member?.role === 'leader' ? '团长' : '团员'}
-                      </Text>
-                    </View>
+                    <Text className={`block mt-1 text-xs font-semibold truncate max-w-full ${isMe ? 'text-[#c8410e]' : 'text-[#5b2a0c]'}`}>
+                      {displayName}{isMe ? '(我)' : ''}
+                    </Text>
                   </View>
                 )
               })}
             </View>
 
-            {/* 邀请码 */}
-            {group.status === 'active' && (
-              <View className="bg-gray-50 rounded-xl p-4 mb-4">
-                <Text className="block text-xs text-gray-500 mb-1 text-center">邀请码</Text>
+            {/* 组队失败提示 */}
+            {teamFailed && (
+              <View className="bg-gray-100 rounded-2xl p-4 mb-4 text-center">
+                <Text className="block text-sm text-gray-500 font-semibold">
+                  {group.leader_refunded ? '团长已退款，队伍自动解散' : `超过 ${status.duration_hours} 小时未成团，队伍已解散`}
+                </Text>
+              </View>
+            )}
+
+            {/* 邀请码（仅组队中显示，标注为备用方式） */}
+            {group.status === 'active' && !teamFailed && (
+              <View className="bg-orange-50 rounded-2xl p-4 mb-4">
+                <Text className="block text-xs text-orange-500 mb-1 text-center font-semibold">
+                  备用方式：邀请码
+                </Text>
                 <View className="flex flex-row items-center justify-center gap-3">
-                  <Text className="block text-2xl font-extrabold text-[#FF4757] tracking-widest">
+                  <Text className="block text-2xl font-extrabold text-[#c8410e] tracking-widest">
                     {group.invite_code}
                   </Text>
                   <View onClick={copyCode} className="p-2 bg-white rounded-full shadow-sm">
-                    <Copy size={16} color="#FF4757" />
+                    <Copy size={16} color="#c8410e" />
                   </View>
                 </View>
               </View>
             )}
 
-            {/* 团长奖品 */}
-            {group.leader_prize_name && (
-              <View className="flex items-center gap-2 bg-yellow-50 rounded-xl p-3 mb-4">
-                <Trophy size={18} color="#f59e0b" />
-                <Text className="block text-sm text-yellow-700">
-                  团长奖品：<Text className="font-bold">{group.leader_prize_name}</Text>
+            {/* 团长奖品提示 */}
+            {group.leader_prize_name && !teamFailed && (
+              <View className="flex items-center gap-2 bg-amber-50 rounded-xl p-3 mb-4">
+                <Trophy size={18} color="#d97706" />
+                <Text className="block text-sm text-amber-700">
+                  团长专属：<Text className="font-bold">{group.leader_prize_name}</Text>
                 </Text>
               </View>
             )}
 
-            {/* 抽奖按钮 */}
-            {(group.status === 'full' || group.status === 'drawed') && (
+            {/* 抽奖按钮 / 已开奖信息 */}
+            {!teamFailed && (
               <View className="text-center">
-                {group.members.find((m) => m.user_id === userId && !m.drew_at) ? (
+                {canDraw ? (
                   <Button
-                    onClick={drawPrize}
-                    disabled={drawing}
-                    className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b81] text-white rounded-full h-12 text-base font-bold"
+                    onClick={onStartDraw}
+                    className="clay-btn w-full h-14 text-lg font-extrabold text-white rounded-full clay-btn-waiting"
                   >
-                    {drawing ? '抽奖中...' : '立即抽奖'}
+                    🎁 立即抽盲盒
                   </Button>
-                ) : (
-                  <View className="bg-green-50 rounded-full py-3">
-                    <Text className="block text-sm font-semibold text-green-600">
-                      {group.members.find((m) => m.user_id === userId)?.is_winner
-                        ? `已获得 ${group.members.find((m) => m.user_id === userId)?.prize_name || '奖品'}`
-                        : '已完成抽奖'}
+                ) : alreadyDrewPrize ? (
+                  <View className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-4">
+                    <Text className="block text-sm font-bold text-[#c8410e]">
+                      {alreadyDrewPrize.is_winner
+                        ? `🎉 恭喜抽中：${alreadyDrewPrize.prize_name || '奖品'}`
+                        : '谢谢参与～'}
+                    </Text>
+                    {alreadyDrewPrize.redemption_code && (
+                      <Text className="block text-xs text-amber-700 mt-1">核销码：{alreadyDrewPrize.redemption_code}</Text>
+                    )}
+                    {alreadyDrewPrize.refund_amount && Number(alreadyDrewPrize.refund_amount) > 0 && (
+                      <Text className="block text-xs text-red-600 mt-1">已原路退款 ¥{Number(alreadyDrewPrize.refund_amount).toFixed(2)}</Text>
+                    )}
+                  </View>
+                ) : group.status === 'active' ? (
+                  <View className="bg-orange-50 rounded-full py-3 px-4">
+                    <Text className="block text-sm font-semibold text-orange-700 text-center">
+                      还差 {Math.max(0, status.team_size - group.members.length)} 人成团，分享给好友一起来抽
                     </Text>
                   </View>
-                )}
+                ) : null}
               </View>
             )}
 
-            {/* 分享按钮 */}
-            {group.status === 'active' && (
+            {/* 分享按钮（组队中显示） */}
+            {group.status === 'active' && !teamFailed && (
               <View className="mt-4">
                 <Button
                   openType="share"
-                  className="w-full bg-[#FF4757] text-white rounded-full h-12 text-base font-bold border-0"
+                  className="w-full bg-[#FF6B1A] text-white rounded-full h-12 text-base font-extrabold border-0"
                 >
                   <View className="flex flex-row items-center justify-center gap-2">
                     <Share2 size={18} color="#ffffff" />
@@ -481,32 +643,31 @@ export default function TeamLotteryPage() {
         </Card>
       )}
 
-      {/* 组队入口：无队伍，或已有队伍但已满员/已开奖时（可用新订单再开一团或加入别队） */}
-      {(!group || group.status === 'full' || group.status === 'drawed') && (
+      {/* 开团/加入入口：无队伍 或 队伍已开奖/失败时 */}
+      {(!group || teamFailed || group.status === 'drawed') && (
         <>
-          {/* 开团资格 */}
-          <Card className="rounded-2xl border-0 shadow-xl mb-4">
+          <Card className="clay-card border-0 mb-4">
             <CardContent className="p-5">
               <View className="flex items-center gap-3 mb-3">
-                <Sparkles size={22} color="#FF4757" />
-                <Text className="block text-base font-bold text-gray-900">开团资格</Text>
+                <Sparkles size={22} color="#c8410e" />
+                <Text className="block text-base font-extrabold text-[#5b2a0c]">开团当队长</Text>
               </View>
               {orders.length > 0 ? (
                 <>
-                  <Text className="block text-sm text-gray-600 mb-4">
-                    你有 {orders.length} 个可用订单，购买套餐支付成功后即可开团当团长
+                  <Text className="block text-sm text-[#7a4a22] mb-4">
+                    你有 {orders.length} 笔可用订单，开团邀请好友满员即可抽盲盒，队长必中团长奖
                   </Text>
                   <Button
                     onClick={createGroup}
-                    disabled={creating}
-                    className="w-full bg-gradient-to-r from-[#FF4757] to-[#ff6b81] text-white rounded-full h-12 text-base font-bold"
+                    disabled={creating || !userId}
+                    className="clay-btn w-full h-12 text-base font-extrabold text-white rounded-full"
                   >
-                    {creating ? '创建中...' : '立即开团'}
+                    {creating ? '创建中...' : userId ? '立即开团' : '登录后开团'}
                   </Button>
                 </>
               ) : (
                 <>
-                  <Text className="block text-sm text-gray-600 mb-4">暂无可用订单，购买本店套餐支付成功后才可开团</Text>
+                  <Text className="block text-sm text-[#7a4a22] mb-4">购买本店套餐支付成功后即可开团</Text>
                   <Button
                     onClick={() => {
                       if (packageId) {
@@ -515,7 +676,7 @@ export default function TeamLotteryPage() {
                         Taro.navigateBack()
                       }
                     }}
-                    className="w-full bg-[#FF4757] text-white rounded-full h-12 text-base font-bold"
+                    className="w-full bg-[#FF6B1A] text-white rounded-full h-12 text-base font-extrabold"
                   >
                     去购买套餐
                   </Button>
@@ -524,18 +685,17 @@ export default function TeamLotteryPage() {
             </CardContent>
           </Card>
 
-          {/* 加入队伍 */}
-          <Card className="rounded-2xl border-0 shadow-xl">
+          <Card className="clay-card border-0">
             <CardContent className="p-5">
               <View className="flex items-center gap-3 mb-3">
-                <ChevronRight size={22} color="#FF4757" />
-                <Text className="block text-base font-bold text-gray-900">加入队伍</Text>
+                <ChevronRight size={22} color="#c8410e" />
+                <Text className="block text-base font-extrabold text-[#5b2a0c]">输入邀请码加入（备用）</Text>
               </View>
-              <Text className="block text-sm text-gray-600 mb-3">输入好友分享的邀请码，加入队伍一起抽奖</Text>
-              <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4 flex flex-row items-center">
+              <Text className="block text-sm text-[#7a4a22] mb-3">好友也可以把邀请码发给你，输入即可加入队伍</Text>
+              <View className="bg-orange-50 rounded-2xl px-4 py-3 mb-4 flex flex-row items-center">
                 <View style={{ flex: 1 }}>
                   <Input
-                    className="w-full bg-transparent text-center text-lg font-bold text-gray-900"
+                    className="w-full bg-transparent text-center text-lg font-extrabold text-[#5b2a0c]"
                     placeholder="请输入邀请码"
                     value={codeInput}
                     onInput={(e) => setCodeInput(String(e.detail.value || '').toUpperCase())}
@@ -544,18 +704,20 @@ export default function TeamLotteryPage() {
                 </View>
                 <View
                   onClick={pasteCode}
-                  className="ml-2 px-3 py-2 bg-white rounded-full border border-[#FFD6DC] shrink-0"
+                  className="ml-2 px-3 py-2 bg-white rounded-full border border-[#ffd6a0] shrink-0"
                 >
-                  <Text className="block text-xs text-[#FF4757]">粘贴</Text>
+                  <Text className="block text-xs text-[#c8410e] font-bold">粘贴</Text>
                 </View>
               </View>
               <Button
-                onClick={() => joinByCode(codeInput, userId)}
-                disabled={joining || !codeInput}
-                variant="outline"
-                className="w-full border-[#FF4757] text-[#FF4757] rounded-full h-12 text-base font-bold"
+                onClick={() => {
+                  if (!requireLogin('登录后才能加入队伍')) return
+                  joinByCode(codeInput, userId)
+                }}
+                disabled={joining || !codeInput || !userId}
+                className="w-full border-2 border-[#FF6B1A] text-[#c8410e] rounded-full h-12 text-base font-extrabold bg-white"
               >
-                {joining ? '加入中...' : '加入队伍'}
+                {joining ? '加入中...' : userId ? '加入队伍' : '登录后加入'}
               </Button>
             </CardContent>
           </Card>
@@ -564,30 +726,30 @@ export default function TeamLotteryPage() {
 
       {/* 奖品展示 */}
       {(status.leader_prize || (status.member_prizes && status.member_prizes.length > 0)) && (
-        <Card className="rounded-2xl border-0 shadow-xl mb-4">
+        <Card className="clay-card border-0 mt-4 mb-4">
           <CardContent className="p-5">
             <View className="flex items-center gap-2 mb-4">
-              <Gift size={20} color="#FF4757" />
-              <Text className="block text-base font-bold text-gray-900">奖品展示</Text>
+              <Gift size={20} color="#c8410e" />
+              <Text className="block text-base font-extrabold text-[#5b2a0c]">盲盒奖池</Text>
             </View>
             {status.leader_prize && (
               <View className="mb-4">
                 <View className="flex items-center gap-2 mb-2">
-                  <Trophy size={16} color="#f59e0b" />
-                  <Text className="block text-sm font-bold text-gray-900">团长必中奖品</Text>
+                  <Trophy size={16} color="#d97706" />
+                  <Text className="block text-sm font-bold text-[#5b2a0c]">团长皇冠奖</Text>
                 </View>
-                <View className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-3 flex items-center gap-3">
-                  <View className="w-16 h-16 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
+                <View className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-3 flex items-center gap-3">
+                  <View className="w-16 h-16 rounded-xl bg-white overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
                     {status.leader_prize.image_url ? (
                       <Image src={status.leader_prize.image_url} className="w-full h-full" mode="aspectFill" />
                     ) : (
-                      <Trophy size={28} color="#f59e0b" />
+                      <Trophy size={28} color="#d97706" />
                     )}
                   </View>
                   <View className="flex-1 min-w-0">
-                    <Text className="block text-sm font-bold text-gray-900 mb-1">{status.leader_prize.name}</Text>
-                    <View className="inline-block px-2 py-1 bg-yellow-400 rounded">
-                      <Text className="block text-xs text-white font-bold">团长必中</Text>
+                    <Text className="block text-sm font-extrabold text-[#5b2a0c] mb-1">{status.leader_prize.name}</Text>
+                    <View className="inline-block px-2 py-[2px] bg-amber-500 rounded-full">
+                      <Text className="block text-[10px] text-white font-bold">👑 团长必中</Text>
                     </View>
                   </View>
                 </View>
@@ -596,17 +758,17 @@ export default function TeamLotteryPage() {
             {status.member_prizes && status.member_prizes.length > 0 && (
               <View>
                 <View className="flex items-center gap-2 mb-3">
-                  <Users size={16} color="#3B82F6" />
-                  <Text className="block text-sm font-bold text-gray-900">团员奖品池</Text>
+                  <Users size={16} color="#c8410e" />
+                  <Text className="block text-sm font-bold text-[#5b2a0c]">人人有奖池</Text>
                 </View>
                 <View className="grid grid-cols-3 gap-3">
                   {status.member_prizes.map((p) => (
-                    <View key={p.id} className="bg-gray-50 rounded-xl p-3 text-center">
-                      <View className="w-12 h-12 rounded-lg bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
-                        {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={22} color="#3B82F6" />}
+                    <View key={p.id} className="bg-orange-50 rounded-2xl p-3 text-center">
+                      <View className="w-14 h-14 rounded-xl bg-white overflow-hidden mx-auto mb-2 flex items-center justify-center shadow-sm">
+                        {p.image_url ? <Image src={p.image_url} className="w-full h-full" mode="aspectFill" /> : <Gift size={22} color="#c8410e" />}
                       </View>
-                      <Text className="block text-xs text-gray-900 font-bold truncate mb-1">{p.name}</Text>
-                      <Text className="block text-xs text-[#3B82F6]">{p.probability}%</Text>
+                      <Text className="block text-xs text-[#5b2a0c] font-bold truncate mb-1">{p.name}</Text>
+                      <Text className="block text-xs text-[#c8410e] font-bold">{p.probability}%</Text>
                     </View>
                   ))}
                 </View>
@@ -616,29 +778,29 @@ export default function TeamLotteryPage() {
         </Card>
       )}
 
-      {/* 推荐团购套餐 */}
+      {/* 推荐套餐 */}
       {status.package && (
-        <Card className="rounded-2xl border-0 shadow-xl mb-4">
+        <Card className="clay-card border-0 mt-4 mb-4">
           <CardContent className="p-5">
             <View className="flex items-center gap-2 mb-4">
-              <Sparkles size={18} color="#FF4757" />
-              <Text className="text-base font-bold text-gray-900">推荐更多团购套餐</Text>
+              <Sparkles size={18} color="#c8410e" />
+              <Text className="text-base font-extrabold text-[#5b2a0c]">推荐团购套餐</Text>
             </View>
             <View className="flex items-start gap-3">
-              <View className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+              <View className="w-20 h-20 rounded-2xl bg-orange-50 overflow-hidden shrink-0 flex items-center justify-center">
                 {status.package.cover_image ? (
                   <Image src={status.package.cover_image} className="w-full h-full" mode="aspectFill" />
                 ) : (
-                  <Gift size={28} color="#9CA3AF" />
+                  <Gift size={28} color="#c8410e" />
                 )}
               </View>
               <View className="flex-1 min-w-0">
-                <Text className="block text-base font-bold text-gray-900 mb-1">{status.package.name}</Text>
+                <Text className="block text-base font-extrabold text-[#5b2a0c] mb-1">{status.package.name}</Text>
                 {status.package.description && (
-                  <Text className="block text-xs text-gray-500 leading-5 mb-2">{status.package.description}</Text>
+                  <Text className="block text-xs text-[#7a4a22] leading-5 mb-2">{status.package.description}</Text>
                 )}
                 <View className="flex items-baseline gap-2">
-                  <Text className="block text-lg font-bold text-[#FF4757]">¥{Number(status.package.price || 0).toFixed(2)}</Text>
+                  <Text className="block text-lg font-extrabold text-[#c8410e]">¥{Number(status.package.price || 0).toFixed(2)}</Text>
                   {status.package.original_price && Number(status.package.original_price) > 0 && (
                     <Text className="block text-xs text-gray-400 line-through">¥{Number(status.package.original_price).toFixed(2)}</Text>
                   )}
@@ -649,19 +811,180 @@ export default function TeamLotteryPage() {
         </Card>
       )}
 
-      {/* 规则说明 */}
+      {/* 规则 */}
       <View className="mt-6 px-2">
-        <Text className="block text-xs text-white text-opacity-80 text-center leading-5">
-          1. 购买本店套餐支付成功后可开团{'\n'}
-          2. 邀请好友加入队伍，满 {status.team_size} 人即可开奖{'\n'}
-          3. 成团后所有成员（含团长）均可抽奖一次，团长必中团长奖品{'\n'}
+        <Text className="block text-xs text-white text-opacity-90 text-center leading-5 font-semibold">
+          1. 分享小程序链接给好友，好友点击授权登录即可自动入队{'\n'}
+          2. 也可复制邀请码给好友，在下方「输入邀请码加入」备用入队{'\n'}
+          3. 满 {status.team_size} 人成团后全员可抽盲盒，队长必中团长奖{'\n'}
           4. 队伍 {status.duration_hours} 小时内未满员将自动解散
         </Text>
       </View>
 
+      {/* ====== 盲盒选择/抽奖全屏层 ====== */}
+      {(drawStage === 'select' || drawStage === 'shaking' || drawStage === 'bursting') && (
+        <View className="fixed inset-0 z-40 bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] flex flex-col items-center px-4 py-10">
+          <View className="w-full flex justify-end" onClick={() => drawStage === 'select' && setDrawStage('idle')}>
+            <View className="w-9 h-9 rounded-full bg-white bg-opacity-25 flex items-center justify-center">
+              <X size={20} color="#ffffff" />
+            </View>
+          </View>
+          <Text className="clay-title text-3xl mt-4 mb-2">选一个盲盒</Text>
+          <Text className="block text-white text-opacity-90 text-sm font-semibold mb-6">
+            {drawStage === 'select' ? '点一下你最有感觉的盒子 🎁' : drawStage === 'shaking' ? '摇一摇，马上揭晓！✨' : '哇～爆爆爆开啦！🎉'}
+          </Text>
+
+          <View className="grid grid-cols-3 gap-4 w-full max-w-sm">
+            {BOX_COLORS.map((colors, idx) => {
+              const isSelected = selectedBox === idx
+              const isShaking = isSelected && drawStage === 'shaking'
+              const isBurst = isSelected && drawStage === 'bursting'
+              return (
+                <View
+                  key={idx}
+                  onClick={() => onBoxClick(idx)}
+                  className={`aspect-square relative rounded-[28px] ${isShaking ? 'clay-box-shake' : ''} ${isBurst ? 'clay-box-burst' : 'clay-box-float'}`}
+                  style={{
+                    background: `linear-gradient(160deg, ${colors[0]} 0%, ${colors[1]} 100%)`,
+                    boxShadow: '0 8px 0 rgba(0,0,0,0.18), 0 16px 24px rgba(0,0,0,0.18), inset 0 3px 0 rgba(255,255,255,0.4)',
+                    animationDelay: `${idx * 0.12}s`,
+                  }}
+                >
+                  {/* 盒盖 */}
+                  <View
+                    className={`absolute left-0 right-0 top-0 h-[28%] rounded-t-[28px] ${isBurst ? 'clay-lid' : ''}`}
+                    style={{
+                      background: `linear-gradient(180deg, ${colors[0]} 0%, ${colors[1]} 100%)`,
+                      borderBottom: '3px solid rgba(0,0,0,0.12)',
+                    }}
+                  />
+                  {/* 丝带 */}
+                  <View className="absolute left-1/2 top-0 bottom-0 w-[14%] -translate-x-1/2" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                  <View className="absolute top-1/2 left-0 right-0 h-[14%] -translate-y-1/2" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                  {/* 问号 */}
+                  {!isBurst && (
+                    <Text className="absolute inset-0 flex items-center justify-center text-white text-4xl font-black drop-shadow-md">?</Text>
+                  )}
+                  {/* 爆开金光粒子 */}
+                  {isBurst && (
+                    <>
+                      {[0, 1, 2, 3, 4, 5].map((i) => (
+                        <View
+                          key={i}
+                          className="clay-sparkle absolute left-1/2 top-1/2 w-3 h-3 rounded-full"
+                          style={{
+                            background: i % 2 ? '#fff176' : '#ffd54f',
+                            transform: `translate(-50%, -50%) rotate(${i * 60}deg) translateX(-40px)`,
+                            animationDelay: `${i * 0.08}s`,
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                </View>
+              )
+            })}
+          </View>
+          {drawStage === 'select' && (
+            <View className="mt-8 clay-bubble bg-white bg-opacity-25 rounded-full px-6 py-3">
+              <Text className="block text-white font-bold text-sm">9 个盲盒，运气就看这一下！</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ====== 中奖结果弹窗 ====== */}
+      {drawStage === 'result' && drawResult && (
+        <View className="win-popup-overlay" onClick={closeDrawResult}>
+          {/* 彩带 */}
+          <View className="win-popup-confetti">
+            {Array.from({ length: 24 }).map((_, i) => {
+              const colors = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#ff9f1c', '#f78fb3']
+              const color = colors[i % colors.length]
+              const left = (i * 4.2) % 100
+              const delay = (i * 0.12) % 1.5
+              const width = 6 + (i % 3) * 3
+              return (
+                <View
+                  key={i}
+                  className="clay-confetti absolute"
+                  style={{ left: `${left}%`, top: '-20px', width: `${width}px`, height: `${width * 1.6}px`, background: color, borderRadius: '2px', animationDelay: `${delay}s` }}
+                />
+              )
+            })}
+          </View>
+          <View className="win-popup-wrap" onClick={(e) => e.stopPropagation()}>
+            <View className="win-popup-header">
+              <Text className="win-popup-title">🎉 恭喜中奖</Text>
+              <Text className="win-popup-subtitle">盲盒已开启，看看你抽中了什么</Text>
+              {drawResult.prize_type === 'free_meal' && (
+                <Text className="win-popup-freemeal">🍗 霸王餐免单 · 全额退款</Text>
+              )}
+            </View>
+            <View className="win-popup-card clay-prize-pop">
+              <View className="win-popup-image-wrap">
+                {drawResult.image_url || drawResult.prize_image ? (
+                  <Image
+                    src={drawResult.image_url || drawResult.prize_image || ''}
+                    className="w-full h-full"
+                    mode="aspectFill"
+                  />
+                ) : (
+                  <Gift size={64} color="#c8410e" />
+                )}
+              </View>
+              <Text className="win-popup-prize-name">{drawResult.prize_name}</Text>
+              <Text className="win-popup-prize-desc">
+                {drawResult.prize_type === 'coupon' && '折扣券已自动发到你的账户，下单可直接抵扣'}
+                {drawResult.prize_type === 'free_meal' && '免单奖励已原路退款，请到店出示核销码'}
+                {drawResult.prize_type === 'product' && '请到店出示核销码领取你的奖品'}
+              </Text>
+
+              {drawResult.redemption_code && (
+                <View className="win-popup-code-row">
+                  <Text className="win-popup-code-label">核销码</Text>
+                  <Text selectable className="win-popup-code-value">{drawResult.redemption_code}</Text>
+                </View>
+              )}
+
+              {drawResult.prize_type === 'coupon' && drawResult.coupon_amount && Number(drawResult.coupon_amount) > 0 && (
+                <View className="win-popup-refund-row">
+                  <Text className="win-popup-refund-label">
+                    券面额{drawResult.coupon_min_spend ? `（满${drawResult.coupon_min_spend}可用）` : ''}
+                  </Text>
+                  <Text className="win-popup-refund-value">¥{Number(drawResult.coupon_amount).toFixed(2)}</Text>
+                </View>
+              )}
+
+              {drawResult.refund_amount && Number(drawResult.refund_amount) > 0 && (
+                <View className="win-popup-refund-row">
+                  <Text className="win-popup-refund-label">
+                    {drawResult.prize_type === 'free_meal' ? '免单退款' : '返现金额'}
+                  </Text>
+                  <Text className="win-popup-refund-value">¥{Number(drawResult.refund_amount).toFixed(2)}</Text>
+                </View>
+              )}
+
+              {drawResult.expiry_date && (
+                <Text className="win-popup-tip">奖品有效期至 {drawResult.expiry_date.slice(0, 10)}，请尽快使用</Text>
+              )}
+
+              <View className="win-popup-btns">
+                <View className="win-popup-btn-secondary" onClick={() => Taro.switchTab({ url: '/pages/lottery-records/index' })}>
+                  查看记录
+                </View>
+                <View className="win-popup-btn-primary" onClick={closeDrawResult}>
+                  开心收下
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Toast */}
       {toast && (
-        <View className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-70 px-5 py-3 rounded-xl z-50">
+        <View className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-75 px-5 py-3 rounded-xl z-[1000]">
           <Text className="block text-white text-sm text-center">{toast}</Text>
         </View>
       )}
