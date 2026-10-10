@@ -275,6 +275,9 @@ export default function TeamLotteryPage() {
         setPreviewGroup(null)
         setPreviewError('')
       }
+    } catch (e: any) {
+      // 静默：网络错误不阻塞页面渲染
+      console.warn('[TeamLottery] loadAll error', e)
     } finally {
       setLoading(false)
     }
@@ -303,24 +306,52 @@ export default function TeamLotteryPage() {
         data: { user_id: userId },
       })
       console.log('[TeamLottery] join invite', res.data)
-      if (res.data?.data) {
+      if (res.data?.code === 200 && res.data?.data) {
         setGroup(res.data.data)
         setPreviewGroup(null)
         Taro.showToast({ title: '加入队伍成功', icon: 'success' })
       } else {
-        Taro.showToast({ title: res.data?.msg || '加入失败', icon: 'none' })
+        const msg = res.data?.msg || '加入失败'
+        Taro.showModal({
+          title: '提示',
+          content: msg,
+          showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
+          confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
+          cancelText: '取消',
+          success: (r) => {
+            if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
+              Taro.switchTab({ url: '/pages/index/index' })
+            }
+          },
+        })
       }
     } catch (e: any) {
-      Taro.showToast({ title: e?.message || '加入失败', icon: 'none' })
+      const msg = e?.message || e?.response?.data?.msg || '加入失败'
+      Taro.showModal({
+        title: '提示',
+        content: msg,
+        showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
+        confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
+        cancelText: '取消',
+        success: (r) => {
+          if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
+            Taro.switchTab({ url: '/pages/index/index' })
+          }
+        },
+      })
     } finally {
       setJoining(false)
     }
   }
 
   const loadGroup = async (groupId: string, uid: string) => {
-    const res = await Network.request({ url: `/api/team-lottery/groups/${groupId}?user_id=${uid}` })
-    console.log('[TeamLottery] group detail', res.data)
-    setGroup(res.data?.data || null)
+    try {
+      const res = await Network.request({ url: `/api/team-lottery/groups/${groupId}?user_id=${uid}` })
+      console.log('[TeamLottery] group detail', res.data)
+      setGroup(res.data?.data || null)
+    } catch (e) {
+      console.warn('[TeamLottery] loadGroup error', e)
+    }
   }
 
   const createGroup = async () => {
@@ -370,15 +401,42 @@ export default function TeamLotteryPage() {
         data: { user_id: uid },
       })
       console.log('[TeamLottery] join', res.data)
-      if (res.data?.data) {
+      if (res.data?.code === 200 && res.data?.data) {
         setGroup(res.data.data)
         if (!silent) showToast('加入队伍成功')
       } else {
         const msg = res.data?.msg || (res.data as any)?.message || '加入失败，请稍后重试'
-        if (!silent) showToast(msg)
+        if (!silent) {
+          Taro.showModal({
+            title: '提示',
+            content: msg,
+            showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
+            confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
+            cancelText: '取消',
+            success: (r) => {
+              if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
+                Taro.switchTab({ url: '/pages/index/index' })
+              }
+            },
+          })
+        }
       }
     } catch (e: any) {
-      if (!silent) showToast(e?.message || '加入失败，请稍后重试')
+      const msg = e?.message || '加入失败，请稍后重试'
+      if (!silent) {
+        Taro.showModal({
+          title: '提示',
+          content: msg,
+          showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
+          confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
+          cancelText: '取消',
+          success: (r) => {
+            if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
+              Taro.switchTab({ url: '/pages/index/index' })
+            }
+          },
+        })
+      }
     } finally {
       setJoining(false)
     }
