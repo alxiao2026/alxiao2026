@@ -135,10 +135,12 @@ const BOX_COLORS = [
 
 export default function TeamLotteryPage() {
   const router = useRouter()
-  const merchantId = Number(router.params.merchant_id || 0)
+  const rawMerchantId = Number(router.params.merchant_id || 0)
   const packageId = String(router.params.package_id || '')
-  const inviteCode = String(router.params.invite_code || '')
+  const inviteCode = String(router.params.invite_code || '').toUpperCase()
   const [userId, setUserId] = useState<string>('')
+  // 邀请链接场景下 merchant_id 会在拉到预览后动态设置为队伍的 merchant_id
+  const [merchantId, setMerchantId] = useState<number>(rawMerchantId || 0)
 
   const [status, setStatus] = useState<TeamStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -148,6 +150,8 @@ export default function TeamLotteryPage() {
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [toast, setToast] = useState('')
+  // 邀请预览的错误态（邀请码无效/队伍已结束）
+  const [previewError, setPreviewError] = useState<string>('')
   // 邀请链接预览：仅通过 invite_code 拉到的未加入队伍
   const [previewGroup, setPreviewGroup] = useState<Group | null>(null)
 
@@ -160,11 +164,16 @@ export default function TeamLotteryPage() {
   const [loginTip, setLoginTip] = useState('')
 
   useEffect(() => {
+    // 有 merchant_id 且已登录，按"店内组队"流程加载
     if (merchantId && userId) {
       loadAll(userId)
+    } else if (inviteCode) {
+      // 邀请链接：无论是否登录、是否有 merchant_id，先拉预览
+      loadInvitePreview()
     } else {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchantId, userId])
 
   useDidShow(() => {
@@ -193,6 +202,30 @@ export default function TeamLotteryPage() {
     setTimeout(() => setToast(''), 2500)
   }
 
+  // 邀请预览：单独方法，不依赖 merchantId / userId
+  const loadInvitePreview = async () => {
+    setLoading(true)
+    setPreviewError('')
+    setPreviewGroup(null)
+    try {
+      const previewRes = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
+      console.log('[TeamLottery] invite preview', previewRes.data)
+      const preview = previewRes.data?.data as Group | null
+      if (preview) {
+        setPreviewGroup(preview)
+        // 把队伍的 merchant_id 写入状态，登录后可直接用
+        if (preview.merchant_id && !merchantId) {
+          setMerchantId(preview.merchant_id)
+        }
+      }
+    } catch (e: any) {
+      console.warn('[TeamLottery] invite preview failed', e)
+      setPreviewError(e?.message || '该邀请码无效或队伍已结束')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const requireLogin = (action: string): boolean => {
     if (userId) return true
     setLoginTip(action)
@@ -211,28 +244,42 @@ export default function TeamLotteryPage() {
   const loadAll = async (uid: string) => {
     setLoading(true)
     setPreviewGroup(null)
+    setPreviewError('')
     try {
-      // 如果是邀请链接，先拉队伍预览（无论是否登录/是否有订单都能看到队伍信息）
+      // 如果是邀请链接，先拉队伍预览（无论是否有订单都能看到队伍信息）
       let preview: Group | null = null
       if (inviteCode) {
         try {
-          const previewRes = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode.toUpperCase()}` })
+          const previewRes = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
           console.log('[TeamLottery] preview by code', previewRes.data)
           if (previewRes.data?.data) preview = previewRes.data.data as Group
-        } catch (e) {
+        } catch (e: any) {
           console.warn('[TeamLottery] preview failed', e)
+          setPreviewError(e?.message || '该邀请码无效或队伍已结束')
         }
       }
 
+      // 没有 merchant_id 时（纯邀请链接场景），如果预览到队伍，用队伍的 merchant_id
+      const effectiveMerchantId = merchantId || preview?.merchant_id || 0
+
       // 未登录：只展示预览，不查订单/我的队伍
       if (!uid) {
-        if (preview) setPreviewGroup(preview)
+        if (preview) {
+          setPreviewGroup(preview)
+          if (preview.merchant_id && !merchantId) setMerchantId(preview.merchant_id)
+        }
+        setLoading(false)
+        return
+      }
+
+      if (!effectiveMerchantId) {
+        setLoading(false)
         return
       }
 
       const [statusRes, ordersRes, myGroupsRes] = await Promise.all([
-        Network.request({ url: `/api/team-lottery/merchants/${merchantId}/status${packageId ? `?package_id=${packageId}` : ''}` }),
-        Network.request({ url: `/api/team-lottery/orders/${uid}/${merchantId}` }),
+        Network.request({ url: `/api/team-lottery/merchants/${effectiveMerchantId}/status${packageId ? `?package_id=${packageId}` : ''}` }),
+        Network.request({ url: `/api/team-lottery/orders/${uid}/${effectiveMerchantId}` }),
         Network.request({ url: `/api/team-lottery/my-groups/${uid}` }),
       ])
       console.log('[TeamLottery] status', statusRes.data)
@@ -245,10 +292,11 @@ export default function TeamLotteryPage() {
       // 优先匹配：如果邀请码对应的队伍里自己已在成员列表中，直接进入
       if (preview && preview.members?.some((m) => m.user_id === uid)) {
         setGroup(preview)
+        setLoading(false)
         return
       }
       const candidates = groups.filter(
-        (g) => g.merchant_id === merchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
+        (g) => g.merchant_id === effectiveMerchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
       )
       const active = candidates.find((g) => g.status === 'active') || candidates[0]
       if (active) {
@@ -264,16 +312,7 @@ export default function TeamLotteryPage() {
 
   const handleJoinInvite = async () => {
     if (!previewGroup) return
-    if (!requireLogin('登录后才能加入队伍')) return
-    if (!orders.length) {
-      Taro.showModal({
-        title: '暂无可使用订单',
-        content: '请先购买对应套餐后再加入队伍',
-        showCancel: false,
-        confirmText: '我知道了',
-      })
-      return
-    }
+    if (!requireLogin('请先授权手机号登录后再加入队伍')) return
     setJoining(true)
     try {
       const res = await Network.request({
@@ -494,7 +533,7 @@ export default function TeamLotteryPage() {
   }
 
   // 未开启活动：非邀请链接场景才展示；邀请链接即使未启用也先看到队伍再提示
-  if (!status?.enabled && !previewGroup) {
+  if (!status?.enabled && !previewGroup && !inviteCode && !previewError) {
     return (
       <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] flex items-center justify-center p-6">
         <Card className="w-full rounded-2xl border-0 shadow-xl">

@@ -882,16 +882,14 @@ export class TeamLotteryService {
       if (!mo) throw new BadRequestException('订单不存在');
       if ((mo as any).user_id !== dto.user_id) throw new BadRequestException('无权使用该订单');
       if (!['paid', 'used'].includes((mo as any).status)) throw new BadRequestException('订单支付成功后才能加入组队');
-      if (String((mo as any).merchant_id) !== String(g.merchant_id)) throw new BadRequestException('订单商家与组队商家不匹配');
       if ((mo as any).package_id !== g.package_id) throw new BadRequestException('订单套餐与组队套餐不匹配');
       memberOrder = mo;
     } else {
-      // 未指定订单则自动找一个该商家/套餐下的已支付未用订单
+      // 未指定订单则自动找一个该套餐下的已支付未用订单（orders 表无 merchant_id 字段，通过 package_id 关联商家）
       const { data: list, error: listErr } = await this.client
         .from('orders')
         .select('*')
         .eq('user_id', dto.user_id)
-        .eq('merchant_id', g.merchant_id)
         .eq('package_id', g.package_id)
         .in('status', ['paid', 'used'])
         .order('created_at', { ascending: false })
