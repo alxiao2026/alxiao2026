@@ -605,11 +605,12 @@ export class TeamLotteryService {
     const userIds = members.map((m) => m.user_id);
     let users: any[] = [];
     if (userIds.length > 0) {
-      const { data } = await this.client.from('users').select('id, nick_name, avatar_url').in('id', userIds);
+      // users 表业务账号 id 存在 user_id 列（id 列是 uuid），必须按 user_id 匹配，否则查不到头像昵称
+      const { data } = await this.client.from('users').select('user_id, nick_name, avatar_url').in('user_id', userIds);
       users = data || [];
     }
     return members.map((m) => {
-      const u = users.find((x) => x.id === m.user_id);
+      const u = users.find((x) => x.user_id === m.user_id);
       const isLeader = m.user_id === leaderUserId;
       return {
         id: m.id,

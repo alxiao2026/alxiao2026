@@ -54,7 +54,7 @@ interface Member {
   id: string
   user_id: string
   role: 'leader' | 'member'
-  nickname: string | null
+  nick_name: string | null
   avatar_url: string | null
   joined_at: string
   drew_at: string | null
@@ -250,20 +250,41 @@ export default function TeamLotteryPage() {
 
   const copyCode = () => {
     if (!group?.invite_code) return
-    Taro.setClipboardData({ data: group.invite_code })
-    showToast('邀请码已复制')
+    Taro.setClipboardData({
+      data: group.invite_code,
+      success: () => {
+        // 记录本端最近复制的邀请码，粘贴时可用于核对/兜底
+        Taro.setStorageSync('last_copied_invite_code', group.invite_code)
+        Taro.setStorageSync('last_copied_invite_code_at', Date.now())
+        showToast(`已复制邀请码 ${group.invite_code}`)
+      },
+    })
   }
 
   const pasteCode = async () => {
     try {
-      const { data } = await Taro.getClipboardData()
-      const code = String(data || '').trim().toUpperCase()
-      if (!code) {
-        showToast('剪贴板为空，请先复制邀请码')
+      // 30 秒内在本端复制过邀请码：直接回填该码，规避微信剪贴板同步延迟导致"复制与粘贴不一致"
+      const lastCopied = String(Taro.getStorageSync('last_copied_invite_code') || '').trim().toUpperCase()
+      const lastCopiedAt = Number(Taro.getStorageSync('last_copied_invite_code_at') || 0)
+      if (lastCopied && Date.now() - lastCopiedAt < 30_000) {
+        setCodeInput(lastCopied.slice(0, 8))
+        showToast(`已粘贴邀请码 ${lastCopied}`)
         return
       }
-      setCodeInput(code.slice(0, 8))
-      showToast('已粘贴邀请码')
+      const { data } = await Taro.getClipboardData()
+      const code = String(data || '').trim().toUpperCase()
+      if (code) {
+        setCodeInput(code.slice(0, 8))
+        showToast(`已粘贴邀请码 ${code.slice(0, 8)}`)
+        return
+      }
+      // 剪贴板为空时回退到本端最近复制的邀请码
+      if (lastCopied) {
+        setCodeInput(lastCopied.slice(0, 8))
+        showToast(`已粘贴邀请码 ${lastCopied}`)
+        return
+      }
+      showToast('剪贴板为空，请先复制邀请码')
     } catch {
       showToast('读取剪贴板失败，请手动输入')
     }
@@ -369,7 +390,7 @@ export default function TeamLotteryPage() {
             <View className="flex flex-row items-center justify-center gap-3 mb-5 flex-wrap">
               {Array.from({ length: status.team_size }).map((_, idx) => {
                 const member = group.members[idx]
-                const displayName = member?.nickname || (member?.role === 'leader' ? '团长' : '团员')
+                const displayName = member?.nick_name || (member?.role === 'leader' ? '团长' : '团员')
                 const initial = displayName.slice(0, 1)
                 return (
                   <View key={idx} className="flex flex-col items-center">

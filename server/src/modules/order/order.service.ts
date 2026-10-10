@@ -376,13 +376,13 @@ export class OrderService {
     const unparticipated = allOrders.filter(o => !participatedIds.has(o.id));
     if (unparticipated.length === 0) return [];
 
-    // 4. 联表补充套餐封面图，计算订单总额
+    // 4. 联表补充套餐封面图、商家 id，计算订单总额
     const packageIds = [...new Set(unparticipated.map(o => o.package_id).filter(Boolean))] as string[];
     const pkgMap = new Map<string, any>();
     if (packageIds.length > 0) {
       const { data: packages } = await this.client
         .from('packages')
-        .select('id, cover_image')
+        .select('id, cover_image, merchant_id')
         .in('id', packageIds);
       (packages || []).forEach((p: any) => pkgMap.set(p.id, p));
     }
@@ -390,6 +390,7 @@ export class OrderService {
     return unparticipated.map(o => ({
       ...o,
       package_cover: pkgMap.get(o.package_id || '')?.cover_image || '',
+      merchant_id: pkgMap.get(o.package_id || '')?.merchant_id ?? null,
       total_amount: (parseFloat(o.price || '0') * (o.quantity || 1)).toFixed(2),
     }));
   }

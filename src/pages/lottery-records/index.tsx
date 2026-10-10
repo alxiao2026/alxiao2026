@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation, Copy } from 'lucide-react-taro'
+import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation, Copy, Users } from 'lucide-react-taro'
 import { formatDateTime, formatShortDateTime } from '@/lib/utils'
 
 interface LotteryRecord {
@@ -60,6 +60,7 @@ interface Order {
   shop_name: string
   package_name?: string
   package_cover?: string
+  merchant_id?: number | null
   created_at: string
 }
 
@@ -74,6 +75,11 @@ export default function LotteryRecordsPage() {
   const [qrLoading, setQrLoading] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [currentRecord, setCurrentRecord] = useState<LotteryRecord | null>(null)
+
+  // 选择抽奖方式弹窗状态
+  const [choiceOpen, setChoiceOpen] = useState(false)
+  const [choiceOrder, setChoiceOrder] = useState<Order | null>(null)
+  const [checking, setChecking] = useState(false)
 
   // 页面每次显示时刷新（首次进入 / 从盲盒抽奖页返回都会触发）
   useDidShow(() => {
@@ -186,8 +192,58 @@ export default function LotteryRecordsPage() {
     if (!code) return
     Taro.setClipboardData({
       data: code,
-      success: () => Taro.showToast({ title: '邀请码已复制', icon: 'none' }),
+      success: () => {
+        // 记录本端最近复制的邀请码，粘贴时可核对/兜底
+        Taro.setStorageSync('last_copied_invite_code', code)
+        Taro.setStorageSync('last_copied_invite_code_at', Date.now())
+        Taro.showToast({ title: `已复制 ${code}`, icon: 'none' })
+      },
     })
+  }
+
+  // 点击"参与抽奖"：先查订单抽奖状态（互斥兜底），未参与时弹出选择弹窗
+  const handleParticipate = async (order: Order) => {
+    if (checking) return
+    setChecking(true)
+    try {
+      const res = await Network.request({ url: `/api/lottery/order-status/${order.id}` })
+      console.log('[Records] 订单抽奖状态', res.data)
+      const status = (res.data as any)?.data
+      if (status?.participated) {
+        Taro.showToast({
+          title: status.type === 'team' ? '该订单已参与组队抽奖' : '该订单已参与普通抽奖',
+          icon: 'none',
+        })
+        const uid = Taro.getStorageSync('user_id') || Taro.getStorageSync('userInfo')?.user_id || ''
+        if (uid) loadUnparticipated(uid)
+        return
+      }
+      setChoiceOrder(order)
+      setChoiceOpen(true)
+    } catch (err) {
+      console.error('[Records] 查询订单状态失败', err)
+      // 查询失败不拦截，直接弹选择弹窗（后端抽奖/开团时仍有互斥校验兜底）
+      setChoiceOrder(order)
+      setChoiceOpen(true)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  // 选择组队抽奖：跳组队页（携带商家/套餐参数）
+  const goTeamLottery = () => {
+    if (!choiceOrder) return
+    setChoiceOpen(false)
+    Taro.navigateTo({
+      url: `/pages/team-lottery/index?merchantId=${choiceOrder.merchant_id || ''}&packageId=${choiceOrder.package_id || ''}`,
+    })
+  }
+
+  // 选择普通抽奖：跳盲盒抽奖页
+  const goNormalLottery = () => {
+    if (!choiceOrder) return
+    setChoiceOpen(false)
+    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${choiceOrder.id}` })
   }
 
   // 组队未开奖（组队中/已成团待开奖）：显示"未开奖"而非"未中奖"
@@ -225,10 +281,6 @@ export default function LotteryRecordsPage() {
   }
 
   // 跳转盲盒抽奖页（含分享引导与开奖动画，与支付成功后的抽奖体验一致）
-  const handleParticipate = (order: Order) => {
-    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${order.id}` })
-  }
-
   const formatExpiryDate = (dateStr?: string) => formatShortDateTime(dateStr)
 
   return (
@@ -512,6 +564,34 @@ export default function LotteryRecordsPage() {
                 )}
               </>
             )}
+          </View>
+        </DialogContent>
+      </Dialog>
+
+      {/* 选择抽奖方式弹窗 */}
+      <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
+        <DialogContent className="bg-white rounded-2xl p-6 sm:max-w-[340px] mx-auto items-center">
+          <DialogHeader className="w-full items-center">
+            <DialogTitle className="text-center text-base font-semibold text-gray-900">选择抽奖方式</DialogTitle>
+          </DialogHeader>
+          <Text className="block text-sm text-gray-500 text-center mt-1">
+            「{choiceOrder?.package_name || choiceOrder?.shop_name || '该订单'}」可参与以下抽奖，同一订单只能选择一种
+          </Text>
+          <View className="w-full flex flex-col gap-3 mt-4">
+            <Button
+              className="w-full bg-[#FF4757] hover:bg-[#e63846] text-white rounded-full"
+              onClick={goTeamLottery}
+            >
+              <Users size={16} color="#ffffff" />
+              <Text className="ml-2">组队抽奖（邀请好友一起抽）</Text>
+            </Button>
+            <Button
+              className="w-full bg-gray-900 text-white rounded-full"
+              onClick={goNormalLottery}
+            >
+              <Gift size={16} color="#ffffff" />
+              <Text className="ml-2">普通抽奖（单人盲盒）</Text>
+            </Button>
           </View>
         </DialogContent>
       </Dialog>
