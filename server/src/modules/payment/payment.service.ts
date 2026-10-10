@@ -688,6 +688,18 @@ export class PaymentService {
       throw new InternalServerErrorException(`更新订单失败: ${orderErr.message}`);
     }
 
+    // 组队抽奖联动：团长订单全额退款 → 队伍自动结束并打退款标记（不再开奖、无法再进人）
+    if (fullyRefunded) {
+      const { error: teamErr } = await this.client
+        .from('team_lottery_groups')
+        .update({ status: 'expired', leader_refunded: true, updated_at: now })
+        .eq('leader_order_id', order.id)
+        .eq('leader_refunded', false);
+      if (teamErr) {
+        console.error(`[refundOrder] 组队抽奖联动失败 order=${order.id}:`, teamErr.message);
+      }
+    }
+
     // 分销逆向分账：全额退款回收本单已产生的两级佣金（多处于冷静期 pending，直接作废回收）
     // 异步执行，失败不阻塞退款主流程
     if (fullyRefunded && order.order_no) {

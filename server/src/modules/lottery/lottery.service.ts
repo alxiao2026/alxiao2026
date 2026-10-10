@@ -1251,7 +1251,7 @@ export class LotteryService {
     // 合并组队抽奖记录（含实时队伍状态）
     const { data: teamRows } = await this.client
       .from('team_lottery_members')
-      .select('*, team_lottery_groups!inner(id, invite_code, team_size, current_count, status, leader_user_id, package_id)')
+      .select('*, team_lottery_groups!inner(id, invite_code, team_size, current_count, status, leader_user_id, leader_refunded, package_id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     let teamMapped: any[] = [];
@@ -1274,7 +1274,8 @@ export class LotteryService {
         const pkg = g?.package_id ? teamPkgMap.get(g.package_id) : null;
         const isLeader = g ? m.user_id === g.leader_user_id : false;
         let teamStatusText = '';
-        if (g?.status === 'active') teamStatusText = `组队中 ${g.current_count || 0}/${g.team_size || 0} 人`;
+        if (g?.leader_refunded) teamStatusText = '订单已退款，队伍已解散';
+        else if (g?.status === 'active') teamStatusText = `组队中 ${g.current_count || 0}/${g.team_size || 0} 人`;
         else if (g?.status === 'full') teamStatusText = m.is_winner ? '已成团，已开奖' : '已成团';
         else if (g?.status === 'expired') teamStatusText = '队伍已过期';
         return {
@@ -1309,6 +1310,7 @@ export class LotteryService {
           team_current_count: g?.current_count ?? null,
           team_status: g?.status ?? null,
           team_status_text: teamStatusText,
+          leader_refunded: g?.leader_refunded ?? false,
         };
       });
     }
@@ -1486,6 +1488,7 @@ export class LotteryService {
         team_size: group?.team_size || null,
         team_current_count: group?.current_count || null,
         team_status: group?.status || null,
+        leader_refunded: group?.leader_refunded ?? false,
         merchant_name: merchantId ? merchantNameMap.get(merchantId) || '' : '',
       };
     });

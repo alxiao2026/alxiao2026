@@ -1255,6 +1255,17 @@ export class OrderService {
       .update({ refund_status: 'voided' })
       .eq('order_id', order.id)
       .in('refund_status', ['locked', 'pending']);
+
+    // 组队抽奖联动：团长订单退款 → 队伍自动结束并打退款标记（不再开奖、无法再进人）
+    try {
+      await this.client
+        .from('team_lottery_groups')
+        .update({ status: 'expired', leader_refunded: true, updated_at: new Date().toISOString() })
+        .eq('leader_order_id', order.id)
+        .eq('leader_refunded', false);
+    } catch (e) {
+      console.error(`[autoRefundOrder] 组队抽奖联动失败 order=${order.id}:`, e);
+    }
   }
 
   // 批量检测超时未支付订单并自动关单：回补库存 + 作废本单抽奖折扣券

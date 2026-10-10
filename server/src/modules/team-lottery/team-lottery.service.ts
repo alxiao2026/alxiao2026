@@ -726,6 +726,9 @@ export class TeamLotteryService {
     }
     const g = group as any;
     if (g.status !== 'active') {
+      if (g.status === 'expired' && g.leader_refunded) {
+        throw new BadRequestException('团长的订单已退款，该队伍已解散，无法加入');
+      }
       throw new BadRequestException(g.status === 'expired' ? '队伍已过期解散' : '队伍已满');
     }
     if (g.leader_user_id === dto.user_id) {
@@ -793,6 +796,9 @@ export class TeamLotteryService {
     if (!group) throw new NotFoundException('队伍不存在');
     const g = group as any;
     if (g.status !== 'full') {
+      if (g.status === 'expired' && g.leader_refunded) {
+        throw new BadRequestException('团长的订单已退款，该队伍已结束，无法抽奖');
+      }
       throw new BadRequestException('队伍未满，还不能抽奖');
     }
 

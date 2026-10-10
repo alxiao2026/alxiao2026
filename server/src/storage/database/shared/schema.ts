@@ -706,6 +706,7 @@ export const teamLotteryGroups = pgTable("team_lottery_groups", {
 	teamSize: integer("team_size").notNull(),
 	currentCount: integer("current_count").default(1).notNull(),
 	status: varchar({ length: 20 }).default('active').notNull(),
+	leaderRefunded: boolean("leader_refunded").default(false).notNull(),
 	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),

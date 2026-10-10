@@ -334,7 +334,9 @@ export default function TeamLotteryPage() {
               </View>
               <View
                 className={`px-3 py-1 rounded-full ${
-                  group.status === 'full' || group.status === 'drawed'
+                  (group as any).leader_refunded
+                    ? 'bg-red-100'
+                    : group.status === 'full' || group.status === 'drawed'
                     ? 'bg-green-100'
                     : group.status === 'expired'
                     ? 'bg-gray-100'
@@ -343,17 +345,20 @@ export default function TeamLotteryPage() {
               >
                 <Text
                   className={`block text-xs font-semibold ${
-                    group.status === 'full' || group.status === 'drawed'
+                    (group as any).leader_refunded
+                      ? 'text-red-600'
+                      : group.status === 'full' || group.status === 'drawed'
                       ? 'text-green-600'
                       : group.status === 'expired'
                       ? 'text-gray-600'
                       : 'text-orange-600'
                   }`}
                 >
-                  {group.status === 'active' && '组队中'}
-                  {group.status === 'full' && '已满员'}
-                  {group.status === 'drawed' && '已开奖'}
-                  {group.status === 'expired' && '已过期'}
+                  {(group as any).leader_refunded && '订单已退款'}
+                  {!(group as any).leader_refunded && group.status === 'active' && '组队中'}
+                  {!(group as any).leader_refunded && group.status === 'full' && '已满员'}
+                  {!(group as any).leader_refunded && group.status === 'drawed' && '已开奖'}
+                  {!(group as any).leader_refunded && group.status === 'expired' && '已过期'}
                 </Text>
               </View>
             </View>

@@ -45,6 +45,7 @@ interface LotteryRecord {
   team_current_count?: number | null
   team_status?: string
   team_status_text?: string
+  leader_refunded?: boolean
 }
 
 interface Order {
@@ -298,6 +299,11 @@ export default function LotteryRecordsPage() {
                                     <Text className="text-xs text-gray-500">邀请码 {record.team_invite_code}</Text>
                                     <Copy size={12} color="#9ca3af" className="ml-1" />
                                   </View>
+                                ) : null}
+                                {record.leader_refunded ? (
+                                  <Badge className="bg-red-100 text-red-600 text-xs">
+                                    <Text>订单退款</Text>
+                                  </Badge>
                                 ) : null}
                                 {record.team_status_text ? (
                                   <Text className="text-xs text-orange-500 font-medium">{record.team_status_text}</Text>
