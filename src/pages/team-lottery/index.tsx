@@ -149,9 +149,11 @@ export default function TeamLotteryPage() {
       setOrders(ordersRes.data?.data || [])
 
       const groups: Group[] = myGroupsRes.data?.data || []
-      const active = groups.find(
+      // 优先展示"组队中"的队伍；若只有满员/已开奖队伍也展示（同时保留开团/加入入口）
+      const candidates = groups.filter(
         (g) => g.merchant_id === merchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
       )
+      const active = candidates.find((g) => g.status === 'active') || candidates[0]
       if (active) {
         await loadGroup(active.id, uid)
       } else if (inviteCode && !group) {
@@ -237,10 +239,10 @@ export default function TeamLotteryPage() {
         await loadGroup(group.id, userId)
         showToast(`恭喜获得 ${res.data.data.prize_name || '奖品'}`)
       } else {
-        showToast(res.data?.msg || '抽奖失败')
+        showToast(res.data?.msg || (res.data as any)?.message || '抽奖失败')
       }
     } catch (e: any) {
-      showToast(e?.message || '抽奖失败')
+      showToast(e?.message || (e?.response?.data?.message as string) || '抽奖失败')
     } finally {
       setDrawing(false)
     }
@@ -324,7 +326,7 @@ export default function TeamLotteryPage() {
       </View>
 
       {/* 队伍卡片 */}
-      {group ? (
+      {group && (
         <Card className="rounded-2xl border-0 shadow-xl mb-4 overflow-hidden">
           <CardContent className="p-5">
             <View className="flex items-center justify-between mb-4">
@@ -456,7 +458,10 @@ export default function TeamLotteryPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* 组队入口：无队伍，或已有队伍但已满员/已开奖时（可用新订单再开一团或加入别队） */}
+      {(!group || group.status === 'full' || group.status === 'drawed') && (
         <>
           {/* 开团资格 */}
           <Card className="rounded-2xl border-0 shadow-xl mb-4">

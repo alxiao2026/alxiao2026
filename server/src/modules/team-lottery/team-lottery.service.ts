@@ -338,13 +338,29 @@ export class TeamLotteryService {
       .in('status', ['paid', 'used'])
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询订单失败: ${error.message}`);
-    return (orders || []).map((o: any) => ({
-      id: o.id,
-      package_id: o.package_id,
-      package_name: o.package_name,
-      status: o.status,
-      paid_at: o.paid_at,
-    }));
+    const orderIds = (orders || []).map((o: any) => o.id);
+    if (orderIds.length === 0) return [];
+    // 过滤已用于组队开团或已参与普通抽奖的订单，避免前端显示可用但后端拒绝
+    const [usedTeam, usedNormal] = await Promise.all([
+      this.client.from('team_lottery_groups').select('leader_order_id').in('leader_order_id', orderIds),
+      this.client.from('lottery_records').select('order_id').in('order_id', orderIds),
+    ]);
+    const blocked = new Set<string>();
+    for (const r of (usedTeam.data || []) as any[]) {
+      if (r.leader_order_id) blocked.add(r.leader_order_id);
+    }
+    for (const r of (usedNormal.data || []) as any[]) {
+      if (r.order_id) blocked.add(r.order_id);
+    }
+    return (orders || [])
+      .filter((o: any) => !blocked.has(o.id))
+      .map((o: any) => ({
+        id: o.id,
+        package_id: o.package_id,
+        package_name: o.package_name,
+        status: o.status,
+        paid_at: o.paid_at,
+      }));
   }
 
   /** 检查并解散过期队伍 */
@@ -354,7 +370,8 @@ export class TeamLotteryService {
       .from('team_lottery_groups')
       .update({ status: 'expired', updated_at: now })
       .lt('expires_at', now)
-      .in('status', ['active', 'full'])
+    // 仅过期"组队中"的队伍；满员(full)队伍保留抽奖资格，已开奖(drawed)不再处理
+      .in('status', ['active'])
       .select('id');
     if (error) throw new Error(`解散过期队伍失败: ${error.message}`);
     return { expired_count: (data || []).length };
@@ -449,17 +466,15 @@ export class TeamLotteryService {
         coupon_code: code,
       };
     }
-    if (prize.prize_type === 'product') {
-      const { code } = await this.issueProduct(userId, prize);
-      return {
-        is_winner: true,
-        prize_id: prize.id,
-        prize_name: prize.name,
-        prize_type: prize.prize_type,
-        redemption_code: code,
-      };
-    }
-    return { is_winner: false, prize_id: null, prize_name: null, prize_type: null };
+    // 免费餐品/实物等非券类奖品统一发放兑换码，到店核销
+    const { code } = await this.issueProduct(userId, prize);
+    return {
+      is_winner: true,
+      prize_id: prize.id,
+      prize_name: prize.name,
+      prize_type: prize.prize_type,
+      redemption_code: code,
+    };
   }
 
   private async pickMemberPrize(config: any) {
@@ -853,6 +868,19 @@ export class TeamLotteryService {
       })
       .eq('id', m.id);
     if (updateError) throw new Error(`保存中奖记录失败: ${updateError.message}`);
+
+    // 全部成员都抽完奖后，将队伍标记为已开奖
+    const { data: undrawn } = await this.client
+      .from('team_lottery_members')
+      .select('id')
+      .eq('group_id', groupId)
+      .is('drew_at', null);
+    if ((undrawn || []).length === 0) {
+      await this.client
+        .from('team_lottery_groups')
+        .update({ status: 'drawed', updated_at: this.now() })
+        .eq('id', groupId);
+    }
 
     return result;
   }
