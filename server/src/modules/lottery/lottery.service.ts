@@ -999,6 +999,37 @@ export class LotteryService {
     return this.getRecordById((data as any).id);
   }
 
+  /**
+   * 查询订单的抽奖参与状态（普通抽奖与组队抽奖互斥的前置检查）
+   * normal=已普通抽奖；team=已参与组队（团长或团员）；null=未参与任何抽奖
+   */
+  async getOrderLotteryStatus(orderId: string): Promise<{ participated: boolean; type: 'normal' | 'team' | null }> {
+    if (!orderId) return { participated: false, type: null };
+    const { data: rec, error: e1 } = await this.client
+      .from('lottery_records')
+      .select('id')
+      .eq('order_id', orderId)
+      .limit(1)
+      .maybeSingle();
+    if (e1) throw new Error(`查询订单抽奖状态失败: ${e1.message}`);
+    if (rec) return { participated: true, type: 'normal' };
+    const { data: asLeader } = await this.client
+      .from('team_lottery_groups')
+      .select('id')
+      .eq('leader_order_id', orderId)
+      .limit(1)
+      .maybeSingle();
+    if (asLeader) return { participated: true, type: 'team' };
+    const { data: asMember } = await this.client
+      .from('team_lottery_members')
+      .select('id')
+      .eq('order_id', orderId)
+      .limit(1)
+      .maybeSingle();
+    if (asMember) return { participated: true, type: 'team' };
+    return { participated: false, type: null };
+  }
+
   async getRecordById(recordId: string): Promise<any> {
     const { data, error } = await this.client
       .from('lottery_records')

@@ -121,6 +121,8 @@ export default function OrderDetail() {
   const [communityConfig, setCommunityConfig] = useState<CommunityConfig | null>(null)
   const [communityLoading, setCommunityLoading] = useState(true)
   const [teamLotteryEnabled, setTeamLotteryEnabled] = useState(false)
+  /** 当前订单的抽奖参与状态：null=未参与, normal=已普通抽奖, team=已组队 */
+  const [orderLotteryStatus, setOrderLotteryStatus] = useState<'normal' | 'team' | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -240,6 +242,55 @@ export default function OrderDetail() {
       loadTeamLotteryStatus()
     }
   }, [packageInfo?.merchant_id, order?.merchant_id, order?.status])
+
+  /** 加载订单抽奖参与状态（普通/组队互斥前置检查） */
+  const loadOrderLotteryStatus = async () => {
+    if (!id) return
+    try {
+      const res = await Network.request({ url: `/api/lottery/order-status/${id}`, method: 'GET' })
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      const type = body?.data?.type || null
+      setOrderLotteryStatus(type === 'normal' || type === 'team' ? type : null)
+    } catch (err) {
+      console.warn('[OrderDetail] 加载订单抽奖状态失败:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (order?.status === 'paid' || order?.status === 'used') {
+      loadOrderLotteryStatus()
+    }
+  }, [order?.status, id])
+
+  /** 打开组队抽奖：已参与普通抽奖的订单不允许再组队 */
+  const openTeamLottery = () => {
+    setShowPaySuccess(false)
+    const merchantId = packageInfo?.merchant_id || order?.merchant_id
+    const packageId = order?.package_id
+    if (orderLotteryStatus === 'normal') {
+      Taro.showModal({
+        title: '无法参与组队抽奖',
+        content: '该订单已参与普通抽奖，同一订单只能选择一种抽奖方式',
+        showCancel: false,
+      })
+      return
+    }
+    Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
+  }
+
+  /** 打开普通抽奖：已参与组队抽奖的订单不允许再普通抽奖 */
+  const openNormalLottery = () => {
+    setShowPaySuccess(false)
+    if (orderLotteryStatus === 'team') {
+      Taro.showModal({
+        title: '无法参与普通抽奖',
+        content: '该订单已参与组队抽奖，同一订单只能选择一种抽奖方式',
+        showCancel: false,
+      })
+      return
+    }
+    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
+  }
 
   const loadCommunityConfig = async (merchantId?: number) => {
     try {
@@ -1033,11 +1084,7 @@ export default function OrderDetail() {
                   <Button
                     className="w-full h-11 rounded-xl border-0"
                     style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)' }}
-                    onClick={() => {
-                      const merchantId = packageInfo?.merchant_id || order?.merchant_id
-                      const packageId = order?.package_id
-                      Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
-                    }}
+                    onClick={openTeamLottery}
                   >
                     <View className="flex flex-row items-center gap-1">
                       <Users size={16} color="#FFFFFF" />
@@ -1049,7 +1096,7 @@ export default function OrderDetail() {
                   <Button
                     className="w-full h-11 rounded-xl border-0"
                     style={{ background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)' }}
-                    onClick={() => Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })}
+                    onClick={openNormalLottery}
                   >
                     <View className="flex flex-row items-center gap-1">
                       <Gift size={16} color="#FFFFFF" />
@@ -1174,12 +1221,7 @@ export default function OrderDetail() {
                 <Button
                   className="w-full h-12 rounded-full mt-6 border-0 shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)' }}
-                  onClick={() => {
-                    setShowPaySuccess(false)
-                    const merchantId = packageInfo?.merchant_id || order?.merchant_id
-                    const packageId = order?.package_id
-                    Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
-                  }}
+                  onClick={openTeamLottery}
                 >
                   <View className="flex flex-row items-center gap-2">
                     <Users size={18} color="#FFFFFF" />
@@ -1188,10 +1230,7 @@ export default function OrderDetail() {
                 </Button>
                 <Button
                   className="w-full h-11 rounded-full mt-3 bg-gradient-to-r from-[#FF4757] to-[#FF6B81] border-0 shadow-lg"
-                  onClick={() => {
-                    setShowPaySuccess(false)
-                    Taro.navigateTo({ url: `/pages/lottery/index?orderId=${id}` })
-                  }}
+                  onClick={openNormalLottery}
                 >
                   <View className="flex flex-row items-center gap-2">
                     <Gift size={18} color="#FFFFFF" />

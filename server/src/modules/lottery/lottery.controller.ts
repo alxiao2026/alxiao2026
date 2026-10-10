@@ -21,6 +21,13 @@ export class LotteryController {
     return { code: 200, msg: 'success', data };
   }
 
+  /** 查询订单抽奖参与状态（normal=已普通抽奖, team=已组队, null=未参与） */
+  @Get('order-status/:orderId')
+  async getOrderLotteryStatus(@Param('orderId') orderId: string) {
+    const data = await this.lotteryService.getOrderLotteryStatus(orderId);
+    return { code: 200, msg: 'success', data };
+  }
+
   @Get('record-by-id/:recordId')
   async getRecordById(@Param('recordId') recordId: string) {
     const data = await this.lotteryService.getRecordById(recordId);
