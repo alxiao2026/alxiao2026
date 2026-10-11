@@ -462,6 +462,12 @@ export class TeamLotteryService {
           couponAmount = refundAmount;
           couponMinSpend = parseFloat(prize.coupon_min_spend || '0');
           refundStatus = 'redeemed';
+          // 队员免费入队未下单时，不存在返现金额，仅发放折扣券
+          if (!memberOrder?.id) {
+            refundAmount = 0;
+            couponAmount = 0;
+            return `${prize.discount_rate}折优惠券`;
+          }
           return `${refundAmount}元消费券`;
         })()
       : prize.prize_type === 'free_meal'
@@ -870,8 +876,9 @@ export class TeamLotteryService {
       throw new BadRequestException('队伍已满');
     }
 
-    // 校验成员订单（每个入队成员必须带一个同商家/同套餐的已支付订单，且未用于其他抽奖/组队）
-    let memberOrder: any = null;
+    // 队员加入队伍无需下单即可免费抽一次奖（order_id 允许为空）；
+    // 仅当显式传入 order_id 时才校验该订单的归属、状态与互斥
+    let memberOrderId: string | null = null;
     if (dto.order_id) {
       const { data: mo, error: moErr } = await this.client
         .from('orders')
@@ -883,44 +890,28 @@ export class TeamLotteryService {
       if ((mo as any).user_id !== dto.user_id) throw new BadRequestException('无权使用该订单');
       if (!['paid', 'used'].includes((mo as any).status)) throw new BadRequestException('订单支付成功后才能加入组队');
       if ((mo as any).package_id !== g.package_id) throw new BadRequestException('订单套餐与组队套餐不匹配');
-      memberOrder = mo;
-    } else {
-      // 未指定订单则自动找一个该套餐下的已支付未用订单（orders 表无 merchant_id 字段，通过 package_id 关联商家）
-      const { data: list, error: listErr } = await this.client
-        .from('orders')
-        .select('*')
-        .eq('user_id', dto.user_id)
-        .eq('package_id', g.package_id)
-        .in('status', ['paid', 'used'])
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (listErr) throw new Error(`查询可用订单失败: ${listErr.message}`);
-      memberOrder = (list || [])[0] || null;
-    }
-    // 排除已用于组队/普通抽奖的订单
-    if (memberOrder) {
+      // 订单互斥：已用于组队/普通抽奖则拒绝
       const { data: usedMember } = await this.client
         .from('team_lottery_members')
         .select('id')
         .eq('user_id', dto.user_id)
-        .eq('order_id', memberOrder.id)
+        .eq('order_id', dto.order_id)
         .limit(1)
         .maybeSingle();
       if (usedMember) throw new BadRequestException('该订单已用于组队抽奖');
       const { data: usedRecord } = await this.client
         .from('lottery_records')
         .select('id')
-        .eq('order_id', memberOrder.id)
+        .eq('order_id', dto.order_id)
         .limit(1)
         .maybeSingle();
       if (usedRecord) throw new BadRequestException('该订单已参与普通抽奖');
-    } else {
-      throw new BadRequestException('请先购买套餐后再加入队伍');
+      memberOrderId = dto.order_id;
     }
 
     const { data: member, error: memberError } = await this.client
       .from('team_lottery_members')
-      .insert({ group_id: actualGroupId, user_id: dto.user_id, order_id: memberOrder.id })
+      .insert({ group_id: actualGroupId, user_id: dto.user_id, order_id: memberOrderId })
       .select()
       .single();
     if (memberError) throw new Error(`加入队伍失败: ${memberError.message}`);
@@ -982,8 +973,6 @@ export class TeamLotteryService {
                       prize_type: grant.prize_type,
                       redemption_code: grant.redemption_code || null,
                       refund_amount: grant.refund_amount || null,
-                      refund_status: grant.refund_status || null,
-                      prize_image: leaderPrizeRow.image_url || null,
                       drew_at: this.now(),
                     })
                     .eq('group_id', actualGroupId)
@@ -1062,15 +1051,17 @@ export class TeamLotteryService {
       throw new BadRequestException('你已经抽过奖了');
     }
 
-    // 取该成员对应的订单
-    const memberOrderId = m.order_id;
-    const { data: memberOrder, error: orderErr } = await this.client
-      .from('orders')
-      .select('*')
-      .eq('id', memberOrderId)
-      .maybeSingle();
-    if (orderErr) throw new Error(`查询订单失败: ${orderErr.message}`);
-    if (!memberOrder) throw new BadRequestException('未找到对应订单');
+    // 队员可能未下单（免费入队抽奖），此时无订单可退款，仅发放奖品
+    let memberOrder: any = null;
+    if (m.order_id) {
+      const { data: mo, error: orderErr } = await this.client
+        .from('orders')
+        .select('*')
+        .eq('id', m.order_id)
+        .maybeSingle();
+      if (orderErr) throw new Error(`查询订单失败: ${orderErr.message}`);
+      memberOrder = mo || null;
+    }
 
     const config = await this.getConfigRow(g.merchant_id);
     if (!config) throw new BadRequestException('商家配置不存在');
@@ -1109,7 +1100,6 @@ export class TeamLotteryService {
         prize_type: result.prize_type,
         redemption_code: result.redemption_code || null,
         refund_amount: String(result.refund_amount || 0),
-        refund_status: result.refund_status,
         drew_at: this.now(),
       })
       .eq('id', m.id);

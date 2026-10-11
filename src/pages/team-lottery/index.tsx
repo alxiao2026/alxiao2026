@@ -875,9 +875,10 @@ export default function TeamLotteryPage() {
       {/* 规则 */}
       <View className="mt-6 px-2">
         <Text className="block text-xs text-white text-opacity-90 text-center leading-5 font-semibold">
-          1. 分享小程序链接给好友，好友点击授权登录即可加入队伍{'\n'}
-          2. 满 {teamStatus?.team_size || displayGroup?.members.length || 2} 人成团后团长直接获得团长奖，队员点击「立即开盲盒」抽盲盒{'\n'}
-          3. 队伍 {teamStatus?.duration_hours || 24} 小时内未满员将自动解散
+          1. 团长下单后即可发起组队，好友无需下单、免费入队抽一次奖{'\n'}
+          2. 分享邀请链接给好友，好友点击授权登录即可加入队伍{'\n'}
+          3. 满 {teamStatus?.team_size || displayGroup?.members.length || 2} 人成团后团长直接获得团长奖，队员点击「立即开盲盒」抽盲盒{'\n'}
+          4. 队伍 {teamStatus?.duration_hours || 24} 小时内未满员将自动解散
         </Text>
       </View>
 
