@@ -11,6 +11,7 @@ import * as crypto from 'crypto';
 import { NotificationService } from '../notification/notification.service';
 import { WechatPayService } from '../payment/wechat-pay.service';
 import { PaymentService } from '../payment/payment.service';
+import { CouponsService } from '../coupons/coupons.service';
 
 export interface UpdateTeamLotteryConfigDto {
   enabled?: boolean;
@@ -51,6 +52,7 @@ export class TeamLotteryService {
     private readonly notificationService: NotificationService,
     private readonly paymentService: PaymentService,
     private readonly wechatPay: WechatPayService,
+    private readonly couponsService: CouponsService,
   ) {}
 
   private now() {
@@ -443,7 +445,7 @@ export class TeamLotteryService {
    * - free_meal（霸王餐）：本单免单，生成核销码，自动原路退款，到店核销
    * - product（实物）：生成核销码，到店核销
    */
-  private async grantPrize(userId: string, prize: any, memberOrder: any) {
+  private async grantPrize(userId: string, prize: any, memberOrder: any, ctx?: { merchant_id: number; group_id: string }) {
     if (!prize) return null;
     const orderTotal = Math.round((parseFloat(memberOrder?.price || '0') * (Number(memberOrder?.quantity) || 1)) * 100) / 100;
     let redemptionCode = '';
@@ -462,17 +464,22 @@ export class TeamLotteryService {
           couponAmount = refundAmount;
           couponMinSpend = parseFloat(prize.coupon_min_spend || '0');
           refundStatus = 'redeemed';
-          // 队员免费入队未下单时，不存在返现金额，仅发放折扣券
+          // 队员免费入队未下单时，不存在返现金额，改为发放对应门店折扣券到个人中心
           if (!memberOrder?.id) {
             refundAmount = 0;
             couponAmount = 0;
-            return `${prize.discount_rate}折优惠券`;
+            return prize.discount_rate ? `${prize.discount_rate}折优惠券` : (prize.name || '折扣券');
           }
           return `${refundAmount}元消费券`;
         })()
       : prize.prize_type === 'free_meal'
         ? '霸王餐免单券'
         : prize.name;
+
+    // 队员免费入队抽中折扣券：发放对应门店折扣券到个人中心（无订单=无返现）
+    if (prize.prize_type === 'coupon' && !memberOrder?.id) {
+      await this.grantDiscountCoupon(userId, prize, ctx);
+    }
 
     if (prize.prize_type === 'free_meal') {
       redemptionCode = `BWC-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -513,6 +520,45 @@ export class TeamLotteryService {
     }
 
     return result;
+  }
+
+  /** 组队抽奖：队员免费入队抽到折扣券时，发放对应门店折扣券到个人中心（仅组队模块，不影响系统其他模块） */
+  private async grantDiscountCoupon(
+    userId: string,
+    prize: any,
+    ctx?: { merchant_id: number; group_id: string },
+  ) {
+    if (!ctx?.merchant_id) return;
+    try {
+      const rate = parseFloat(prize.discount_rate || '0');
+      const title = rate > 0 ? `${rate}折优惠券` : (prize.name || '折扣券');
+      const code = `DSC${Date.now()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const validityHours = Number(prize.validity_hours) > 0 ? Number(prize.validity_hours) : 720; // 默认30天
+      const expireAt = this.addHours(validityHours);
+      const { error } = await this.client
+        .from('discount_coupons')
+        .insert({
+          code,
+          user_id: userId,
+          merchant_id: ctx.merchant_id,
+          package_id: null,
+          title,
+          discount_rate: prize.discount_rate || '0',
+          discount_cap: String(parseFloat(prize.discount_cap || '0')),
+          min_spend: String(parseFloat(prize.coupon_min_spend || '0')),
+          status: 'unused',
+          source: 'team_lottery',
+          group_id: ctx.group_id || null,
+          expire_at: expireAt,
+        });
+      if (error) {
+        this.logger.warn(`组队折扣券发放失败 user=${userId}: ${error.message}`);
+      } else {
+        this.logger.log(`组队折扣券已发放 user=${userId} rate=${rate} code=${code}`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`组队折扣券发放异常 user=${userId}: ${e?.message}`);
+    }
   }
 
   private async autoRefund(orderId: string, refundAmountYuan: number, reason: string) {
@@ -961,7 +1007,7 @@ export class TeamLotteryService {
                 await new Promise((r) => setTimeout(r, 150 * (i + 1)));
               }
               if (stockOk) {
-                const grant = await this.grantPrize(g.leader_user_id, leaderPrizeRow as any, leaderOrder as any);
+                const grant = await this.grantPrize(g.leader_user_id, leaderPrizeRow as any, leaderOrder as any, { merchant_id: g.merchant_id, group_id: actualGroupId });
                 if (grant) {
                   // 写入团长成员记录
                   await this.client
@@ -1086,7 +1132,7 @@ export class TeamLotteryService {
       throw new BadRequestException('奖品已发完，请稍后再试');
     }
 
-    const result = await this.grantPrize(dto.user_id, prize, memberOrder);
+    const result = await this.grantPrize(dto.user_id, prize, memberOrder, { merchant_id: g.merchant_id, group_id: groupId });
     if (!result || !result.is_winner) {
       throw new BadRequestException('奖品发放失败');
     }

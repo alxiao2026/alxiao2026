@@ -18,7 +18,8 @@ export default defineAppConfig({
     'pages/distribution/index',
     'pages/team-lottery/index',
     'pages/agreement/index',
-    'pages/privacy/index'
+    'pages/privacy/index',
+    'pages/coupons/index'
   ],
   subPackages: [
     // ===== 分包：后台管理页 =====

@@ -21,6 +21,7 @@ import { CustomerServiceModule } from './modules/customer-service/customer-servi
 import { OrchardModule } from './modules/orchard/orchard.module';
 import { MerchantMarketingModule } from './modules/merchant-marketing/merchant-marketing.module';
 import { TeamLotteryModule } from './modules/team-lottery/team-lottery.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { TeamLotteryModule } from './modules/team-lottery/team-lottery.module';
     OrchardModule,
     MerchantMarketingModule,
     TeamLotteryModule,
+    CouponsModule,
     QiniuModule,
   ],
   controllers: [AppController],

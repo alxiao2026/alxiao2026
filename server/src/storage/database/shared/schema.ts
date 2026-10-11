@@ -131,8 +131,10 @@ export const payments = pgTable("payments", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	orchardCouponCode: varchar("orchard_coupon_code", { length: 32 }),
+	discountCouponCode: varchar("discount_coupon_code", { length: 32 }),
 }, (table) => [
 	index("payments_orchard_coupon_idx").using("btree", table.orchardCouponCode.asc().nullsLast().op("text_ops")),
+	index("payments_discount_coupon_idx").using("btree", table.discountCouponCode.asc().nullsLast().op("text_ops")),
 	unique("payments_prepay_id_key").on(table.prepayId),
 	unique("payments_transaction_id_key").on(table.transactionId),
 ]);
@@ -734,4 +736,29 @@ export const teamLotteryGroups = pgTable("team_lottery_groups", {
 		}).onDelete("cascade"),
 	unique("team_lottery_groups_leader_order_id_key").on(table.leaderOrderId),
 	unique("team_lottery_groups_invite_code_key").on(table.inviteCode),
+]);
+
+export const discountCoupons = pgTable("discount_coupons", {
+	id: varchar({ length: 36 }).default(sql`(gen_random_uuid())::text`).primaryKey().notNull(),
+	code: varchar({ length: 32 }).notNull(),
+	userId: varchar("user_id", { length: 128 }).notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	packageId: varchar("package_id", { length: 36 }),
+	title: varchar({ length: 128 }).notNull(),
+	discountRate: numeric("discount_rate", { precision: 4, scale: 1 }).default('0').notNull(),
+	discountCap: numeric("discount_cap", { precision: 10, scale: 2 }).default('0').notNull(),
+	minSpend: numeric("min_spend", { precision: 10, scale: 2 }).default('0').notNull(),
+	status: varchar({ length: 20 }).default('unused').notNull(),
+	source: varchar({ length: 20 }).default('team_lottery').notNull(),
+	groupId: varchar("group_id", { length: 36 }),
+	usedOrderId: varchar("used_order_id", { length: 36 }),
+	lockedAt: timestamp("locked_at", { withTimezone: true, mode: 'string' }),
+	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
+	expireAt: timestamp("expire_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("discount_coupons_code_idx").using("btree", table.code.asc().nullsLast().op("text_ops")),
+	index("discount_coupons_user_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	index("discount_coupons_merchant_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	unique("discount_coupons_code_key").on(table.code),
 ]);

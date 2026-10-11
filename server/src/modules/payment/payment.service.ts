@@ -10,6 +10,7 @@ import { NotificationService } from '../notification/notification.service';
 import { DistributionService } from '../distribution/distribution.service';
 import { WechatPayService } from './wechat-pay.service';
 import { OrchardService, type OrchardCoupon } from '../orchard/orchard.service';
+import { CouponsService, type DiscountCoupon } from '../coupons/coupons.service';
 
 export interface PaymentRecord {
   id: string;
@@ -25,6 +26,7 @@ export interface PaymentRecord {
   refund_amount: number | null;
   lottery_record_id: string | null;
   orchard_coupon_code: string | null;
+  discount_coupon_code: string | null;
   notify_count: number;
   paid_at: string | null;
   refunded_at: string | null;
@@ -44,13 +46,14 @@ export class PaymentService {
     private readonly wechatPay: WechatPayService,
     private readonly distributionService: DistributionService,
     private readonly orchardService: OrchardService,
+    private readonly couponsService: CouponsService,
   ) {}
 
   /**
    * 金额计算引擎（后端权威计算，前端只展示）
    * 实付 = max(原始金额 - 折扣券/霸王餐抵扣, 0.01)
    */
-  private async calculatePayAmount(order: any, orchardCoupon?: OrchardCoupon | null): Promise<{
+  private async calculatePayAmount(order: any, orchardCoupon?: OrchardCoupon | null, discountCoupon?: DiscountCoupon | null): Promise<{
     originalAmount: number;
     discountAmount: number;
     payAmount: number;
@@ -58,6 +61,9 @@ export class PaymentService {
     discountName: string | null;
     orchardDiscountAmount: number;
     orchardDiscountName: string | null;
+    discountCouponAmount: number;
+    discountCouponName: string | null;
+    discountCouponCode: string | null;
   }> {
     const originalAmount =
       parseFloat(order.original_amount || '0') ||
@@ -116,19 +122,36 @@ export class PaymentService {
       }
     }
 
+    // 组队折扣券：叠加在抽奖折扣与果园券之后的剩余金额上（门槛按订单原始金额校验）
+    let discountCouponAmount = 0;
+    let discountCouponName: string | null = null;
+    if (discountCoupon) {
+      const remain = Math.max(originalAmount - discountAmount - orchardDiscountAmount, 0);
+      discountCouponAmount = this.couponsService.calculateDiscount(discountCoupon, originalAmount);
+      discountCouponAmount = Math.min(
+        discountCouponAmount,
+        Math.max(remain - MIN_PAY_AMOUNT, 0),
+      );
+      discountCouponAmount = Math.round(discountCouponAmount * 100) / 100;
+      discountCouponName = discountCouponAmount > 0 ? (discountCoupon.title || '折扣券') : null;
+    }
+
     const payAmount = Math.max(
-      Math.round((originalAmount - discountAmount - orchardDiscountAmount) * 100) / 100,
+      Math.round((originalAmount - discountAmount - orchardDiscountAmount - discountCouponAmount) * 100) / 100,
       MIN_PAY_AMOUNT,
     );
 
     return {
       originalAmount: Math.round(originalAmount * 100) / 100,
-      discountAmount: Math.round((discountAmount + orchardDiscountAmount) * 100) / 100,
+      discountAmount: Math.round((discountAmount + orchardDiscountAmount + discountCouponAmount) * 100) / 100,
       payAmount,
       discountRecord,
       discountName,
       orchardDiscountAmount,
       orchardDiscountName,
+      discountCouponAmount,
+      discountCouponName,
+      discountCouponCode: discountCoupon?.code || null,
     };
   }
 
@@ -143,7 +166,7 @@ export class PaymentService {
   /**
    * 发起支付预下单（真实微信用户强制微信支付；Mock 通道仅供开发测试且需显式开启）
    */
-  async prepay(body: { order_id: string; user_id: string; orchard_coupon_code?: string }) {
+  async prepay(body: { order_id: string; user_id: string; orchard_coupon_code?: string; discount_coupon_code?: string }) {
     if (!body.order_id || !body.user_id) {
       throw new BadRequestException('缺少 order_id 或 user_id');
     }
@@ -187,7 +210,27 @@ export class PaymentService {
       );
     }
 
-    const calc = await this.calculatePayAmount(order, orchardCoupon);
+    // 组队折扣券：跨订单抵扣，需校验归属门店/状态/门槛（仅在组队抽奖下发，锁定门店使用）
+    let discountCoupon: DiscountCoupon | null = null;
+    const requestedDiscountCode = String(body.discount_coupon_code || '').trim();
+    if (requestedDiscountCode && order.package_id) {
+      const { data: pkgRow } = await this.client
+        .from('packages')
+        .select('merchant_id')
+        .eq('id', order.package_id)
+        .maybeSingle();
+      const merchantId = Number(pkgRow?.merchant_id || 0);
+      if (merchantId > 0) {
+        discountCoupon = await this.couponsService.getCouponForPrepay(
+          requestedDiscountCode,
+          body.user_id,
+          merchantId,
+          originalAmountForThreshold,
+        );
+      }
+    }
+
+    const calc = await this.calculatePayAmount(order, orchardCoupon, discountCoupon);
 
     // 幂等：复用本订单未完成的支付单；若金额因券状态变化而不同则更新金额
     const { data: existing } = await this.client
@@ -201,11 +244,13 @@ export class PaymentService {
     let payment = existing?.[0] as PaymentRecord | undefined;
     let amountChanged = false;
     const newCouponCode = orchardCoupon?.code || null;
+    const newDiscountCode = discountCoupon?.code || null;
     if (payment) {
       if (
         Number(payment.pay_amount) !== calc.payAmount ||
         Number(payment.discount_amount) !== calc.discountAmount ||
-        String(payment.orchard_coupon_code || '') !== String(newCouponCode || '')
+        String(payment.orchard_coupon_code || '') !== String(newCouponCode || '') ||
+        String(payment.discount_coupon_code || '') !== String(newDiscountCode || '')
       ) {
         const { data: updated, error } = await this.client
           .from('payments')
@@ -215,6 +260,7 @@ export class PaymentService {
             pay_amount: calc.payAmount,
             lottery_record_id: calc.discountRecord?.id || null,
             orchard_coupon_code: newCouponCode,
+            discount_coupon_code: newDiscountCode,
             updated_at: new Date().toISOString(),
           })
           .eq('id', payment.id)
@@ -241,6 +287,7 @@ export class PaymentService {
           pay_amount: calc.payAmount,
           lottery_record_id: calc.discountRecord?.id || null,
           orchard_coupon_code: newCouponCode,
+          discount_coupon_code: newDiscountCode,
         })
         .select()
         .single();
@@ -252,6 +299,13 @@ export class PaymentService {
 
     // 果园券锁定：换券/取消选券时先解锁旧券，再锁定新券（防止一券多单并发占用）
     await this.orchardService.syncCouponLock(newCouponCode, order.id, body.user_id);
+
+    // 折扣券锁定：prepay 成功即锁定，换券/取消时同步解锁旧券
+    if (newDiscountCode) {
+      await this.couponsService.syncCouponLock(newDiscountCode, order.id, body.user_id);
+    } else {
+      await this.couponsService.unlockCouponsByOrder(order.id);
+    }
 
     // ===== 微信通道：支付配置齐全且用户已微信授权（有 open_id）时走真实下单 =====
     if (await this.wechatPay.isEnabled()) {
@@ -313,6 +367,9 @@ export class PaymentService {
             orchard_discount_amount: calc.orchardDiscountAmount,
             orchard_discount_name: calc.orchardDiscountName,
             orchard_coupon_code: newCouponCode,
+            discount_coupon_code: newDiscountCode,
+            discount_coupon_amount: calc.discountCouponAmount,
+            discount_coupon_name: calc.discountCouponName,
             pay_expire_at: order.pay_expire_at,
           };
         }
@@ -346,6 +403,9 @@ export class PaymentService {
       orchard_discount_amount: calc.orchardDiscountAmount,
       orchard_discount_name: calc.orchardDiscountName,
       orchard_coupon_code: newCouponCode,
+      discount_coupon_code: newDiscountCode,
+      discount_coupon_amount: calc.discountCouponAmount,
+      discount_coupon_name: calc.discountCouponName,
       pay_expire_at: order.pay_expire_at,
     };
   }
@@ -493,6 +553,15 @@ export class PaymentService {
         await this.orchardService.redeemCoupon(payment.orchard_coupon_code, payment.order_id);
       } catch (e) {
         this.logger.error(`果园券核销失败: ${(e as Error)?.message}`);
+      }
+    }
+
+    // 3.55 组队折扣券：locked → used（支付成功正式核销）
+    if (payment.discount_coupon_code) {
+      try {
+        await this.couponsService.redeemCoupon(payment.discount_coupon_code, payment.order_id);
+      } catch (e) {
+        this.logger.error(`折扣券核销失败: ${(e as Error)?.message}`);
       }
     }
 

@@ -6,7 +6,7 @@ import { preloadSubscribeTemplates, requestSubscribeByScene } from '@/utils/subs
 import { formatPrice } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift, Sprout, Users } from 'lucide-react-taro'
+import { Clock, CircleCheck, Info, ChevronRight, Store, Phone, MapPin, RefreshCw, Wallet, Sparkles, Gift, Sprout, Users, Ticket } from 'lucide-react-taro'
 import { orchardApi, type OrchardCoupon } from '@/lib/orchard-api'
 
 interface Order {
@@ -66,6 +66,10 @@ interface PrepayInfo {
   orchard_discount_amount?: number | null
   orchard_discount_name?: string | null
   orchard_coupon_code?: string | null
+  /** 组队折扣券抵扣（叠加在果园券之后） */
+  discount_coupon_amount?: number | null
+  discount_coupon_name?: string | null
+  discount_coupon_code?: string | null
   /** 微信通道：小程序调起支付参数（后端二次签名） */
   wechat_pay?: {
     timeStamp: string
@@ -74,6 +78,27 @@ interface PrepayInfo {
     signType: 'RSA'
     paySign: string
   }
+}
+
+interface DiscountCoupon {
+  id: string
+  code: string
+  user_id: string
+  merchant_id: number
+  package_id: string | null
+  title: string
+  discount_rate: string
+  discount_cap: string
+  min_spend: string
+  status: string
+  source: string
+  group_id: string | null
+  used_order_id: string | null
+  locked_at: string | null
+  used_at: string | null
+  expire_at: string | null
+  created_at: string
+  merchant_name?: string | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bgGradient: string }> = {
@@ -116,6 +141,9 @@ export default function OrderDetail() {
   const [orchardCoupons, setOrchardCoupons] = useState<OrchardCoupon[]>([])
   const [selectedOrchardCoupon, setSelectedOrchardCoupon] = useState<string | null>(null)
   const orchardCouponRef = useRef<string | null>(null)
+  const [discountCoupons, setDiscountCoupons] = useState<DiscountCoupon[]>([])
+  const [selectedDiscountCoupon, setSelectedDiscountCoupon] = useState<string | null>(null)
+  const discountCouponRef = useRef<string | null>(null)
   const [countdownText, setCountdownText] = useState('')
   const [showPaySuccess, setShowPaySuccess] = useState(false)
   const [communityConfig, setCommunityConfig] = useState<CommunityConfig | null>(null)
@@ -163,6 +191,7 @@ export default function OrderDetail() {
       loadPrepay(true)
       startCountdown(order.pay_expire_at)
       loadOrchardCoupons()
+      loadDiscountCoupons()
     }
   }, [order?.status, order?.pay_expire_at])
 
@@ -179,6 +208,56 @@ export default function OrderDetail() {
     } catch (e) {
       console.warn('[OrderDetail] 果园券加载失败:', e)
     }
+  }
+
+  /** 组队折扣券：按门店过滤，仅取未使用/锁定的券 */
+  const loadDiscountCoupons = async () => {
+    try {
+      const userId = Taro.getStorageSync('user_id')
+      if (!userId || !order) return
+      const res = await Network.request({ url: `/api/coupons/${userId}` })
+      console.log('[OrderDetail] 折扣券列表响应:', res.data)
+      const data = (res.data?.data || res.data) as DiscountCoupon[]
+      const merchantId = Number(packageInfo?.merchant_id || order?.merchant_id || 0)
+      if (Array.isArray(data)) {
+        const usable = data.filter(
+          (c) => (c.status === 'unused' || c.status === 'locked') && (!merchantId || Number(c.merchant_id) === merchantId),
+        )
+        setDiscountCoupons(usable)
+      }
+    } catch (e) {
+      console.warn('[OrderDetail] 折扣券加载失败:', e)
+    }
+  }
+
+  /** 选择/取消组队折扣券：重新预下单（后端换锁），金额明细实时刷新 */
+  const handlePickDiscountCoupon = () => {
+    const items = ['不使用折扣券', ...discountCoupons.map((c) => {
+      const cap = parseFloat(c.discount_cap || '0')
+      const min = parseFloat(c.min_spend || '0')
+      const rate = parseFloat(c.discount_rate || '0')
+      const extra = rate > 0 ? (cap > 0 ? `${rate}折 · 最高减${cap}` : `${rate}折`) : '折扣券'
+      return `${c.title}（${min > 0 ? `满${min}可用` : '无门槛'} · ${extra}）`
+    })]
+    const currentIdx = selectedDiscountCoupon
+      ? discountCoupons.findIndex((c) => c.code === selectedDiscountCoupon) + 1
+      : 0
+    Taro.showActionSheet({
+      itemList: items,
+      success: async (r) => {
+        if (r.tapIndex === currentIdx) return
+        const code = r.tapIndex === 0 ? null : discountCoupons[r.tapIndex - 1]?.code || null
+        discountCouponRef.current = code
+        setSelectedDiscountCoupon(code)
+        const data = await loadPrepay(true)
+        if (!data && code) {
+          Taro.showToast({ title: '该折扣券暂不可用', icon: 'none' })
+          discountCouponRef.current = null
+          setSelectedDiscountCoupon(null)
+          loadPrepay(true)
+        }
+      },
+    })
   }
 
   /** 选择/取消果园券：重新预下单（后端换锁），金额明细实时刷新 */
@@ -415,11 +494,12 @@ export default function OrderDetail() {
       const userId = Taro.getStorageSync('user_id')
       if (!userId) return null
       const couponCode = orchardCouponCode === undefined ? orchardCouponRef.current : orchardCouponCode
-      console.log('[OrderDetail] 请求预下单, order_id:', id, '果园券:', couponCode)
+      const discountCode = discountCouponRef.current
+      console.log('[OrderDetail] 请求预下单, order_id:', id, '果园券:', couponCode, '折扣券:', discountCode)
       const res = await Network.request({
         url: '/api/payment/prepay',
         method: 'POST',
-        data: { order_id: id, user_id: userId, orchard_coupon_code: couponCode || undefined },
+        data: { order_id: id, user_id: userId, orchard_coupon_code: couponCode || undefined, discount_coupon_code: discountCode || undefined },
       })
       console.log('[OrderDetail] 预下单响应:', res.data)
       const data = res.data?.data || res.data
@@ -429,6 +509,10 @@ export default function OrderDetail() {
         if (orchardCouponCode === undefined && data.orchard_coupon_code && !orchardCouponRef.current) {
           orchardCouponRef.current = data.orchard_coupon_code
           setSelectedOrchardCoupon(data.orchard_coupon_code)
+        }
+        if (data.discount_coupon_code && !discountCouponRef.current) {
+          discountCouponRef.current = data.discount_coupon_code
+          setSelectedDiscountCoupon(data.discount_coupon_code)
         }
         return data as PrepayInfo
       }
@@ -642,6 +726,7 @@ export default function OrderDetail() {
     : toAmount(order.original_amount) || toAmount(order.price) * (order.quantity || 1)
   const discountAmount = prepayInfo ? prepayInfo.discount_amount : toAmount(order.discount_amount)
   const orchardDiscountAmount = prepayInfo?.orchard_discount_amount || 0
+  const discountCouponAmount = prepayInfo?.discount_coupon_amount || 0
   const payAmount = prepayInfo
     ? prepayInfo.pay_amount
     : Math.max(originalAmount - discountAmount, 0.01)
@@ -746,6 +831,45 @@ export default function OrderDetail() {
                     </Text>
                     <Text className="block text-sm font-semibold text-[#16A34A]">
                       -¥{orchardDiscountAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                </>
+              )}
+              {/* 组队折扣券：抽奖获得的折扣券可在本单直接抵扣 */}
+              {discountCoupons.length > 0 && (
+                <>
+                  <Separator />
+                  <View className="flex flex-row justify-between items-center py-2" onClick={handlePickDiscountCoupon}>
+                    <View className="flex flex-row items-center gap-1">
+                      <Ticket size={14} color="#FF4757" />
+                      <Text className="block text-sm text-gray-400">组队折扣券</Text>
+                    </View>
+                    <View className="flex flex-row items-center gap-1">
+                      {selectedDiscountCoupon ? (
+                        <Text className="block text-sm font-semibold text-[#FF4757]">
+                          {(() => {
+                            const c = discountCoupons.find((x) => x.code === selectedDiscountCoupon)
+                            const rate = c ? parseFloat(c.discount_rate || '0') : 0
+                            return rate > 0 ? `${rate}折` : '已选 1 张'
+                          })()}
+                        </Text>
+                      ) : (
+                        <Text className="block text-sm text-[#FF4757]">{discountCoupons.length} 张可用</Text>
+                      )}
+                      <ChevronRight size={14} color="#9CA3AF" />
+                    </View>
+                  </View>
+                </>
+              )}
+              {discountCouponAmount > 0 && (
+                <>
+                  <Separator />
+                  <View className="flex flex-row justify-between items-center py-2">
+                    <Text className="block text-sm text-gray-400">
+                      {prepayInfo?.discount_coupon_name || '组队折扣券抵扣'}
+                    </Text>
+                    <Text className="block text-sm font-semibold text-[#FF4757]">
+                      -¥{discountCouponAmount.toFixed(2)}
                     </Text>
                   </View>
                 </>
