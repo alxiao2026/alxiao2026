@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage, useDidShow, useLoad } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Crown, Gift, Users, Share2, Copy, Trophy, Sparkles, CircleAlert, ChevronRight } from 'lucide-react-taro'
+import { Crown, Gift, Users, Share2, Trophy, Sparkles, CircleAlert } from 'lucide-react-taro'
 import './index.css'
 
 interface PrizeItem {
@@ -98,7 +97,6 @@ export default function TeamLotteryPage() {
   const [loading, setLoading] = useState(false)
   const [orders, setOrders] = useState<any[]>([])
   const [group, setGroup] = useState<Group | null>(null)
-  const [codeInput, setCodeInput] = useState('')
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [toast, setToast] = useState('')
@@ -112,23 +110,33 @@ export default function TeamLotteryPage() {
   // 未登录点邀请链接/开团/入队的拦截提示
   const [loginTip, setLoginTip] = useState('')
 
-  // 初始化：useDidShow 时统一读取 router.params，兼容 iOS 场景参数延迟到达
-  useDidShow(() => {
-    const params = router.params || ({} as Record<string, unknown>)
-    // 同时支持 merchant_id/merchantId、package_id/packageId、order_id/orderId 两种命名风格
-    const mid = Number((params as any).merchant_id || (params as any).merchantId || 0)
-    const pid = String((params as any).package_id || (params as any).packageId || '')
-    const code = String((params as any).invite_code || (params as any).inviteCode || '').toUpperCase()
-    const oid = String((params as any).order_id || (params as any).orderId || '')
+  // 同时支持 merchant_id/merchantId、package_id/packageId、order_id/orderId 两种命名风格
+  const applyParams = (raw: Record<string, any>) => {
+    const params = raw || {}
+    const mid = Number(params.merchant_id || params.merchantId || 0)
+    const pid = String(params.package_id || params.packageId || '')
+    const code = String(params.invite_code || params.inviteCode || '').toUpperCase()
+    const oid = String(params.order_id || params.orderId || '')
     const uid = Taro.getStorageSync('user_id') || ''
-    setPackageId(pid)
-    setInviteCode(code)
-    setOrderId(oid)
+    if (pid) setPackageId((prev) => prev || pid)
+    // 分享进入时 invite_code 只在有值时更新，避免 onShow 空参数把它覆盖掉
+    if (code) setInviteCode((prev) => prev || code)
+    if (oid) setOrderId((prev) => prev || oid)
     setMerchantId((prev) => {
       if (mid && !prev) return mid
       return prev
     })
     setUserId(uid)
+  }
+
+  // onLoad 一定带 query（含分享卡片进入的 invite_code），冷启动/分享进入都从这里读参数
+  useLoad((options) => {
+    applyParams(options || {})
+  })
+
+  // 从登录页/盲盒页返回后重新读取并刷新（兼容 iOS 参数延迟到达）
+  useDidShow(() => {
+    applyParams(router.params || ({} as Record<string, unknown>))
   })
 
   // 邀请预览：只要 inviteCode 有值就独立触发（不依赖 userId/merchantId 等）
@@ -169,11 +177,6 @@ export default function TeamLotteryPage() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inviteCode])
-
-  // codeInput 跟随 inviteCode 同步
-  useEffect(() => {
-    if (inviteCode) setCodeInput(inviteCode)
   }, [inviteCode])
 
   // 店内组队加载：有 merchantId + userId 时触发（非邀请预览场景）
@@ -399,61 +402,6 @@ export default function TeamLotteryPage() {
     }
   }
 
-  const joinByCode = async (code: string, uid: string, silent = false) => {
-    const trimCode = String(code || '').trim().toUpperCase()
-    if (!trimCode) {
-      if (!silent) showToast('请输入邀请码')
-      return
-    }
-    setJoining(true)
-    try {
-      const res = await Network.request({
-        url: `/api/team-lottery/groups/${trimCode}/join`,
-        method: 'POST',
-        data: { user_id: uid },
-      })
-      console.log('[TeamLottery] join', res.data)
-      if (res.data?.code === 200 && res.data?.data) {
-        setGroup(res.data.data)
-        if (!silent) showToast('加入队伍成功')
-      } else {
-        const msg = res.data?.msg || (res.data as any)?.message || '加入失败，请稍后重试'
-        if (!silent) {
-          Taro.showModal({
-            title: '提示',
-            content: msg,
-            showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
-            confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
-            cancelText: '取消',
-            success: (r) => {
-              if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
-                Taro.switchTab({ url: '/pages/index/index' })
-              }
-            },
-          })
-        }
-      }
-    } catch (e: any) {
-      const msg = e?.message || '加入失败，请稍后重试'
-      if (!silent) {
-        Taro.showModal({
-          title: '提示',
-          content: msg,
-          showCancel: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'),
-          confirmText: msg.includes('订单') || msg.includes('购买') || msg.includes('套餐') ? '去购买' : '知道了',
-          cancelText: '取消',
-          success: (r) => {
-            if (r.confirm && (msg.includes('订单') || msg.includes('购买') || msg.includes('套餐'))) {
-              Taro.switchTab({ url: '/pages/index/index' })
-            }
-          },
-        })
-      }
-    } finally {
-      setJoining(false)
-    }
-  }
-
   // 满员后队员点"立即开盲盒"：跳转到膨胀盲盒页，复用盲盒动画
   const onStartDraw = () => {
     if (!requireLogin('登录后才能抽奖')) return
@@ -483,45 +431,6 @@ export default function TeamLotteryPage() {
     Taro.navigateTo({
       url: `/pages/lottery/index?team_group_id=${group.id}`,
     })
-  }
-
-  const copyCode = () => {
-    if (!group?.invite_code) return
-    Taro.setClipboardData({
-      data: group.invite_code,
-      success: () => {
-        Taro.setStorageSync('last_copied_invite_code', group.invite_code)
-        Taro.setStorageSync('last_copied_invite_code_at', Date.now())
-        showToast(`已复制邀请码 ${group.invite_code}`)
-      },
-    })
-  }
-
-  const pasteCode = async () => {
-    try {
-      const lastCopied = String(Taro.getStorageSync('last_copied_invite_code') || '').trim().toUpperCase()
-      const lastCopiedAt = Number(Taro.getStorageSync('last_copied_invite_code_at') || 0)
-      if (lastCopied && Date.now() - lastCopiedAt < 30_000) {
-        setCodeInput(lastCopied.slice(0, 8))
-        showToast(`已粘贴邀请码 ${lastCopied}`)
-        return
-      }
-      const { data } = await Taro.getClipboardData()
-      const code = String(data || '').trim().toUpperCase()
-      if (code) {
-        setCodeInput(code.slice(0, 8))
-        showToast(`已粘贴邀请码 ${code.slice(0, 8)}`)
-        return
-      }
-      if (lastCopied) {
-        setCodeInput(lastCopied.slice(0, 8))
-        showToast(`已粘贴邀请码 ${lastCopied}`)
-        return
-      }
-      showToast('剪贴板为空，请先复制邀请码')
-    } catch {
-      showToast('读取剪贴板失败，请手动输入')
-    }
   }
 
   // 当前登录用户在队伍中的成员
@@ -567,8 +476,8 @@ export default function TeamLotteryPage() {
     )
   }
 
-  // 邀请码无效/队伍已结束：给出提示但仍可手动输入邀请码
-  const showInviteInvalid = inviteCode && previewError && !previewGroup && !group
+  // 邀请链接无效/队伍已结束
+  const showInviteInvalid = inviteCode && !!previewError && !previewGroup && !group
 
   return (
     <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] via-[#ff8a29] to-[#ffe8c8] p-4 pb-24">
@@ -601,7 +510,7 @@ export default function TeamLotteryPage() {
         </View>
         <Text className="clay-title block text-3xl mb-2">{isPreviewMode ? '好友组队邀请' : '组队抽盲盒'}</Text>
         {showInviteInvalid && (
-          <Text className="block text-white text-sm font-semibold">邀请链接无效，可使用下方邀请码入队</Text>
+          <Text className="block text-white text-sm font-semibold">邀请链接无效或队伍已结束</Text>
         )}
         {!showInviteInvalid && (
           <Text className="block text-white text-opacity-95 text-sm font-semibold">
@@ -759,23 +668,6 @@ export default function TeamLotteryPage() {
               </View>
             )}
 
-            {/* 邀请码（仅我加入的队伍 + 组队中显示，标注为备用方式） */}
-            {!isPreviewMode && g.status === 'active' && !teamFailed && (
-              <View className="bg-orange-50 rounded-2xl p-4 mb-4">
-                <Text className="block text-xs text-orange-500 mb-1 text-center font-semibold">
-                  备用方式：邀请码
-                </Text>
-                <View className="flex flex-row items-center justify-center gap-3">
-                  <Text className="block text-2xl font-extrabold text-[#c8410e] tracking-widest">
-                    {g.invite_code}
-                  </Text>
-                  <View onClick={copyCode} className="p-2 bg-white rounded-full shadow-sm">
-                    <Copy size={16} color="#c8410e" />
-                  </View>
-                </View>
-              </View>
-            )}
-
             {/* 团长奖品提示 */}
             {g.leader_prize_name && !teamFailed && !previewFailed && (
               <View className="flex items-center gap-2 bg-amber-50 rounded-xl p-3 mb-4">
@@ -902,43 +794,6 @@ export default function TeamLotteryPage() {
               )}
             </CardContent>
           </Card>
-
-          <Card className="clay-card border-0">
-            <CardContent className="p-5">
-              <View className="flex items-center gap-3 mb-3">
-                <ChevronRight size={22} color="#c8410e" />
-                <Text className="block text-base font-extrabold text-[#5b2a0c]">输入邀请码加入（备用）</Text>
-              </View>
-              <Text className="block text-sm text-[#7a4a22] mb-3">好友也可以把邀请码发给你，输入即可加入队伍</Text>
-              <View className="bg-orange-50 rounded-2xl px-4 py-3 mb-4 flex flex-row items-center">
-                <View style={{ flex: 1 }}>
-                  <Input
-                    className="w-full bg-transparent text-center text-lg font-extrabold text-[#5b2a0c]"
-                    placeholder="请输入邀请码"
-                    value={codeInput}
-                    onInput={(e) => setCodeInput(String(e.detail.value || '').toUpperCase())}
-                    maxlength={8}
-                  />
-                </View>
-                <View
-                  onClick={pasteCode}
-                  className="ml-2 px-3 py-2 bg-white rounded-full border border-[#ffd6a0] shrink-0"
-                >
-                  <Text className="block text-xs text-[#c8410e] font-bold">粘贴</Text>
-                </View>
-              </View>
-              <Button
-                onClick={() => {
-                  if (!requireLogin('登录后才能加入队伍')) return
-                  joinByCode(codeInput, userId)
-                }}
-                disabled={joining || !codeInput || !userId}
-                className="w-full border-2 border-[#FF6B1A] text-[#c8410e] rounded-full h-12 text-base font-extrabold bg-white"
-              >
-                {joining ? '加入中...' : userId ? '加入队伍' : '登录后加入'}
-              </Button>
-            </CardContent>
-          </Card>
         </>
       ) : null}
 
@@ -1032,10 +887,9 @@ export default function TeamLotteryPage() {
       {/* 规则 */}
       <View className="mt-6 px-2">
         <Text className="block text-xs text-white text-opacity-90 text-center leading-5 font-semibold">
-          1. 分享小程序链接给好友，好友点击授权登录即可自动入队{'\n'}
-          2. 也可复制邀请码给好友，在下方「输入邀请码加入」备用入队{'\n'}
-          3. 满 {teamStatus?.team_size || displayGroup?.members.length || 2} 人成团后团长直接获得团长奖，队员点击「立即开盲盒」抽盲盒{'\n'}
-          4. 队伍 {teamStatus?.duration_hours || 24} 小时内未满员将自动解散
+          1. 分享小程序链接给好友，好友点击授权登录即可加入队伍{'\n'}
+          2. 满 {teamStatus?.team_size || displayGroup?.members.length || 2} 人成团后团长直接获得团长奖，队员点击「立即开盲盒」抽盲盒{'\n'}
+          3. 队伍 {teamStatus?.duration_hours || 24} 小时内未满员将自动解散
         </Text>
       </View>
 
