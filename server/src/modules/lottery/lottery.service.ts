@@ -1251,7 +1251,7 @@ export class LotteryService {
     // 合并组队抽奖记录（含实时队伍状态）
     const { data: teamRows } = await this.client
       .from('team_lottery_members')
-      .select('*, team_lottery_groups!inner(id, invite_code, team_size, current_count, status, leader_user_id, leader_refunded, package_id)')
+      .select('*, team_lottery_groups!inner(id, invite_code, team_size, current_count, status, leader_user_id, leader_refunded, package_id, merchant_id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     let teamMapped: any[] = [];
@@ -1305,6 +1305,8 @@ export class LotteryService {
           lottery_type: 'team',
           team_group_id: m.group_id,
           team_invite_code: g?.status === 'active' ? (g?.invite_code || '') : '',
+          merchant_id: g?.merchant_id ?? null,
+          package_id: g?.package_id ?? null,
           team_role: isLeader ? 'leader' : 'member',
           team_size: g?.team_size ?? null,
           team_current_count: g?.current_count ?? null,

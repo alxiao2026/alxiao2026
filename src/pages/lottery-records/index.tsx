@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useState, useRef } from 'react'
+import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation, Copy, Users } from 'lucide-react-taro'
+import { Trophy, Package, Clock, Gift, QrCode, MapPin, Navigation, Users, Share2 } from 'lucide-react-taro'
 import { formatDateTime, formatShortDateTime } from '@/lib/utils'
 
 interface LotteryRecord {
@@ -41,6 +41,9 @@ interface LotteryRecord {
   lottery_type?: 'normal' | 'team'
   team_role?: 'leader' | 'member'
   team_invite_code?: string
+  team_group_id?: string | null
+  merchant_id?: number | null
+  package_id?: string | null
   team_size?: number | null
   team_current_count?: number | null
   team_status?: string
@@ -187,21 +190,22 @@ export default function LotteryRecordsPage() {
   const isRedeemed = (record: LotteryRecord) =>
     record.refund_status === 'redeemed' || record.refund_status === 'completed'
 
-  // 一键复制组队邀请码
-  const copyInviteCode = (code: string) => {
-    if (!code) return
-    Taro.setClipboardData({
-      data: code,
-      success: () => {
-        // 记录本端最近复制的邀请码，粘贴时可核对/兜底
-        Taro.setStorageSync('last_copied_invite_code', code)
-        Taro.setStorageSync('last_copied_invite_code_at', Date.now())
-        Taro.showToast({ title: `已复制 ${code}`, icon: 'none' })
-      },
-    })
-  }
+  // 一键分享组队邀请：记录当前点击的组队记录，分享回调读取
+  const shareRecordRef = useRef<LotteryRecord | null>(null)
+  useShareAppMessage(() => {
+    const r = shareRecordRef.current
+    if (r?.lottery_type === 'team' && r.team_invite_code) {
+      const query = `merchant_id=${r.merchant_id ?? ''}&package_id=${r.package_id ?? ''}&invite_code=${r.team_invite_code}`
+      return {
+        title: '一起来组队抽盲盒，赢霸王餐！',
+        path: `/pages/team-lottery/index?${query}`,
+      }
+    }
+    return { title: '团团盲盒 · 中奖记录', path: '/pages/lottery-records/index' }
+  })
 
   // 点击"参与抽奖"：先查订单抽奖状态（互斥兜底），未参与时弹出选择弹窗
+  // 选择普通抽奖：跳盲盒抽奖页
   const handleParticipate = async (order: Order) => {
     if (checking) return
     setChecking(true)
@@ -356,14 +360,20 @@ export default function LotteryRecordsPage() {
                                 <Badge className={record.team_role === 'leader' ? 'bg-amber-100 text-amber-700 text-xs' : 'bg-sky-100 text-sky-700 text-xs'}>
                                   <Text>{record.team_role === 'leader' ? '我是团长' : '我是团员'}</Text>
                                 </Badge>
-                                {record.team_invite_code ? (
-                                  <View
-                                    className="flex items-center"
-                                    onClick={() => copyInviteCode(record.team_invite_code as string)}
+                                {record.team_status === 'active' && record.team_invite_code ? (
+                                  <Button
+                                    size="sm"
+                                    openType="share"
+                                    className="h-7 px-3 rounded-full bg-[#FF4757] text-white text-xs"
+                                    onClick={() => {
+                                      shareRecordRef.current = record
+                                    }}
                                   >
-                                    <Text className="text-xs text-gray-500">邀请码 {record.team_invite_code}</Text>
-                                    <Copy size={12} color="#9ca3af" className="ml-1" />
-                                  </View>
+                                    <View className="flex items-center gap-1">
+                                      <Share2 size={12} color="#ffffff" />
+                                      <Text className="text-xs text-white">邀请好友组队</Text>
+                                    </View>
+                                  </Button>
                                 ) : null}
                                 {record.team_status_text ? (
                                   <Text className="text-xs text-orange-500 font-medium">{record.team_status_text}</Text>

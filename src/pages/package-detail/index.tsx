@@ -3,7 +3,7 @@ import Taro, { useRouter, useDidShow, useShareAppMessage, useShareTimeline } fro
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import { TuantuanLoader, TuantuanEmpty } from '@/components/tuantuan-loader'
-import { formatPrice, calcDistanceMeters, formatDistanceText, cn } from '@/lib/utils'
+import { formatPrice, calcDistanceMeters, formatDistanceText } from '@/lib/utils'
 import { buildPackageShare, buildBrandShare, trackShare } from '@/lib/share'
 import {
   Phone,
@@ -105,7 +105,6 @@ export default function PackageDetail() {
   const [loading, setLoading] = useState(true)
   const [distanceText, setDistanceText] = useState('')
   const [locationDenied, setLocationDenied] = useState(false)
-  const [teamLotteryEnabled, setTeamLotteryEnabled] = useState(false)
   const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
 
   // 每次页面显示时重新加载，确保门店等后台数据变更后展示最新内容
@@ -178,51 +177,10 @@ export default function PackageDetail() {
           return Math.random() - 0.5
         })
         setPrizes(sortedPrizes)
-        loadTeamLotteryStatus(merchantId)
       }
     } catch (err) {
       console.error('加载商家失败:', err)
     }
-  }
-
-  const loadTeamLotteryStatus = async (merchantId: string) => {
-    try {
-      const res = await Network.request({
-        url: `/api/team-lottery/merchants/${merchantId}/status`,
-      })
-      console.log('组队抽奖状态:', res.data)
-      const data = res.data?.data
-      if (data) {
-        setTeamLotteryEnabled(!!data.enabled)
-      }
-    } catch (err) {
-      console.error('加载组队抽奖状态失败:', err)
-    }
-  }
-
-  const handleTeamLottery = () => {
-    const isLoggedIn = Taro.getStorageSync('is_logged_in')
-    if (!isLoggedIn) {
-      Taro.showModal({
-        title: '提示',
-        content: '请先登录后再参与组队抽奖',
-        confirmText: '去登录',
-        cancelText: '取消',
-        success: (res) => {
-          if (res.confirm) {
-            Taro.navigateTo({ url: '/pages/login/index' })
-          }
-        },
-      })
-      return
-    }
-    if (!pkg?.merchant_id) {
-      Taro.showToast({ title: '缺少商家信息', icon: 'none' })
-      return
-    }
-    Taro.navigateTo({
-      url: `/pages/team-lottery/index?merchant_id=${pkg.merchant_id}&package_id=${pkg.id}`,
-    })
   }
 
   // 商家有坐标时，获取消费者定位并计算与门店的距离
@@ -991,25 +949,6 @@ export default function PackageDetail() {
           )}
         </View>
         <View className="flex flex-row items-center gap-2">
-          {/* 组队抽奖入口 */}
-          <View
-            onClick={handleTeamLottery}
-            className={cn(
-              'px-4 py-3 rounded-full border',
-              teamLotteryEnabled
-                ? 'border-[#FF4757] bg-[#FF4757]'
-                : 'border-gray-300 bg-gray-100'
-            )}
-          >
-            <Text
-              className={cn(
-                'block text-sm font-semibold',
-                teamLotteryEnabled ? 'text-white' : 'text-gray-400'
-              )}
-            >
-              {teamLotteryEnabled ? '组队抽奖' : '组队抽奖'}
-            </Text>
-          </View>
           <View
             onClick={handleBuy}
             className={`px-8 py-3 rounded-full ${buying ? 'bg-[#ffaab3]' : 'bg-[#FF4757]'}`}
