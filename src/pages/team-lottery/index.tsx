@@ -525,16 +525,19 @@ export default function TeamLotteryPage() {
   }
 
   // 当前登录用户在队伍中的成员
-  const me = useMemo(() => group?.members.find((m) => m.user_id === userId) || null, [group, userId])
-  const teamFailed = !!group?.leader_refunded || group?.status === 'expired'
+  // 邀请预览优先：只要通过邀请链接看到"自己尚未加入"的队伍，就展示加入队伍卡片
+  // （即使本人在其他队伍有活跃组队，也不能用旧队伍卡片顶掉好友的邀请）
+  const isMemberOfPreview = !!previewGroup && !!userId && !!previewGroup.members?.some((m) => m.user_id === userId)
+  const isPreviewMode = !!previewGroup && !isMemberOfPreview
+  // 当前展示的队伍：邀请预览（未加入）优先，其次已加入的队伍
+  const displayGroup = isPreviewMode ? previewGroup : group
+  const me = useMemo(() => displayGroup?.members.find((m) => m.user_id === userId) || null, [displayGroup, userId])
+  const teamFailed = !!displayGroup && !isPreviewMode && (!!displayGroup.leader_refunded || displayGroup.status === 'expired')
   // 满员后团长不参与抽奖（团长奖已自动发放），只有未抽过奖的队员可以抽
-  const canDraw = group && !teamFailed && group.status === 'full' && me && !me.drew_at && !group.is_leader
+  const canDraw = !!displayGroup && !isPreviewMode && !teamFailed && displayGroup.status === 'full' && !!me && !me.drew_at && !displayGroup.is_leader
   const alreadyDrewPrize = me?.drew_at ? me : null
   // 团长已自动获奖
-  const leaderPrizeReady = group?.is_leader && group.status === 'full'
-  // 当前展示的队伍：已加入的队伍优先，否则展示邀请预览
-  const displayGroup = group || previewGroup
-  const isPreviewMode = !group && !!previewGroup
+  const leaderPrizeReady = !!displayGroup && !isPreviewMode && displayGroup.is_leader && displayGroup.status === 'full'
 
   if (loading) {
     return (
@@ -857,8 +860,9 @@ export default function TeamLotteryPage() {
         )
       })()}
 
-      {/* 开团/加入入口：无队伍 或 队伍已开奖/失败 且 不在邀请预览中 */}
-      {!isPreviewMode && (!group || teamFailed || group.status === 'drawed') && (
+      {/* 开团/加入入口：无队伍 或 队伍已开奖/失败 且 不在邀请预览中；邀请的队伍已结束也允许自己开团 */}
+      {(!isPreviewMode && (!group || teamFailed || group.status === 'drawed')) ||
+      (isPreviewMode && !!previewGroup && previewGroup.status !== 'active') ? (
         <>
           <Card className="clay-card border-0 mb-4">
             <CardContent className="p-5">
@@ -936,7 +940,7 @@ export default function TeamLotteryPage() {
             </CardContent>
           </Card>
         </>
-      )}
+      ) : null}
 
       {/* 奖品展示 */}
       {teamStatus && (teamStatus?.leader_prize || (teamStatus?.member_prizes && teamStatus?.member_prizes.length > 0)) && (
