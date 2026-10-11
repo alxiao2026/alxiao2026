@@ -179,14 +179,15 @@ export default function TeamLotteryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inviteCode])
 
-  // 店内组队加载：有 merchantId + userId 时触发（非邀请预览场景）
+  // 店内组队加载：有 merchantId + userId 时触发（仅店内开团/无邀请码场景）
   useEffect(() => {
     const currentInviteCode = inviteCode
     const uid = userId
     const mid = merchantId
     if (!mid || !uid) return
-    // 邀请链接且已经在队伍/预览中，loadAll 不重复覆盖
-    if (currentInviteCode && group) return
+    // 邀请链接场景：队伍预览完全由 inviteCode 的 useEffect 负责，
+    // 绝不能跑 loadAll 用 my-groups 把自己（或旧）队伍覆盖成"团长页面"，导致好友看不到"加入队伍"按钮
+    if (currentInviteCode) return
     loadAll(uid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchantId, userId])
@@ -582,7 +583,7 @@ export default function TeamLotteryPage() {
 
             {/* 成员：头像 + 昵称（团长带皇冠角标） */}
             <View className="flex flex-row items-start justify-center gap-3 mb-5 flex-wrap">
-              {Array.from({ length: Math.max(teamStatus?.team_size || 0, g.members.length, 2) }).map((_, idx) => {
+              {Array.from({ length: Math.max(g.team_size || 0, g.members.length, 2) }).map((_, idx) => {
                 const member = g.members[idx]
                 const displayName = member?.nick_name ? (member.nick_name.length > 5 ? member.nick_name.slice(0, 5) + '…' : member.nick_name) : (member ? '微信用户' : '等待加入')
                 const initial = displayName.slice(0, 1)
@@ -621,7 +622,7 @@ export default function TeamLotteryPage() {
             {isPreviewMode && !previewFailed && (
               <View className="bg-blue-50 rounded-2xl p-4 mb-4">
                 <Text className="block text-sm text-blue-700 text-center font-semibold mb-3">
-                  队伍还差 {Math.max(0, (teamStatus?.team_size || g.members.length + 1) - g.members.length)} 人成团，加入即可一起抽盲盒
+                  队伍还差 {Math.max(0, (g.team_size || g.members.length + 1) - g.members.length)} 人成团，加入即可一起抽盲盒
                 </Text>
                 {!userId ? (
                   <Button
@@ -630,26 +631,13 @@ export default function TeamLotteryPage() {
                   >
                     登录账号并加入
                   </Button>
-                ) : orders.length > 0 ? (
+                ) : (
                   <Button
                     onClick={handleJoinInvite}
                     disabled={joining}
                     className="w-full clay-btn h-12 text-base font-extrabold text-white rounded-full"
                   >
                     {joining ? '加入中...' : '🎁 加入队伍'}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      if (packageId) {
-                        Taro.navigateTo({ url: `/pages/package-detail/index?id=${packageId}` })
-                      } else {
-                        Taro.showToast({ title: '请先购买对应套餐', icon: 'none' })
-                      }
-                    }}
-                    className="w-full bg-[#FF6B1A] text-white rounded-full h-12 text-base font-extrabold"
-                  >
-                    购买套餐后加入
                   </Button>
                 )}
               </View>
