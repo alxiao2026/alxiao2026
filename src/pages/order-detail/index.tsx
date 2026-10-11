@@ -275,7 +275,7 @@ export default function OrderDetail() {
       })
       return
     }
-    Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}` })
+    Taro.navigateTo({ url: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${packageId}&order_id=${order?.id || id || ''}` })
   }
 
   /** 打开普通抽奖：已参与组队抽奖的订单不允许再普通抽奖 */

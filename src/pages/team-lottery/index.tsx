@@ -115,10 +115,11 @@ export default function TeamLotteryPage() {
   // 初始化：useDidShow 时统一读取 router.params，兼容 iOS 场景参数延迟到达
   useDidShow(() => {
     const params = router.params || ({} as Record<string, unknown>)
-    const mid = Number((params as any).merchant_id || 0)
-    const pid = String((params as any).package_id || '')
-    const code = String((params as any).invite_code || '').toUpperCase()
-    const oid = String((params as any).order_id || '')
+    // 同时支持 merchant_id/merchantId、package_id/packageId、order_id/orderId 两种命名风格
+    const mid = Number((params as any).merchant_id || (params as any).merchantId || 0)
+    const pid = String((params as any).package_id || (params as any).packageId || '')
+    const code = String((params as any).invite_code || (params as any).inviteCode || '').toUpperCase()
+    const oid = String((params as any).order_id || (params as any).orderId || '')
     const uid = Taro.getStorageSync('user_id') || ''
     setPackageId(pid)
     setInviteCode(code)
@@ -217,7 +218,7 @@ export default function TeamLotteryPage() {
     // 登录后需要回到本页并保留参数（含 invite_code）
     const pages = Taro.getCurrentPages()
     const current = pages[pages.length - 1]
-    const fullPath = `/${current?.route || 'pages/team-lottery/index'}?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}${inviteCode ? `&invite_code=${inviteCode}` : ''}`
+    const fullPath = `/${current?.route || 'pages/team-lottery/index'}?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}${orderId ? `&order_id=${orderId}` : ''}${inviteCode ? `&invite_code=${inviteCode}` : ''}`
     Taro.setStorageSync('login_redirect', fullPath)
     Taro.navigateTo({ url: '/pages/login/index' })
   }
@@ -231,6 +232,7 @@ export default function TeamLotteryPage() {
     setLoading(true)
     try {
       // 若带了 order_id 则优先按订单查询对应的队伍（每笔订单对应一个队伍）
+      let foundByOrder = false
       if (orderId) {
         try {
           const ogRes = await Network.request({ url: `/api/team-lottery/by-order/${orderId}?user_id=${uid}` })
@@ -239,6 +241,7 @@ export default function TeamLotteryPage() {
             setGroup(ogRes.data.data)
             setPreviewGroup(null)
             setPreviewError('')
+            foundByOrder = true
           }
         } catch (e) {
           console.warn('[TeamLottery] by-order error', e)
@@ -256,8 +259,9 @@ export default function TeamLotteryPage() {
       setTeamStatus(statusRes.data?.data || null)
       setOrders(ordersRes.data?.data || [])
 
-      // 若没有从 order 定位到队伍，则用 my-groups 中该商家的最新活跃队伍兜底
-      if (!group) {
+      // 指定订单场景下：若该订单尚未入队/开团，则不兜底跳到旧队伍，让用户在新订单上开团
+      // 只有在没有指定订单（店内入口/邀请码入队）时才用旧队伍兜底
+      if (!group && !foundByOrder && !orderId) {
         const groups: Group[] = myGroupsRes.data?.data || []
         const candidates = groups.filter(
           (g) => g.merchant_id === merchantId && g.status !== 'expired' && (!packageId || g.package_id === packageId),
@@ -357,11 +361,18 @@ export default function TeamLotteryPage() {
 
   const createGroup = async () => {
     if (!requireLogin('登录后才能开团哦')) return
-    if (!orders.length) {
+    // 优先用 URL 传入的 order_id 对应的订单（新订单场景），否则兜底用 orders 列表第一个可用订单
+    let order = orders.find((o) => o.id === orderId)
+    if (!order && orders.length) {
+      // 有指定订单但 orders 列表没匹配到（可能还没加载完）时，用该 orderId 构造临时对象
+      order = orderId
+        ? ({ id: orderId, package_id: packageId, merchant_id: merchantId, total_amount: 0, status: 'paid' } as any)
+        : orders[0]
+    }
+    if (!order) {
       showToast('暂无可用订单，购买套餐后即可开团')
       return
     }
-    const order = orders[0]
     setCreating(true)
     try {
       const res = await Network.request({
@@ -369,7 +380,7 @@ export default function TeamLotteryPage() {
         method: 'POST',
         data: {
           merchant_id: merchantId,
-          package_id: order.package_id,
+          package_id: order.package_id || packageId,
           order_id: order.id,
           user_id: userId,
         },

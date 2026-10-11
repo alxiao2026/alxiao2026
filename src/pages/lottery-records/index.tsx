@@ -235,7 +235,7 @@ export default function LotteryRecordsPage() {
     if (!choiceOrder) return
     setChoiceOpen(false)
     Taro.navigateTo({
-      url: `/pages/team-lottery/index?merchantId=${choiceOrder.merchant_id || ''}&packageId=${choiceOrder.package_id || ''}`,
+      url: `/pages/team-lottery/index?merchant_id=${choiceOrder.merchant_id || ''}&package_id=${choiceOrder.package_id || ''}&order_id=${choiceOrder.id || ''}`,
     })
   }
 
