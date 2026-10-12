@@ -212,7 +212,7 @@ const UserCenterPage = () => {
     },
     {
       icon: <Trophy size={20} color="#6B7280" />,
-      label: '中奖记录',
+      label: '抽奖记录',
       desc: '历史中奖 & 未参与订单',
       onClick: goToLotteryRecords
     },

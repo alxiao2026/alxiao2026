@@ -99,11 +99,11 @@ export default function LotteryRecordsPage() {
       const res = await Network.request({
         url: `/api/lottery/user/${uid}`,
       })
-      console.log('中奖记录:', res.data)
+      console.log('抽奖记录:', res.data)
       const envelope = res.data as any
       setRecords(Array.isArray(envelope?.data) ? envelope.data : [])
     } catch (err) {
-      console.error('加载中奖记录失败:', err)
+      console.error('加载抽奖记录失败:', err)
     } finally {
       setLoading(false)
     }
@@ -191,7 +191,7 @@ export default function LotteryRecordsPage() {
     record.refund_status === 'redeemed' || record.refund_status === 'completed'
 
   useShareAppMessage(() => {
-    return { title: '团团盲盒 · 中奖记录', path: '/pages/lottery-records/index' }
+    return { title: '团团盲盒 · 抽奖记录', path: '/pages/lottery-records/index' }
   })
 
   // 点击"参与抽奖"：先查订单抽奖状态（互斥兜底），未参与时弹出选择弹窗
@@ -301,14 +301,14 @@ export default function LotteryRecordsPage() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="w-full bg-gray-100 rounded-xl p-1">
             <TabsTrigger value="records" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Text className="block text-sm">中奖记录 ({records.length})</Text>
+              <Text className="block text-sm">抽奖记录 ({records.length})</Text>
             </TabsTrigger>
             <TabsTrigger value="unparticipated" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Text className="block text-sm">未参与 ({unparticipated.length})</Text>
             </TabsTrigger>
           </TabsList>
 
-          {/* 中奖记录 */}
+          {/* 抽奖记录 */}
           <TabsContent value="records" className="mt-4">
             {loading ? (
               <View className="flex items-center justify-center py-12">
@@ -317,8 +317,8 @@ export default function LotteryRecordsPage() {
             ) : records.length === 0 ? (
               <View className="flex flex-col items-center justify-center py-16">
                 <Trophy size={48} color="#d1d5db" />
-                <Text className="block text-gray-400 text-sm mt-4">暂无中奖记录</Text>
-                <Text className="block text-gray-300 text-xs mt-2">参与抽奖后中奖记录将显示在这里</Text>
+                <Text className="block text-gray-400 text-sm mt-4">暂无抽奖记录</Text>
+                <Text className="block text-gray-300 text-xs mt-2">参与抽奖后抽奖记录将显示在这里</Text>
               </View>
             ) : (
               <View className="space-y-3 pb-4">

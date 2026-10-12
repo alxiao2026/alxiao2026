@@ -454,11 +454,11 @@ export default function TeamLotteryPage() {
       return
     }
     if (me.drew_at || me.prize_id) {
-      showToast('你已完成抽奖，可在中奖记录查看')
+      showToast('你已完成抽奖，可在抽奖记录查看')
       return
     }
     if (group.is_leader) {
-      showToast('团长奖励已自动发放，可在中奖记录查看')
+      showToast('团长奖励已自动发放，可在抽奖记录查看')
       return
     }
     if (group.status !== 'full') {
@@ -809,7 +809,7 @@ export default function TeamLotteryPage() {
                         {renderPrizeContent(me)}
                       </>
                     ) : (
-                      <Text className="block text-xs text-amber-700 mt-1">奖品已自动到账，请到「中奖记录」查看</Text>
+                      <Text className="block text-xs text-amber-700 mt-1">奖品已自动到账，请到「抽奖记录」查看</Text>
                     )}
                   </View>
                 ) : alreadyDrewPrize ? (

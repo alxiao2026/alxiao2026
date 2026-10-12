@@ -967,7 +967,7 @@ export default function Lottery() {
                 {renderPrizeExtra()}
                 <View className="win-popup-qr-actions">
                   <Button className="win-popup-qr-btn border-none" onClick={goRecords}>
-                    <Text className="win-popup-qr-btn-text">查看中奖记录</Text>
+                    <Text className="win-popup-qr-btn-text">查看抽奖记录</Text>
                   </Button>
                   <Text className="block win-popup-qr-back" onClick={() => setShowQrView(false)}>
                     返回结果
