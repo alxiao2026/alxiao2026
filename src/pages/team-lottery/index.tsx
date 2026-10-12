@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Taro, { useRouter, useShareAppMessage, useDidShow, useLoad } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
@@ -153,10 +153,12 @@ export default function TeamLotteryPage() {
       setPreviewError('')
       setPreviewGroup(null)
       try {
-        const res = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}` })
-        console.log('[TeamLottery] invite preview', inviteCode, res.data)
-        if (cancelled) return
+        const uid = Taro.getStorageSync('user_id') || ''
+        const res = await Network.request({ url: `/api/team-lottery/groups/by-code/${inviteCode}${uid ? `?user_id=${encodeURIComponent(uid)}` : ''}` })
         const preview = res.data?.data as Group | null
+        const memberIds = (preview?.members || []).map((m) => m.user_id)
+        console.log('[TeamLottery] invite preview inviteCode=', inviteCode, 'uid=', uid, 'memberIds=', JSON.stringify(memberIds), 'alreadyIn=', uid ? memberIds.includes(uid) : false)
+        if (cancelled) return
         if (!preview) {
           setPreviewError(res.data?.msg || '邀请码无效')
         } else {
@@ -165,7 +167,6 @@ export default function TeamLotteryPage() {
             setMerchantId(preview.merchant_id)
           }
           // 如果当前用户已经在队伍里，直接展示队伍
-          const uid = Taro.getStorageSync('user_id') || ''
           if (uid && preview.members?.some((m) => m.user_id === uid)) {
             setGroup(preview)
             setPreviewGroup(null)
@@ -197,17 +198,30 @@ export default function TeamLotteryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchantId, userId])
 
+  // 分享数据用 ref 保存并在每次渲染时同步，避免 useShareAppMessage 闭包捕获到过期的
+  // group/inviteCode（Taro 分享回调闭包陷阱），导致分享链接丢失 invite_code，
+  // 好友打开后无法进入"加入队伍"预览页
+  const shareDataRef = useRef<{ inviteCode: string; packageId: string; merchantId: number }>({
+    inviteCode: '',
+    packageId: '',
+    merchantId: 0,
+  })
+  shareDataRef.current = {
+    inviteCode: inviteCode || group?.invite_code || previewGroup?.invite_code || '',
+    packageId: group?.package_id || previewGroup?.package_id || packageId,
+    merchantId: merchantId || group?.merchant_id || previewGroup?.merchant_id || 0,
+  }
+
   useShareAppMessage(() => {
-    if (!group) {
-      return {
-        title: teamStatus?.share_title || '快来组队抽盲盒，人人有奖！',
-        path: `/pages/team-lottery/index?merchant_id=${merchantId}${packageId ? `&package_id=${packageId}` : ''}`,
-        imageUrl: teamStatus?.share_image_url || undefined,
-      }
-    }
+    const share = shareDataRef.current
+    const qs = [`merchant_id=${share.merchantId}`]
+    if (share.packageId) qs.push(`package_id=${share.packageId}`)
+    if (share.inviteCode) qs.push(`invite_code=${share.inviteCode}`)
+    const path = `/pages/team-lottery/index?${qs.join('&')}`
+    console.log('[TeamLottery] onShareAppMessage build path =', path, JSON.stringify(share))
     return {
       title: teamStatus?.share_title || '快来组队抽盲盒，满员即开奖！',
-      path: `/pages/team-lottery/index?merchant_id=${merchantId}&package_id=${group.package_id}&invite_code=${group.invite_code}`,
+      path,
       imageUrl: teamStatus?.share_image_url || undefined,
     }
   })
@@ -397,6 +411,8 @@ export default function TeamLotteryPage() {
       console.log('[TeamLottery] create', res.data)
       if (res.data?.data) {
         setGroup(res.data.data)
+        // 同步 inviteCode state，确保分享链接一定能带上邀请码（兜底）
+        if (res.data.data.invite_code) setInviteCode(res.data.data.invite_code)
         showToast('组队成功，快去邀请好友吧')
       } else {
         showToast(res.data?.msg || '创建失败')

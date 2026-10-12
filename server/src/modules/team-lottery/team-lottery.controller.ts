@@ -101,6 +101,7 @@ export class TeamLotteryController {
     @Query('user_id') userId?: string,
   ) {
     const data = await this.teamLotteryService.getGroupByInviteCode(code, userId);
+    console.log(`[team-lottery] by-code invite_code=${code} user_id=${userId || '(none)'} members=${((data?.members as any[]) || []).map((m) => m.user_id).join(',')}`);
     return { code: 200, msg: 'success', data };
   }
 
@@ -142,6 +143,7 @@ export class TeamLotteryController {
   ) {
     const mid = merchantId ? Number(merchantId) : undefined
     const data = await this.teamLotteryService.listMyGroups(userId, mid);
+    console.log(`[team-lottery] my-groups user_id=${userId} merchant_id=${merchantId || '(any)'} count=${(data as any[])?.length ?? 0}`);
     return { code: 200, msg: 'success', data };
   }
 
