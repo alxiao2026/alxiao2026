@@ -136,7 +136,13 @@ export default function TeamLotteryPage() {
 
   // onLoad 一定带 query（含分享卡片进入的 invite_code），冷启动/分享进入都从这里读参数
   useLoad((options) => {
-    applyParams(options || {})
+    // 微信分享卡片冷启动：useLoad 的 options 与 getEnterOptionsSync().query 可能不一致，合并兜底，确保 invite_code 必被解析
+    let enterQuery: Record<string, any> = {}
+    try {
+      const enter = (Taro as any).getEnterOptionsSync?.()
+      enterQuery = enter?.query || {}
+    } catch (e) {}
+    applyParams({ ...enterQuery, ...(options || {}) })
   })
 
   // 从登录页/盲盒页返回后重新读取并刷新（兼容 iOS 参数延迟到达）
@@ -211,14 +217,24 @@ export default function TeamLotteryPage() {
     packageId: group?.package_id || previewGroup?.package_id || packageId,
     merchantId: merchantId || group?.merchant_id || previewGroup?.merchant_id || 0,
   }
+  // 持久化最新 invite_code 到 storage：微信端分享时若遇 group 异步加载的时序问题，
+  // 分享回调可从 storage 兜底，确保分享链接必带邀请码（好友才能进入"加入队伍"预览）
+  if (shareDataRef.current.inviteCode) {
+    try { Taro.setStorageSync('team_share_invite_code', shareDataRef.current.inviteCode) } catch (e) {}
+  }
 
   useShareAppMessage(() => {
     const share = shareDataRef.current
+    // ref 优先；若分享瞬间 group 尚未加载导致 inviteCode 为空，从 storage 兜底最近一次邀请码
+    let invite = share.inviteCode
+    if (!invite) {
+      try { invite = Taro.getStorageSync('team_share_invite_code') || '' } catch (e) { invite = '' }
+    }
     const qs = [`merchant_id=${share.merchantId}`]
     if (share.packageId) qs.push(`package_id=${share.packageId}`)
-    if (share.inviteCode) qs.push(`invite_code=${share.inviteCode}`)
+    if (invite) qs.push(`invite_code=${invite}`)
     const path = `/pages/team-lottery/index?${qs.join('&')}`
-    console.log('[TeamLottery] onShareAppMessage build path =', path, JSON.stringify(share))
+    console.log('[TeamLottery] onShareAppMessage build path =', path, JSON.stringify(share), 'invite=', invite)
     return {
       title: teamStatus?.share_title || '快来组队抽盲盒，满员即开奖！',
       path,
