@@ -949,7 +949,7 @@ export class LotteryService {
     if (!r) {
       const { data: member, error: memberError } = await this.client
         .from('team_lottery_members')
-        .select('id, redemption_code, prize_name, prize_id, is_winner, drew_at, created_at')
+        .select('id, redemption_code, prize_name, prize_id, is_winner, refund_status, drew_at, created_at')
         .eq('id', recordId)
         .maybeSingle();
       if (memberError) throw new Error(`查询记录失败: ${memberError.message}`);
@@ -962,6 +962,7 @@ export class LotteryService {
 
     if (!r.is_winner) throw new BadRequestException('未中奖，无法生成核销码');
     if (!r.redemption_code) throw new BadRequestException('该奖品无核销码（仅商品类奖品支持核销）');
+    if (r.refund_status === 'voided') throw new BadRequestException('该奖品已作废，无法查看核销码');
 
     // 生成 QR code PNG buffer
     const qrBuffer = await QRCode.toBuffer(r.redemption_code, {

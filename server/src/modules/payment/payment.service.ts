@@ -780,6 +780,13 @@ export class PaymentService {
 
     // 组队抽奖联动：团长订单全额退款 → 队伍自动结束并打退款标记（不再开奖、无法再进人）
     if (fullyRefunded) {
+      // 先查出该团长订单对应的所有队伍，用于后续作废队员已抽中的奖品
+      const { data: leaderGroups } = await this.client
+        .from('team_lottery_groups')
+        .select('id')
+        .eq('leader_order_id', order.id);
+      const groupIds = (leaderGroups || []).map((g: any) => g.id);
+
       const { error: teamErr } = await this.client
         .from('team_lottery_groups')
         .update({ status: 'expired', leader_refunded: true, updated_at: now })
@@ -787,6 +794,19 @@ export class PaymentService {
         .eq('leader_refunded', false);
       if (teamErr) {
         console.error(`[refundOrder] 组队抽奖联动失败 order=${order.id}:`, teamErr.message);
+      }
+
+      // 团长退款 → 整队已抽中的奖品作废（霸王餐/商品核销码不可再用）
+      if (groupIds.length > 0) {
+        const { error: voidErr } = await this.client
+          .from('team_lottery_members')
+          .update({ refund_status: 'voided' })
+          .in('group_id', groupIds)
+          .eq('is_winner', true)
+          .is('refund_status', null);
+        if (voidErr) {
+          console.error(`[refundOrder] 作废组队奖品失败 order=${order.id}:`, voidErr.message);
+        }
       }
     }
 

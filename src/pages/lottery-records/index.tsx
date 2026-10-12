@@ -124,8 +124,8 @@ export default function LotteryRecordsPage() {
 
   // 打开核销码弹窗并加载二维码
   const handleViewQRCode = async (record: LotteryRecord) => {
-    if (record.refund_status === 'voided') {
-      Taro.showToast({ title: '关联订单已退款，该奖品已作废', icon: 'none' })
+    if (record.refund_status === 'voided' || record.leader_refunded) {
+      Taro.showToast({ title: '团长已退款，该奖品已作废', icon: 'none' })
       return
     }
     setCurrentRecord(record)
@@ -243,6 +243,11 @@ export default function LotteryRecordsPage() {
   // 组队状态判断
   const isTeamFailed = (record: LotteryRecord) =>
     record.lottery_type === 'team' && (record.leader_refunded || record.team_status === 'expired')
+  // 团长退款导致已中奖奖品作废（区别于"未中奖/未开奖"的组队失败）
+  const isVoidedByLeader = (record: LotteryRecord) =>
+    record.lottery_type === 'team' &&
+    !!record.prize_id &&
+    (record.leader_refunded || record.refund_status === 'voided')
   // 组队未开奖（组队中/已成团待开奖）：显示"未开奖"而非"未中奖"
   const isTeamPendingDraw = (record: LotteryRecord) =>
     record.lottery_type === 'team' && (record.team_status === 'active' || record.team_status === 'full')
@@ -251,6 +256,9 @@ export default function LotteryRecordsPage() {
     record.lottery_type === 'team' && (record.team_status === 'drawed' || !!record.prize_id)
 
   const getRecordBadge = (record: LotteryRecord) => {
+    if (isVoidedByLeader(record)) {
+      return { label: '团长退款不可用', className: 'bg-red-100 text-red-600' }
+    }
     if (isTeamFailed(record)) {
       return { label: '组队失败', className: 'bg-gray-200 text-gray-600' }
     }
@@ -323,7 +331,7 @@ export default function LotteryRecordsPage() {
                           <View className="flex-1 min-w-0">
                             <View className="flex items-center gap-2 mb-2 overflow-hidden">
                               <Text className="text-base font-semibold text-gray-900 truncate">
-                                {isTeamFailed(record)
+                                {isTeamFailed(record) && !isVoidedByLeader(record)
                                   ? '组队失败'
                                   : isTeamPendingDraw(record)
                                   ? '未开奖'
@@ -373,8 +381,12 @@ export default function LotteryRecordsPage() {
                             )}
                             {/* 组队失败提示 */}
                             {record.lottery_type === 'team' && isTeamFailed(record) && (
-                              <Text className="block text-xs text-gray-500 mb-1">
-                                {record.leader_refunded ? '团长已退款，队伍自动解散' : '超时未成团，队伍已解散'}
+                              <Text className={`block text-xs mb-1 ${isVoidedByLeader(record) ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                                {isVoidedByLeader(record)
+                                  ? '团长已退款，本队奖品已作废，不可核销'
+                                  : record.leader_refunded
+                                    ? '团长已退款，队伍自动解散'
+                                    : '超时未成团，队伍已解散'}
                               </Text>
                             )}
                             {record.prize_type === 'coupon' && record.discount_rate ? (
@@ -399,8 +411,14 @@ export default function LotteryRecordsPage() {
                                 返现金额：¥{record.refund_amount}{record.prize_type === 'coupon' ? '（已原路退回支付账户）' : ''}
                               </Text>
                             )}
-                            {/* 兑换码与有效期 */}
-                            {record.redemption_code && (
+                            {/* 团长退款：奖品作废提示 */}
+                            {isVoidedByLeader(record) && (
+                              <View className="mt-1">
+                                <Text className="block text-sm text-red-500 font-medium">团长退款不可用</Text>
+                              </View>
+                            )}
+                            {/* 兑换码与有效期（已作废奖品不展示） */}
+                            {record.redemption_code && !isVoidedByLeader(record) && (
                               <View className="mt-1">
                                 <Text className="block text-sm text-[#FF4757] font-mono">兑换码：{record.redemption_code}</Text>
                                 {(record.expiry_hours ?? 0) > 0 && (

@@ -1259,11 +1259,27 @@ export class OrderService {
 
     // 组队抽奖联动：团长订单退款 → 队伍自动结束并打退款标记（不再开奖、无法再进人）
     try {
+      const { data: leaderGroups } = await this.client
+        .from('team_lottery_groups')
+        .select('id')
+        .eq('leader_order_id', order.id);
+      const groupIds = (leaderGroups || []).map((g: any) => g.id);
+
       await this.client
         .from('team_lottery_groups')
         .update({ status: 'expired', leader_refunded: true, updated_at: new Date().toISOString() })
         .eq('leader_order_id', order.id)
         .eq('leader_refunded', false);
+
+      // 团长退款 → 整队已抽中的奖品作废（霸王餐/商品核销码不可再用）
+      if (groupIds.length > 0) {
+        await this.client
+          .from('team_lottery_members')
+          .update({ refund_status: 'voided' })
+          .in('group_id', groupIds)
+          .eq('is_winner', true)
+          .is('refund_status', null);
+      }
     } catch (e) {
       console.error(`[autoRefundOrder] 组队抽奖联动失败 order=${order.id}:`, e);
     }
