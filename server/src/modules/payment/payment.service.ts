@@ -58,7 +58,7 @@ export class PaymentService {
 
   /**
    * 金额计算引擎（后端权威计算，前端只展示）
-   * 实付 = max(原始金额 - 折扣券/霸王餐抵扣, 0.01)
+   * 实付 = max(原始金额 - 优惠券/霸王餐抵扣, 0.01)
    */
   private async calculatePayAmount(order: any, orchardCoupon?: OrchardCoupon | null, discountCoupon?: DiscountCoupon | null): Promise<{
     originalAmount: number;
@@ -76,7 +76,7 @@ export class PaymentService {
       parseFloat(order.original_amount || '0') ||
       parseFloat(order.price || '0') * (order.quantity || 1);
 
-    // 查询本订单中奖待抵扣的折扣券/霸王餐（抽奖所得，本单即时抵扣）
+    // 查询本订单中奖待抵扣的优惠券/霸王餐（抽奖所得，本单即时抵扣）
     const { data: discountRecords, error: discountErr } = await this.client
       .from('lottery_records')
       .select('id, refund_amount, prizes:prize_id(prize_type, name)')
@@ -102,13 +102,13 @@ export class PaymentService {
         );
         discountName = prizeName || '霸王餐免单';
       } else if (prizeType === 'coupon') {
-        // 折扣券：抵扣中奖时算出的优惠金额
+        // 优惠券：抵扣中奖时算出的优惠金额
         discountAmount = Math.min(
           parseFloat(discountRecord.refund_amount || '0') || 0,
           Math.max(originalAmount - MIN_PAY_AMOUNT, 0),
         );
         discountAmount = Math.round(discountAmount * 100) / 100;
-        discountName = prizeName || '折扣券';
+        discountName = prizeName || '优惠券';
       }
     }
 
@@ -129,7 +129,7 @@ export class PaymentService {
       }
     }
 
-    // 组队折扣券：叠加在抽奖折扣与果园券之后的剩余金额上（门槛按订单原始金额校验）
+    // 组队优惠券：叠加在抽奖折扣与果园券之后的剩余金额上（门槛按订单原始金额校验）
     let discountCouponAmount = 0;
     let discountCouponName: string | null = null;
     if (discountCoupon) {
@@ -140,7 +140,7 @@ export class PaymentService {
         Math.max(remain - MIN_PAY_AMOUNT, 0),
       );
       discountCouponAmount = Math.round(discountCouponAmount * 100) / 100;
-      discountCouponName = discountCouponAmount > 0 ? (discountCoupon.title || '折扣券') : null;
+      discountCouponName = discountCouponAmount > 0 ? (discountCoupon.title || '优惠券') : null;
     }
 
     const payAmount = Math.max(
@@ -217,7 +217,7 @@ export class PaymentService {
       );
     }
 
-    // 组队折扣券：跨订单抵扣，需校验归属门店/状态/门槛（仅在组队抽奖下发，锁定门店使用）
+    // 组队优惠券：跨订单抵扣，需校验归属门店/状态/门槛（仅在组队抽奖下发，锁定门店使用）
     let discountCoupon: DiscountCoupon | null = null;
     const requestedDiscountCode = String(body.discount_coupon_code || '').trim();
     if (requestedDiscountCode && order.package_id) {
@@ -307,7 +307,7 @@ export class PaymentService {
     // 果园券锁定：换券/取消选券时先解锁旧券，再锁定新券（防止一券多单并发占用）
     await this.orchardService.syncCouponLock(newCouponCode, order.id, body.user_id);
 
-    // 折扣券锁定：prepay 成功即锁定，换券/取消时同步解锁旧券
+    // 优惠券锁定：prepay 成功即锁定，换券/取消时同步解锁旧券
     if (newDiscountCode) {
       await this.couponsService.syncCouponLock(newDiscountCode, order.id, body.user_id);
     } else {
@@ -559,7 +559,7 @@ export class PaymentService {
       throw new InternalServerErrorException(`更新订单失败: ${orderErr.message}`);
     }
 
-    // 3. 本单抵扣的折扣券/霸王餐：locked → redeemed（抵扣生效，直接核销）
+    // 3. 本单抵扣的优惠券/霸王餐：locked → redeemed（抵扣生效，直接核销）
     if (payment.lottery_record_id) {
       await this.client
         .from('lottery_records')
@@ -577,12 +577,12 @@ export class PaymentService {
       }
     }
 
-    // 3.55 组队折扣券：locked → used（支付成功正式核销）
+    // 3.55 组队优惠券：locked → used（支付成功正式核销）
     if (payment.discount_coupon_code) {
       try {
         await this.couponsService.redeemCoupon(payment.discount_coupon_code, payment.order_id);
       } catch (e) {
-        this.logger.error(`折扣券核销失败: ${(e as Error)?.message}`);
+        this.logger.error(`优惠券核销失败: ${(e as Error)?.message}`);
       }
     }
 
@@ -680,7 +680,7 @@ export class PaymentService {
       parseFloat(order.original_amount || '0') ||
       parseFloat(order.price || '0') * quantity;
 
-    // 已返还金额：中奖的折扣券/霸王餐已即时返还原账户，全退须扣除
+    // 已返还金额：中奖的优惠券/霸王餐已即时返还原账户，全退须扣除
     // 以 redeemed_at 判定"返还已发生"（券后续被作废 voided 时返还也已到账，仍须扣除）
     const { data: rebateRecords } = await this.client
       .from('lottery_records')
@@ -819,7 +819,7 @@ export class PaymentService {
     }
 
     // 3. 营销权益联动：一旦发生退款，本单折扣权益作废，不可恢复
-    // 注意：lottery_records 无 prize_type 列，locked/redeemed 状态仅存在于折扣券/霸王餐
+    // 注意：lottery_records 无 prize_type 列，locked/redeemed 状态仅存在于优惠券/霸王餐
     await this.client
       .from('lottery_records')
       .update({ refund_status: 'voided' })

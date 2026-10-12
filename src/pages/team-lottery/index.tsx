@@ -490,14 +490,14 @@ export default function TeamLotteryPage() {
   // 团长已自动获奖
   const leaderPrizeReady = !!displayGroup && !isPreviewMode && displayGroup.is_leader && displayGroup.status === 'full'
 
-  // 当前中奖者（团长奖 或 队员已开奖），统一驱动核销二维码 / 折扣券引导
+  // 当前中奖者（团长奖 或 队员已开奖），统一驱动核销二维码 / 优惠券引导
   const winnerMember = useMemo<Member | null>(() => {
     if (!me) return null
     const hasPrize = leaderPrizeReady || !!me.drew_at
     return hasPrize && me.prize_name ? me : null
   }, [me, leaderPrizeReady])
 
-  // 中奖霸王餐 / 商品时，拉取核销二维码；折扣券无需二维码，走「去门店下单」引导
+  // 中奖霸王餐 / 商品时，拉取核销二维码；优惠券无需二维码，走「去门店下单」引导
   useEffect(() => {
     const needQr = !!winnerMember?.id && !!winnerMember.redemption_code && winnerMember.prize_type !== 'coupon'
     if (!needQr) {
@@ -533,13 +533,13 @@ export default function TeamLotteryPage() {
     }
   }
 
-  // 中奖结果内容：折扣券 → 去门店下单引导；霸王餐/商品 → 核销二维码
+  // 中奖结果内容：优惠券 → 去门店下单引导；霸王餐/商品 → 核销二维码
   const renderPrizeContent = (member: Member) => {
     if (member.prize_type === 'coupon') {
       return (
         <>
           <Text className="block text-xs text-amber-700 mt-2 leading-5">
-            折扣券已发放到账，请前往门店下单购买团购套餐，支付时即可抵扣使用
+            优惠券已发放到账，请前往门店下单购买团购套餐，支付时即可抵扣使用
           </Text>
           <Button
             onClick={goBuyPackage}

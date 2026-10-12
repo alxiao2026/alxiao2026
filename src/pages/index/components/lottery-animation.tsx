@@ -126,7 +126,7 @@ const LotteryAnimation = ({ visible, isWinner, prizeName, prizeType, discountCap
               </View>
             )}
 
-            {/* 折扣券模式：返还说明与封顶提示（奖品名已统一为「X元消费券」） */}
+            {/* 优惠券模式：返还说明与封顶提示（奖品名已统一为「X元消费券」） */}
             {isWinner && prizeType === 'coupon' && (
               <View className="mt-3 flex flex-col items-center">
                 <Text className="block text-sm lottery-text-white opacity-80">

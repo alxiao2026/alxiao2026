@@ -171,7 +171,7 @@ export default function LotteryRecordsPage() {
 
   const getPrizeTypeLabel = (type: string) => {
     const map: Record<string, string> = {
-      coupon: '折扣券',
+      coupon: '优惠券',
       product: '商品',
       free_meal: '霸王餐',
     }
@@ -280,7 +280,7 @@ export default function LotteryRecordsPage() {
         : { label: '返现中', className: 'bg-yellow-100 text-yellow-700' }
     }
     if (record.prize_type === 'coupon') {
-      // 折扣券：中奖即按折扣差额原路返现到支付账户，无需到店核销
+      // 优惠券：中奖即按折扣差额原路返现到支付账户，无需到店核销
       return { label: '已返现', className: 'bg-green-100 text-green-700' }
     }
     if (record.prize_type === 'product') {

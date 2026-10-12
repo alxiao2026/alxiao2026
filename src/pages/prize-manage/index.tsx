@@ -33,7 +33,7 @@ interface Prize {
 }
 
 const PRIZE_TYPE_OPTIONS = [
-  { value: 'coupon', label: '折扣券模式' },
+  { value: 'coupon', label: '优惠券模式' },
   { value: 'product', label: '商品模式' },
   { value: 'free_meal', label: '霸王餐模式' },
 ] as const;

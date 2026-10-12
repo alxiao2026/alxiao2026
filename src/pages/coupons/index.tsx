@@ -108,7 +108,7 @@ export default function CouponsPage() {
         style={{ background: 'linear-gradient(180deg, #FFE5EC 0%, #FFF1F2 60%, rgba(249,250,251,0) 100%)' }}
       >
         <Text className="block text-2xl font-black" style={{ color: '#1c1917' }}>我的优惠券</Text>
-        <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>组队抽奖折扣券 · 下单时自动抵扣</Text>
+        <Text className="block text-xs mt-1" style={{ color: '#78716c' }}>组队抽奖优惠券 · 下单时自动抵扣</Text>
       </View>
 
       {/* 状态筛选 */}
@@ -132,7 +132,7 @@ export default function CouponsPage() {
           <View className="flex flex-col items-center py-16">
             <Ticket size={48} color="#D1D5DB" />
             <Text className="block text-sm text-gray-400 mt-3">暂无优惠券</Text>
-            <Text className="block text-xs text-gray-300 mt-1">参与组队抽奖，有机会获得折扣券</Text>
+            <Text className="block text-xs text-gray-300 mt-1">参与组队抽奖，有机会获得优惠券</Text>
             <Button className="mt-4" variant="secondary" size="sm" onClick={goShopping}>去逛逛</Button>
           </View>
         ) : (
@@ -163,7 +163,7 @@ function CouponCard({ coupon }: { coupon: DiscountCoupon }) {
           >
             <Text className="block text-3xl font-black text-white">{rate}<Text className="text-base">折</Text></Text>
             <Text className="block text-xs mt-1" style={{ color: 'rgba(255,255,255,0.9)' }}>
-              {cap > 0 ? `最高减¥${cap}` : '折扣券'}
+              {cap > 0 ? `最高减¥${cap}` : '优惠券'}
             </Text>
           </View>
           <View className="flex-1 p-4">

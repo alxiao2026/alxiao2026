@@ -219,7 +219,7 @@ const UserCenterPage = () => {
     {
       icon: <Ticket size={20} color="#6B7280" />,
       label: '我的优惠券',
-      desc: '组队抽奖折扣券，下单抵扣',
+      desc: '组队抽奖优惠券，下单抵扣',
       onClick: () => Taro.navigateTo({ url: '/pages/coupons/index' })
     },
     {

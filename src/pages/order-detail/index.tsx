@@ -66,7 +66,7 @@ interface PrepayInfo {
   orchard_discount_amount?: number | null
   orchard_discount_name?: string | null
   orchard_coupon_code?: string | null
-  /** 组队折扣券抵扣（叠加在果园券之后） */
+  /** 组队优惠券抵扣（叠加在果园券之后） */
   discount_coupon_amount?: number | null
   discount_coupon_name?: string | null
   discount_coupon_code?: string | null
@@ -210,13 +210,13 @@ export default function OrderDetail() {
     }
   }
 
-  /** 组队折扣券：按门店过滤，仅取未使用/锁定的券 */
+  /** 组队优惠券：按门店过滤，仅取未使用/锁定的券 */
   const loadDiscountCoupons = async () => {
     try {
       const userId = Taro.getStorageSync('user_id')
       if (!userId || !order) return
       const res = await Network.request({ url: `/api/coupons/${userId}` })
-      console.log('[OrderDetail] 折扣券列表响应:', res.data)
+      console.log('[OrderDetail] 优惠券列表响应:', res.data)
       const data = (res.data?.data || res.data) as DiscountCoupon[]
       const merchantId = Number(packageInfo?.merchant_id || order?.merchant_id || 0)
       if (Array.isArray(data)) {
@@ -226,17 +226,17 @@ export default function OrderDetail() {
         setDiscountCoupons(usable)
       }
     } catch (e) {
-      console.warn('[OrderDetail] 折扣券加载失败:', e)
+      console.warn('[OrderDetail] 优惠券加载失败:', e)
     }
   }
 
-  /** 选择/取消组队折扣券：重新预下单（后端换锁），金额明细实时刷新 */
+  /** 选择/取消组队优惠券：重新预下单（后端换锁），金额明细实时刷新 */
   const handlePickDiscountCoupon = () => {
-    const items = ['不使用折扣券', ...discountCoupons.map((c) => {
+    const items = ['不使用优惠券', ...discountCoupons.map((c) => {
       const cap = parseFloat(c.discount_cap || '0')
       const min = parseFloat(c.min_spend || '0')
       const rate = parseFloat(c.discount_rate || '0')
-      const extra = rate > 0 ? (cap > 0 ? `${rate}折 · 最高减${cap}` : `${rate}折`) : '折扣券'
+      const extra = rate > 0 ? (cap > 0 ? `${rate}折 · 最高减${cap}` : `${rate}折`) : '优惠券'
       return `${c.title}（${min > 0 ? `满${min}可用` : '无门槛'} · ${extra}）`
     })]
     const currentIdx = selectedDiscountCoupon
@@ -251,7 +251,7 @@ export default function OrderDetail() {
         setSelectedDiscountCoupon(code)
         const data = await loadPrepay(true)
         if (!data && code) {
-          Taro.showToast({ title: '该折扣券暂不可用', icon: 'none' })
+          Taro.showToast({ title: '该优惠券暂不可用', icon: 'none' })
           discountCouponRef.current = null
           setSelectedDiscountCoupon(null)
           loadPrepay(true)
@@ -495,7 +495,7 @@ export default function OrderDetail() {
       if (!userId) return null
       const couponCode = orchardCouponCode === undefined ? orchardCouponRef.current : orchardCouponCode
       const discountCode = discountCouponRef.current
-      console.log('[OrderDetail] 请求预下单, order_id:', id, '果园券:', couponCode, '折扣券:', discountCode)
+      console.log('[OrderDetail] 请求预下单, order_id:', id, '果园券:', couponCode, '优惠券:', discountCode)
       const res = await Network.request({
         url: '/api/payment/prepay',
         method: 'POST',
@@ -835,14 +835,14 @@ export default function OrderDetail() {
                   </View>
                 </>
               )}
-              {/* 组队折扣券：抽奖获得的折扣券可在本单直接抵扣 */}
+              {/* 组队优惠券：抽奖获得的优惠券可在本单直接抵扣 */}
               {discountCoupons.length > 0 && (
                 <>
                   <Separator />
                   <View className="flex flex-row justify-between items-center py-2" onClick={handlePickDiscountCoupon}>
                     <View className="flex flex-row items-center gap-1">
                       <Ticket size={14} color="#FF4757" />
-                      <Text className="block text-sm text-gray-400">组队折扣券</Text>
+                      <Text className="block text-sm text-gray-400">组队优惠券</Text>
                     </View>
                     <View className="flex flex-row items-center gap-1">
                       {selectedDiscountCoupon ? (
@@ -866,7 +866,7 @@ export default function OrderDetail() {
                   <Separator />
                   <View className="flex flex-row justify-between items-center py-2">
                     <Text className="block text-sm text-gray-400">
-                      {prepayInfo?.discount_coupon_name || '组队折扣券抵扣'}
+                      {prepayInfo?.discount_coupon_name || '组队优惠券抵扣'}
                     </Text>
                     <Text className="block text-sm font-semibold text-[#FF4757]">
                       -¥{discountCouponAmount.toFixed(2)}
@@ -888,8 +888,8 @@ export default function OrderDetail() {
             >
               <Sparkles size={18} color="#FF9F43" />
               <View className="flex-1">
-                <Text className="block text-xs font-semibold text-[#B88230]">支付成功后即可抽奖，赢霸王餐/折扣券/商品券</Text>
-                <Text className="block text-xs text-[#D6A95C] mt-1">中奖折扣券或霸王餐，中奖金额自动退还原账户</Text>
+                <Text className="block text-xs font-semibold text-[#B88230]">支付成功后即可抽奖，赢霸王餐/优惠券/商品券</Text>
+                <Text className="block text-xs text-[#D6A95C] mt-1">中奖优惠券或霸王餐，中奖金额自动退还原账户</Text>
               </View>
             </View>
 

@@ -26,7 +26,7 @@ export interface DiscountCoupon {
 export class CouponsService {
   private client = getSupabaseClient();
 
-  /** 查询我的折扣券列表（含门店名，自动识别过期） */
+  /** 查询我的优惠券列表（含门店名，自动识别过期） */
   async getMyCoupons(userId: string): Promise<DiscountCoupon[]> {
     if (!userId) throw new BadRequestException('缺少 user_id');
     const { data, error } = await this.client
@@ -72,19 +72,19 @@ export class CouponsService {
       .select('*')
       .eq('code', code)
       .maybeSingle();
-    if (!c) throw new BadRequestException('折扣券不存在');
-    if (c.user_id !== userId) throw new BadRequestException('无权使用该折扣券');
+    if (!c) throw new BadRequestException('优惠券不存在');
+    if (c.user_id !== userId) throw new BadRequestException('无权使用该优惠券');
     if (Number(c.merchant_id) !== Number(merchantId)) {
-      throw new BadRequestException('该折扣券仅限指定门店使用');
+      throw new BadRequestException('该优惠券仅限指定门店使用');
     }
     if (c.status === 'locked' && c.used_order_id) return c as DiscountCoupon; // 幂等复用
-    if (c.status !== 'unused') throw new BadRequestException('该折扣券已被使用');
+    if (c.status !== 'unused') throw new BadRequestException('该优惠券已被使用');
     if (c.expire_at && new Date(c.expire_at) < new Date()) {
       await this.client
         .from('discount_coupons')
         .update({ status: 'expired' })
         .eq('id', c.id);
-      throw new BadRequestException('该折扣券已过期');
+      throw new BadRequestException('该优惠券已过期');
     }
     if (Number(c.min_spend) > orderAmount) {
       throw new BadRequestException(`该券满 ${Number(c.min_spend)} 元可用，当前订单未达门槛`);
@@ -92,7 +92,7 @@ export class CouponsService {
     return c as DiscountCoupon;
   }
 
-  /** 计算折扣券抵扣金额：原价 × (10 - 折扣率) / 10，受封顶金额与实付下限约束 */
+  /** 计算优惠券抵扣金额：原价 × (10 - 折扣率) / 10，受封顶金额与实付下限约束 */
   calculateDiscount(coupon: DiscountCoupon, orderAmount: number): number {
     const rate = parseFloat(coupon.discount_rate || '0');
     const cap = parseFloat(coupon.discount_cap || '0');
@@ -136,7 +136,7 @@ export class CouponsService {
       .eq('status', 'locked');
   }
 
-  /** 订单超时/取消时解锁其锁定的折扣券 */
+  /** 订单超时/取消时解锁其锁定的优惠券 */
   async unlockCouponsByOrder(orderId: string) {
     await this.client
       .from('discount_coupons')

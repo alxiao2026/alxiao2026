@@ -441,7 +441,7 @@ export class TeamLotteryService {
 
   /**
    * 组队抽奖奖品发放（与普通抽奖保持一致）：
-   * - coupon（折扣券）：先付后返，按 discount_rate/discount_cap 计算返现金额，中奖即核销并自动原路退款
+   * - coupon（优惠券）：先付后返，按 discount_rate/discount_cap 计算返现金额，中奖即核销并自动原路退款
    * - free_meal（霸王餐）：本单免单，生成核销码，自动原路退款，到店核销
    * - product（实物）：生成核销码，到店核销
    */
@@ -464,11 +464,11 @@ export class TeamLotteryService {
           couponAmount = refundAmount;
           couponMinSpend = parseFloat(prize.coupon_min_spend || '0');
           refundStatus = 'redeemed';
-          // 队员免费入队未下单时，不存在返现金额，改为发放对应门店折扣券到个人中心
+          // 队员免费入队未下单时，不存在返现金额，改为发放对应门店优惠券到个人中心
           if (!memberOrder?.id) {
             refundAmount = 0;
             couponAmount = 0;
-            return prize.discount_rate ? `${prize.discount_rate}折优惠券` : (prize.name || '折扣券');
+            return prize.discount_rate ? `${prize.discount_rate}折优惠券` : (prize.name || '优惠券');
           }
           return `${refundAmount}元消费券`;
         })()
@@ -476,7 +476,7 @@ export class TeamLotteryService {
         ? '霸王餐免单券'
         : prize.name;
 
-    // 队员免费入队抽中折扣券：发放对应门店折扣券到个人中心（无订单=无返现）
+    // 队员免费入队抽中优惠券：发放对应门店优惠券到个人中心（无订单=无返现）
     if (prize.prize_type === 'coupon' && !memberOrder?.id) {
       await this.grantDiscountCoupon(userId, prize, ctx);
     }
@@ -507,10 +507,10 @@ export class TeamLotteryService {
       image_url: prize.image_url || null,
     };
 
-    // 自动退款：折扣券 / 霸王餐
+    // 自动退款：优惠券 / 霸王餐
     if ((prize.prize_type === 'coupon' || prize.prize_type === 'free_meal') && refundAmount > 0 && memberOrder?.id) {
       const reason = prize.prize_type === 'coupon'
-        ? `组队抽奖折扣券中奖返现（${prize.discount_rate}折）`
+        ? `组队抽奖优惠券中奖返现（${prize.discount_rate}折）`
         : '组队抽奖霸王餐中奖免单退款';
       try {
         await this.autoRefund(memberOrder.id, refundAmount, reason);
@@ -522,7 +522,7 @@ export class TeamLotteryService {
     return result;
   }
 
-  /** 组队抽奖：队员免费入队抽到折扣券时，发放对应门店折扣券到个人中心（仅组队模块，不影响系统其他模块） */
+  /** 组队抽奖：队员免费入队抽到优惠券时，发放对应门店优惠券到个人中心（仅组队模块，不影响系统其他模块） */
   private async grantDiscountCoupon(
     userId: string,
     prize: any,
@@ -531,7 +531,7 @@ export class TeamLotteryService {
     if (!ctx?.merchant_id) return;
     try {
       const rate = parseFloat(prize.discount_rate || '0');
-      const title = rate > 0 ? `${rate}折优惠券` : (prize.name || '折扣券');
+      const title = rate > 0 ? `${rate}折优惠券` : (prize.name || '优惠券');
       const code = `DSC${Date.now()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       const validityHours = Number(prize.validity_hours) > 0 ? Number(prize.validity_hours) : 720; // 默认30天
       const expireAt = this.addHours(validityHours);
@@ -552,12 +552,12 @@ export class TeamLotteryService {
           expire_at: expireAt,
         });
       if (error) {
-        this.logger.warn(`组队折扣券发放失败 user=${userId}: ${error.message}`);
+        this.logger.warn(`组队优惠券发放失败 user=${userId}: ${error.message}`);
       } else {
-        this.logger.log(`组队折扣券已发放 user=${userId} rate=${rate} code=${code}`);
+        this.logger.log(`组队优惠券已发放 user=${userId} rate=${rate} code=${code}`);
       }
     } catch (e: any) {
-      this.logger.warn(`组队折扣券发放异常 user=${userId}: ${e?.message}`);
+      this.logger.warn(`组队优惠券发放异常 user=${userId}: ${e?.message}`);
     }
   }
 
