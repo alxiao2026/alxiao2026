@@ -936,15 +936,30 @@ export class LotteryService {
 
   /** 生成核销二维码（上传到TOS，返回URL） */
   async generateRedemptionQRCode(recordId: string): Promise<{ qrcode: string; redemption_code: string; prize_name: string; expired: boolean; redemption_expiry_hours: number; expiry_date: string; expiry_hours: number; created_at: string }> {
+    // 先查个人抽奖记录（lottery_records）；查不到则回退查组队抽奖成员记录（team_lottery_members）
+    // 前端中奖记录页 team 记录（lottery_type='team'）的 id 是 team_lottery_members 主键，必须兼容，否则 404
     const { data: record, error } = await this.client
       .from('lottery_records')
       .select('id, redemption_code, prize_name, prize_id, is_winner, refund_status, created_at')
       .eq('id', recordId)
       .maybeSingle();
     if (error) throw new Error(`查询记录失败: ${error.message}`);
-    if (!record) throw new NotFoundException('抽奖记录不存在');
 
-    const r = record as any;
+    let r: any = record;
+    if (!r) {
+      const { data: member, error: memberError } = await this.client
+        .from('team_lottery_members')
+        .select('id, redemption_code, prize_name, prize_id, is_winner, drew_at, created_at')
+        .eq('id', recordId)
+        .maybeSingle();
+      if (memberError) throw new Error(`查询记录失败: ${memberError.message}`);
+      if (member) {
+        const m = member as any;
+        r = { ...m, created_at: m.created_at || m.drew_at };
+      }
+    }
+    if (!r) throw new NotFoundException('抽奖记录不存在');
+
     if (!r.is_winner) throw new BadRequestException('未中奖，无法生成核销码');
     if (!r.redemption_code) throw new BadRequestException('该奖品无核销码（仅商品类奖品支持核销）');
 
