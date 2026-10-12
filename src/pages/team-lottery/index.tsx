@@ -110,6 +110,10 @@ export default function TeamLotteryPage() {
   // 未登录点邀请链接/开团/入队的拦截提示
   const [loginTip, setLoginTip] = useState('')
 
+  // 中奖核销二维码（霸王餐/商品）
+  const [winnerQrUrl, setWinnerQrUrl] = useState('')
+  const [winnerQrLoading, setWinnerQrLoading] = useState(false)
+
   // 同时支持 merchant_id/merchantId、package_id/packageId、order_id/orderId 两种命名风格
   const applyParams = (raw: Record<string, any>) => {
     const params = raw || {}
@@ -486,6 +490,85 @@ export default function TeamLotteryPage() {
   // 团长已自动获奖
   const leaderPrizeReady = !!displayGroup && !isPreviewMode && displayGroup.is_leader && displayGroup.status === 'full'
 
+  // 当前中奖者（团长奖 或 队员已开奖），统一驱动核销二维码 / 折扣券引导
+  const winnerMember = useMemo<Member | null>(() => {
+    if (!me) return null
+    const hasPrize = leaderPrizeReady || !!me.drew_at
+    return hasPrize && me.prize_name ? me : null
+  }, [me, leaderPrizeReady])
+
+  // 中奖霸王餐 / 商品时，拉取核销二维码；折扣券无需二维码，走「去门店下单」引导
+  useEffect(() => {
+    const needQr = !!winnerMember?.id && !!winnerMember.redemption_code && winnerMember.prize_type !== 'coupon'
+    if (!needQr) {
+      setWinnerQrUrl('')
+      setWinnerQrLoading(false)
+      return
+    }
+    let cancelled = false
+    setWinnerQrLoading(true)
+    Network.request({ url: `/api/lottery/qrcode/${winnerMember.id}` })
+      .then((res) => {
+        const data = (res.data as any)?.data || res.data
+        if (cancelled) return
+        if (data?.qrcode) setWinnerQrUrl(data.qrcode)
+        setWinnerQrLoading(false)
+      })
+      .catch((e) => {
+        console.error('[TeamLottery] 获取核销二维码失败', e)
+        if (!cancelled) setWinnerQrLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [winnerMember?.id, winnerMember?.redemption_code, winnerMember?.prize_type])
+
+  // 去门店下单购买团购套餐
+  const goBuyPackage = () => {
+    const pid = displayGroup?.package_id || packageId
+    if (pid) {
+      Taro.navigateTo({ url: `/pages/package-detail/index?id=${pid}` })
+    } else {
+      setToast('暂无可购买的团购套餐')
+    }
+  }
+
+  // 中奖结果内容：折扣券 → 去门店下单引导；霸王餐/商品 → 核销二维码
+  const renderPrizeContent = (member: Member) => {
+    if (member.prize_type === 'coupon') {
+      return (
+        <>
+          <Text className="block text-xs text-amber-700 mt-2 leading-5">
+            折扣券已发放到账，请前往门店下单购买团购套餐，支付时即可抵扣使用
+          </Text>
+          <Button
+            onClick={goBuyPackage}
+            className="mt-3 w-full h-11 bg-[#FF6B1A] text-white rounded-full text-sm font-bold border-0"
+          >
+            去门店下单
+          </Button>
+        </>
+      )
+    }
+    return (
+      <>
+        {member.redemption_code && (
+          <Text className="block text-xs text-amber-700 mt-1">核销码：{member.redemption_code}</Text>
+        )}
+        {winnerQrLoading && (
+          <Text className="block text-xs text-amber-500 mt-2">二维码加载中…</Text>
+        )}
+        {winnerQrUrl && (
+          <Image
+            src={winnerQrUrl}
+            mode="aspectFit"
+            className="mx-auto mt-3 w-44 h-44 rounded-xl bg-white"
+          />
+        )}
+      </>
+    )
+  }
+
   if (loading) {
     return (
       <View className="min-h-screen bg-gradient-to-b from-[#FF6B1A] to-[#ffb347] p-4">
@@ -723,12 +806,7 @@ export default function TeamLotteryPage() {
                         <Text className="block text-sm text-[#c8410e] mt-1">
                           获得：{me.prize_name}
                         </Text>
-                        {me.redemption_code && (
-                          <Text className="block text-xs text-amber-700 mt-1">核销码：{me.redemption_code}</Text>
-                        )}
-                        {me.refund_amount && Number(me.refund_amount) > 0 && (
-                          <Text className="block text-xs text-red-600 mt-1">已原路退款 ¥{Number(me.refund_amount).toFixed(2)}</Text>
-                        )}
+                        {renderPrizeContent(me)}
                       </>
                     ) : (
                       <Text className="block text-xs text-amber-700 mt-1">奖品已自动到账，请到「中奖记录」查看</Text>
@@ -741,12 +819,7 @@ export default function TeamLotteryPage() {
                         ? `🎉 恭喜抽中：${alreadyDrewPrize.prize_name || '奖品'}`
                         : '谢谢参与～'}
                     </Text>
-                    {alreadyDrewPrize.redemption_code && (
-                      <Text className="block text-xs text-amber-700 mt-1">核销码：{alreadyDrewPrize.redemption_code}</Text>
-                    )}
-                    {alreadyDrewPrize.refund_amount && Number(alreadyDrewPrize.refund_amount) > 0 && (
-                      <Text className="block text-xs text-red-600 mt-1">已原路退款 ¥{Number(alreadyDrewPrize.refund_amount).toFixed(2)}</Text>
-                    )}
+                    {alreadyDrewPrize.is_winner && renderPrizeContent(alreadyDrewPrize)}
                   </View>
                 ) : g.status === 'active' ? (
                   <View className="bg-orange-50 rounded-full py-3 px-4">
