@@ -5,6 +5,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { getSupabaseClient } from '../../storage/database/supabase-client';
 import { NotificationService } from '../notification/notification.service';
 import { DistributionService } from '../distribution/distribution.service';
@@ -28,6 +29,7 @@ export interface PaymentRecord {
   orchard_coupon_code: string | null;
   discount_coupon_code: string | null;
   notify_count: number;
+  out_trade_no: string | null;
   paid_at: string | null;
   refunded_at: string | null;
   created_at: string;
@@ -35,6 +37,11 @@ export interface PaymentRecord {
 }
 
 const MIN_PAY_AMOUNT = 0.01; // 实付兜底：最低 0.01 元
+
+/** 生成微信商户订单号（≤32 字符，每次重新下单必须全新，微信禁止复用已使用过的订单号） */
+function generateOutTradeNo(): string {
+  return `OT${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+}
 
 @Injectable()
 export class PaymentService {
@@ -317,7 +324,7 @@ export class PaymentService {
           .maybeSingle();
         const openId = (userRow as any)?.open_id;
         if (openId) {
-          const outTradeNo = payment.id.replace(/-/g, '');
+          let outTradeNo = (payment as any).out_trade_no || '';
           let prepayId = payment.prepay_id;
           const needNewOrder =
             amountChanged ||
@@ -325,10 +332,13 @@ export class PaymentService {
             !prepayId ||
             prepayId.startsWith('mock_');
           if (needNewOrder) {
-            // 金额变更需先关闭旧微信订单再重新下单
+            // 金额变更需先关闭旧微信订单，再用全新商户订单号重新下单
+            // 注意：微信商户订单号一旦使用（即使已关闭）不可复用，否则报「201 商户订单号重复」
+            const oldOutTradeNo = outTradeNo || payment.id.replace(/-/g, '');
             if (payment.channel === 'wechat' && prepayId && !prepayId.startsWith('mock_')) {
-              await this.wechatPay.closeOrder(outTradeNo);
+              await this.wechatPay.closeOrder(oldOutTradeNo);
             }
+            outTradeNo = generateOutTradeNo();
             const { data: orderRow } = await this.client
               .from('orders')
               .select('packages:package_id(name)')
@@ -346,6 +356,7 @@ export class PaymentService {
               .update({
                 prepay_id: prepayId,
                 channel: 'wechat',
+                out_trade_no: outTradeNo,
                 updated_at: new Date().toISOString(),
               })
               .eq('id', payment.id)
@@ -440,17 +451,27 @@ export class PaymentService {
     if (result?.trade_state !== 'SUCCESS') {
       return { handled: false, trade_state: result?.trade_state };
     }
-    // out_trade_no = payment.id 去连字符（32 位 hex）→ 还原为 uuid 查支付单
+    // 优先按 out_trade_no 字段反查（新版）；兼容历史数据：32 位 hex = payment.id 去连字符 → 还原 uuid
     const raw = String(result.out_trade_no || '');
-    const paymentId =
-      raw.length === 32
-        ? `${raw.slice(0, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}-${raw.slice(16, 20)}-${raw.slice(20)}`
-        : raw;
-    const { data: payment } = await this.client
+    let payment: { prepay_id: string } | null = null;
+    const { data: byTradeNo } = await this.client
       .from('payments')
       .select('prepay_id')
-      .eq('id', paymentId)
+      .eq('out_trade_no', raw)
       .maybeSingle();
+    if (byTradeNo) {
+      payment = byTradeNo as { prepay_id: string };
+    } else {
+      const paymentId = /^[0-9a-fA-F]{32}$/.test(raw)
+        ? `${raw.slice(0, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}-${raw.slice(16, 20)}-${raw.slice(20)}`
+        : raw;
+      const { data: byId } = await this.client
+        .from('payments')
+        .select('prepay_id')
+        .eq('id', paymentId)
+        .maybeSingle();
+      payment = byId as { prepay_id: string } | null;
+    }
     if (!payment) throw new NotFoundException('支付单不存在');
     const handled = await this.handlePaidNotify(payment.prepay_id, 'success', {
       transactionId: result.transaction_id,
@@ -710,7 +731,7 @@ export class PaymentService {
       try {
         await this.wechatPay.createRefund({
           transactionId: payment.transaction_id || undefined,
-          outTradeNo: payment.id.replace(/-/g, ''),
+          outTradeNo: (payment as any)?.out_trade_no || payment.id.replace(/-/g, ''),
           outRefundNo,
           refundFen: Math.round(refundAmount * 100),
           totalFen: Math.round(paidAmount * 100),
