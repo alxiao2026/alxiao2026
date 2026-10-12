@@ -566,7 +566,7 @@ export class TeamLotteryService {
     // 先查到订单 user_id
     const { data: order, error: orderErr } = await this.client
       .from('orders')
-      .select('user_id, quantity, paid_amount, status')
+      .select('id')
       .eq('id', orderId)
       .maybeSingle();
     if (orderErr) throw new Error(`查询订单失败: ${orderErr.message}`);

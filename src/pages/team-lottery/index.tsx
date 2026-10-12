@@ -117,7 +117,12 @@ export default function TeamLotteryPage() {
     const pid = String(params.package_id || params.packageId || '')
     const code = String(params.invite_code || params.inviteCode || '').toUpperCase()
     const oid = String(params.order_id || params.orderId || '')
-    const uid = Taro.getStorageSync('user_id') || ''
+    let uid = Taro.getStorageSync('user_id') || ''
+    // 冷启动直接进入本页（未经首页）时，兜底生成游客 user_id，确保入队/登录态判断正确
+    if (!uid) {
+      uid = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      Taro.setStorageSync('user_id', uid)
+    }
     if (pid) setPackageId((prev) => prev || pid)
     // 分享进入时 invite_code 只在有值时更新，避免 onShow 空参数把它覆盖掉
     if (code) setInviteCode((prev) => prev || code)

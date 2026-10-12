@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Network } from '@/network'
@@ -190,17 +190,7 @@ export default function LotteryRecordsPage() {
   const isRedeemed = (record: LotteryRecord) =>
     record.refund_status === 'redeemed' || record.refund_status === 'completed'
 
-  // 一键分享组队邀请：记录当前点击的组队记录，分享回调读取
-  const shareRecordRef = useRef<LotteryRecord | null>(null)
   useShareAppMessage(() => {
-    const r = shareRecordRef.current
-    if (r?.lottery_type === 'team' && r.team_invite_code) {
-      const query = `merchant_id=${r.merchant_id ?? ''}&package_id=${r.package_id ?? ''}&invite_code=${r.team_invite_code}`
-      return {
-        title: '一起来组队抽盲盒，赢霸王餐！',
-        path: `/pages/team-lottery/index?${query}`,
-      }
-    }
     return { title: '团团盲盒 · 中奖记录', path: '/pages/lottery-records/index' }
   })
 
@@ -363,10 +353,11 @@ export default function LotteryRecordsPage() {
                                 {record.team_status === 'active' && record.team_invite_code ? (
                                   <Button
                                     size="sm"
-                                    openType="share"
                                     className="h-7 px-3 rounded-full bg-[#FF4757] text-white text-xs"
                                     onClick={() => {
-                                      shareRecordRef.current = record
+                                      Taro.navigateTo({
+                                        url: `/pages/team-lottery/index?merchant_id=${record.merchant_id ?? ''}&package_id=${record.package_id ?? ''}&invite_code=${record.team_invite_code}`,
+                                      })
                                     }}
                                   >
                                     <View className="flex items-center gap-1">
